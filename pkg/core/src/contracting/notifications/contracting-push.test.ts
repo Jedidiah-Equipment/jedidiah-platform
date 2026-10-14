@@ -1,14 +1,17 @@
 import { type Db, pushTokens, session, user } from '@pkg/db';
 import { accessForRole } from '@pkg/domain/testing';
 import type { ContractingRole } from '@pkg/schema';
+import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 import { setPushPreferences } from '../../push/push-preference-service.js';
 import type { PushMessage } from '../../push/push-sender.js';
 import { createTester } from '../../test/create-tester.js';
-import { reportBreakdown } from '../breakdowns/breakdown-service.js';
+import { addBreakdownNote, reportBreakdown } from '../breakdowns/breakdown-service.js';
 import { patchMachine } from '../fleet/machine-service.js';
+import { addJobNote } from '../jobs/job-note-service.js';
+import { createJob } from '../jobs/job-service.js';
 import { captureReading } from '../readings/reading-service.js';
-import { admin, adminId, seedJobFixtures } from '../test/job-fixtures.js';
+import { admin, adminId, foreman, foremanId, plannedStint, seedJobFixtures } from '../test/job-fixtures.js';
 import { buildContractingPush, dispatchContractingPush } from './contracting-push.js';
 
 const test = createTester(async ({ db }) => {
@@ -38,7 +41,7 @@ const test = createTester(async ({ db }) => {
       person('quiet', { contractingRole: 'workshop-manager' }),
     ]);
   await db.insert(session).values(
-    ['wendy', 'mo', 'sam', 'bay-tablet', adminId].map((id) => ({
+    ['wendy', 'mo', 'sam', 'bay-tablet', adminId, foremanId].map((id) => ({
       id,
       userId: id,
       token: `${id}-session`,
@@ -62,6 +65,7 @@ const test = createTester(async ({ db }) => {
       token('mo', 'mo'),
       token('sam', 'sam'),
       token(adminId, 'jed'),
+      token(foremanId, 'sipho'),
       token('bay-tablet', 'tablet'),
     ]);
   return fixtures;
@@ -79,6 +83,137 @@ async function report(db: Db, machineId: string, urgency: 'code-red' | 'code-gre
 }
 
 describe('Contracting push fan-out', () => {
+  test('Breakdown Notes reach participants and workshop, exclude their author, and respect per-kind mutes', async ({
+    context: { db, excavator },
+  }) => {
+    const { breakdown } = await reportBreakdown({
+      db,
+      actor: foreman,
+      input: {
+        subject: { kind: 'machine', id: excavator.id },
+        urgency: 'code-red',
+        description: 'Leak',
+        jobId: null,
+      },
+    });
+    await addBreakdownNote({
+      db,
+      actor: accessForRole('contracting-manager', 'mo'),
+      input: { breakdownId: breakdown.id, text: 'Parts ordered' },
+    });
+    await addBreakdownNote({
+      db,
+      actor: accessForRole('workshop-manager', 'wendy'),
+      input: { breakdownId: breakdown.id, text: 'Checking parts' },
+    });
+    const note = await addBreakdownNote({
+      db,
+      actor: foreman,
+      input: { breakdownId: breakdown.id, text: 'Still leaking\nSecond line' },
+    });
+    const messages = await buildContractingPush({ db, event: { kind: 'breakdown-note.added', noteId: note.id } });
+    expect(recipients(messages)).toEqual([
+      'ExponentPushToken[mo]',
+      'ExponentPushToken[wendy-1]',
+      'ExponentPushToken[wendy-2]',
+    ]);
+    expect(messages[0]).toMatchObject({
+      title: 'Note · CAT320-1',
+      body: 'Sipho: Still leaking',
+      channelId: 'notes',
+      data: { path: `/contracting/workshop/${breakdown.id}?tab=activity` },
+    });
+    const reply = await addBreakdownNote({
+      db,
+      actor: accessForRole('workshop-manager', 'wendy'),
+      input: { breakdownId: breakdown.id, text: 'On my way' },
+    });
+    const event = { kind: 'breakdown-note.added', noteId: reply.id } as const;
+    expect(recipients(await buildContractingPush({ db, event }))).toEqual([
+      'ExponentPushToken[mo]',
+      'ExponentPushToken[sipho]',
+    ]);
+    await setPushPreferences({ db, userId: foremanId, input: { muted: ['contracting.breakdown-note'] } });
+    expect(recipients(await buildContractingPush({ db, event }))).toEqual(['ExponentPushToken[mo]']);
+    await db.update(user).set({ banned: true }).where(eq(user.id, 'mo'));
+    expect(await buildContractingPush({ db, event })).toEqual([]);
+  });
+
+  test('Job Notes reach the Foreman and management, add prior authors, and mute independently of Breakdown Notes', async ({
+    context: { db, customer, farm, workType, excavator },
+  }) => {
+    const job = await createJob({
+      db,
+      actor: admin,
+      input: {
+        customerId: customer.id,
+        farmId: farm.id,
+        workTypeId: workType.id,
+        description: null,
+        foremanUserId: foremanId,
+      },
+    });
+    const note = await addJobNote({
+      db,
+      actor: accessForRole('contracting-manager', 'mo'),
+      input: { jobId: job.id, text: 'Start tomorrow' },
+    });
+    const event = { kind: 'job-note.added', noteId: note.id } as const;
+    const messages = await buildContractingPush({ db, event });
+    expect(recipients(messages)).toEqual([
+      'ExponentPushToken[jed]',
+      'ExponentPushToken[sam]',
+      'ExponentPushToken[sipho]',
+    ]);
+    expect(messages[0]).toMatchObject({
+      title: 'Note · CJOB-00001',
+      body: 'mo: Start tomorrow',
+      channelId: 'notes',
+      data: { path: `/contracting/jobs/${job.id}?tab=activity` },
+    });
+    await addJobNote({
+      db,
+      actor: accessForRole('workshop-manager', 'wendy'),
+      input: { jobId: job.id, text: 'Machine ready' },
+    });
+    await setPushPreferences({ db, userId: foremanId, input: { muted: ['contracting.job-note'] } });
+    expect(recipients(await buildContractingPush({ db, event }))).toEqual([
+      'ExponentPushToken[jed]',
+      'ExponentPushToken[sam]',
+      'ExponentPushToken[wendy-1]',
+      'ExponentPushToken[wendy-2]',
+    ]);
+    await plannedStint(db, admin, { jobId: job.id, machineId: excavator.id, implementId: null });
+    // The Job's Foreman participates even when someone else reported its Breakdown.
+    const { breakdown } = await reportBreakdown({
+      db,
+      actor: admin,
+      input: {
+        subject: { kind: 'machine', id: excavator.id },
+        urgency: 'code-red',
+        description: 'Leak',
+        jobId: job.id,
+      },
+    });
+    const reply = await addBreakdownNote({
+      db,
+      actor: accessForRole('workshop-manager', 'wendy'),
+      input: { breakdownId: breakdown.id, text: 'Checking' },
+    });
+    expect(
+      recipients(await buildContractingPush({ db, event: { kind: 'breakdown-note.added', noteId: reply.id } })),
+    ).toEqual(['ExponentPushToken[jed]', 'ExponentPushToken[sipho]']);
+  });
+
+  test.for(['breakdown-note.added', 'job-note.added'] as const)(
+    'a missing note sends nothing for %s',
+    async (kind, { context: { db } }) => {
+      expect(
+        await buildContractingPush({ db, event: { kind, noteId: '00000000-0000-4000-8000-000000000001' } }),
+      ).toEqual([]);
+    },
+  );
+
   test('Code Green reaches every workshop manager install and nobody else', async ({ context: { db, excavator } }) => {
     const messages = await report(db, excavator.id, 'code-green');
 

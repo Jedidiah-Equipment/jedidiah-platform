@@ -5,6 +5,8 @@ export const pushKinds = [
   'contracting.breakdown.code-red',
   'contracting.breakdown.code-green',
   'contracting.service-due-soon',
+  'contracting.breakdown-note',
+  'contracting.job-note',
 ] as const;
 export type PushKind = (typeof pushKinds)[number];
 

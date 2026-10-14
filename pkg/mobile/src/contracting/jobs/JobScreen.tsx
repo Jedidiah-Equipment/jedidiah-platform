@@ -77,13 +77,18 @@ export default function JobScreen() {
       <SecondaryToolbar
         title="Job"
         subtitle={job?.jobNumber ?? 'CONTRACTING'}
-        parentLabel="Jobs"
-        onBack={() => router.replace('/contracting/jobs' as Href)}
+        parentLabel={jobQuery.canRead ? 'Jobs' : 'Activity'}
+        onBack={() => router.replace(jobQuery.canRead ? '/contracting/jobs' : '/contracting/activity')}
         helpTopic="contractingMobileJob"
       />
       {job ? <RecordTabBar value={tab} onChange={setTab} /> : null}
-      {job && tab === 'activity' ? (
-        <ContractingActivityFeed jobId={job.id} listHeader={<AddNoteButton job={job} />} showControls={false} />
+      {tab === 'activity' ? (
+        // Activity has its own server-side reach; workshop participants can open a note without the field Job gate.
+        <ContractingActivityFeed
+          jobId={jobId}
+          listHeader={job ? <AddNoteButton job={job} /> : undefined}
+          showControls={false}
+        />
       ) : (
         <ScrollView contentContainerStyle={{ ...SECONDARY_PAGE_CONTENT_STYLE, gap: 16 }}>
           {job ? (

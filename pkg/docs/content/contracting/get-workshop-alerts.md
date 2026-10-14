@@ -1,10 +1,10 @@
-# Get workshop alerts
+# Get alerts
 
-The phone app sends the workshop a push notification when a Breakdown is reported and when a Machine becomes Service Due Soon, so nobody has to watch the queue. [Who gets workshop alerts](./who-gets-workshop-alerts) shows which roles get which alert, and when.
+The phone app sends push notifications for Breakdowns, Service Due Soon and new notes on Jobs and Breakdowns. [Who gets alerts](./who-gets-workshop-alerts) shows which roles get which alert, and when.
 
 1. Sign in to the phone app with your own account.
 2. When the app asks to send notifications, choose **Allow**. It asks only once.
-3. When an alert arrives, tap it. A Breakdown alert opens the Breakdown; a service alert opens the Machine.
+3. When an alert arrives, tap it. A Breakdown alert opens the Breakdown; a service alert opens the Machine; a note alert opens the Job’s or Breakdown’s **Activity**.
 
 ## Turn alerts back on
 

@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { beforeEach, expect, test, vi } from 'vitest';
 
 const notifications = vi.hoisted(() => ({
-  AndroidImportance: { MAX: 5 },
+  AndroidImportance: { MAX: 5, DEFAULT: 3 },
   setNotificationChannelAsync: vi.fn(async () => null),
   getPermissionsAsync: vi.fn(async () => ({ status: 'undetermined' })),
   requestPermissionsAsync: vi.fn(async () => ({ status: 'denied' })),
@@ -18,7 +18,10 @@ vi.mock('../observability', () => ({ addBreadcrumb: vi.fn() }));
 
 import { registerForPush, requestNotificationsAndRegister } from './register-push';
 
-const channels = [{ id: 'workshop', name: 'Workshop' }];
+const channels = [
+  { id: 'workshop', name: 'Workshop' },
+  { id: 'notes', name: 'Notes' },
+];
 
 beforeEach(async () => {
   vi.clearAllMocks();
@@ -49,7 +52,7 @@ test('someone no push reaches is never asked, but still claims an install the OS
   expect(register).toHaveBeenCalledWith({ token: 'ExponentPushToken[phone]', platform: 'android' });
 });
 
-test('a granted permission registers the install on the workshop channel', async () => {
+test('a granted permission creates separate workshop and notes channels', async () => {
   notifications.getPermissionsAsync.mockResolvedValueOnce({ status: 'granted' });
   const register = vi.fn(async () => undefined);
 
@@ -57,6 +60,10 @@ test('a granted permission registers the install on the workshop channel', async
   expect(notifications.setNotificationChannelAsync).toHaveBeenCalledWith(
     'workshop',
     expect.objectContaining({ importance: 5 }),
+  );
+  expect(notifications.setNotificationChannelAsync).toHaveBeenCalledWith(
+    'notes',
+    expect.objectContaining({ importance: 3 }),
   );
   expect(register).toHaveBeenCalledWith({ token: 'ExponentPushToken[phone]', platform: 'android' });
 });

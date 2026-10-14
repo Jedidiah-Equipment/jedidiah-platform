@@ -33,7 +33,7 @@ export const CONTRACTING_SECTIONS: DocsSection[] = [
       { text: 'Record a Voice Note', link: '/contracting/record-a-voice-note' },
       { text: 'Report a Breakdown', link: '/contracting/report-a-breakdown' },
       { text: 'Run the Workshop queue', link: '/contracting/run-the-workshop-queue' },
-      { text: 'Get workshop alerts', link: '/contracting/get-workshop-alerts' },
+      { text: 'Get alerts', link: '/contracting/get-workshop-alerts' },
       { text: 'Choose your alerts', link: '/contracting/choose-your-alerts' },
       { text: 'Record a service', link: '/contracting/record-a-service' },
       { text: 'Resolve Reading Exceptions', link: '/contracting/resolve-reading-exceptions' },
@@ -54,7 +54,7 @@ export const CONTRACTING_SECTIONS: DocsSection[] = [
   },
   {
     text: 'Contracting concepts',
-    items: [{ text: 'Who gets workshop alerts', link: '/contracting/who-gets-workshop-alerts' }],
+    items: [{ text: 'Who gets alerts', link: '/contracting/who-gets-workshop-alerts' }],
   },
 ];
 

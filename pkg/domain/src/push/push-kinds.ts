@@ -1,11 +1,15 @@
 import { type AppRole, type Business, type PushKind, pushKinds, type UserAccessSummary } from '@pkg/schema';
 import { getBusinessRole } from '../auth/authorization.js';
 
-/** An Android channel a Push Kind rings on, with the name the phone's notification settings show. */
-export type PushChannel = { id: string; name: string };
+/**
+ * An Android channel a Push Kind rings on, with the name the phone's notification settings show and how loudly it
+ * rings: `max` interrupts, `default` sounds without a heads-up.
+ */
+export type PushChannel = { id: string; name: string; importance: 'max' | 'default' };
 
 // The native default channel (`defaultChannel` in app.config.ts) carries the same id.
-const WORKSHOP_PUSH_CHANNEL: PushChannel = { id: 'workshop', name: 'Workshop' };
+const WORKSHOP_PUSH_CHANNEL: PushChannel = { id: 'workshop', name: 'Workshop', importance: 'max' };
+const NOTES_PUSH_CHANNEL: PushChannel = { id: 'notes', name: 'Notes', importance: 'default' };
 
 export type PushKindDefinition = {
   business: Business;
@@ -13,7 +17,8 @@ export type PushKindDefinition = {
   label: string;
   /** One sentence under the label: when it fires. */
   description: string;
-  /** The roles this kind can reach; role membership is the opt-in, a mute the only per-person opt-out. */
+  /** The roles this kind can reach; role membership is the opt-in, a mute the only per-person opt-out. A note kind
+   * narrows this further to the people its thread reaches (`jobNoteReaches`, `breakdownNoteReaches`). */
   roles: readonly AppRole[];
   /** The Android channel it rings on. */
   channel: PushChannel;
@@ -41,6 +46,20 @@ export const PUSH_KINDS: Record<PushKind, PushKindDefinition> = {
     roles: ['workshop-manager'],
     channel: WORKSHOP_PUSH_CHANNEL,
   },
+  'contracting.breakdown-note': {
+    business: 'contracting',
+    label: 'Breakdown notes',
+    description: 'Someone added a note on a Breakdown you are part of.',
+    roles: ['foreman', 'workshop-manager', 'contracting-manager', 'contracting-admin', 'super-admin'],
+    channel: NOTES_PUSH_CHANNEL,
+  },
+  'contracting.job-note': {
+    business: 'contracting',
+    label: 'Job notes',
+    description: 'Someone added a note on a Job you are part of.',
+    roles: ['foreman', 'workshop-manager', 'contracting-manager', 'contracting-admin', 'super-admin'],
+    channel: NOTES_PUSH_CHANNEL,
+  },
 };
 
 /** The kinds any of this person's roles can reach, in registry order: what the Settings page lists. */
@@ -56,6 +75,9 @@ export const isPushRecipient = (access: UserAccessSummary | null | undefined) =>
 
 /** The Android channels this person's kinds ring on, each once, so the phone creates each before registering. */
 export function pushChannelsFor(access: UserAccessSummary | null | undefined): PushChannel[] {
-  const channels = new Map(pushKindsFor(access).map((kind) => [PUSH_KINDS[kind].channel.id, PUSH_KINDS[kind].channel]));
-  return [...channels.values()];
+  const kinds = pushKindsFor(access);
+  if (kinds.length === 0) return [];
+  // Every recipient gets the native default channel too, so a push that names no channel still rings.
+  const channels = [WORKSHOP_PUSH_CHANNEL, ...kinds.map((kind) => PUSH_KINDS[kind].channel)];
+  return [...new Map(channels.map((channel) => [channel.id, channel])).values()];
 }

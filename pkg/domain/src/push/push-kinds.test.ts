@@ -15,11 +15,13 @@ describe('Push Kind registry', () => {
         'contracting.breakdown.code-red',
         'contracting.breakdown.code-green',
         'contracting.service-due-soon',
+        'contracting.breakdown-note',
+        'contracting.job-note',
       ],
-      'contracting-manager': ['contracting.breakdown.code-red'],
-      'contracting-admin': ['contracting.breakdown.code-red'],
-      'super-admin': ['contracting.breakdown.code-red'],
-      foreman: [],
+      'contracting-manager': ['contracting.breakdown.code-red', 'contracting.breakdown-note', 'contracting.job-note'],
+      'contracting-admin': ['contracting.breakdown.code-red', 'contracting.breakdown-note', 'contracting.job-note'],
+      'super-admin': ['contracting.breakdown.code-red', 'contracting.breakdown-note', 'contracting.job-note'],
+      foreman: ['contracting.breakdown-note', 'contracting.job-note'],
       'contracting-invoicing': [],
     });
     expect(
@@ -27,17 +29,23 @@ describe('Push Kind registry', () => {
         .filter(([, kinds]) => kinds.length > 0)
         .map(([role]) => role)
         .sort(),
-    ).toEqual(['contracting-admin', 'contracting-manager', 'super-admin', 'workshop-manager']);
+    ).toEqual(['contracting-admin', 'contracting-manager', 'foreman', 'super-admin', 'workshop-manager']);
   });
 
   test('only someone a kind can reach is a push recipient', () => {
     expect(isPushRecipient(accessForRole('workshop-manager', 'u'))).toBe(true);
-    expect(isPushRecipient(accessForRole('foreman', 'u'))).toBe(false);
+    expect(isPushRecipient(accessForRole('foreman', 'u'))).toBe(true);
     expect(isPushRecipient(null)).toBe(false);
   });
 
   test('names each Android channel a person rings on once', () => {
-    expect(pushChannelsFor(accessForRole('workshop-manager', 'u'))).toEqual([{ id: 'workshop', name: 'Workshop' }]);
-    expect(pushChannelsFor(accessForRole('foreman', 'u'))).toEqual([]);
+    expect(pushChannelsFor(accessForRole('workshop-manager', 'u'))).toEqual([
+      { id: 'workshop', name: 'Workshop', importance: 'max' },
+      { id: 'notes', name: 'Notes', importance: 'default' },
+    ]);
+    expect(pushChannelsFor(accessForRole('foreman', 'u'))).toEqual([
+      { id: 'workshop', name: 'Workshop', importance: 'max' },
+      { id: 'notes', name: 'Notes', importance: 'default' },
+    ]);
   });
 });

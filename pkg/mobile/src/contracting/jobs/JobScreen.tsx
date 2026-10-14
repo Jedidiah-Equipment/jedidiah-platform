@@ -39,6 +39,10 @@ export default function JobScreen() {
   const canAdd = sheet?.can('assign') ?? false;
   const canReport = sheet?.can('reportBreakdown') ?? false;
   const canShareJobCard = (job?.seesMoney ?? false) && finished;
+  // Someone the field Job gate keeps out (a workshop participant opening a note) came from Activity, so returns there.
+  const parent = jobQuery.canRead
+    ? { label: 'Jobs', href: '/contracting/jobs' as const }
+    : { label: 'Activity', href: '/contracting/activity' as const };
   // The towed Implement rides along, so the report screen can offer it beside the Machine.
   const reportProblem = (stint: AssignmentDetail) =>
     router.push({
@@ -77,13 +81,18 @@ export default function JobScreen() {
       <SecondaryToolbar
         title="Job"
         subtitle={job?.jobNumber ?? 'CONTRACTING'}
-        parentLabel="Jobs"
-        onBack={() => router.replace('/contracting/jobs' as Href)}
+        parentLabel={parent.label}
+        onBack={() => router.replace(parent.href)}
         helpTopic="contractingMobileJob"
       />
       {job ? <RecordTabBar value={tab} onChange={setTab} /> : null}
-      {job && tab === 'activity' ? (
-        <ContractingActivityFeed jobId={job.id} listHeader={<AddNoteButton job={job} />} showControls={false} />
+      {tab === 'activity' ? (
+        // Activity has its own server-side reach, so the thread shows even when the field Job gate hides the Job.
+        <ContractingActivityFeed
+          jobId={jobId}
+          listHeader={job ? <AddNoteButton job={job} /> : undefined}
+          showControls={false}
+        />
       ) : (
         <ScrollView contentContainerStyle={{ ...SECONDARY_PAGE_CONTENT_STYLE, gap: 16 }}>
           {job ? (

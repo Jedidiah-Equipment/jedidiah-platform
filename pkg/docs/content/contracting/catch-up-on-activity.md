@@ -21,7 +21,7 @@ The orange dot on **Activity** means something new arrived since you last read i
 2. Switch from **Details** to **Activity**. It lists everything on that Job, its Breakdowns included, or everything on that Breakdown.
 3. Choose **Add Note**, type the note or [say it as a Voice Note](./record-a-voice-note), and choose **Send**.
 
-The note appears in the thread and in **Activity**. A Foreman can add a Job Note on their own Job until it is Priced; management can add one on a Job in any status. The workshop reads every Job's notes in **Activity** and adds its own on Breakdowns.
+The note appears in the thread and in **Activity**. A new note pings the people on the thread, never its author — see [Who gets alerts](./who-gets-workshop-alerts). A Foreman can add a Job Note on their own Job until it is Priced; management can add one on a Job in any status. The workshop reads every Job's notes in **Activity** and adds its own on Breakdowns.
 
 ## Catch up on the web
 

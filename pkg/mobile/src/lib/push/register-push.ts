@@ -9,6 +9,11 @@ import { hasAskedBefore, markAsked } from './push-storage';
 
 export type PushRegistrationOutcome = 'registered' | 'denied' | 'unsupported';
 
+const androidImportance: Record<PushChannel['importance'], Notifications.AndroidImportance> = {
+  max: Notifications.AndroidImportance.MAX,
+  default: Notifications.AndroidImportance.DEFAULT,
+};
+
 type Registration = {
   userId: string;
   /** The Android channels the signed-in person's Push Kinds ring on. */
@@ -26,7 +31,7 @@ async function claimInstall({
     for (const channel of channels)
       await Notifications.setNotificationChannelAsync(channel.id, {
         name: channel.name,
-        importance: Notifications.AndroidImportance.MAX,
+        importance: androidImportance[channel.importance],
         sound: 'default',
         vibrationPattern: [0, 250, 250, 250],
       });

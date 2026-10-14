@@ -96,7 +96,7 @@ describe('route layout contract', () => {
       'src/components/ListControls.tsx',
       'src/contracting/activity/AddNoteButton.tsx',
       'src/equipment/components/bays/JobDepartmentTimingCard.tsx',
-      'src/equipment/components/feedback/GiveFeedbackButton.tsx',
+      'src/equipment/components/feedback/FeedbackModalFrame.tsx',
       'src/equipment/components/quotes/GenerateQuoteDocumentModal.tsx',
       'src/equipment/components/quotes/InventoryPartPicker.tsx',
       'src/equipment/components/quotes/NewQuoteModal.tsx',

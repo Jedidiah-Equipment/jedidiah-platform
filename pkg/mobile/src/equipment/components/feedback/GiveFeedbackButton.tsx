@@ -1,13 +1,11 @@
 import { toSentenceCase } from '@pkg/domain';
 import { departmentLabels, getFeedbackVisibilityNotice } from '@pkg/domain/equipment';
-import { DEPARTMENTS, type FeedbackKind, type FeedbackPurchaseOrder } from '@pkg/schema/equipment';
-import { IconEye, IconLock, IconMessagePlus, IconShoppingCart, IconX } from '@tabler/icons-react-native';
+import { DEPARTMENTS, type FeedbackKind } from '@pkg/schema/equipment';
+import { IconEye, IconLock, IconMessagePlus } from '@tabler/icons-react-native';
 import { useStore } from '@tanstack/react-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, View } from 'react-native';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { z } from 'zod';
+import { View } from 'react-native';
 
 import { useAppForm } from '@/components/form';
 import { AccentButton } from '@/components/ui/accent-button';
@@ -15,8 +13,8 @@ import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { useAppToast } from '@/components/ui/toast';
 import { useTRPC } from '@/lib/trpc';
-import { gluestackConfig } from '@/theme/gluestack-config';
 import { useColorMode } from '@/theme/use-color-mode';
+import { FeedbackModalFrame, FeedbackSubmitButton, feedbackErrorMessage } from './FeedbackModalFrame';
 import { FEEDBACK_DEFAULT_VALUES, FeedbackFormValues, toSubmitInput } from './types';
 
 const KIND_OPTIONS: ReadonlyArray<{ label: string; value: FeedbackKind }> = [
@@ -34,73 +32,34 @@ const DEPARTMENT_OPTIONS = DEPARTMENTS.map((department) => ({
  * Mirror of web's `GiveFeedbackButton`, scoped to a Job: a trigger that opens a
  * full-screen form to submit feedback about this Job.
  */
-export function GiveFeedbackButton({
-  jobCode,
-  jobId,
-  purchaseOrders,
-}: {
-  jobCode: string;
-  jobId: string;
-  purchaseOrders?: FeedbackPurchaseOrder[];
-}) {
+export function GiveFeedbackButton({ jobCode, jobId }: { jobCode: string; jobId: string }) {
   const [open, setOpen] = useState(false);
-  if (purchaseOrders?.length === 0) return null;
 
   return (
     <>
-      <AccentButton
-        icon={purchaseOrders ? IconShoppingCart : IconMessagePlus}
-        label={purchaseOrders ? 'Send PO Feedback' : 'Send Feedback'}
-        onPress={() => setOpen(true)}
-      />
+      <AccentButton icon={IconMessagePlus} label="Send Feedback" onPress={() => setOpen(true)} />
       {/* Mount fresh each open so the form starts from defaults, mirroring web's remount-on-open. */}
-      {open ? (
-        <FeedbackModal purchaseOrders={purchaseOrders} jobCode={jobCode} jobId={jobId} onClose={() => setOpen(false)} />
-      ) : null}
+      {open ? <FeedbackModal jobCode={jobCode} jobId={jobId} onClose={() => setOpen(false)} /> : null}
     </>
   );
 }
 
-function FeedbackModal({
-  jobCode,
-  jobId,
-  onClose,
-  purchaseOrders,
-}: {
-  jobCode: string;
-  jobId: string;
-  onClose: () => void;
-  purchaseOrders?: FeedbackPurchaseOrder[];
-}) {
+function FeedbackModal({ jobCode, jobId, onClose }: { jobCode: string; jobId: string; onClose: () => void }) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const showToast = useAppToast();
-  const { resolved } = useColorMode();
   const [submitError, setSubmitError] = useState<string | null>(null);
   const submitMutation = useMutation(trpc.feedback.submit.mutationOptions());
 
   const form = useAppForm({
-    defaultValues: {
-      ...FEEDBACK_DEFAULT_VALUES,
-      purchaseOrderId: purchaseOrders?.length === 1 ? (purchaseOrders[0]?.id ?? '') : '',
-    },
-    validators: {
-      onSubmit: FeedbackFormValues.safeExtend({ purchaseOrderId: z.string() }).refine(
-        (value) => !purchaseOrders || purchaseOrders.some((order) => order.id === value.purchaseOrderId),
-        { message: 'Select a Purchase Order', path: ['purchaseOrderId'] },
-      ),
-    },
+    defaultValues: FEEDBACK_DEFAULT_VALUES,
+    validators: { onSubmit: FeedbackFormValues },
     onSubmit: async ({ value }) => {
       setSubmitError(null);
       try {
-        await submitMutation.mutateAsync(
-          toSubmitInput(
-            value,
-            purchaseOrders ? { subjectType: 'purchase-order', purchaseOrderId: value.purchaseOrderId } : jobId,
-          ),
-        );
+        await submitMutation.mutateAsync(toSubmitInput(value, jobId));
       } catch (error) {
-        setSubmitError(toErrorMessage(error));
+        setSubmitError(feedbackErrorMessage(error));
         return;
       }
       onClose();
@@ -121,125 +80,63 @@ function FeedbackModal({
   const userOptions = (targetUsersQuery.data?.users ?? []).map((user) => ({ label: user.name, value: user.id }));
 
   return (
-    <Modal animationType="slide" onRequestClose={onClose} transparent={false} visible>
-      {/* RN Modal portals to a native root outside GluestackUIProvider, so re-apply the
-          scheme's CSS variables on a wrapping view (semantic classes resolve against the
-          parent var context) or the modal's tokens fall back to light. The Modal also sits
-          outside the root SafeAreaProvider, so its SafeAreaView would read zero insets and
-          slide the header under the notch; a nested provider re-measures insets here. */}
-      <SafeAreaProvider>
-        <View className="flex-1" style={gluestackConfig[resolved]}>
-          <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom', 'left', 'right']}>
-            <View className="flex-row items-center justify-between border-b border-border px-4 py-3">
-              <View className="min-w-0 flex-1">
-                <Text className="text-lg text-foreground" weight="bold">
-                  Send feedback
-                </Text>
-                <Text className="text-xs text-muted-foreground" numberOfLines={1}>
-                  {purchaseOrders ? 'About a Purchase Order linked to' : 'About'}{' '}
-                  <Text className="text-muted-foreground" mono>
-                    {jobCode}
-                  </Text>{' '}
-                  {purchaseOrders ? '' : '· goes to the review queue'}
-                </Text>
-              </View>
-              <Pressable accessibilityLabel="Close" accessibilityRole="button" className="p-1" onPress={onClose}>
-                <Icon className="text-muted-foreground" icon={IconX} size={22} />
-              </Pressable>
-            </View>
+    <FeedbackModalFrame
+      about={
+        <>
+          About{' '}
+          <Text className="text-muted-foreground" mono>
+            {jobCode}
+          </Text>{' '}
+          · goes to the review queue
+        </>
+      }
+      error={submitError}
+      footer={
+        <form.Subscribe
+          selector={(state) => ({
+            isSubmitting: state.isSubmitting,
+            label: getFeedbackVisibilityNotice(state.values.kind, 'job').submitLabel,
+          })}
+        >
+          {({ isSubmitting, label }) => (
+            <FeedbackSubmitButton isSubmitting={isSubmitting} label={label} onPress={() => void form.handleSubmit()} />
+          )}
+        </form.Subscribe>
+      }
+      onClose={onClose}
+    >
+      <form.AppField name="kind">
+        {(field) => <field.SegmentedField label="Who is this about?" options={KIND_OPTIONS} />}
+      </form.AppField>
 
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1">
-              <ScrollView contentContainerClassName="gap-4 px-4 pb-6 pt-4" keyboardShouldPersistTaps="handled">
-                {submitError ? (
-                  <View className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2.5">
-                    <Text className="text-sm text-danger">{submitError}</Text>
-                  </View>
-                ) : null}
+      <form.Subscribe selector={(state) => state.values.kind}>
+        {(kind) => <FeedbackVisibilityBanner kind={kind} />}
+      </form.Subscribe>
 
-                {purchaseOrders ? (
-                  <>
-                    <Text className="text-sm text-muted-foreground">
-                      {getFeedbackVisibilityNotice('general', 'purchase-order').description}
-                    </Text>
-                    <form.AppField name="purchaseOrderId">
-                      {(field) => (
-                        <field.SelectField
-                          label="Purchase Order"
-                          options={purchaseOrders.map((order) => ({
-                            label: `${order.code} · ${order.supplierName}`,
-                            value: order.id,
-                          }))}
-                        />
-                      )}
-                    </form.AppField>
-                  </>
-                ) : (
-                  <>
-                    <form.AppField name="kind">
-                      {(field) => <field.SegmentedField label="Who is this about?" options={KIND_OPTIONS} />}
-                    </form.AppField>
+      <form.Subscribe selector={(state) => state.values.kind}>
+        {(kind) =>
+          kind === 'corrective-feedback-department' ? (
+            <form.AppField name="departments">
+              {(field) => <field.MultiSelectField label="Departments" options={DEPARTMENT_OPTIONS} />}
+            </form.AppField>
+          ) : kind === 'corrective-feedback-user' ? (
+            <form.AppField name="userIds">
+              {(field) => (
+                <field.MultiSelectField
+                  emptyMessage={targetUsersQuery.isPending ? 'Loading users…' : 'No users available.'}
+                  label="Users"
+                  options={userOptions}
+                />
+              )}
+            </form.AppField>
+          ) : null
+        }
+      </form.Subscribe>
 
-                    <form.Subscribe selector={(state) => state.values.kind}>
-                      {(kind) => <FeedbackVisibilityBanner kind={kind} />}
-                    </form.Subscribe>
-
-                    <form.Subscribe selector={(state) => state.values.kind}>
-                      {(kind) =>
-                        kind === 'corrective-feedback-department' ? (
-                          <form.AppField name="departments">
-                            {(field) => <field.MultiSelectField label="Departments" options={DEPARTMENT_OPTIONS} />}
-                          </form.AppField>
-                        ) : kind === 'corrective-feedback-user' ? (
-                          <form.AppField name="userIds">
-                            {(field) => (
-                              <field.MultiSelectField
-                                emptyMessage={targetUsersQuery.isPending ? 'Loading users…' : 'No users available.'}
-                                label="Users"
-                                options={userOptions}
-                              />
-                            )}
-                          </form.AppField>
-                        ) : null
-                      }
-                    </form.Subscribe>
-                  </>
-                )}
-                <form.AppField name="text">
-                  {(field) => (
-                    <field.TextareaField label="Feedback" placeholder="Describe what you noticed…" rows={5} />
-                  )}
-                </form.AppField>
-              </ScrollView>
-
-              <View className="border-t border-border px-4 py-3">
-                <form.Subscribe
-                  selector={(state) => ({
-                    isSubmitting: state.isSubmitting,
-                    label: getFeedbackVisibilityNotice(state.values.kind, purchaseOrders ? 'purchase-order' : 'job')
-                      .submitLabel,
-                  })}
-                >
-                  {({ isSubmitting, label }) => (
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityState={{ disabled: isSubmitting }}
-                      className={`flex-row items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3.5 ${isSubmitting ? 'opacity-60' : 'active:opacity-90'}`}
-                      disabled={isSubmitting}
-                      onPress={() => void form.handleSubmit()}
-                    >
-                      {isSubmitting ? <ActivityIndicator color="#0a0a0a" size="small" /> : null}
-                      <Text className="text-sm text-primary-foreground" weight="semibold">
-                        {label}
-                      </Text>
-                    </Pressable>
-                  )}
-                </form.Subscribe>
-              </View>
-            </KeyboardAvoidingView>
-          </SafeAreaView>
-        </View>
-      </SafeAreaProvider>
-    </Modal>
+      <form.AppField name="text">
+        {(field) => <field.TextareaField label="Feedback" placeholder="Describe what you noticed…" rows={5} />}
+      </form.AppField>
+    </FeedbackModalFrame>
   );
 }
 
@@ -280,11 +177,4 @@ function FeedbackVisibilityBanner({ kind }: { kind: FeedbackKind }) {
       </View>
     </View>
   );
-}
-
-function toErrorMessage(error: unknown): string {
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-  return 'Unable to submit feedback. Please try again.';
 }

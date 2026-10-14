@@ -31,7 +31,6 @@ import type {
 import {
   FeedbackDetail,
   FeedbackListItem,
-  FeedbackPurchaseOrder,
   FeedbackSubmitter,
   FeedbackTargetUser,
   FeedbackTargetUserList,
@@ -43,6 +42,7 @@ import {
 import { and, asc, desc, eq, inArray, ne, or } from 'drizzle-orm';
 
 import { FeedbackNotFoundError, FeedbackSubjectNotFoundError } from './feedback-errors.js';
+import { feedbackPurchaseOrderRelation, toFeedbackPurchaseOrder } from './feedback-purchase-order.js';
 
 type FeedbackRow = typeof feedback.$inferSelect;
 type FeedbackReadRow = FeedbackRow & {
@@ -233,24 +233,10 @@ export async function listJobFeedback({
         ),
       ),
     ),
-    with: {
-      submitter: feedbackReadRelations.submitter,
-      purchaseOrder: { columns: { id: true, code: true }, with: { supplier: { columns: { companyName: true } } } },
-    },
+    with: jobFeedbackRelations,
   });
 
-  return {
-    items: rows.map((row) => ({
-      ...mapJobFeedbackItem(row),
-      purchaseOrder: row.purchaseOrder
-        ? FeedbackPurchaseOrder.parse({
-            id: row.purchaseOrder.id,
-            code: row.purchaseOrder.code,
-            supplierName: row.purchaseOrder.supplier.companyName,
-          })
-        : null,
-    })),
-  };
+  return { items: rows.map(mapJobFeedbackItem) };
 }
 
 // Status-only update for a Job's general feedback, open to `equipment_job:update` holders (ADR 0010). Scoped
@@ -275,7 +261,7 @@ export async function updateJobFeedback({
 
   const row = await db.query.feedback.findFirst({
     where: eq(feedback.id, input.id),
-    with: { submitter: feedbackReadRelations.submitter },
+    with: jobFeedbackRelations,
   });
 
   if (!row) {
@@ -356,6 +342,12 @@ const feedbackReadRelations = {
   },
 } as const;
 
+/** What a Job's feedback list shows of each note: who said it, and which linked Purchase Order it is about. */
+const jobFeedbackRelations = {
+  submitter: feedbackReadRelations.submitter,
+  purchaseOrder: feedbackPurchaseOrderRelation,
+} as const;
+
 function mapFeedbackListItem(row: FeedbackReadRow): FeedbackListItem {
   return FeedbackListItem.parse({
     createdAt: row.createdAt.toISOString(),
@@ -379,10 +371,16 @@ function mapFeedbackDetail(row: FeedbackReadRow): FeedbackDetail {
   });
 }
 
-function mapJobFeedbackItem(row: FeedbackRow & { submitter: FeedbackReadRow['submitter'] }): JobFeedbackItem {
+function mapJobFeedbackItem(
+  row: FeedbackRow & {
+    submitter: FeedbackReadRow['submitter'];
+    purchaseOrder: Parameters<typeof toFeedbackPurchaseOrder>[0];
+  },
+): JobFeedbackItem {
   return JobFeedbackItem.parse({
     createdAt: row.createdAt.toISOString(),
     id: row.id,
+    purchaseOrder: toFeedbackPurchaseOrder(row.purchaseOrder),
     status: row.status,
     submitter: mapFeedbackSubmitter(row.submitter),
     text: row.text,

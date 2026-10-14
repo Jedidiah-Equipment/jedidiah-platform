@@ -117,6 +117,7 @@ async function renderEntry(item: JobActivityItem, linkToJob = true): Promise<Rea
 
 function buildFeedbackItem(): GeneralFeedbackActivityItem {
   return {
+    purchaseOrder: null,
     feedback: {
       submitter: {
         email: 'thabo@example.com',

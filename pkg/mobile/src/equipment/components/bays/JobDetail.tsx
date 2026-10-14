@@ -15,6 +15,7 @@ import { JobDetailSections } from '@/equipment/components/bays/JobDetailSections
 import { JobWorkCard } from '@/equipment/components/bays/JobWorkCard';
 import { DaysLeftChip, STATUS_TONE, StatusChip, type StatusTone } from '@/equipment/components/bays/status-chip';
 import { GiveFeedbackButton } from '@/equipment/components/feedback/GiveFeedbackButton';
+import { PurchaseOrderFeedbackButton } from '@/equipment/components/feedback/PurchaseOrderFeedbackButton';
 import { SecondaryPageToolbar } from '@/equipment/components/TopToolbar';
 import { type JobDetailState, type JobRouteStopCard, useJobDetail } from '@/equipment/lib/use-job-detail';
 import { createLiteralGuard, usePersistedState } from '@/lib/use-persisted-state';
@@ -154,7 +155,7 @@ function Ready({
           jobId={jobId}
           listHeader={
             <View className="flex-row flex-wrap items-center gap-3">
-              <GiveFeedbackButton jobCode={state.jobCode} jobId={jobId} purchaseOrders={state.purchaseOrders} />
+              <PurchaseOrderFeedbackButton jobCode={state.jobCode} purchaseOrders={state.purchaseOrders} />
               <GiveFeedbackButton jobCode={state.jobCode} jobId={jobId} />
             </View>
           }

@@ -7,7 +7,7 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
 import { TRPCProvider } from '@/lib/trpc.js';
-import { GiveFeedbackButton } from './GiveFeedbackButton.js';
+import { PurchaseOrderFeedbackButton } from './PurchaseOrderFeedbackButton.js';
 
 vi.mock('@/hooks/use-api-mutation-error-toast.js', () => ({ useApiMutationErrorToast: () => vi.fn() }));
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -20,16 +20,15 @@ const order = {
   code: PurchaseOrderCode.parse(42),
   supplierName: 'Mount Fifty',
 };
-const subject = { subjectType: 'job' as const, jobId: '00000000-0000-4000-8000-000000000001' };
 
 it('hides Send PO Feedback when the Job has no linked orders', async () => {
-  await mount(<GiveFeedbackButton purchaseOrders={[]} subject={subject} subjectLabel="JOB-00001" />);
+  await mount(<PurchaseOrderFeedbackButton job={{ code: 'JOB-00001', purchaseOrders: [] }} />);
   expect(document.body.textContent).not.toContain('Send PO Feedback');
 });
 
 it('preselects the sole linked PO and submits General Feedback without a Kind or visibility banner', async () => {
   const sent: unknown[] = [];
-  await mount(<GiveFeedbackButton purchaseOrders={[order]} subject={subject} subjectLabel="JOB-00001" />, sent);
+  await mount(<PurchaseOrderFeedbackButton job={{ code: 'JOB-00001', purchaseOrders: [order] }} />, sent);
   await act(async () => findButton('Send PO Feedback').click());
   expect(document.body.textContent).toContain('PO-00042 · Mount Fifty');
   expect(document.body.textContent).not.toContain('Kind');
@@ -54,12 +53,7 @@ it('preselects the sole linked PO and submits General Feedback without a Kind or
 });
 
 it('opens the order form directly with only Feedback and the public description', async () => {
-  await mount(
-    <GiveFeedbackButton
-      subject={{ subjectType: 'purchase-order', purchaseOrderId: order.id }}
-      subjectLabel="PO-00042"
-    />,
-  );
+  await mount(<PurchaseOrderFeedbackButton purchaseOrder={{ id: order.id, code: 'PO-00042' }} />);
   await act(async () => findButton('Send Feedback').click());
   expect(document.body.textContent).toContain(
     'Share feedback about PO-00042. Everyone who can view this Purchase Order or its linked Jobs will see it.',

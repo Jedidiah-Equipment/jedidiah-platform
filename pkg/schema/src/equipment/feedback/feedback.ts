@@ -6,6 +6,8 @@ import { nullableTrimmedTextInputOptional, requiredTrimmedText } from '../../com
 import { NullableThumbnailDataUrl } from '../../common/thumbnail.js';
 import { UUID } from '../../common/uuid.js';
 import { Department } from '../common/departments.js';
+import { PurchaseOrderCode } from '../common/public-code.js';
+import { SupplierCompanyName } from '../suppliers/supplier.js';
 
 export type FeedbackKind = z.infer<typeof FeedbackKind>;
 export const FeedbackKind = z.enum(['general', 'corrective-feedback-department', 'corrective-feedback-user']);
@@ -157,7 +159,7 @@ export const JobFeedbackListInput = z
 
 // Shared, price-free PO reference for Job readers and the submission picker.
 export type FeedbackPurchaseOrder = z.infer<typeof FeedbackPurchaseOrder>;
-export const FeedbackPurchaseOrder = z.object({ id: UUID, code: z.int().positive(), supplierName: z.string() });
+export const FeedbackPurchaseOrder = z.object({ id: UUID, code: PurchaseOrderCode, supplierName: SupplierCompanyName });
 
 export type JobFeedbackItem = z.infer<typeof JobFeedbackItem>;
 export const JobFeedbackItem = z.object({

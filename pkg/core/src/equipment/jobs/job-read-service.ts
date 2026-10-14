@@ -44,6 +44,7 @@ import { DateIso, type DateOnlyIso, getNextCursor, type SortDirection, UUID } fr
 import {
   type BoardListInput,
   type BoardListResult,
+  FeedbackPurchaseOrder,
   type JobCustomerOptionListInput,
   type JobCustomerOptionListResult,
   type JobDetail,
@@ -612,7 +613,7 @@ export async function getJob({ db, id }: { db: Db | DatabaseTransaction; id: UUI
 
   return {
     ...mapJobSummary(row),
-    purchaseOrders: linkedOrders,
+    purchaseOrders: linkedOrders.map((order) => FeedbackPurchaseOrder.parse(order)),
     cfo,
     departmentTimings,
     documents,

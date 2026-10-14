@@ -9,7 +9,6 @@ import {
   type FeedbackSubmitInput,
   FeedbackText,
   FeedbackUserTargets,
-  formatPurchaseOrderCode,
 } from '@pkg/schema/equipment';
 import { IconMessagePlus, IconShoppingCart } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -171,7 +170,7 @@ export const GiveFeedbackButton: React.FC<GiveFeedbackButtonProps> = ({
                   <field.SelectField
                     label="Purchase Order"
                     options={purchaseOrders.map((order) => ({
-                      label: `${formatPurchaseOrderCode(order.code)} · ${order.supplierName}`,
+                      label: `${order.code} · ${order.supplierName}`,
                       value: order.id,
                     }))}
                   />

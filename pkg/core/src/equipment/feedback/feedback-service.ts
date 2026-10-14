@@ -31,6 +31,7 @@ import type {
 import {
   FeedbackDetail,
   FeedbackListItem,
+  FeedbackPurchaseOrder,
   FeedbackSubmitter,
   FeedbackTargetUser,
   FeedbackTargetUserList,
@@ -242,11 +243,11 @@ export async function listJobFeedback({
     items: rows.map((row) => ({
       ...mapJobFeedbackItem(row),
       purchaseOrder: row.purchaseOrder
-        ? {
+        ? FeedbackPurchaseOrder.parse({
             id: row.purchaseOrder.id,
             code: row.purchaseOrder.code,
             supplierName: row.purchaseOrder.supplier.companyName,
-          }
+          })
         : null,
     })),
   };

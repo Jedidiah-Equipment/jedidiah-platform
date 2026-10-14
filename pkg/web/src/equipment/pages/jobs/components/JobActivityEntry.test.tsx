@@ -1,5 +1,5 @@
 import { statusBadgeColorClassNames } from '@pkg/domain';
-import { type GeneralFeedbackActivityItem, JobChangeActivityItem } from '@pkg/schema/equipment';
+import { type GeneralFeedbackActivityItem, JobChangeActivityItem, PurchaseOrderCode } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
 import { renderWithRouter } from '@/test/router-harness.js';
@@ -12,7 +12,11 @@ describe('JobActivityEntry', () => {
   it('links the PO marker only for a reader with PO access', async () => {
     const item = {
       ...buildItem(),
-      purchaseOrder: { id: '00000000-0000-4000-8000-000000000042', code: 42, supplierName: 'Mount Fifty' },
+      purchaseOrder: {
+        id: '00000000-0000-4000-8000-000000000042',
+        code: PurchaseOrderCode.parse(42),
+        supplierName: 'Mount Fifty',
+      },
     };
     const allowed = await renderWithRouter(<JobActivityEntry canReadPurchaseOrder item={item} />);
     const denied = await renderWithRouter(<JobActivityEntry item={item} />);
@@ -24,7 +28,11 @@ describe('JobActivityEntry', () => {
   it('keeps the PO marker when the Job reference is hidden', async () => {
     const item = {
       ...buildItem(),
-      purchaseOrder: { id: '00000000-0000-4000-8000-000000000042', code: 42, supplierName: 'Mount Fifty' },
+      purchaseOrder: {
+        id: '00000000-0000-4000-8000-000000000042',
+        code: PurchaseOrderCode.parse(42),
+        supplierName: 'Mount Fifty',
+      },
     };
     const html = await renderWithRouter(<JobActivityEntry hideDetail item={item} />);
     expect(html).toContain('PO-00042');

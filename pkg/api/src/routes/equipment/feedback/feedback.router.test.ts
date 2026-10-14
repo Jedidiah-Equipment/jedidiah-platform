@@ -106,10 +106,10 @@ describe('Purchase Order Feedback', () => {
       .insert(purchaseOrderJobLinks)
       .values([context.job.id, second.id].map((jobId) => ({ jobId, purchaseOrderId: order.id })));
     expect((await reader.feedback.listJobFeedback({ jobId: context.job.id })).items).toMatchObject([
-      { id: saved.id, purchaseOrder: { id: order.id, code: 42, supplierName: 'Linked supplier' } },
+      { id: saved.id, purchaseOrder: { id: order.id, code: 'PO-00042', supplierName: 'Linked supplier' } },
     ]);
     expect((await reader.jobs.get({ id: context.job.id })).purchaseOrders).toEqual([
-      { id: order.id, code: 42, supplierName: 'Linked supplier' },
+      { id: order.id, code: 'PO-00042', supplierName: 'Linked supplier' },
     ]);
     await reader.feedback.submit({
       kind: 'general',
@@ -128,7 +128,9 @@ describe('Purchase Order Feedback', () => {
     });
     expect(next.nextCursor).toBeNull();
     expect([first.items[0]?.job.id, next.items[0]?.job.id].sort()).toEqual([context.job.id, second.id].sort());
-    expect(first.items[0]).toMatchObject({ id: saved.id, purchaseOrder: { id: order.id, code: 42 } });
+    expect(first.items[0]).toMatchObject({ id: saved.id, purchaseOrder: { id: order.id, code: 'PO-00042' } });
+    await context.db.update(purchaseOrders).set({ code: 100000 }).where(eq(purchaseOrders.id, order.id));
+    expect((await reader.jobActivity.list({ filter: 'user-feedback', search: 'PO-100000' })).total).toBe(2);
     await context.db.delete(purchaseOrderJobLinks).where(eq(purchaseOrderJobLinks.jobId, context.job.id));
     expect((await reader.feedback.listJobFeedback({ jobId: context.job.id })).items).toEqual([]);
     expect(

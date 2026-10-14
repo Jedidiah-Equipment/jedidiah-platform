@@ -1,11 +1,6 @@
 import { toSentenceCase } from '@pkg/domain';
 import { departmentLabels, getFeedbackVisibilityNotice } from '@pkg/domain/equipment';
-import {
-  DEPARTMENTS,
-  type FeedbackKind,
-  type FeedbackPurchaseOrder,
-  formatPurchaseOrderCode,
-} from '@pkg/schema/equipment';
+import { DEPARTMENTS, type FeedbackKind, type FeedbackPurchaseOrder } from '@pkg/schema/equipment';
 import { IconEye, IconLock, IconMessagePlus, IconShoppingCart, IconX } from '@tabler/icons-react-native';
 import { useStore } from '@tanstack/react-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -171,7 +166,7 @@ function FeedbackModal({
                         <field.SelectField
                           label="Purchase Order"
                           options={purchaseOrders.map((order) => ({
-                            label: `${formatPurchaseOrderCode(order.code)} · ${order.supplierName}`,
+                            label: `${order.code} · ${order.supplierName}`,
                             value: order.id,
                           }))}
                         />

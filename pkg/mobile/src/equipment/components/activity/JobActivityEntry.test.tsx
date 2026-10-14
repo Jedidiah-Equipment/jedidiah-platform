@@ -1,5 +1,10 @@
 import { statusBadgeColorClassNames } from '@pkg/domain';
-import { type GeneralFeedbackActivityItem, type JobActivityItem, JobChangeActivityItem } from '@pkg/schema/equipment';
+import {
+  type GeneralFeedbackActivityItem,
+  type JobActivityItem,
+  JobChangeActivityItem,
+  PurchaseOrderCode,
+} from '@pkg/schema/equipment';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { describe, expect, test, vi } from 'vitest';
 
@@ -29,7 +34,11 @@ describe('JobActivityEntry', () => {
     const renderer = await renderEntry(
       {
         ...buildFeedbackItem(),
-        purchaseOrder: { id: '00000000-0000-4000-8000-000000000042', code: 42, supplierName: 'Mount Fifty' },
+        purchaseOrder: {
+          id: '00000000-0000-4000-8000-000000000042',
+          code: PurchaseOrderCode.parse(42),
+          supplierName: 'Mount Fifty',
+        },
       },
       false,
     );

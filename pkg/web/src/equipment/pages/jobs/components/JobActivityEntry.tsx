@@ -1,11 +1,10 @@
 import { statusBadgeColorClassNames } from '@pkg/domain';
 import { presentJobActivityEvent } from '@pkg/domain/equipment';
-import {
-  type FeedbackPurchaseOrder,
-  formatPurchaseOrderCode,
-  type GeneralFeedbackActivityItem,
-  type JobActivityItem,
-  type JobChangeActivityItem,
+import type {
+  FeedbackPurchaseOrder,
+  GeneralFeedbackActivityItem,
+  JobActivityItem,
+  JobChangeActivityItem,
 } from '@pkg/schema/equipment';
 import {
   IconCheck,
@@ -228,7 +227,7 @@ const PurchaseOrderMarker: React.FC<{ canRead: boolean; purchaseOrder: FeedbackP
   const content = (
     <>
       <IconShoppingCart aria-hidden className="size-3.5" />
-      {formatPurchaseOrderCode(purchaseOrder.code)} · {purchaseOrder.supplierName}
+      {purchaseOrder.code} · {purchaseOrder.supplierName}
     </>
   );
   const className =

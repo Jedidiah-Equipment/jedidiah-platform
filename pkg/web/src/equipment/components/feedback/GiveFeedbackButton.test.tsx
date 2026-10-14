@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import type { AppRouter } from '@pkg/api';
+import { PurchaseOrderCode } from '@pkg/schema/equipment';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createTRPCClient, httpLink } from '@trpc/client';
 import { act } from 'react';
@@ -14,7 +15,11 @@ const mounted: Array<() => void> = [];
 afterEach(async () => {
   for (const cleanup of mounted.splice(0)) await act(cleanup);
 });
-const order = { id: '00000000-0000-4000-8000-000000000042', code: 42, supplierName: 'Mount Fifty' };
+const order = {
+  id: '00000000-0000-4000-8000-000000000042',
+  code: PurchaseOrderCode.parse(42),
+  supplierName: 'Mount Fifty',
+};
 const subject = { subjectType: 'job' as const, jobId: '00000000-0000-4000-8000-000000000001' };
 
 it('hides Send PO Feedback when the Job has no linked orders', async () => {

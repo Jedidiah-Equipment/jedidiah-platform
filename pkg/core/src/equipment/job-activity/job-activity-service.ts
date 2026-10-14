@@ -163,7 +163,10 @@ function jobGeneralFeedbackSearch(search: string): SQL {
     jobActivityJobSearch(sql`${feedbackJobId}::text`, search),
     and(
       sql`${purchaseOrders.id} is not null`,
-      createEscapedContainsSearchCondition(sql`concat('PO-', lpad(${purchaseOrders.code}::text, 5, '0'))`, search),
+      createEscapedContainsSearchCondition(
+        sql`concat('PO-', lpad(${purchaseOrders.code}::text, greatest(5, length(${purchaseOrders.code}::text)), '0'))`,
+        search,
+      ),
     ),
   ) as SQL;
 }

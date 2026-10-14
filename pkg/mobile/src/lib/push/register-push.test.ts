@@ -19,9 +19,9 @@ vi.mock('../observability', () => ({ addBreadcrumb: vi.fn() }));
 import { registerForPush, requestNotificationsAndRegister } from './register-push';
 
 const channels = [
-  { id: 'workshop', name: 'Workshop' },
-  { id: 'notes', name: 'Notes' },
-];
+  { id: 'workshop', name: 'Workshop', importance: 'max' },
+  { id: 'notes', name: 'Notes', importance: 'default' },
+] as const;
 
 beforeEach(async () => {
   vi.clearAllMocks();

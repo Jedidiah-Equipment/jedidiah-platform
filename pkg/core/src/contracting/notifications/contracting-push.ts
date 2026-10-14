@@ -7,41 +7,36 @@ import {
 } from '@pkg/db/contracting';
 import { createUserAccessSummaryForUser, PUSH_KINDS } from '@pkg/domain';
 import {
-  breakdownNoteRolePushRecipients,
+  breakdownNoteReaches,
   breakdownPushKind,
   breakdownPushMessage,
-  breakdownReadScope,
   type ContractingPushContent,
   type ContractingPushEvent,
   formatJobNumber,
-  isBreakdownMine,
-  jobNoteRolePushRecipients,
-  jobReadMode,
-  jobReadStatuses,
+  jobNoteReaches,
   notePushMessage,
   SERVICE_DUE_SOON_PUSH_KIND,
   serviceDueNeedsAttention,
   serviceDueSoonPushMessage,
 } from '@pkg/domain/contracting';
-import type { AppRole, PushKind, UserAccessSummary } from '@pkg/schema';
-import { and, eq, inArray, ne, or, sql } from 'drizzle-orm';
+import type { PushKind, UserAccessSummary } from '@pkg/schema';
+import { and, eq, inArray, ne, sql } from 'drizzle-orm';
 import { deliverPush, type PushDelivery, type PushMessage, type PushSender } from '../../push/push-sender.js';
 import { listPushTokensForUsers } from '../../push/push-token-service.js';
 import { businessRoleSql } from '../../users/business-role.js';
 import { selectBreakdowns, toBreakdownSummary } from '../breakdowns/breakdown-load.js';
 import { getMachine } from '../fleet/machine-service.js';
 
-type NoteAudience = {
-  roles: readonly AppRole[];
-  participants: string[];
-  canRead: (access: UserAccessSummary) => boolean;
-};
-
 /**
- * Eligible role recipients and thread participants share the same filters: never muted, a shared device,
- * a banned account or the author. Selecting users once also deduplicates people reached both ways.
+ * The people holding a role the kind can reach who have not muted it and whom `reaches` keeps: never a shared device
+ * or a banned account, and never the actor.
  */
-async function recipientUserIds(db: Db, kind: PushKind, excludeUserId: string | null, audience?: NoteAudience) {
+async function recipientUserIds(
+  db: Db,
+  kind: PushKind,
+  excludeUserId: string | null,
+  reaches: (access: UserAccessSummary) => boolean,
+) {
   const { business, roles } = PUSH_KINDS[kind];
   const rows = await db
     .select({ id: user.id, role: user.role, contractingRole: user.contractingRole })
@@ -51,14 +46,11 @@ async function recipientUserIds(db: Db, kind: PushKind, excludeUserId: string | 
         eq(user.isDevice, false),
         sql`${user.banned} is not true`,
         inArray(businessRoleSql(business), [...roles]),
-        audience
-          ? or(inArray(businessRoleSql(business), [...audience.roles]), inArray(user.id, audience.participants))
-          : undefined,
         sql`not (${user.mutedPushKinds} @> ${JSON.stringify([kind])}::jsonb)`,
         excludeUserId === null ? undefined : ne(user.id, excludeUserId),
       ),
     );
-  return rows.filter((row) => !audience || audience.canRead(createUserAccessSummaryForUser(row))).map((row) => row.id);
+  return rows.filter((row) => reaches(createUserAccessSummaryForUser(row))).map((row) => row.id);
 }
 
 async function addressed(
@@ -66,108 +58,80 @@ async function addressed(
   kind: PushKind,
   excludeUserId: string | null,
   content: ContractingPushContent,
-  audience?: NoteAudience,
+  reaches: (access: UserAccessSummary) => boolean = () => true,
 ): Promise<PushMessage[]> {
   const tokens = await listPushTokensForUsers({
     db,
-    userIds: await recipientUserIds(db, kind, excludeUserId, audience),
+    userIds: await recipientUserIds(db, kind, excludeUserId, reaches),
   });
   return tokens.map(({ token }) => ({ to: token, ...content }));
 }
 
-/** The messages one Contracting event turns into, one per token of everyone it should reach. */
-export async function buildContractingPush({
-  db,
-  event,
-}: {
-  db: Db;
-  event: ContractingPushEvent;
-}): Promise<PushMessage[]> {
-  if (event.kind === 'breakdown-note.added') {
-    const [record] = await db
-      .select({ note: contractingBreakdownNotes, authorName: user.name })
-      .from(contractingBreakdownNotes)
-      .innerJoin(user, eq(user.id, contractingBreakdownNotes.authorUserId))
-      .where(eq(contractingBreakdownNotes.id, event.noteId));
-    if (!record) return [];
-    const { note, authorName } = record;
-    const [row] = await selectBreakdowns(db).where(eq(contractingBreakdowns.id, note.breakdownId)).limit(1);
-    if (!row) return [];
-    const breakdown = toBreakdownSummary(row);
-    const authors = await db
+async function breakdownNotePush(db: Db, noteId: string): Promise<PushMessage[]> {
+  const [record] = await db
+    .select({ note: contractingBreakdownNotes, authorName: user.name })
+    .from(contractingBreakdownNotes)
+    .innerJoin(user, eq(user.id, contractingBreakdownNotes.authorUserId))
+    .where(eq(contractingBreakdownNotes.id, noteId));
+  if (!record) return [];
+  const { note, authorName } = record;
+  const [[row], authors] = await Promise.all([
+    selectBreakdowns(db).where(eq(contractingBreakdowns.id, note.breakdownId)).limit(1),
+    db
       .selectDistinct({ id: contractingBreakdownNotes.authorUserId })
       .from(contractingBreakdownNotes)
-      .where(eq(contractingBreakdownNotes.breakdownId, note.breakdownId));
-    return addressed(
-      db,
-      'contracting.breakdown-note',
-      note.authorUserId,
-      notePushMessage({
-        kind: 'breakdown',
-        id: breakdown.id,
-        code: breakdown.subject.code,
-        authorName,
-        text: note.text,
-      }),
-      {
-        roles: breakdownNoteRolePushRecipients,
-        canRead: (access) => {
-          const scope = breakdownReadScope(access);
-          return scope === 'all' || (scope === 'own' && isBreakdownMine(breakdown, access.userId));
-        },
-        participants: [
-          breakdown.reportedByUserId,
-          ...(row.jobForemanUserId ? [row.jobForemanUserId] : []),
-          ...authors.map(({ id }) => id),
-        ],
-      },
-    );
-  }
-  if (event.kind === 'job-note.added') {
-    const [record] = await db
-      .select({ note: contractingJobNotes, authorName: user.name, job: contractingJobs })
-      .from(contractingJobNotes)
-      .innerJoin(user, eq(user.id, contractingJobNotes.authorUserId))
-      .innerJoin(contractingJobs, eq(contractingJobs.id, contractingJobNotes.jobId))
-      .where(eq(contractingJobNotes.id, event.noteId));
-    if (!record) return [];
-    const { note, authorName, job } = record;
-    const authors = await db
-      .selectDistinct({ id: contractingJobNotes.authorUserId })
-      .from(contractingJobNotes)
-      .where(eq(contractingJobNotes.jobId, job.id));
-    return addressed(
-      db,
-      'contracting.job-note',
-      note.authorUserId,
-      notePushMessage({ kind: 'job', id: job.id, code: formatJobNumber(job.code), authorName, text: note.text }),
-      {
-        roles: jobNoteRolePushRecipients,
-        canRead: (access) => {
-          const mode = jobReadMode(access);
-          return (
-            mode !== null &&
-            jobReadStatuses[mode].includes(job.status) &&
-            (mode !== 'own' || job.foremanUserId === access.userId)
-          );
-        },
-        participants: [...(job.foremanUserId ? [job.foremanUserId] : []), ...authors.map(({ id }) => id)],
-      },
-    );
-  }
-  if (event.kind === 'breakdown.reported') {
-    // Actor-blind on purpose: the push goes out on the server's behalf, not the reporter's.
-    const [row] = await selectBreakdowns(db).where(eq(contractingBreakdowns.id, event.breakdownId)).limit(1);
-    if (!row) return [];
-    const breakdown = toBreakdownSummary(row);
-    return addressed(
-      db,
-      breakdownPushKind(breakdown.urgency),
-      breakdown.reportedByUserId,
-      breakdownPushMessage({ ...breakdown, subjectCode: breakdown.subject.code }),
-    );
-  }
-  const machine = await getMachine({ db, id: event.machineId });
+      .where(eq(contractingBreakdownNotes.breakdownId, note.breakdownId)),
+  ]);
+  if (!row) return [];
+  const breakdown = toBreakdownSummary(row);
+  const authorIds = authors.map(({ id }) => id);
+  return addressed(
+    db,
+    'contracting.breakdown-note',
+    note.authorUserId,
+    notePushMessage({ kind: 'breakdown', id: breakdown.id, code: breakdown.subject.code, authorName, text: note.text }),
+    (access) => breakdownNoteReaches(access, breakdown, authorIds),
+  );
+}
+
+async function jobNotePush(db: Db, noteId: string): Promise<PushMessage[]> {
+  const [record] = await db
+    .select({ note: contractingJobNotes, authorName: user.name, job: contractingJobs })
+    .from(contractingJobNotes)
+    .innerJoin(user, eq(user.id, contractingJobNotes.authorUserId))
+    .innerJoin(contractingJobs, eq(contractingJobs.id, contractingJobNotes.jobId))
+    .where(eq(contractingJobNotes.id, noteId));
+  if (!record) return [];
+  const { note, authorName, job } = record;
+  const authors = await db
+    .selectDistinct({ id: contractingJobNotes.authorUserId })
+    .from(contractingJobNotes)
+    .where(eq(contractingJobNotes.jobId, job.id));
+  const authorIds = authors.map(({ id }) => id);
+  return addressed(
+    db,
+    'contracting.job-note',
+    note.authorUserId,
+    notePushMessage({ kind: 'job', id: job.id, code: formatJobNumber(job.code), authorName, text: note.text }),
+    (access) => jobNoteReaches(access, job, authorIds),
+  );
+}
+
+async function breakdownReportedPush(db: Db, breakdownId: string): Promise<PushMessage[]> {
+  // Actor-blind on purpose: the push goes out on the server's behalf, not the reporter's.
+  const [row] = await selectBreakdowns(db).where(eq(contractingBreakdowns.id, breakdownId)).limit(1);
+  if (!row) return [];
+  const breakdown = toBreakdownSummary(row);
+  return addressed(
+    db,
+    breakdownPushKind(breakdown.urgency),
+    breakdown.reportedByUserId,
+    breakdownPushMessage({ ...breakdown, subjectCode: breakdown.subject.code }),
+  );
+}
+
+async function serviceDueSoonPush(db: Db, machineId: string): Promise<PushMessage[]> {
+  const machine = await getMachine({ db, id: machineId });
   // Queued work runs after commit: a service closed in between, or a raised threshold, leaves nothing to say.
   // The Machine read already judged its status against the Service Due Soon threshold in Settings.
   if (machine.hoursToService === null || !serviceDueNeedsAttention(machine.serviceDueStatus)) return [];
@@ -178,6 +142,20 @@ export async function buildContractingPush({
     null,
     serviceDueSoonPushMessage({ id: machine.id, code: machine.code, hoursToService: machine.hoursToService }),
   );
+}
+
+/** The messages one Contracting event turns into, one per token of everyone it should reach. */
+export function buildContractingPush({ db, event }: { db: Db; event: ContractingPushEvent }): Promise<PushMessage[]> {
+  switch (event.kind) {
+    case 'breakdown.reported':
+      return breakdownReportedPush(db, event.breakdownId);
+    case 'machine.service-due-soon':
+      return serviceDueSoonPush(db, event.machineId);
+    case 'breakdown-note.added':
+      return breakdownNotePush(db, event.noteId);
+    case 'job-note.added':
+      return jobNotePush(db, event.noteId);
+  }
 }
 
 export async function dispatchContractingPush({

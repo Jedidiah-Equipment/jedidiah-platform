@@ -1,4 +1,4 @@
-import { NOTES_PUSH_CHANNEL_ID, type PushChannel } from '@pkg/domain';
+import type { PushChannel } from '@pkg/domain';
 import type { PushTokenRegisterInput } from '@pkg/schema';
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
@@ -8,6 +8,11 @@ import { Platform } from 'react-native';
 import { hasAskedBefore, markAsked } from './push-storage';
 
 export type PushRegistrationOutcome = 'registered' | 'denied' | 'unsupported';
+
+const androidImportance: Record<PushChannel['importance'], Notifications.AndroidImportance> = {
+  max: Notifications.AndroidImportance.MAX,
+  default: Notifications.AndroidImportance.DEFAULT,
+};
 
 type Registration = {
   userId: string;
@@ -26,10 +31,7 @@ async function claimInstall({
     for (const channel of channels)
       await Notifications.setNotificationChannelAsync(channel.id, {
         name: channel.name,
-        importance:
-          channel.id === NOTES_PUSH_CHANNEL_ID
-            ? Notifications.AndroidImportance.DEFAULT
-            : Notifications.AndroidImportance.MAX,
+        importance: androidImportance[channel.importance],
         sound: 'default',
         vibrationPattern: [0, 250, 250, 250],
       });

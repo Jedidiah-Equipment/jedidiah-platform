@@ -57,14 +57,29 @@ export function isBreakdownMine(
   return subject.reportedByUserId === actorUserId || subject.jobForemanUserId === actorUserId;
 }
 
-/** The description's first non-blank line, cut to `max` characters, for lists and push bodies. */
+/** The in-memory twin of the server's Breakdown read filter: every Breakdown, or only my own. */
+export function canReadBreakdown(
+  access: UserAccessSummary,
+  breakdown: { reportedByUserId: AuthId; jobForemanUserId: AuthId | null },
+): boolean {
+  const scope = breakdownReadScope(access);
+  return scope === 'all' || (scope === 'own' && isBreakdownMine(breakdown, access.userId));
+}
+
+/** The text's first non-blank line, cut to `max` characters without splitting one, for lists and push bodies. */
 export function breakdownFirstLine(description: string, max = 120): string {
   const line =
     description
       .split('\n')
       .map((part) => part.trim())
       .find((part) => part !== '') ?? '';
-  return line.length > max ? `${line.slice(0, max - 1).trimEnd()}…` : line;
+  const characters = Array.from(line);
+  return characters.length > max
+    ? `${characters
+        .slice(0, max - 1)
+        .join('')
+        .trimEnd()}…`
+    : line;
 }
 
 /** The API route that reports a Breakdown with its photos, relative to the API origin. */

@@ -62,158 +62,162 @@ import {
 import { mapCoreErrors } from '../../../trpc/errors.js';
 import { authorizedProcedure, businessProcedure, router } from '../../../trpc/init.js';
 import { jobErrorFamily } from '../contracting-error-families.js';
+import type { ContractingPushScheduler } from '../contracting-push-scheduler.js';
 
 const readPermissions = ['contracting_job:read', 'contracting_job:read-own', 'contracting_job:read-priced'] as const;
 
-export const contractingJobsRouter = router({
-  field: router({
-    implements: authorizedProcedure(['contracting_machine:read', 'contracting_assignment:update-own'])
-      .output(FieldImplement.array())
-      .query(({ ctx }) => listFieldImplements({ db: ctx.db })),
-    drivers: authorizedProcedure(['contracting_job:assign', 'contracting_assignment:update-own'])
-      .output(FieldDriver.array())
-      .query(({ ctx }) => listFieldDrivers({ db: ctx.db })),
-  }),
-  jobs: router({
-    queues: authorizedProcedure(readPermissions)
-      .output(JobQueueSummary)
-      .query(({ ctx }) => mapCoreErrors(() => summarizeJobQueues({ db: ctx.db, actor: ctx.access }), jobErrorFamily)),
-    list: authorizedProcedure(readPermissions)
-      .input(JobListInput)
-      .query(({ ctx, input }) =>
-        mapCoreErrors(() => listJobs({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
-      ),
-    get: authorizedProcedure(readPermissions)
-      .input(JobLookupInput)
-      .query(({ ctx, input }) =>
-        mapCoreErrors(() => getReadableJob({ db: ctx.db, actor: ctx.access, ...input }), jobErrorFamily),
-      ),
-    create: authorizedProcedure('contracting_job:create')
-      .input(JobCreateInput)
-      .mutation(({ ctx, input }) =>
-        mapCoreErrors(() => createJob({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
-      ),
-    patch: authorizedProcedure('contracting_job:update')
-      .input(JobPatchInput)
-      .mutation(({ ctx, input }) =>
-        mapCoreErrors(() => patchJob({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
-      ),
-    complete: authorizedProcedure('contracting_job:complete')
-      .input(JobCompleteInput)
-      .mutation(({ ctx, input }) =>
-        mapCoreErrors(() => completeJob({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
-      ),
-    cancel: authorizedProcedure('contracting_job:cancel')
-      .input(JobCancelInput)
-      .mutation(({ ctx, input }) =>
-        mapCoreErrors(() => cancelJob({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
-      ),
-  }),
-  // The Job Action `addNote` is the gate, judged inside `addJobNote`: it is open to every Job reader.
-  notes: router({
-    add: businessProcedure('contracting')
-      .input(JobNoteCreateInput)
-      .mutation(({ ctx, input }) =>
-        mapCoreErrors(() => addJobNote({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
-      ),
-  }),
-  assignments: router({
-    add: authorizedProcedure(['contracting_job:assign', 'contracting_assignment:update-own'])
-      .input(AssignmentPlanInput)
-      .mutation(({ ctx, input }) =>
-        mapCoreErrors(() => createAssignment({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
-      ),
-    patch: authorizedProcedure(['contracting_job:assign', 'contracting_assignment:update-own'])
-      .input(AssignmentPatchInput)
-      .mutation(({ ctx, input }) =>
-        mapCoreErrors(() => patchAssignment({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
-      ),
-    remove: authorizedProcedure(['contracting_job:assign', 'contracting_assignment:update-own'])
-      .input(AssignmentIdInput)
-      .mutation(({ ctx, input }) =>
-        mapCoreErrors(() => removeAssignment({ db: ctx.db, actor: ctx.access, id: input.id }), jobErrorFamily),
-      ),
-    resolveGap: authorizedProcedure('contracting_gap:resolve')
-      .input(GapResolveInput)
-      .mutation(({ ctx, input }) =>
-        mapCoreErrors(() => resolveGap({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
-      ),
-  }),
-  measures: router({
-    set: authorizedProcedure('contracting_job:update')
-      .input(MeasureSetInput)
-      .mutation(({ ctx, input }) =>
-        mapCoreErrors(() => setMeasure({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
-      ),
-    remove: authorizedProcedure('contracting_job:update')
-      .input(MeasureRemoveInput)
-      .mutation(({ ctx, input }) =>
-        mapCoreErrors(() => removeMeasure({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
-      ),
-  }),
-  chargeLines: router({
-    create: authorizedProcedure('contracting_job:update')
-      .input(ChargeLineCreateInput)
-      .mutation(({ ctx, input }) =>
-        mapCoreErrors(() => createChargeLine({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
-      ),
-    patch: authorizedProcedure('contracting_job:update')
-      .input(ChargeLinePatchInput)
-      .mutation(({ ctx, input }) =>
-        mapCoreErrors(() => patchChargeLine({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
-      ),
-    remove: authorizedProcedure('contracting_job:update')
-      .input(ChargeLineIdInput)
-      .mutation(({ ctx, input }) =>
-        mapCoreErrors(() => removeChargeLine({ db: ctx.db, actor: ctx.access, id: input.id }), jobErrorFamily),
-      ),
-  }),
-  pricing: router({
-    setStintRate: authorizedProcedure('contracting_job:price')
-      .input(StintRateSetInput)
-      .mutation(({ ctx, input }) =>
-        mapCoreErrors(() => setStintRate({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
-      ),
-    clearStintRate: authorizedProcedure('contracting_job:price')
-      .input(StintRateClearInput)
-      .mutation(({ ctx, input }) =>
-        mapCoreErrors(() => clearStintRate({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
-      ),
-    setStintAmount: authorizedProcedure('contracting_job:price')
-      .input(StintAmountSetInput)
-      .mutation(({ ctx, input }) =>
-        mapCoreErrors(() => setStintAmount({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
-      ),
-    setDiesel: authorizedProcedure('contracting_job:price')
-      .input(DieselPriceInput)
-      .mutation(({ ctx, input }) =>
-        mapCoreErrors(() => setDieselPrice({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
-      ),
-    setDiscount: authorizedProcedure('contracting_job:price')
-      .input(DiscountSetInput)
-      .mutation(({ ctx, input }) =>
-        mapCoreErrors(() => setDiscount({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
-      ),
-    markPriced: authorizedProcedure('contracting_job:price')
-      .input(JobMarkPricedInput)
-      .mutation(({ ctx, input }) =>
-        mapCoreErrors(() => markPriced({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
-      ),
-  }),
-  invoicing: router({
-    stamp: authorizedProcedure('contracting_invoice:update')
-      .input(JobStampInvoiceInput)
-      .mutation(({ ctx, input }) =>
-        mapCoreErrors(() => stampInvoice({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
-      ),
-    byNumber: authorizedProcedure(['contracting_invoice:update', 'contracting_job:read'])
-      .input(InvoiceNumberLookupInput)
-      .query(({ ctx, input }) => findJobsByInvoiceNumber({ db: ctx.db, ...input })),
-  }),
-  options: router({
-    foremen: authorizedProcedure('contracting_job:assign').query(({ ctx }) => listForemen({ db: ctx.db })),
-    measureTypes: authorizedProcedure('contracting_job:update')
-      .output(MeasureType.pick({ id: true, name: true }).array())
-      .query(async ({ ctx }) => (await listMeasureTypes({ db: ctx.db })).map(({ id, name }) => ({ id, name }))),
-  }),
-});
+export const createContractingJobsRouter = (push: ContractingPushScheduler) =>
+  router({
+    field: router({
+      implements: authorizedProcedure(['contracting_machine:read', 'contracting_assignment:update-own'])
+        .output(FieldImplement.array())
+        .query(({ ctx }) => listFieldImplements({ db: ctx.db })),
+      drivers: authorizedProcedure(['contracting_job:assign', 'contracting_assignment:update-own'])
+        .output(FieldDriver.array())
+        .query(({ ctx }) => listFieldDrivers({ db: ctx.db })),
+    }),
+    jobs: router({
+      queues: authorizedProcedure(readPermissions)
+        .output(JobQueueSummary)
+        .query(({ ctx }) => mapCoreErrors(() => summarizeJobQueues({ db: ctx.db, actor: ctx.access }), jobErrorFamily)),
+      list: authorizedProcedure(readPermissions)
+        .input(JobListInput)
+        .query(({ ctx, input }) =>
+          mapCoreErrors(() => listJobs({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
+        ),
+      get: authorizedProcedure(readPermissions)
+        .input(JobLookupInput)
+        .query(({ ctx, input }) =>
+          mapCoreErrors(() => getReadableJob({ db: ctx.db, actor: ctx.access, ...input }), jobErrorFamily),
+        ),
+      create: authorizedProcedure('contracting_job:create')
+        .input(JobCreateInput)
+        .mutation(({ ctx, input }) =>
+          mapCoreErrors(() => createJob({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
+        ),
+      patch: authorizedProcedure('contracting_job:update')
+        .input(JobPatchInput)
+        .mutation(({ ctx, input }) =>
+          mapCoreErrors(() => patchJob({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
+        ),
+      complete: authorizedProcedure('contracting_job:complete')
+        .input(JobCompleteInput)
+        .mutation(({ ctx, input }) =>
+          mapCoreErrors(() => completeJob({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
+        ),
+      cancel: authorizedProcedure('contracting_job:cancel')
+        .input(JobCancelInput)
+        .mutation(({ ctx, input }) =>
+          mapCoreErrors(() => cancelJob({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
+        ),
+    }),
+    // The Job Action `addNote` is the gate, judged inside `addJobNote`: it is open to every Job reader.
+    notes: router({
+      add: businessProcedure('contracting')
+        .input(JobNoteCreateInput)
+        .mutation(async ({ ctx, input }) => {
+          const note = await mapCoreErrors(() => addJobNote({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily);
+          push.schedule({ kind: 'job-note.added', noteId: note.id });
+          return note;
+        }),
+    }),
+    assignments: router({
+      add: authorizedProcedure(['contracting_job:assign', 'contracting_assignment:update-own'])
+        .input(AssignmentPlanInput)
+        .mutation(({ ctx, input }) =>
+          mapCoreErrors(() => createAssignment({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
+        ),
+      patch: authorizedProcedure(['contracting_job:assign', 'contracting_assignment:update-own'])
+        .input(AssignmentPatchInput)
+        .mutation(({ ctx, input }) =>
+          mapCoreErrors(() => patchAssignment({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
+        ),
+      remove: authorizedProcedure(['contracting_job:assign', 'contracting_assignment:update-own'])
+        .input(AssignmentIdInput)
+        .mutation(({ ctx, input }) =>
+          mapCoreErrors(() => removeAssignment({ db: ctx.db, actor: ctx.access, id: input.id }), jobErrorFamily),
+        ),
+      resolveGap: authorizedProcedure('contracting_gap:resolve')
+        .input(GapResolveInput)
+        .mutation(({ ctx, input }) =>
+          mapCoreErrors(() => resolveGap({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
+        ),
+    }),
+    measures: router({
+      set: authorizedProcedure('contracting_job:update')
+        .input(MeasureSetInput)
+        .mutation(({ ctx, input }) =>
+          mapCoreErrors(() => setMeasure({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
+        ),
+      remove: authorizedProcedure('contracting_job:update')
+        .input(MeasureRemoveInput)
+        .mutation(({ ctx, input }) =>
+          mapCoreErrors(() => removeMeasure({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
+        ),
+    }),
+    chargeLines: router({
+      create: authorizedProcedure('contracting_job:update')
+        .input(ChargeLineCreateInput)
+        .mutation(({ ctx, input }) =>
+          mapCoreErrors(() => createChargeLine({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
+        ),
+      patch: authorizedProcedure('contracting_job:update')
+        .input(ChargeLinePatchInput)
+        .mutation(({ ctx, input }) =>
+          mapCoreErrors(() => patchChargeLine({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
+        ),
+      remove: authorizedProcedure('contracting_job:update')
+        .input(ChargeLineIdInput)
+        .mutation(({ ctx, input }) =>
+          mapCoreErrors(() => removeChargeLine({ db: ctx.db, actor: ctx.access, id: input.id }), jobErrorFamily),
+        ),
+    }),
+    pricing: router({
+      setStintRate: authorizedProcedure('contracting_job:price')
+        .input(StintRateSetInput)
+        .mutation(({ ctx, input }) =>
+          mapCoreErrors(() => setStintRate({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
+        ),
+      clearStintRate: authorizedProcedure('contracting_job:price')
+        .input(StintRateClearInput)
+        .mutation(({ ctx, input }) =>
+          mapCoreErrors(() => clearStintRate({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
+        ),
+      setStintAmount: authorizedProcedure('contracting_job:price')
+        .input(StintAmountSetInput)
+        .mutation(({ ctx, input }) =>
+          mapCoreErrors(() => setStintAmount({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
+        ),
+      setDiesel: authorizedProcedure('contracting_job:price')
+        .input(DieselPriceInput)
+        .mutation(({ ctx, input }) =>
+          mapCoreErrors(() => setDieselPrice({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
+        ),
+      setDiscount: authorizedProcedure('contracting_job:price')
+        .input(DiscountSetInput)
+        .mutation(({ ctx, input }) =>
+          mapCoreErrors(() => setDiscount({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
+        ),
+      markPriced: authorizedProcedure('contracting_job:price')
+        .input(JobMarkPricedInput)
+        .mutation(({ ctx, input }) =>
+          mapCoreErrors(() => markPriced({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
+        ),
+    }),
+    invoicing: router({
+      stamp: authorizedProcedure('contracting_invoice:update')
+        .input(JobStampInvoiceInput)
+        .mutation(({ ctx, input }) =>
+          mapCoreErrors(() => stampInvoice({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
+        ),
+      byNumber: authorizedProcedure(['contracting_invoice:update', 'contracting_job:read'])
+        .input(InvoiceNumberLookupInput)
+        .query(({ ctx, input }) => findJobsByInvoiceNumber({ db: ctx.db, ...input })),
+    }),
+    options: router({
+      foremen: authorizedProcedure('contracting_job:assign').query(({ ctx }) => listForemen({ db: ctx.db })),
+      measureTypes: authorizedProcedure('contracting_job:update')
+        .output(MeasureType.pick({ id: true, name: true }).array())
+        .query(async ({ ctx }) => (await listMeasureTypes({ db: ctx.db })).map(({ id, name }) => ({ id, name }))),
+    }),
+  });

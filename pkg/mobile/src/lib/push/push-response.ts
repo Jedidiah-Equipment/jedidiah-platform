@@ -6,7 +6,7 @@ import { addBreadcrumb } from '../observability';
 import { pushPathFromData } from './push-path';
 
 // A tapped record waiting to be shown: kept until the protected tree reaches it, so a tap that first needs a
-// sign-in still lands on its Breakdown or Machine afterwards.
+// sign-in still lands on its Job, Breakdown or Machine afterwards.
 let pendingPath: string | null = null;
 
 /** The tapped push's path the protected tree has not shown yet, for the signed-in landing to open instead. */
@@ -16,7 +16,7 @@ export const pendingPushPath = () => pendingPath;
 export function useSettlePendingPushPath(): void {
   const pathname = usePathname();
   useEffect(() => {
-    if (pendingPath === pathname) pendingPath = null;
+    if (pendingPath?.split('?')[0] === pathname) pendingPath = null;
   }, [pathname]);
 }
 

@@ -1,4 +1,4 @@
-import type { PushChannel } from '@pkg/domain';
+import { NOTES_PUSH_CHANNEL_ID, type PushChannel } from '@pkg/domain';
 import type { PushTokenRegisterInput } from '@pkg/schema';
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
@@ -26,7 +26,10 @@ async function claimInstall({
     for (const channel of channels)
       await Notifications.setNotificationChannelAsync(channel.id, {
         name: channel.name,
-        importance: Notifications.AndroidImportance.MAX,
+        importance:
+          channel.id === NOTES_PUSH_CHANNEL_ID
+            ? Notifications.AndroidImportance.DEFAULT
+            : Notifications.AndroidImportance.MAX,
         sound: 'default',
         vibrationPattern: [0, 250, 250, 250],
       });

@@ -7,13 +7,17 @@ export type PushChannel = { id: string; name: string };
 // The native default channel (`defaultChannel` in app.config.ts) carries the same id.
 const WORKSHOP_PUSH_CHANNEL: PushChannel = { id: 'workshop', name: 'Workshop' };
 
+export const NOTES_PUSH_CHANNEL_ID = 'notes';
+const NOTES_PUSH_CHANNEL: PushChannel = { id: NOTES_PUSH_CHANNEL_ID, name: 'Notes' };
+
 export type PushKindDefinition = {
   business: Business;
   /** The toggle's label on the Settings page. */
   label: string;
   /** One sentence under the label: when it fires. */
   description: string;
-  /** The roles this kind can reach; role membership is the opt-in, a mute the only per-person opt-out. */
+  /** The roles this kind can ever reach, for Settings and permission prompts. Note recipients are the narrower
+   * thread participant set plus its always-notified roles; a mute opts out of either route. */
   roles: readonly AppRole[];
   /** The Android channel it rings on. */
   channel: PushChannel;
@@ -41,6 +45,20 @@ export const PUSH_KINDS: Record<PushKind, PushKindDefinition> = {
     roles: ['workshop-manager'],
     channel: WORKSHOP_PUSH_CHANNEL,
   },
+  'contracting.breakdown-note': {
+    business: 'contracting',
+    label: 'Breakdown notes',
+    description: 'Someone added a note on a Breakdown you are part of.',
+    roles: ['foreman', 'workshop-manager', 'contracting-manager', 'contracting-admin', 'super-admin'],
+    channel: NOTES_PUSH_CHANNEL,
+  },
+  'contracting.job-note': {
+    business: 'contracting',
+    label: 'Job notes',
+    description: 'Someone added a note on a Job you are part of.',
+    roles: ['foreman', 'workshop-manager', 'contracting-manager', 'contracting-admin', 'super-admin'],
+    channel: NOTES_PUSH_CHANNEL,
+  },
 };
 
 /** The kinds any of this person's roles can reach, in registry order: what the Settings page lists. */
@@ -56,6 +74,10 @@ export const isPushRecipient = (access: UserAccessSummary | null | undefined) =>
 
 /** The Android channels this person's kinds ring on, each once, so the phone creates each before registering. */
 export function pushChannelsFor(access: UserAccessSummary | null | undefined): PushChannel[] {
-  const channels = new Map(pushKindsFor(access).map((kind) => [PUSH_KINDS[kind].channel.id, PUSH_KINDS[kind].channel]));
+  const kinds = pushKindsFor(access);
+  if (kinds.length === 0) return [];
+  // Provision the native default channel for every recipient, alongside their kinds' channels.
+  const channels = new Map([[WORKSHOP_PUSH_CHANNEL.id, WORKSHOP_PUSH_CHANNEL]]);
+  for (const kind of kinds) channels.set(PUSH_KINDS[kind].channel.id, PUSH_KINDS[kind].channel);
   return [...channels.values()];
 }

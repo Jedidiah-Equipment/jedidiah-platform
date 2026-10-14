@@ -25,6 +25,7 @@ import { BackgroundQueue } from '../background-queue.js';
 import type { BusinessWiring, BusinessWiringInput } from '../business-wiring.js';
 import { log } from '../logger.js';
 import { registerBreakdownHttpRoutes } from '../routes/contracting/breakdowns/breakdowns-http.route.js';
+import type { ContractingPushScheduler } from '../routes/contracting/contracting-push-scheduler.js';
 import { registerJobCardHttpRoutes } from '../routes/contracting/jobs/job-card-http.route.js';
 import { registerReadingHttpRoutes } from '../routes/contracting/readings/readings-http.route.js';
 import type { HintDerivations } from '../routes/contracting/transcriptions/transcriptions.router.js';
@@ -32,6 +33,7 @@ import { registerTranscriptionHttpRoutes } from '../routes/contracting/transcrip
 import { serializeError } from '../trpc/errors.js';
 
 export type ContractingRouterDependencies = {
+  push: ContractingPushScheduler;
   hintDerivations: HintDerivations;
   readMeterPhoto: ReadMeterPhoto;
   keyterms: () => Promise<KeytermCandidate[]>;
@@ -99,6 +101,7 @@ export async function registerContracting(
 
   return {
     routerDependencies: {
+      push: contractingPush,
       hintDerivations,
       readMeterPhoto,
       keyterms: keyterms.current,

@@ -5,10 +5,10 @@ import { auditRouter } from '../routes/audit/audit.router.js';
 import { authRouter } from '../routes/auth/auth.router.js';
 import { changelogRouter } from '../routes/changelog/changelog.router.js';
 import { contractingActivityRouter } from '../routes/contracting/activity/activity.router.js';
-import { contractingBreakdownsRouter } from '../routes/contracting/breakdowns/breakdowns.router.js';
+import { createContractingBreakdownsRouter } from '../routes/contracting/breakdowns/breakdowns.router.js';
 import { contractingDirectoryRouter } from '../routes/contracting/directory/directory.router.js';
 import { contractingFleetRouter } from '../routes/contracting/fleet/fleet.router.js';
-import { contractingJobsRouter } from '../routes/contracting/jobs/jobs.router.js';
+import { createContractingJobsRouter } from '../routes/contracting/jobs/jobs.router.js';
 import { contractingRateCardRouter } from '../routes/contracting/rate-card/rate-card.router.js';
 import { createContractingReadingsRouter } from '../routes/contracting/readings/readings.router.js';
 import { contractingReportsRouter } from '../routes/contracting/reports/reports.router.js';
@@ -47,12 +47,12 @@ type AppRouterRootTypes = (typeof authRouter)['_def']['_config']['$types'];
 
 type AppRouterRecord = {
   contractingActivity: (typeof contractingActivityRouter)['_def']['record'];
-  contractingBreakdowns: (typeof contractingBreakdownsRouter)['_def']['record'];
+  contractingBreakdowns: ReturnType<typeof createContractingBreakdownsRouter>['_def']['record'];
   contractingDirectory: (typeof contractingDirectoryRouter)['_def']['record'];
   contractingReadings: ReturnType<typeof createContractingReadingsRouter>['_def']['record'];
   contractingReports: (typeof contractingReportsRouter)['_def']['record'];
   contractingFleet: (typeof contractingFleetRouter)['_def']['record'];
-  contractingJobs: (typeof contractingJobsRouter)['_def']['record'];
+  contractingJobs: ReturnType<typeof createContractingJobsRouter>['_def']['record'];
   contractingRateCard: (typeof contractingRateCardRouter)['_def']['record'];
   contractingServices: (typeof contractingServicesRouter)['_def']['record'];
   contractingSettings: (typeof contractingSettingsRouter)['_def']['record'];
@@ -88,11 +88,11 @@ export type AppRouter = BuiltRouter<AppRouterRootTypes, AppRouterRecord>;
 export function createAppRouter({ contracting, equipment }: AppRouterDependencies): AppRouter {
   return router({
     contractingActivity: contractingActivityRouter,
-    contractingBreakdowns: contractingBreakdownsRouter,
+    contractingBreakdowns: createContractingBreakdownsRouter(contracting.push),
     contractingReadings: createContractingReadingsRouter(contracting.readMeterPhoto),
     contractingReports: contractingReportsRouter,
     contractingFleet: contractingFleetRouter,
-    contractingJobs: contractingJobsRouter,
+    contractingJobs: createContractingJobsRouter(contracting.push),
     contractingRateCard: contractingRateCardRouter,
     contractingServices: contractingServicesRouter,
     contractingSettings: contractingSettingsRouter,

@@ -1,5 +1,14 @@
-import { createCustomer, createFarm, createJob, createWorkType } from '@pkg/core/contracting';
+import {
+  createCategory,
+  createCustomer,
+  createFarm,
+  createJob,
+  createMachine,
+  createWorkType,
+  reportBreakdown,
+} from '@pkg/core/contracting';
 import { eq, user } from '@pkg/db';
+import type { ContractingPushEvent } from '@pkg/domain/contracting';
 import { accessForRole } from '@pkg/domain/testing';
 import { type ContractingRole, DateIso } from '@pkg/schema';
 import { expect } from 'vitest';
@@ -96,4 +105,57 @@ test('marking Contracting Activity seen leaves the Equipment mark alone', async 
 
   const [account] = await context.db.select({ map: user.lastActivitySeen }).from(user).where(eq(user.id, 'sipho'));
   expect(account?.map).toEqual({ equipment: equipmentSeen, contracting: note.createdAt });
+});
+
+test('note mutations schedule their committed notes and rejected notes schedule nothing', async ({ context }) => {
+  const events: ContractingPushEvent[] = [];
+  const contracting = { push: { schedule: (event: ContractingPushEvent) => events.push(event) } };
+  const sipho = context.createCaller(sessionAs('sipho', 'foreman'), { contracting });
+  const note = await sipho.contractingJobs.notes.add({ jobId: context.jobId, text: 'Gate is locked' });
+  expect(events).toEqual([{ kind: 'job-note.added', noteId: note.id }]);
+  const category = await createCategory({
+    db: context.db,
+    actorUserId: 'jed',
+    input: { name: 'Tractors', kind: 'machine' },
+  });
+  const machine = await createMachine({
+    db: context.db,
+    actorUserId: 'jed',
+    input: {
+      code: 'JD6140M-2',
+      make: 'John Deere',
+      model: '6140M',
+      categoryId: category.id,
+      year: null,
+      registration: null,
+      currentDriverUserId: null,
+      notes: null,
+      serviceIntervalHours: null,
+      nextServiceDueHours: null,
+    },
+  });
+  const { breakdown } = await reportBreakdown({
+    db: context.db,
+    actor: accessForRole('foreman', 'sipho'),
+    input: {
+      subject: { kind: 'machine', id: machine.id },
+      urgency: 'code-red',
+      description: 'Leak',
+      jobId: null,
+    },
+  });
+  const reply = await sipho.contractingBreakdowns.notes.add({ breakdownId: breakdown.id, text: 'Still leaking' });
+  expect(events).toEqual([
+    { kind: 'job-note.added', noteId: note.id },
+    { kind: 'breakdown-note.added', noteId: reply.id },
+  ]);
+  events.length = 0;
+  const karen = context.createCaller(sessionAs('karen', 'contracting-invoicing'), { contracting });
+  await expect(karen.contractingJobs.notes.add({ jobId: context.jobId, text: 'Refused' })).rejects.toMatchObject({
+    code: 'FORBIDDEN',
+  });
+  await expect(
+    karen.contractingBreakdowns.notes.add({ breakdownId: breakdown.id, text: 'Refused' }),
+  ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  expect(events).toEqual([]);
 });

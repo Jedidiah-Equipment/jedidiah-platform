@@ -30,6 +30,7 @@ export type CallerOverrides = {
 
 export const NOOP_ROUTER_DEPENDENCIES: AppRouterDependencies = {
   contracting: {
+    push: { schedule: () => undefined },
     hintDerivations: { schedule: () => undefined },
     readMeterPhoto: async () => {
       throw new Error('Meter reader not stubbed for this test');

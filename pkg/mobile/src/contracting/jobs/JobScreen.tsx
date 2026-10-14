@@ -39,6 +39,10 @@ export default function JobScreen() {
   const canAdd = sheet?.can('assign') ?? false;
   const canReport = sheet?.can('reportBreakdown') ?? false;
   const canShareJobCard = (job?.seesMoney ?? false) && finished;
+  // Someone the field Job gate keeps out (a workshop participant opening a note) came from Activity, so returns there.
+  const parent = jobQuery.canRead
+    ? { label: 'Jobs', href: '/contracting/jobs' as const }
+    : { label: 'Activity', href: '/contracting/activity' as const };
   // The towed Implement rides along, so the report screen can offer it beside the Machine.
   const reportProblem = (stint: AssignmentDetail) =>
     router.push({
@@ -77,13 +81,13 @@ export default function JobScreen() {
       <SecondaryToolbar
         title="Job"
         subtitle={job?.jobNumber ?? 'CONTRACTING'}
-        parentLabel={jobQuery.canRead ? 'Jobs' : 'Activity'}
-        onBack={() => router.replace(jobQuery.canRead ? '/contracting/jobs' : '/contracting/activity')}
+        parentLabel={parent.label}
+        onBack={() => router.replace(parent.href)}
         helpTopic="contractingMobileJob"
       />
       {job ? <RecordTabBar value={tab} onChange={setTab} /> : null}
       {tab === 'activity' ? (
-        // Activity has its own server-side reach; workshop participants can open a note without the field Job gate.
+        // Activity has its own server-side reach, so the thread shows even when the field Job gate hides the Job.
         <ContractingActivityFeed
           jobId={jobId}
           listHeader={job ? <AddNoteButton job={job} /> : undefined}

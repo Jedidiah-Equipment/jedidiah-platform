@@ -55,6 +55,19 @@ export const jobReadStatuses: Record<JobReadMode, readonly JobStatus[]> = {
   priced: finishedJobStatuses,
 };
 
+/** The in-memory twin of the server's Job read filter: a status the reader's mode sees, and a Foreman's own Job. */
+export function canReadJob(
+  access: UserAccessSummary,
+  job: { status: JobStatus; foremanUserId: string | null },
+): boolean {
+  const mode = jobReadMode(access);
+  return (
+    mode !== null &&
+    jobReadStatuses[mode].includes(job.status) &&
+    (mode !== 'own' || job.foremanUserId === access.userId)
+  );
+}
+
 /** The queues a read mode may list, in queue order: Invoicing lists only Completed onward, a Foreman his open work. */
 export const readableJobQueues = (mode: JobReadMode): JobQueue[] =>
   jobQueues.filter((queue) => jobReadStatuses[mode].includes(jobQueueStatus[queue]));

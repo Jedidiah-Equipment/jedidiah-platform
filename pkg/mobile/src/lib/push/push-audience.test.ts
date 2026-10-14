@@ -12,8 +12,8 @@ test('a workshop manager is asked for workshop and note alerts', () => {
       'contracting.job-note',
     ],
     channels: [
-      { id: 'workshop', name: 'Workshop' },
-      { id: 'notes', name: 'Notes' },
+      { id: 'workshop', name: 'Workshop', importance: 'max' },
+      { id: 'notes', name: 'Notes', importance: 'default' },
     ],
     mayAsk: true,
   });

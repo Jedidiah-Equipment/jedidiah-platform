@@ -40,12 +40,12 @@ describe('Push Kind registry', () => {
 
   test('names each Android channel a person rings on once', () => {
     expect(pushChannelsFor(accessForRole('workshop-manager', 'u'))).toEqual([
-      { id: 'workshop', name: 'Workshop' },
-      { id: 'notes', name: 'Notes' },
+      { id: 'workshop', name: 'Workshop', importance: 'max' },
+      { id: 'notes', name: 'Notes', importance: 'default' },
     ]);
     expect(pushChannelsFor(accessForRole('foreman', 'u'))).toEqual([
-      { id: 'workshop', name: 'Workshop' },
-      { id: 'notes', name: 'Notes' },
+      { id: 'workshop', name: 'Workshop', importance: 'max' },
+      { id: 'notes', name: 'Notes', importance: 'default' },
     ]);
   });
 });

@@ -6,7 +6,18 @@ import {
   user,
   withPagination,
 } from '@pkg/db';
-import { currentOwnerCustomerId, customers, feedback, jobs, products, productUnits, quotes } from '@pkg/db/equipment';
+import {
+  currentOwnerCustomerId,
+  customers,
+  feedback,
+  jobs,
+  products,
+  productUnits,
+  purchaseOrderJobLinks,
+  purchaseOrders,
+  quotes,
+  supplier,
+} from '@pkg/db/equipment';
 import {
   departmentLabels,
   getJobDisplayName,
@@ -45,7 +56,8 @@ import { getActivityView, setActivityView } from '../../users/activity-view-serv
  * corrective feedback is super-admin-only (ADR 0010), so both are excluded here rather than filtered
  * by caller — the payload never varies by role.
  */
-const jobGeneralFeedback = and(eq(feedback.kind, 'general'), eq(feedback.subjectType, 'job'));
+const feedbackJobId = sql<string>`coalesce(${feedback.jobId}, ${purchaseOrderJobLinks.jobId})`;
+const jobGeneralFeedback = and(eq(feedback.kind, 'general'), sql`${feedbackJobId} is not null`);
 
 export function getLastActivitySeen({ db, userId }: { db: Db; userId: AuthId }) {
   return getActivityView({ db, userId, business: 'equipment' });
@@ -122,7 +134,7 @@ function changedFieldIsSet(field: string): SQL {
 function jobGeneralFeedbackFilter(input: JobActivityListInput): SQL {
   return and(
     jobGeneralFeedback,
-    input.jobId ? eq(feedback.jobId, input.jobId) : undefined,
+    input.jobId ? eq(feedbackJobId, input.jobId) : undefined,
     input.search ? jobGeneralFeedbackSearch(input.search) : undefined,
   ) as SQL;
 }
@@ -149,7 +161,21 @@ function jobGeneralFeedbackSearch(search: string): SQL {
       where ${user.id} = ${feedback.submitterId}
         and ${createEscapedContainsSearchCondition(sql`${user.name}`, search)}
     )`,
-    jobActivityJobSearch(sql`${feedback.jobId}::text`, search),
+    jobActivityJobSearch(sql`${feedbackJobId}::text`, search),
+    and(
+      sql`${purchaseOrders.id} is not null`,
+      or(
+        createEscapedContainsSearchCondition(
+          sql`concat('PO-', lpad(${purchaseOrders.code}::text, greatest(5, length(${purchaseOrders.code}::text)), '0'))`,
+          search,
+        ),
+        sql`exists (
+          select 1 from ${supplier}
+          where ${supplier.id} = ${purchaseOrders.supplierId}
+            and ${createEscapedContainsSearchCondition(sql`${supplier.companyName}`, search)}
+        )`,
+      ),
+    ),
   ) as SQL;
 }
 
@@ -309,7 +335,7 @@ const jobActivityJobRead = {
 } as const;
 
 const feedbackReadRelations = {
-  job: jobActivityJobRead,
+  purchaseOrder: { columns: { id: true, code: true }, with: { supplier: { columns: { companyName: true } } } },
   submitter: {
     columns: {
       email: true,
@@ -321,7 +347,7 @@ const feedbackReadRelations = {
 } as const;
 
 type ActivitySource = 'audit' | 'feedback';
-type ActivityKey = { id: string; source: ActivitySource };
+type ActivityKey = { id: string; jobId: string; source: ActivitySource };
 type FeedbackActivityRow = Awaited<ReturnType<typeof findFeedbackRows>>[number];
 type AuditActivityRow = Awaited<ReturnType<typeof findAuditRows>>[number];
 type JobActivityJobRow = Awaited<ReturnType<typeof findActivityJobs>>[number];
@@ -335,7 +361,7 @@ export async function listJobActivity({
 }): Promise<JobActivityListResult> {
   const { includeAudit, includeFeedback } = activitySources(input.filter);
   const [feedbackTotal, auditTotal, keys] = await Promise.all([
-    includeFeedback ? db.$count(feedback, jobGeneralFeedbackFilter(input)) : Promise.resolve(0),
+    includeFeedback ? db.$count(feedbackActivityKeys(db, input).as('feedback_count')) : Promise.resolve(0),
     includeAudit ? db.$count(auditEvents, jobChangeEventFilter(input)) : Promise.resolve(0),
     findActivityKeys(db, input),
   ]);
@@ -357,17 +383,11 @@ export async function listJobActivity({
 async function findActivityKeys(db: Db, input: JobActivityListInput): Promise<ActivityKey[]> {
   const { includeAudit, includeFeedback } = activitySources(input.filter);
   const keys = unionAll(
-    db
-      .select({
-        id: feedback.id,
-        occurredAt: sql`${feedback.createdAt}`.as('occurred_at'),
-        source: sql<ActivitySource>`'feedback'::text`.as('source'),
-      })
-      .from(feedback)
-      .where(includeFeedback ? jobGeneralFeedbackFilter(input) : sql`false`),
+    feedbackActivityKeys(db, input, includeFeedback),
     db
       .select({
         id: auditEvents.id,
+        jobId: changeEventJobIdExpression.as('job_id'),
         occurredAt: sql`${auditEvents.occurredAt}`.as('occurred_at'),
         source: sql<ActivitySource>`'audit'::text`.as('source'),
       })
@@ -375,19 +395,34 @@ async function findActivityKeys(db: Db, input: JobActivityListInput): Promise<Ac
       .where(includeAudit ? jobChangeEventFilter(input) : sql`false`),
   ).as('job_activity_keys');
 
-  // Tiebreak on id so a row never repeats or vanishes across offset pages when timestamps collide,
+  // Tiebreak on id and Job so a shared PO note never repeats or vanishes across offset pages,
   // in the sort's own direction. Two events written in the same transaction — a Job created with a
   // description, a document snapshotted onto it — share an instant often enough for this to matter.
   const direction = input.sortDirection === 'desc' ? desc : asc;
 
   return withPagination(
     db
-      .select({ id: keys.id, source: keys.source })
+      .select({ id: keys.id, jobId: keys.jobId, source: keys.source })
       .from(keys)
-      .orderBy(direction(keys.occurredAt), direction(keys.id))
+      .orderBy(direction(keys.occurredAt), direction(keys.id), direction(keys.jobId))
       .$dynamic(),
     input,
   );
+}
+
+/** One row per currently linked Job, without duplicating the Feedback record. */
+function feedbackActivityKeys(db: Db, input: JobActivityListInput, enabled = true) {
+  return db
+    .select({
+      id: feedback.id,
+      jobId: sql<string>`${feedbackJobId}::text`.as('job_id'),
+      occurredAt: sql`${feedback.createdAt}`.as('occurred_at'),
+      source: sql<ActivitySource>`'feedback'::text`.as('source'),
+    })
+    .from(feedback)
+    .leftJoin(purchaseOrderJobLinks, eq(purchaseOrderJobLinks.purchaseOrderId, feedback.purchaseOrderId))
+    .leftJoin(purchaseOrders, eq(purchaseOrders.id, feedback.purchaseOrderId))
+    .where(enabled ? jobGeneralFeedbackFilter(input) : sql`false`);
 }
 
 function activitySources(filter: JobActivityListInput['filter']): {
@@ -405,8 +440,11 @@ async function hydrateActivityKeys(db: Db, keys: ActivityKey[]): Promise<JobActi
   const feedbackIds = keys.flatMap((key) => (key.source === 'feedback' ? [key.id] : []));
   const auditIds = keys.flatMap((key) => (key.source === 'audit' ? [key.id] : []));
   const [feedbackRows, auditRows] = await Promise.all([findFeedbackRows(db, feedbackIds), findAuditRows(db, auditIds)]);
-  const auditJobs = await findActivityJobs(db, auditRows.map(resolveChangeEventJobId));
-  const jobsById = new Map(auditJobs.map((job) => [job.id, job]));
+  const activityJobs = await findActivityJobs(
+    db,
+    keys.map((key) => key.jobId),
+  );
+  const jobsById = new Map(activityJobs.map((job) => [job.id, job]));
   const feedbackById = new Map(feedbackRows.map((row) => [row.id, row]));
   const auditById = new Map(auditRows.map((row) => [row.id, row]));
 
@@ -418,7 +456,9 @@ async function hydrateActivityKeys(db: Db, keys: ActivityKey[]): Promise<JobActi
         throw new Error(`Job activity feedback ${key.id} vanished between paging and hydration`);
       }
 
-      return mapGeneralFeedbackActivityItem(row);
+      const job = jobsById.get(key.jobId);
+      if (!job) throw new Error(`Feedback ${key.id} names a missing Job ${key.jobId}`);
+      return mapGeneralFeedbackActivityItem(row, job);
     }
 
     const row = auditById.get(key.id);
@@ -625,16 +665,15 @@ function mapJobActivityJobRef(job: JobActivityJobRow): JobActivityJobRef {
   });
 }
 
-function mapGeneralFeedbackActivityItem(row: FeedbackActivityRow): JobActivityItem {
-  if (!row.job) {
-    throw new Error(`Job general feedback ${row.id} is missing its Job subject`);
-  }
-
+function mapGeneralFeedbackActivityItem(row: FeedbackActivityRow, job: JobActivityJobRow): JobActivityItem {
   return JobActivityItemSchema.parse({
     type: 'general-feedback',
     id: row.id,
     occurredAt: row.createdAt.toISOString(),
-    job: mapJobActivityJobRef(row.job),
+    job: mapJobActivityJobRef(job),
+    purchaseOrder: row.purchaseOrder
+      ? { id: row.purchaseOrder.id, code: row.purchaseOrder.code, supplierName: row.purchaseOrder.supplier.companyName }
+      : null,
     feedback: {
       submitter: {
         email: row.submitter.email,

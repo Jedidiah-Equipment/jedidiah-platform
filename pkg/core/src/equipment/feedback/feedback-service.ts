@@ -1,5 +1,13 @@
 import { type Db, user } from '@pkg/db';
-import { feedback, feedbackDepartment, feedbackUser, jobs, quotes } from '@pkg/db/equipment';
+import {
+  feedback,
+  feedbackDepartment,
+  feedbackUser,
+  jobs,
+  purchaseOrderJobLinks,
+  purchaseOrders,
+  quotes,
+} from '@pkg/db/equipment';
 import { getJobCodeWithHint } from '@pkg/domain/equipment';
 import type { AuthId } from '@pkg/schema';
 import type {
@@ -16,19 +24,23 @@ import type {
   JobFeedbackListResult,
   JobFeedbackUpdateInput,
   JobFeedbackUpdateResult,
+  PurchaseOrderFeedbackListInput,
+  PurchaseOrderFeedbackListResult,
   QuoteKind,
 } from '@pkg/schema/equipment';
 import {
   FeedbackDetail,
   FeedbackListItem,
+  FeedbackPurchaseOrder,
   FeedbackSubmitter,
   FeedbackTargetUser,
   FeedbackTargetUserList,
   JobCode,
   JobFeedbackItem,
+  PurchaseOrderFeedbackItem,
   QuoteCode,
 } from '@pkg/schema/equipment';
-import { and, asc, desc, eq, isNull, ne, or } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, ne, or } from 'drizzle-orm';
 
 import { FeedbackNotFoundError, FeedbackSubjectNotFoundError } from './feedback-errors.js';
 
@@ -66,6 +78,12 @@ export async function submitFeedback({
     if (!exists) {
       throw new FeedbackSubjectNotFoundError('quote', subject.quoteId);
     }
+  } else if (subject.subjectType === 'purchase-order') {
+    const exists = await db.query.purchaseOrders.findFirst({
+      columns: { id: true },
+      where: eq(purchaseOrders.id, subject.purchaseOrderId),
+    });
+    if (!exists) throw new FeedbackSubjectNotFoundError('purchase-order', subject.purchaseOrderId);
   } else {
     const exists = await db.query.jobs.findFirst({ columns: { id: true }, where: eq(jobs.id, subject.jobId) });
 
@@ -83,6 +101,7 @@ export async function submitFeedback({
       .values({
         jobId: subject.subjectType === 'job' ? subject.jobId : null,
         kind: input.kind,
+        purchaseOrderId: subject.subjectType === 'purchase-order' ? subject.purchaseOrderId : null,
         quoteId: subject.subjectType === 'quote' ? subject.quoteId : null,
         subjectType: subject.subjectType,
         submitterId,
@@ -112,7 +131,7 @@ export async function submitFeedback({
  * corrective items this queue exists for. Quote `general` feedback stays: it is still private, and
  * this inbox is the only surface that reads it.
  */
-const privateFeedback = or(ne(feedback.kind, 'general'), isNull(feedback.jobId));
+const privateFeedback = or(ne(feedback.kind, 'general'), eq(feedback.subjectType, 'quote'));
 
 export async function listFeedback({ db, input }: { db: Db; input: FeedbackListInput }): Promise<FeedbackListResult> {
   const rows = await db.query.feedback.findMany({
@@ -139,7 +158,7 @@ export async function getFeedback({
   input: FeedbackDetailInput;
 }): Promise<FeedbackDetail | null> {
   const row = await db.query.feedback.findFirst({
-    where: eq(feedback.id, input.id),
+    where: and(privateFeedback, eq(feedback.id, input.id)),
     with: feedbackReadRelations,
   });
 
@@ -172,7 +191,7 @@ export async function updateFeedback({
   const [updated] = await db
     .update(feedback)
     .set(values)
-    .where(eq(feedback.id, input.id))
+    .where(and(privateFeedback, eq(feedback.id, input.id)))
     .returning({ id: feedback.id });
 
   if (!updated) {
@@ -201,12 +220,36 @@ export async function listJobFeedback({
 }): Promise<JobFeedbackListResult> {
   const rows = await db.query.feedback.findMany({
     orderBy: [desc(feedback.createdAt), desc(feedback.id)],
-    where: and(eq(feedback.jobId, input.jobId), eq(feedback.kind, 'general')),
-    with: { submitter: feedbackReadRelations.submitter },
+    where: and(
+      eq(feedback.kind, 'general'),
+      or(
+        eq(feedback.jobId, input.jobId),
+        inArray(
+          feedback.purchaseOrderId,
+          db
+            .select({ id: purchaseOrderJobLinks.purchaseOrderId })
+            .from(purchaseOrderJobLinks)
+            .where(eq(purchaseOrderJobLinks.jobId, input.jobId)),
+        ),
+      ),
+    ),
+    with: {
+      submitter: feedbackReadRelations.submitter,
+      purchaseOrder: { columns: { id: true, code: true }, with: { supplier: { columns: { companyName: true } } } },
+    },
   });
 
   return {
-    items: rows.map((row) => mapJobFeedbackItem(row)),
+    items: rows.map((row) => ({
+      ...mapJobFeedbackItem(row),
+      purchaseOrder: row.purchaseOrder
+        ? FeedbackPurchaseOrder.parse({
+            id: row.purchaseOrder.id,
+            code: row.purchaseOrder.code,
+            supplierName: row.purchaseOrder.supplier.companyName,
+          })
+        : null,
+    })),
   };
 }
 
@@ -387,4 +430,28 @@ function mapFeedbackSubject(row: FeedbackReadRow): FeedbackListItem['subject'] {
   }
 
   throw new Error(`Feedback ${row.id} is missing its ${row.subjectType} subject`);
+}
+
+export async function listPurchaseOrderFeedback({
+  db,
+  input,
+}: {
+  db: Db;
+  input: PurchaseOrderFeedbackListInput;
+}): Promise<PurchaseOrderFeedbackListResult> {
+  const rows = await db.query.feedback.findMany({
+    where: and(eq(feedback.purchaseOrderId, input.purchaseOrderId), eq(feedback.kind, 'general')),
+    orderBy: [desc(feedback.createdAt), desc(feedback.id)],
+    with: { submitter: feedbackReadRelations.submitter },
+  });
+  return {
+    items: rows.map((row) =>
+      PurchaseOrderFeedbackItem.parse({
+        id: row.id,
+        createdAt: row.createdAt.toISOString(),
+        text: row.text,
+        submitter: mapFeedbackSubmitter(row.submitter),
+      }),
+    ),
+  };
 }

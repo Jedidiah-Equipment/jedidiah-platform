@@ -4,7 +4,7 @@ Use **Jobs → Activity** on the web or the **Activity** tab on mobile to read w
 done across every Job, newest first, without opening each Job in turn.
 
 1. On the web, choose **Jobs**, then **Activity**. On mobile, choose the **Activity** tab.
-2. Search the visible activity text, person, Job, Product or Customer, or use the filter to show
+2. Search the visible activity text, person, Job, PO number, Supplier, Product or Customer, or use the filter to show
    **All**, **User Feedback**, **Job Events**, or **Work Times**.
 3. Read down the feed. Each entry names who it was, when it happened, and the Job it is about.
 4. Choose **Show more** on a long piece of feedback to read the rest of it.
@@ -16,6 +16,7 @@ done across every Job, newest first, without opening each Job in turn.
 ## What appears in the feed
 
 - **General Feedback** someone submitted about a Job.
+- **Purchase Order Feedback** on a currently linked order, marked with its PO number and Supplier. On the web, the marker opens the order when you have Purchase Order access.
 - **A Job was created**, whether from a Quote or as a Stock Build.
 - **A Job description was changed** — the entry carries the new wording, or says it was cleared.
 - **A Job was completed**. Its completion date appears when it differs from the timeline day. An
@@ -30,5 +31,5 @@ Corrective Feedback about a department or a person stays in the Feedback inbox, 
 submitted about a Quote is not shown here. Cancelling a Job and re-opening a completed Job add no
 entry.
 
-Every entry stays in the feed — it is a record of what was said and done and when, not a queue to
+PO Feedback appears while the order is linked to the Job. Other entries stay in the feed — it is a record of what was said and done and when, not a queue to
 work through.

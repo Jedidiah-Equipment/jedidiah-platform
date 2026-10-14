@@ -28,12 +28,14 @@ type ActivityTimelineQuery = {
  * and a heading, and the spine restarts beneath each one. Older pages load as the reader scrolls to the end.
  */
 export function ActivityTimeline<TItem extends ActivityTimelineItem>({
+  getItemKey = (item) => `${item.type}:${item.id}`,
   emptyMessage,
   errorMessage,
   items,
   query,
   renderItem,
 }: {
+  getItemKey?: (item: TItem) => string;
   emptyMessage: string;
   errorMessage: string;
   items: readonly TItem[];
@@ -78,7 +80,7 @@ export function ActivityTimeline<TItem extends ActivityTimelineItem>({
               {/* Entries only — each draws the spine down to the next, and the last one draws none. */}
               <div className="grid gap-5">
                 {group.items.map((item) => (
-                  <Fragment key={`${item.type}:${item.id}`}>{renderItem(item)}</Fragment>
+                  <Fragment key={getItemKey(item)}>{renderItem(item)}</Fragment>
                 ))}
               </div>
             </section>

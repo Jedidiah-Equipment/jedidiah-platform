@@ -1,30 +1,43 @@
-import { getFirstName, statusBadgeColorClassNames } from '@pkg/domain';
+import { statusBadgeColorClassNames } from '@pkg/domain';
 import { presentJobActivityEvent } from '@pkg/domain/equipment';
-import type { GeneralFeedbackActivityItem, JobActivityItem, JobChangeActivityItem } from '@pkg/schema/equipment';
-import { IconCheck, IconClock, IconFileText, IconPencil, IconPlus, IconSubtask } from '@tabler/icons-react';
+import type {
+  FeedbackPurchaseOrder,
+  GeneralFeedbackActivityItem,
+  JobActivityItem,
+  JobChangeActivityItem,
+} from '@pkg/schema/equipment';
+import {
+  IconCheck,
+  IconClock,
+  IconFileText,
+  IconPencil,
+  IconPlus,
+  IconShoppingCart,
+  IconSubtask,
+} from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 import type React from 'react';
 import {
   ActivityEntryShell,
   ActivityEventMarker,
-  ActivityNoteMarker,
   activityEntryLinkClassName,
 } from '@/components/activity/ActivityEntryShell.js';
 import { ActivityNoteBubble } from '@/components/activity/ActivityNoteBubble.js';
-import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { Button } from '@/components/ui/button.js';
 import { Separator } from '@/components/ui/separator.js';
 import { StockBadge } from '@/equipment/components/common/StockBadge.js';
+import { FeedbackTimelineEntry } from '@/equipment/components/feedback/FeedbackTimelineEntry.js';
 import { OfferingThumbnail } from '@/equipment/components/thumbnail/OfferingThumbnail.js';
 import { cn } from '@/lib/utils.js';
 
 /** One feed entry, rendered by its discriminator. A new activity type adds a case here. */
-export const JobActivityEntry: React.FC<{ hideDetail?: boolean; item: JobActivityItem }> = ({
-  hideDetail = false,
-  item,
-}) => {
+export const JobActivityEntry: React.FC<{
+  canReadPurchaseOrder?: boolean;
+  hideDetail?: boolean;
+  item: JobActivityItem;
+}> = ({ canReadPurchaseOrder = false, hideDetail = false, item }) => {
   if (item.type === 'general-feedback') {
-    return <GeneralFeedbackEntry hideDetail={hideDetail} item={item} />;
+    return <GeneralFeedbackEntry canReadPurchaseOrder={canReadPurchaseOrder} hideDetail={hideDetail} item={item} />;
   }
 
   return <JobChangeEntry hideDetail={hideDetail} item={item} />;
@@ -35,27 +48,33 @@ export const JobActivityEntry: React.FC<{ hideDetail?: boolean; item: JobActivit
  * gets the weight — a filled node on the spine, the submitter's face, and a bubble whose tail points
  * back at them — while everything the plant merely did stays flat beside it.
  */
-const GeneralFeedbackEntry: React.FC<{ hideDetail: boolean; item: GeneralFeedbackActivityItem }> = ({
-  hideDetail,
-  item,
-}) => (
-  <ActivityRow
-    item={item}
-    linkToJob={!hideDetail}
-    marker={<ActivityNoteMarker />}
-    who={
-      <EntityThumbnail
-        className="z-10"
-        label={getFirstName(item.feedback.submitter.name)}
-        shape="circle"
-        thumbnailDataUrl={item.feedback.submitter.thumbnailDataUrl}
-      />
+const GeneralFeedbackEntry: React.FC<{
+  canReadPurchaseOrder: boolean;
+  hideDetail: boolean;
+  item: GeneralFeedbackActivityItem;
+}> = ({ canReadPurchaseOrder, hideDetail, item }) => (
+  <FeedbackTimelineEntry
+    occurredAt={item.occurredAt}
+    submitter={item.feedback.submitter}
+    link={
+      hideDetail ? null : (
+        <Link
+          aria-label={`Open ${formatJobLabel(item.job)}`}
+          className={activityEntryLinkClassName}
+          search={{ job: item.job.id }}
+          to="/equipment/jobs/activity"
+        />
+      )
     }
   >
     <ActivityNoteBubble
       footer={
-        hideDetail ? null : (
-          <div className="flex items-center gap-2 border-t border-border/70 bg-muted/40 py-1 pe-1.5 ps-3 text-xs">
+        hideDetail ? (
+          item.purchaseOrder ? (
+            <PurchaseOrderMarker canRead={canReadPurchaseOrder} purchaseOrder={item.purchaseOrder} />
+          ) : null
+        ) : (
+          <div className="flex flex-wrap items-center gap-2 border-t border-border/70 bg-muted/40 py-1 pe-1.5 ps-3 text-xs">
             <OfferingThumbnail
               className="size-5"
               kind={item.job.offeringKind}
@@ -65,6 +84,9 @@ const GeneralFeedbackEntry: React.FC<{ hideDetail: boolean; item: GeneralFeedbac
               thumbnailDataUrl={item.job.thumbnailDataUrl}
             />
             <JobLabel job={item.job} />
+            {item.purchaseOrder ? (
+              <PurchaseOrderMarker canRead={canReadPurchaseOrder} purchaseOrder={item.purchaseOrder} />
+            ) : null}
             <span className="ms-auto flex shrink-0 items-center gap-1.5">
               {item.job.customerCompanyName ? (
                 <span className="truncate text-muted-foreground">{item.job.customerCompanyName}</span>
@@ -79,7 +101,7 @@ const GeneralFeedbackEntry: React.FC<{ hideDetail: boolean; item: GeneralFeedbac
       }
       text={item.feedback.text}
     />
-  </ActivityRow>
+  </FeedbackTimelineEntry>
 );
 
 /**
@@ -197,3 +219,24 @@ const GanttButton: React.FC<{ job: JobActivityItem['job'] }> = ({ job }) => (
 function formatJobLabel(job: JobActivityItem['job']): string {
   return `${job.code} · ${job.displayName}`;
 }
+
+const PurchaseOrderMarker: React.FC<{ canRead: boolean; purchaseOrder: FeedbackPurchaseOrder }> = ({
+  canRead,
+  purchaseOrder,
+}) => {
+  const content = (
+    <>
+      <IconShoppingCart aria-hidden className="size-3.5" />
+      {purchaseOrder.code} · {purchaseOrder.supplierName}
+    </>
+  );
+  const className =
+    'relative z-10 inline-flex items-center gap-1 rounded bg-amber-500/10 px-2 py-1 text-xs text-amber-800 dark:text-amber-200';
+  return canRead ? (
+    <Link className={className} params={{ id: purchaseOrder.id }} to="/equipment/purchase-orders/$id">
+      {content}
+    </Link>
+  ) : (
+    <span className={className}>{content}</span>
+  );
+};

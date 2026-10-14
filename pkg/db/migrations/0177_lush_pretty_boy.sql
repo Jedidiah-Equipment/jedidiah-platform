@@ -1,0 +1,10 @@
+ALTER TABLE "equipment"."feedback" DROP CONSTRAINT "feedback_subject_type_check";--> statement-breakpoint
+ALTER TABLE "equipment"."feedback" DROP CONSTRAINT "feedback_subject_exactly_one";--> statement-breakpoint
+ALTER TABLE "equipment"."feedback" ADD COLUMN "purchase_order_id" uuid;--> statement-breakpoint
+ALTER TABLE "equipment"."feedback" ADD CONSTRAINT "feedback_purchase_order_id_purchase_order_id_fk" FOREIGN KEY ("purchase_order_id") REFERENCES "equipment"."purchase_order"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "feedback_purchase_order_id_idx" ON "equipment"."feedback" USING btree ("purchase_order_id","created_at" DESC NULLS LAST) WHERE "equipment"."feedback"."purchase_order_id" IS NOT NULL;--> statement-breakpoint
+ALTER TABLE "equipment"."feedback" ADD CONSTRAINT "feedback_purchase_order_general_only" CHECK ("equipment"."feedback"."subject_type" <> 'purchase-order' OR ("equipment"."feedback"."kind" = 'general' AND "equipment"."feedback"."internal_notes" IS NULL));--> statement-breakpoint
+ALTER TABLE "equipment"."feedback" ADD CONSTRAINT "feedback_subject_type_check" CHECK ("equipment"."feedback"."subject_type" IN ('quote', 'job', 'purchase-order'));--> statement-breakpoint
+ALTER TABLE "equipment"."feedback" ADD CONSTRAINT "feedback_subject_exactly_one" CHECK (("equipment"."feedback"."subject_type" = 'quote' AND "equipment"."feedback"."quote_id" IS NOT NULL AND "equipment"."feedback"."job_id" IS NULL AND "equipment"."feedback"."purchase_order_id" IS NULL)
+        OR ("equipment"."feedback"."subject_type" = 'job' AND "equipment"."feedback"."job_id" IS NOT NULL AND "equipment"."feedback"."quote_id" IS NULL AND "equipment"."feedback"."purchase_order_id" IS NULL)
+        OR ("equipment"."feedback"."subject_type" = 'purchase-order' AND "equipment"."feedback"."purchase_order_id" IS NOT NULL AND "equipment"."feedback"."quote_id" IS NULL AND "equipment"."feedback"."job_id" IS NULL));

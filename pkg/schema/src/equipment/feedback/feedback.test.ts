@@ -8,6 +8,28 @@ const quoteSubject = {
 };
 
 describe('FeedbackSubmitInput', () => {
+  it('accepts General Feedback on a Purchase Order but refuses Corrective Feedback', () => {
+    const subject = { subjectType: 'purchase-order', purchaseOrderId: '00000000-0000-4000-8000-000000000001' };
+    expect(FeedbackSubmitInput.parse({ kind: 'general', subject, text: 'Delivery confirmed.' }).subject).toEqual(
+      subject,
+    );
+    expect(
+      FeedbackSubmitInput.safeParse({
+        kind: 'corrective-feedback-department',
+        subject,
+        text: 'Correction',
+        departments: ['paint'],
+      }).success,
+    ).toBe(false);
+    expect(
+      FeedbackSubmitInput.safeParse({
+        kind: 'corrective-feedback-user',
+        subject,
+        text: 'Correction',
+        userIds: ['user-1'],
+      }).success,
+    ).toBe(false);
+  });
   it('accepts a general submission with non-empty text and a quote subject', () => {
     expect(
       FeedbackSubmitInput.parse({

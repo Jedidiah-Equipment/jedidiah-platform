@@ -6,6 +6,8 @@ import { nullableTrimmedTextInputOptional, requiredTrimmedText } from '../../com
 import { NullableThumbnailDataUrl } from '../../common/thumbnail.js';
 import { UUID } from '../../common/uuid.js';
 import { Department } from '../common/departments.js';
+import { PurchaseOrderCode } from '../common/public-code.js';
+import { SupplierCompanyName } from '../suppliers/supplier.js';
 
 export type FeedbackKind = z.infer<typeof FeedbackKind>;
 export const FeedbackKind = z.enum(['general', 'corrective-feedback-department', 'corrective-feedback-user']);
@@ -14,7 +16,7 @@ export type FeedbackStatus = z.infer<typeof FeedbackStatus>;
 export const FeedbackStatus = z.enum(['open', 'resolved', 'closed']);
 
 export type FeedbackSubjectType = z.infer<typeof FeedbackSubjectType>;
-export const FeedbackSubjectType = z.enum(['quote', 'job']);
+export const FeedbackSubjectType = z.enum(['quote', 'job', 'purchase-order']);
 
 export type FeedbackText = z.infer<typeof FeedbackText>;
 export const FeedbackText = requiredTrimmedText('Feedback is required');
@@ -29,6 +31,10 @@ export const FeedbackSubjectInput = z.discriminatedUnion('subjectType', [
     subjectType: z.literal('job'),
     jobId: UUID,
   }),
+  z.object({
+    subjectType: z.literal('purchase-order'),
+    purchaseOrderId: UUID,
+  }),
 ]);
 
 export type FeedbackDepartmentTargets = z.infer<typeof FeedbackDepartmentTargets>;
@@ -40,25 +46,30 @@ export const FeedbackUserTargets = z.array(AuthId).min(1, 'Select at least one u
 export type FeedbackSubmitInput = z.infer<typeof FeedbackSubmitInput>;
 // Discriminated on Kind: `general` carries no targets, while the corrective kinds each require at
 // least one target of the matching type. The matching DB join table is written from these targets.
-export const FeedbackSubmitInput = z.discriminatedUnion('kind', [
-  z.object({
-    kind: z.literal('general'),
-    subject: FeedbackSubjectInput,
-    text: FeedbackText,
-  }),
-  z.object({
-    kind: z.literal('corrective-feedback-department'),
-    subject: FeedbackSubjectInput,
-    text: FeedbackText,
-    departments: FeedbackDepartmentTargets,
-  }),
-  z.object({
-    kind: z.literal('corrective-feedback-user'),
-    subject: FeedbackSubjectInput,
-    text: FeedbackText,
-    userIds: FeedbackUserTargets,
-  }),
-]);
+export const FeedbackSubmitInput = z
+  .discriminatedUnion('kind', [
+    z.object({
+      kind: z.literal('general'),
+      subject: FeedbackSubjectInput,
+      text: FeedbackText,
+    }),
+    z.object({
+      kind: z.literal('corrective-feedback-department'),
+      subject: FeedbackSubjectInput,
+      text: FeedbackText,
+      departments: FeedbackDepartmentTargets,
+    }),
+    z.object({
+      kind: z.literal('corrective-feedback-user'),
+      subject: FeedbackSubjectInput,
+      text: FeedbackText,
+      userIds: FeedbackUserTargets,
+    }),
+  ])
+  .refine((input) => input.subject.subjectType !== 'purchase-order' || input.kind === 'general', {
+    message: 'Purchase Orders accept General Feedback only',
+    path: ['kind'],
+  });
 
 export type FeedbackListInput = z.infer<typeof FeedbackListInput>;
 export const FeedbackListInput = z
@@ -146,8 +157,13 @@ export const JobFeedbackListInput = z
   })
   .strict();
 
+// Shared, price-free PO reference for Job readers and the submission picker.
+export type FeedbackPurchaseOrder = z.infer<typeof FeedbackPurchaseOrder>;
+export const FeedbackPurchaseOrder = z.object({ id: UUID, code: PurchaseOrderCode, supplierName: SupplierCompanyName });
+
 export type JobFeedbackItem = z.infer<typeof JobFeedbackItem>;
 export const JobFeedbackItem = z.object({
+  purchaseOrder: FeedbackPurchaseOrder.nullable().optional(),
   id: UUID,
   createdAt: DateIso,
   status: FeedbackStatus,
@@ -172,3 +188,10 @@ export type JobFeedbackUpdateResult = z.infer<typeof JobFeedbackUpdateResult>;
 export const JobFeedbackUpdateResult = z.object({
   item: JobFeedbackItem,
 });
+
+export type PurchaseOrderFeedbackListInput = z.infer<typeof PurchaseOrderFeedbackListInput>;
+export const PurchaseOrderFeedbackListInput = z.object({ purchaseOrderId: UUID }).strict();
+export type PurchaseOrderFeedbackItem = z.infer<typeof PurchaseOrderFeedbackItem>;
+export const PurchaseOrderFeedbackItem = JobFeedbackItem.omit({ status: true, purchaseOrder: true });
+export type PurchaseOrderFeedbackListResult = z.infer<typeof PurchaseOrderFeedbackListResult>;
+export const PurchaseOrderFeedbackListResult = z.object({ items: z.array(PurchaseOrderFeedbackItem) });

@@ -1,5 +1,10 @@
 import { statusBadgeColorClassNames } from '@pkg/domain';
-import { type GeneralFeedbackActivityItem, type JobActivityItem, JobChangeActivityItem } from '@pkg/schema/equipment';
+import {
+  type GeneralFeedbackActivityItem,
+  type JobActivityItem,
+  JobChangeActivityItem,
+  PurchaseOrderCode,
+} from '@pkg/schema/equipment';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { describe, expect, test, vi } from 'vitest';
 
@@ -9,6 +14,7 @@ vi.mock('@tabler/icons-react-native', () => ({
   IconFileText: 'IconFileText',
   IconPencil: 'IconPencil',
   IconPlus: 'IconPlus',
+  IconShoppingCart: 'IconShoppingCart',
 }));
 vi.mock('expo-router', () => ({ useRouter: () => ({ push: vi.fn() }) }));
 vi.mock('react-native', () => ({ Pressable: 'Pressable', View: 'View' }));
@@ -24,6 +30,24 @@ import { JobActivityEntry } from './JobActivityEntry';
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 describe('JobActivityEntry', () => {
+  test('identifies PO Feedback under the Job reference without a mobile PO link', async () => {
+    const renderer = await renderEntry(
+      {
+        ...buildFeedbackItem(),
+        purchaseOrder: {
+          id: '00000000-0000-4000-8000-000000000042',
+          code: PurchaseOrderCode.parse(42),
+          supplierName: 'Mount Fifty',
+        },
+      },
+      false,
+    );
+    const content = JSON.stringify(renderer.toJSON());
+    expect(content).toContain('PO-00042');
+    expect(content).toContain('Mount Fifty');
+    expect(renderer.root.findAllByType('Pressable' as never)).toHaveLength(0);
+  });
+
   test.each([
     ['job-created', 'purple', 'IconPlus'],
     ['job-description-updated', 'purple', 'IconPencil'],

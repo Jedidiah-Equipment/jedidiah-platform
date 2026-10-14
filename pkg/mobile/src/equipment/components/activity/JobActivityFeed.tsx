@@ -80,7 +80,7 @@ export function JobActivityFeed({
                 onFilterChange: setFilter,
                 search,
                 onSearchChange: setSearch,
-                searchPlaceholder: 'Search by text, user, job, product, or customer…',
+                searchPlaceholder: 'Search by text, user, Job, PO, Supplier, Product, or Customer…',
               }
             : undefined
         }
@@ -95,6 +95,7 @@ export function JobActivityFeed({
             : { title: 'No activity matches', detail: 'Try another search or filter.' }
         }
         items={items}
+        getItemKey={(item) => `${item.type}:${item.id}:${item.job.id}`}
         listHeader={listHeader}
         onViewedLatest={onViewedLatest}
         query={activity}

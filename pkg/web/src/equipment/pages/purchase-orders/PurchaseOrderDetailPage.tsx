@@ -33,6 +33,7 @@ import { PurchaseOrderAmendDialog } from './components/PurchaseOrderAmendDialog.
 import { PurchaseOrderAmendmentsCard } from './components/PurchaseOrderAmendmentsCard.js';
 import { PurchaseOrderArrivalsCard } from './components/PurchaseOrderArrivalsCard.js';
 import { PurchaseOrderDocumentsCard } from './components/PurchaseOrderDocumentsCard.js';
+import { PurchaseOrderFeedbackCard } from './components/PurchaseOrderFeedbackCard.js';
 import { PurchaseOrderInvoiceCrossCheckCard } from './components/PurchaseOrderInvoiceCrossCheckCard.js';
 import { PurchaseOrderReceivingCard } from './components/PurchaseOrderReceivingCard.js';
 import { PurchaseOrderReturnsCard } from './components/PurchaseOrderReturnsCard.js';
@@ -124,6 +125,7 @@ const PurchaseOrderDetail: React.FC<{ purchaseOrder: PurchaseOrderView; queryErr
                 <ReadOnlyJobsCard purchaseOrder={purchaseOrder} />
               </>
             )}
+            <PurchaseOrderFeedbackCard code={purchaseOrder.code} purchaseOrderId={purchaseOrder.id} />
           </PurchaseOrderDetailTabs>
         </PageLayout>
       )}

@@ -7,7 +7,10 @@ import {
   jobs,
   products,
   productUnits,
+  purchaseOrderJobLinks,
+  purchaseOrders,
   quotes,
+  supplier,
 } from '@pkg/db/equipment';
 import type { FeedbackStatus } from '@pkg/schema/equipment';
 import { describe, expect } from 'vitest';
@@ -29,6 +32,144 @@ const test = createTester(async ({ db }) => {
     job,
     quote,
   };
+});
+
+describe('Purchase Order Feedback', () => {
+  test('accepts notes in every stored PO status and after close-short, newest first', async ({ context }) => {
+    const [vendor] = await context.db.insert(supplier).values({ companyName: 'Status supplier' }).returning();
+    if (!vendor) throw new Error('Missing supplier');
+    const caller = context.createCaller(mockSession('super-admin'));
+    for (const status of ['draft', 'approved', 'sent', 'cancelled'] as const) {
+      const [order] = await context.db
+        .insert(purchaseOrders)
+        .values({
+          supplierId: vendor.id,
+          status,
+          approvedAt: status === 'approved' || status === 'sent' ? new Date() : null,
+          sentAt: status === 'sent' ? new Date() : null,
+          closedShortAt: status === 'sent' ? new Date() : null,
+        })
+        .returning();
+      if (!order) throw new Error('Missing order');
+      const subject = { subjectType: 'purchase-order' as const, purchaseOrderId: order.id };
+      const first = await caller.feedback.submit({ kind: 'general', subject, text: 'Earlier note' });
+      const second = await caller.feedback.submit({ kind: 'general', subject, text: 'Correction as a new note' });
+      const result = await caller.feedback.listPurchaseOrderFeedback({ purchaseOrderId: order.id });
+      expect(result.items.map((item) => item.id)).toEqual([second.id, first.id]);
+    }
+  });
+
+  test('database rejects mismatched subjects and Corrective PO Feedback', async ({ context }) => {
+    const [vendor] = await context.db.insert(supplier).values({ companyName: 'Constraint supplier' }).returning();
+    if (!vendor) throw new Error('Missing supplier');
+    const [order] = await context.db.insert(purchaseOrders).values({ supplierId: vendor.id }).returning();
+    if (!order) throw new Error('Missing order');
+    const base = { submitterId: 'test-user-id', text: 'Invalid subject', kind: 'general' as const };
+    for (const subject of [
+      { subjectType: 'purchase-order' as const, purchaseOrderId: null },
+      { subjectType: 'purchase-order' as const, purchaseOrderId: order.id, jobId: context.job.id },
+      { subjectType: 'job' as const, jobId: context.job.id, purchaseOrderId: order.id },
+      { subjectType: 'quote' as const, quoteId: context.quote.id, purchaseOrderId: order.id },
+    ]) {
+      await expect(context.db.insert(feedback).values({ ...base, ...subject })).rejects.toMatchObject({
+        cause: { constraint_name: 'feedback_subject_exactly_one' },
+      });
+    }
+    await expect(
+      context.db.insert(feedback).values({
+        ...base,
+        subjectType: 'purchase-order',
+        purchaseOrderId: order.id,
+        kind: 'corrective-feedback-department',
+      }),
+    ).rejects.toMatchObject({ cause: { constraint_name: 'feedback_purchase_order_general_only' } });
+  });
+
+  test('reads PO notes through current Job links and pages each linked Job exactly once', async ({ context }) => {
+    const [vendor] = await context.db.insert(supplier).values({ companyName: 'Linked supplier' }).returning();
+    if (!vendor) throw new Error('Missing supplier');
+    const [order] = await context.db.insert(purchaseOrders).values({ supplierId: vendor.id, code: 42 }).returning();
+    if (!order) throw new Error('Missing order');
+    const [second] = await context.db
+      .insert(jobs)
+      .values({ productUnitId: context.job.productUnitId, quoteId: null })
+      .returning();
+    if (!second) throw new Error('Missing Job');
+    const reader = context.createCaller(mockSession('job-viewer'));
+    const saved = await reader.feedback.submit({
+      kind: 'general',
+      subject: { subjectType: 'purchase-order', purchaseOrderId: order.id },
+      text: 'Shared delivery update',
+    });
+    expect((await reader.feedback.listJobFeedback({ jobId: context.job.id })).items).toEqual([]);
+    await context.db
+      .insert(purchaseOrderJobLinks)
+      .values([context.job.id, second.id].map((jobId) => ({ jobId, purchaseOrderId: order.id })));
+    expect((await reader.feedback.listJobFeedback({ jobId: context.job.id })).items).toMatchObject([
+      { id: saved.id, purchaseOrder: { id: order.id, code: 'PO-00042', supplierName: 'Linked supplier' } },
+    ]);
+    expect((await reader.jobs.get({ id: context.job.id })).purchaseOrders).toEqual([
+      { id: order.id, code: 'PO-00042', supplierName: 'Linked supplier' },
+    ]);
+    await reader.feedback.submit({
+      kind: 'general',
+      subject: { subjectType: 'job', jobId: second.id },
+      text: 'Ordinary Job Feedback',
+    });
+    expect((await reader.jobActivity.list({ filter: 'user-feedback', search: 'PO-' })).total).toBe(2);
+    expect((await reader.jobActivity.list({ filter: 'user-feedback', search: 'Linked supplier' })).total).toBe(2);
+    const first = await reader.jobActivity.list({ filter: 'user-feedback', search: 'PO-00042', limit: 1 });
+    expect(first.total).toBe(2);
+    expect(first.items).toHaveLength(1);
+    const next = await reader.jobActivity.list({
+      filter: 'user-feedback',
+      search: 'PO-00042',
+      limit: 1,
+      cursor: first.nextCursor ?? 0,
+    });
+    expect(next.nextCursor).toBeNull();
+    expect([first.items[0]?.job.id, next.items[0]?.job.id].sort()).toEqual([context.job.id, second.id].sort());
+    expect(first.items[0]).toMatchObject({ id: saved.id, purchaseOrder: { id: order.id, code: 'PO-00042' } });
+    await context.db.update(purchaseOrders).set({ code: 100000 }).where(eq(purchaseOrders.id, order.id));
+    expect((await reader.jobActivity.list({ filter: 'user-feedback', search: 'PO-100000' })).total).toBe(2);
+    await context.db.delete(purchaseOrderJobLinks).where(eq(purchaseOrderJobLinks.jobId, context.job.id));
+    expect((await reader.feedback.listJobFeedback({ jobId: context.job.id })).items).toEqual([]);
+    expect(
+      (await reader.jobActivity.list({ filter: 'user-feedback', search: 'Shared delivery' })).items.map(
+        (item) => item.job.id,
+      ),
+    ).toEqual([second.id]);
+  });
+
+  test('lets a Job reader submit an immutable PO note outside the private inbox', async ({ context }) => {
+    const [vendor] = await context.db.insert(supplier).values({ companyName: 'Feedback supplier' }).returning();
+    if (!vendor) throw new Error('Missing supplier');
+    const [order] = await context.db.insert(purchaseOrders).values({ supplierId: vendor.id }).returning();
+    if (!order) throw new Error('Missing order');
+    const reader = context.createCaller(mockSession('job-viewer'));
+    const admin = context.createCaller(mockSession('super-admin'));
+    const subject = { subjectType: 'purchase-order' as const, purchaseOrderId: order.id };
+    const saved = await reader.feedback.submit({ kind: 'general', subject, text: 'Delivery confirmed.' });
+    const result = await admin.feedback.listPurchaseOrderFeedback({ purchaseOrderId: order.id });
+    expect(result.items).toMatchObject([
+      { id: saved.id, text: 'Delivery confirmed.', submitter: { id: 'test-user-id' } },
+    ]);
+    await expect(reader.feedback.listPurchaseOrderFeedback({ purchaseOrderId: order.id })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+    expect((await admin.feedback.list({})).items).toEqual([]);
+    expect(await admin.feedback.openCount()).toBe(0);
+    expect(await admin.feedback.get({ id: saved.id })).toBeNull();
+    await expect(admin.feedback.update({ id: saved.id, internalNotes: 'Hidden edit' })).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+    });
+    await expect(admin.feedback.updateJobFeedback({ id: saved.id, status: 'closed' })).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+    });
+    await expect(
+      reader.feedback.submit({ kind: 'corrective-feedback-department', subject, text: 'No', departments: ['paint'] }),
+    ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+  });
 });
 
 describe('feedback.submit', () => {

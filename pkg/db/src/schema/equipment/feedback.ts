@@ -5,6 +5,7 @@ import { check, index, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-
 import { user } from '../auth.js';
 import { jobs } from './job.js';
 import { equipmentSchema } from './pg-schema.js';
+import { purchaseOrders } from './purchase-order.js';
 import { quotes } from './quote.js';
 
 export const feedback = equipmentSchema.table(
@@ -17,6 +18,7 @@ export const feedback = equipmentSchema.table(
     subjectType: text('subject_type').notNull().$type<FeedbackSubjectType>(),
     quoteId: uuid('quote_id').references(() => quotes.id, { onDelete: 'cascade' }),
     jobId: uuid('job_id').references(() => jobs.id, { onDelete: 'cascade' }),
+    purchaseOrderId: uuid('purchase_order_id').references(() => purchaseOrders.id, { onDelete: 'cascade' }),
     kind: text('kind').notNull().$type<FeedbackKind>(),
     text: text('text').notNull(),
     internalNotes: text('internal_notes'),
@@ -25,7 +27,7 @@ export const feedback = equipmentSchema.table(
     updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
-    check('feedback_subject_type_check', sql`${table.subjectType} IN ('quote', 'job')`),
+    check('feedback_subject_type_check', sql`${table.subjectType} IN ('quote', 'job', 'purchase-order')`),
     check(
       'feedback_kind_check',
       sql`${table.kind} IN ('general', 'corrective-feedback-department', 'corrective-feedback-user')`,
@@ -35,9 +37,17 @@ export const feedback = equipmentSchema.table(
     // Exactly one subject is set and it matches the discriminator.
     check(
       'feedback_subject_exactly_one',
-      sql`(${table.subjectType} = 'quote' AND ${table.quoteId} IS NOT NULL AND ${table.jobId} IS NULL)
-        OR (${table.subjectType} = 'job' AND ${table.jobId} IS NOT NULL AND ${table.quoteId} IS NULL)`,
+      sql`(${table.subjectType} = 'quote' AND ${table.quoteId} IS NOT NULL AND ${table.jobId} IS NULL AND ${table.purchaseOrderId} IS NULL)
+        OR (${table.subjectType} = 'job' AND ${table.jobId} IS NOT NULL AND ${table.quoteId} IS NULL AND ${table.purchaseOrderId} IS NULL)
+        OR (${table.subjectType} = 'purchase-order' AND ${table.purchaseOrderId} IS NOT NULL AND ${table.quoteId} IS NULL AND ${table.jobId} IS NULL)`,
     ),
+    check(
+      'feedback_purchase_order_general_only',
+      sql`${table.subjectType} <> 'purchase-order' OR (${table.kind} = 'general' AND ${table.internalNotes} IS NULL)`,
+    ),
+    index('feedback_purchase_order_id_idx')
+      .on(table.purchaseOrderId, table.createdAt.desc())
+      .where(sql`${table.purchaseOrderId} IS NOT NULL`),
     // Serves the Job Activity feed, which pages on (created_at, id) in one direction at a time. The
     // inbox reads want their own indexes: one sorts the pair in mixed directions, the other leads
     // with job_id.
@@ -92,6 +102,7 @@ export const feedbackRelations = relations(feedback, ({ one, many }) => ({
     fields: [feedback.jobId],
     references: [jobs.id],
   }),
+  purchaseOrder: one(purchaseOrders, { fields: [feedback.purchaseOrderId], references: [purchaseOrders.id] }),
   departments: many(feedbackDepartment),
   users: many(feedbackUser),
 }));

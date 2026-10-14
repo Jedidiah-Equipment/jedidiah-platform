@@ -5,11 +5,12 @@ import {
   Department,
   FeedbackDepartmentTargets,
   FeedbackKind,
+  type FeedbackPurchaseOrder,
   type FeedbackSubmitInput,
   FeedbackText,
   FeedbackUserTargets,
 } from '@pkg/schema/equipment';
-import { IconMessagePlus } from '@tabler/icons-react';
+import { IconMessagePlus, IconShoppingCart } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useState } from 'react';
@@ -26,6 +27,7 @@ type FeedbackSubject = FeedbackSubmitInput['subject'];
 
 const FeedbackFormValues = z
   .object({
+    purchaseOrderId: z.string(),
     kind: FeedbackKind,
     text: FeedbackText,
     departments: z.array(Department),
@@ -58,6 +60,7 @@ function forwardTargetIssues(
 type FeedbackFormValues = z.infer<typeof FeedbackFormValues>;
 
 const FEEDBACK_DEFAULT_VALUES: FeedbackFormValues = {
+  purchaseOrderId: '',
   kind: 'general',
   text: '',
   departments: [],
@@ -78,6 +81,7 @@ const DEPARTMENT_OPTIONS = DEPARTMENTS.map((department) => ({
 type GiveFeedbackButtonProps = {
   className?: string;
   size?: React.ComponentProps<typeof Button>['size'];
+  purchaseOrders?: FeedbackPurchaseOrder[];
   subject: FeedbackSubject;
   subjectLabel: string;
   variant?: React.ComponentProps<typeof Button>['variant'];
@@ -86,16 +90,20 @@ type GiveFeedbackButtonProps = {
 export const GiveFeedbackButton: React.FC<GiveFeedbackButtonProps> = ({
   className,
   size = 'sm',
+  purchaseOrders,
   subject,
   subjectLabel,
   variant = 'outline',
 }) => {
+  const isPurchaseOrder = purchaseOrders !== undefined || subject.subjectType === 'purchase-order';
   const trpc = useTRPC();
   const [open, setOpen] = useState(false);
   const { invalidateFeedback, invalidateJobActivity } = useQueryInvalidation();
   const showMutationError = useApiMutationErrorToast();
 
-  const targetUsersQuery = useQuery(trpc.feedback.listTargetUsers.queryOptions(undefined, { enabled: open }));
+  const targetUsersQuery = useQuery(
+    trpc.feedback.listTargetUsers.queryOptions(undefined, { enabled: open && !isPurchaseOrder }),
+  );
   const userOptions = (targetUsersQuery.data?.users ?? []).map((user) => ({ label: user.name, value: user.id }));
 
   const submitFeedbackMutation = useMutation(
@@ -106,16 +114,32 @@ export const GiveFeedbackButton: React.FC<GiveFeedbackButtonProps> = ({
     }),
   );
 
+  if (purchaseOrders?.length === 0) return null;
+
   return (
     <>
       <Button className={className} onClick={() => setOpen(true)} size={size} variant={variant}>
-        <IconMessagePlus data-icon="inline-start" />
-        Send Feedback
+        {purchaseOrders ? <IconShoppingCart data-icon="inline-start" /> : <IconMessagePlus data-icon="inline-start" />}
+        {purchaseOrders ? 'Send PO Feedback' : 'Send Feedback'}
       </Button>
       <CreateEntityDialog
-        defaultValues={FEEDBACK_DEFAULT_VALUES}
-        description={`Share feedback about ${subjectLabel}. Once submitted it goes to the review queue.`}
-        onCreate={(values) => submitFeedbackMutation.mutateAsync(toSubmitInput(values, subject))}
+        defaultValues={{
+          ...FEEDBACK_DEFAULT_VALUES,
+          purchaseOrderId: purchaseOrders?.length === 1 ? (purchaseOrders[0]?.id ?? '') : '',
+        }}
+        description={
+          isPurchaseOrder
+            ? `${purchaseOrders ? 'Share feedback about a Purchase Order linked to' : 'Share feedback about'} ${subjectLabel}. ${getFeedbackVisibilityNotice('general', 'purchase-order').description}`
+            : `Share feedback about ${subjectLabel}. Once submitted it goes to the review queue.`
+        }
+        onCreate={(values) =>
+          submitFeedbackMutation.mutateAsync(
+            toSubmitInput(
+              values,
+              purchaseOrders ? { subjectType: 'purchase-order', purchaseOrderId: values.purchaseOrderId } : subject,
+            ),
+          )
+        }
         onCreated={async () => {
           setOpen(false);
           toast.success('Feedback submitted');
@@ -125,44 +149,70 @@ export const GiveFeedbackButton: React.FC<GiveFeedbackButtonProps> = ({
         }}
         onOpenChange={setOpen}
         open={open}
-        submitLabel={(values) => getFeedbackVisibilityNotice(values.kind, subject.subjectType).submitLabel}
+        submitLabel={(values) =>
+          getFeedbackVisibilityNotice(values.kind, isPurchaseOrder ? 'purchase-order' : subject.subjectType).submitLabel
+        }
         title="Send feedback"
-        validator={FeedbackFormValues}
+        validator={
+          purchaseOrders
+            ? FeedbackFormValues.refine((value) => purchaseOrders.some((order) => order.id === value.purchaseOrderId), {
+                message: 'Select a Purchase Order',
+                path: ['purchaseOrderId'],
+              })
+            : FeedbackFormValues
+        }
       >
         {(form) => (
           <>
-            <form.AppField name="kind">
-              {(field) => <field.SelectField label="Kind" options={FEEDBACK_KIND_OPTIONS} />}
-            </form.AppField>
-            <form.Subscribe selector={(state) => state.values.kind}>
-              {(kind) => <FeedbackVisibilityBanner kind={kind} subjectType={subject.subjectType} />}
-            </form.Subscribe>
-            <form.Subscribe selector={(state) => state.values.kind}>
-              {(kind) =>
-                kind === 'corrective-feedback-department' ? (
-                  <form.AppField name="departments">
-                    {(field) => (
-                      <field.MultiComboboxField
-                        label="Departments"
-                        options={DEPARTMENT_OPTIONS}
-                        placeholder="Select departments…"
-                      />
-                    )}
-                  </form.AppField>
-                ) : kind === 'corrective-feedback-user' ? (
-                  <form.AppField name="userIds">
-                    {(field) => (
-                      <field.MultiComboboxField
-                        emptyMessage={targetUsersQuery.isPending ? 'Loading users…' : 'No users available.'}
-                        label="Users"
-                        options={userOptions}
-                        placeholder="Select users…"
-                      />
-                    )}
-                  </form.AppField>
-                ) : null
-              }
-            </form.Subscribe>
+            {purchaseOrders ? (
+              <form.AppField name="purchaseOrderId">
+                {(field) => (
+                  <field.SelectField
+                    label="Purchase Order"
+                    options={purchaseOrders.map((order) => ({
+                      label: `${order.code} · ${order.supplierName}`,
+                      value: order.id,
+                    }))}
+                  />
+                )}
+              </form.AppField>
+            ) : null}
+            {!isPurchaseOrder ? (
+              <>
+                <form.AppField name="kind">
+                  {(field) => <field.SelectField label="Kind" options={FEEDBACK_KIND_OPTIONS} />}
+                </form.AppField>
+                <form.Subscribe selector={(state) => state.values.kind}>
+                  {(kind) => <FeedbackVisibilityBanner kind={kind} subjectType={subject.subjectType} />}
+                </form.Subscribe>
+                <form.Subscribe selector={(state) => state.values.kind}>
+                  {(kind) =>
+                    kind === 'corrective-feedback-department' ? (
+                      <form.AppField name="departments">
+                        {(field) => (
+                          <field.MultiComboboxField
+                            label="Departments"
+                            options={DEPARTMENT_OPTIONS}
+                            placeholder="Select departments…"
+                          />
+                        )}
+                      </form.AppField>
+                    ) : kind === 'corrective-feedback-user' ? (
+                      <form.AppField name="userIds">
+                        {(field) => (
+                          <field.MultiComboboxField
+                            emptyMessage={targetUsersQuery.isPending ? 'Loading users…' : 'No users available.'}
+                            label="Users"
+                            options={userOptions}
+                            placeholder="Select users…"
+                          />
+                        )}
+                      </form.AppField>
+                    ) : null
+                  }
+                </form.Subscribe>
+              </>
+            ) : null}
             <form.AppField name="text">
               {(field) => <field.TextareaField label="Feedback" placeholder="Describe what you noticed…" rows={5} />}
             </form.AppField>

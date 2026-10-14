@@ -1,0 +1,60 @@
+{
+  "business": "contracting",
+  "releasedAt": "2026-10-14T04:15:10.616Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Find work needing attention on the Dashboard",
+          "description": "See jobs awaiting sign-off, pricing or invoicing, reading exceptions, unsolved breakdowns and machines due for service. Open a record or filtered list directly from the Dashboard."
+        },
+        {
+          "title": "Review fleet utilisation",
+          "description": "Compare Fleet Load, Utilisation and work, travel, unaccounted and unresolved hours by month, quarter or year. Explore trends for the whole fleet, a category or an individual machine."
+        },
+        {
+          "title": "Review mechanic performance",
+          "description": "See breakdowns solved, average time from report to resolution and current unsolved work for each mechanic. Select a mechanic to open their breakdowns in the Workshop."
+        },
+        {
+          "title": "Set alert thresholds and your utilisation target",
+          "description": "Administrators can adjust the Gap Flag threshold, Service Due Soon threshold and optional Utilisation Target in Settings. Save is enabled only while values differ from those already saved."
+        },
+        {
+          "title": "Catch up on Activity and add notes",
+          "description": "Search and filter job, breakdown, note and hour-reading updates, with an unread dot highlighting new activity. Read each job or breakdown's history and add notes from its Activity card."
+        },
+        {
+          "title": "Capture departures against the latest reading",
+          "description": "Departure capture now shows the machine's latest reading and lets you confirm when that previous reading is wrong. If capture is refused, the latest reading refreshes so you can correct your entry and retry."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Receive workshop alerts on your phone",
+          "description": "Workshop managers receive breakdown and Service Due Soon alerts, while managers and administrators also receive Code Red alerts. Tap an alert to open the breakdown or machine."
+        },
+        {
+          "title": "Choose which workshop alerts you receive",
+          "description": "Use Settings in the profile menu to turn individual alert types on or off. The available choices match your role."
+        },
+        {
+          "title": "Catch up on Activity from your phone",
+          "description": "The new Activity tab brings searchable, filtered updates together, with an unread dot for new activity. Open a job or breakdown's Activity thread to read its history and add written or voice notes."
+        },
+        {
+          "title": "See when a job is no longer available",
+          "description": "A job you can no longer access now leaves the screen and shows why it is unavailable."
+        },
+        {
+          "title": "Manage phone permissions from App Settings",
+          "description": "Open Settings from the profile menu to check camera, microphone, location and photo permissions. Allow access there or open your phone's settings when needed."
+        }
+      ]
+    }
+  ]
+}

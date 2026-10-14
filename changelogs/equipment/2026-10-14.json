@@ -1,0 +1,24 @@
+{
+  "business": "equipment",
+  "releasedAt": "2026-10-14T04:15:10.616Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Save labor rates only when they change",
+          "description": "Save now becomes disabled again when you restore all fields to their saved values."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Manage phone permissions from App Settings",
+          "description": "Open Settings from the profile menu to check camera, microphone, location and photo permissions. Allow access there or open your phone's settings when needed."
+        }
+      ]
+    }
+  ]
+}

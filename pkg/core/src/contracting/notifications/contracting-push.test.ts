@@ -135,6 +135,9 @@ describe('Contracting push fan-out', () => {
     ]);
     await setPushPreferences({ db, userId: foremanId, input: { muted: ['contracting.breakdown-note'] } });
     expect(recipients(await buildContractingPush({ db, event }))).toEqual(['ExponentPushToken[mo]']);
+    await db.update(user).set({ contractingRole: 'contracting-invoicing' }).where(eq(user.id, 'mo'));
+    expect(await buildContractingPush({ db, event })).toEqual([]);
+    await db.update(user).set({ contractingRole: 'contracting-manager' }).where(eq(user.id, 'mo'));
     await db.update(user).set({ banned: true }).where(eq(user.id, 'mo'));
     expect(await buildContractingPush({ db, event })).toEqual([]);
   });

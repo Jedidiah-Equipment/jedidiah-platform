@@ -45,10 +45,10 @@ async function recipientUserIds(
       and(
         eq(user.isDevice, false),
         sql`${user.banned} is not true`,
-        or(
-          inArray(businessRoleSql(business), [...(audience?.roles ?? roles)]),
-          audience ? inArray(user.id, audience.participants) : undefined,
-        ),
+        inArray(businessRoleSql(business), [...roles]),
+        audience
+          ? or(inArray(businessRoleSql(business), [...audience.roles]), inArray(user.id, audience.participants))
+          : undefined,
         sql`not (${user.mutedPushKinds} @> ${JSON.stringify([kind])}::jsonb)`,
         excludeUserId === null ? undefined : ne(user.id, excludeUserId),
       ),

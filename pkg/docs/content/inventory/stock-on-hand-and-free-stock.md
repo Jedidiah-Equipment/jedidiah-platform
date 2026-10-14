@@ -1,8 +1,7 @@
 # Stock on hand, Commitment, and Free Stock
 
 The **Stock on hand** screen shows several quantity columns per Part, and they answer different
-questions. The list loads in batches; **Load more** adds the next batch. Search and column sorting
-cover all matching Parts, including those not loaded yet.
+questions.
 
 ## Stock on hand
 

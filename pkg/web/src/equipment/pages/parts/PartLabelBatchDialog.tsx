@@ -209,6 +209,17 @@ export function PartLabelBatchPrintDialog({
             {mode === 'ids' ? (
               <Field>
                 <FieldLabel htmlFor="part-label-parts">Parts</FieldLabel>
+                {partSource === 'inventory' && !pageParts && inventoryParts.isPending ? (
+                  <p role="status">Loading Parts…</p>
+                ) : null}
+                {partSource === 'inventory' && !pageParts && inventoryParts.isError ? (
+                  <div role="alert">
+                    {getApiQueryErrorMessage(inventoryParts.error, 'Unable to load Parts.')}
+                    <Button onClick={() => void inventoryParts.refetch()} variant="link">
+                      Retry
+                    </Button>
+                  </div>
+                ) : null}
                 <Combobox
                   items={parts.map((part) => part.id)}
                   itemToStringLabel={(id) => partLabels.get(id) ?? id}
@@ -225,7 +236,11 @@ export function PartLabelBatchPrintDialog({
                     <ComboboxChipsInput id="part-label-parts" placeholder="Search parts…" />
                   </ComboboxChips>
                   <ComboboxContent>
-                    <ComboboxEmpty>No Parts found.</ComboboxEmpty>
+                    <ComboboxEmpty>
+                      {partSource === 'inventory' && !pageParts && !inventoryParts.isSuccess
+                        ? 'Parts unavailable.'
+                        : 'No Parts found.'}
+                    </ComboboxEmpty>
                     <ComboboxList>
                       {(id: string) => (
                         <ComboboxItem key={id} value={id}>

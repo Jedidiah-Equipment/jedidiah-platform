@@ -626,14 +626,6 @@ export async function listJobStock({ db, jobId }: { db: Db; jobId: UUID }): Prom
   });
 }
 
-export async function listStockOnHand({ db }: { db: Db }): Promise<StockOnHandResult> {
-  // Quantity and valuation are one report fact; concurrent postings must not split their snapshots.
-  return db.transaction((tx) => listStockOnHandSnapshot(tx), {
-    accessMode: 'read only',
-    isolationLevel: 'repeatable read',
-  });
-}
-
 /**
  * The stock position of one Part, addressed the way the shop addresses it: by the code on its label.
  *
@@ -649,7 +641,7 @@ export async function getPartStockByCode({ code, db }: { code: string; db: Db })
   const [part] = await db.select({ id: parts.id }).from(parts).where(eq(parts.code, code)).limit(1);
   if (!part) throw new ScannedPartNotFoundError(code);
 
-  const snapshot = await db.transaction((tx) => listStockOnHandSnapshot(tx, part.id), {
+  const snapshot = await db.transaction((tx) => listStockOnHandSnapshot(tx, [part.id]), {
     accessMode: 'read only',
     isolationLevel: 'repeatable read',
   });
@@ -660,8 +652,9 @@ export async function getPartStockByCode({ code, db }: { code: string; db: Db })
   return row;
 }
 
-async function listStockOnHandSnapshot(db: DatabaseTransaction, partId?: UUID): Promise<StockOnHandResult> {
-  const partCondition = partId === undefined ? undefined : eq(parts.id, partId);
+export async function listStockOnHandSnapshot(db: DatabaseTransaction, partIds?: UUID[]): Promise<StockOnHandResult> {
+  if (partIds?.length === 0) return { items: [] };
+  const partCondition = partIds === undefined ? undefined : inArray(parts.id, partIds);
   const [bucketRows, movementRows, committedByPart, openOrderLines] = await Promise.all([
     db
       .select({
@@ -700,10 +693,10 @@ async function listStockOnHandSnapshot(db: DatabaseTransaction, partId?: UUID): 
         unitCost: stockMovements.unitCost,
       })
       .from(stockMovements)
-      .where(partId === undefined ? undefined : eq(stockMovements.partId, partId))
+      .where(partIds === undefined ? undefined : inArray(stockMovements.partId, partIds))
       .orderBy(asc(stockMovements.partId), asc(stockMovements.createdAt), asc(stockMovements.id)),
-    loadOpenCommitments(db, partId === undefined ? undefined : [partId]).then(sumCommitmentsByPart),
-    loadOpenOrderLines(partId === undefined ? { db } : { db, partIds: [partId] }),
+    loadOpenCommitments(db, partIds).then(sumCommitmentsByPart),
+    loadOpenOrderLines(partIds === undefined ? { db } : { db, partIds }),
   ]);
 
   const movementsByPart = groupBy(movementRows, (row) => row.partId);

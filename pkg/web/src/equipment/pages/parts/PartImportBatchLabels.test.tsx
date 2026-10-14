@@ -9,7 +9,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import { TRPCProvider } from '@/lib/trpc.js';
 import { PartBulkImportDialog } from './PartBulkImportDialog.js';
-import { PartLabelBatchDialog } from './PartLabelBatchDialog.js';
+import { PartLabelBatchDialog, PartLabelBatchPrintDialog } from './PartLabelBatchDialog.js';
 import { buildPartBulkExportCsv } from './part-bulk-csv.js';
 import { fetchPartLabelsBlob } from './part-label.js';
 
@@ -61,6 +61,25 @@ afterEach(async () => {
 });
 
 describe('Part Import Batch labels', () => {
+  test('reports an inventory picker failure and lets the user retry', async () => {
+    let failed = false;
+    await mount(<PartLabelBatchPrintDialog open onOpenChange={vi.fn()} partSource="inventory" />, (path) => {
+      if (path !== 'inventory.stockOnHand') return respond(path);
+      if (!failed) {
+        failed = true;
+        throw new Error('Inventory is temporarily unavailable');
+      }
+      return { items: [], total: 0, nextCursor: null };
+    });
+    await chooseMode('Choose Parts');
+    await vi.waitFor(() =>
+      expect(document.querySelector('[role="alert"]')?.textContent).toContain('Inventory is temporarily unavailable'),
+    );
+    await act(async () => buttonByText('Retry').click());
+    await vi.waitFor(() => expect(document.querySelector('[role="alert"]')).toBeNull());
+    expect(document.body.textContent).not.toContain('Loading Parts');
+  });
+
   test('offers the new Parts of a finished import straight to the label dialog', async () => {
     const requests = await mount(<PartBulkImportDialog />);
 
@@ -102,7 +121,7 @@ describe('Part Import Batch labels', () => {
   });
 });
 
-async function mount(node: React.ReactNode) {
+async function mount(node: React.ReactNode, respondToRequest: (path: string) => unknown = respond) {
   (window as unknown as { __APP_CONFIG__: unknown }).__APP_CONFIG__ = {
     apiBaseUrl: 'http://localhost:7102',
     appBaseUrl: 'http://localhost:7101',
@@ -119,7 +138,7 @@ async function mount(node: React.ReactNode) {
         fetch: async (input, init) => {
           const path = new URL(String(input)).pathname.slice('/trpc/'.length);
           requests.push({ body: init?.body ? JSON.parse(String(init.body)) : undefined, path });
-          return Response.json({ result: { data: respond(path) } });
+          return Response.json({ result: { data: respondToRequest(path) } });
         },
         url: 'http://part-imports.test/trpc',
       }),

@@ -6,6 +6,7 @@ import { IconAlertTriangle } from '@tabler/icons-react';
 import { useMemo } from 'react';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
+import type { DataTableStore } from '@/components/data-table/store.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { PartLabelPrintButton } from '@/equipment/pages/parts/PartLabelPrintButton.js';
@@ -22,12 +23,16 @@ export function StockOnHandTable({
   items,
   onOpenHistory,
   showCosts,
+  pagination,
+  controller,
 }: {
   errorMessage?: string | undefined;
   isLoading?: boolean;
   items: StockOnHandRow[];
   onOpenHistory: (partId: UUID) => void;
   showCosts: boolean;
+  pagination: { total: number; hasNextPage: boolean; isFetchingNextPage: boolean; onLoadMore: () => void };
+  controller: Pick<DataTableStore, 'globalFilter' | 'sorting' | 'setGlobalFilter' | 'setSorting'>;
 }) {
   const columns = useMemo<DataTableColumnDef<StockOnHandRow>[]>(
     () => createStockOnHandColumns({ onOpenHistory, showCosts }),
@@ -38,8 +43,12 @@ export function StockOnHandTable({
     data: items,
     enableColumnFilters: false,
     enableSortingRemoval: false,
+    manualFiltering: true,
+    manualSorting: true,
+    onGlobalFilterChange: controller.setGlobalFilter,
+    onSortingChange: controller.setSorting,
+    state: { globalFilter: controller.globalFilter, sorting: controller.sorting },
   });
-  const total = table.getFilteredRowModel().rows.length;
 
   return (
     <DataTable
@@ -47,9 +56,10 @@ export function StockOnHandTable({
       errorMessage={errorMessage}
       globalFilterPlaceholder="Search stock on hand..."
       isLoading={isLoading}
-      paginationMode="complete"
+      paginationMode="cursor"
+      loadMore={{ ...pagination, loadedCount: items.length }}
       table={table}
-      total={total}
+      total={pagination.total}
       totalLabel={(value) => `${value} ${value === 1 ? 'part' : 'parts'}`}
     />
   );

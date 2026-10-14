@@ -87,7 +87,7 @@ const PurchaseOrderLinesCard: React.FC<{ commit: () => void; form: DraftForm; su
 }) => {
   const trpc = useTRPC();
   const parts = usePartOptions({ limit: 0, sortBy: 'name', sortDirection: 'asc' });
-  const stockOnHandQuery = useQuery(trpc.inventory.stockOnHand.queryOptions());
+  const stockOnHandQuery = useQuery(trpc.inventory.stockOnHand.queryOptions({ limit: 0 }));
   const averageCostByPart = new Map(
     (stockOnHandQuery.data?.items ?? []).map((part) => [part.partId, part.averageUnitCost]),
   );

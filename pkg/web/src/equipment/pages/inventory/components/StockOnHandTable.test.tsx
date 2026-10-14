@@ -63,10 +63,34 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+const controller = { globalFilter: '', sorting: [], setGlobalFilter: vi.fn(), setSorting: vi.fn() };
+const pagination = { total: 2, hasNextPage: false, isFetchingNextPage: false, onLoadMore: vi.fn() };
+
 describe('StockOnHandTable', () => {
+  it('offers Load more with the server total while rendering only the loaded Parts', () => {
+    const html = renderToStaticMarkup(
+      <StockOnHandTable
+        controller={controller}
+        items={result.items}
+        onOpenHistory={vi.fn()}
+        showCosts={true}
+        pagination={{ total: 40, hasNextPage: true, isFetchingNextPage: false, onLoadMore: vi.fn() }}
+      />,
+    );
+    expect(html).toContain('Load more');
+    expect(html).toContain('40');
+    expect(html.match(/View history/g)).toHaveLength(2);
+  });
+
   it('shows linear buckets, periodic count age, honest missing cost, and history actions to cost readers', () => {
     const html = renderToStaticMarkup(
-      <StockOnHandTable items={result.items} onOpenHistory={vi.fn()} showCosts={true} />,
+      <StockOnHandTable
+        controller={controller}
+        pagination={pagination}
+        items={result.items}
+        onOpenHistory={vi.fn()}
+        showCosts={true}
+      />,
     );
 
     expect(html).toContain('Search stock on hand...');
@@ -117,7 +141,13 @@ describe('StockOnHandTable', () => {
     });
 
     const html = renderToStaticMarkup(
-      <StockOnHandTable items={negative.items} onOpenHistory={vi.fn()} showCosts={false} />,
+      <StockOnHandTable
+        controller={controller}
+        pagination={pagination}
+        items={negative.items}
+        onOpenHistory={vi.fn()}
+        showCosts={false}
+      />,
     );
 
     // The count itself and the bucket that went short, and nothing else.
@@ -151,7 +181,13 @@ describe('StockOnHandTable', () => {
     });
 
     const html = renderToStaticMarkup(
-      <StockOnHandTable items={[...result.items, ...oversold.items]} onOpenHistory={vi.fn()} showCosts={true} />,
+      <StockOnHandTable
+        controller={controller}
+        pagination={pagination}
+        items={[...result.items, ...oversold.items]}
+        onOpenHistory={vi.fn()}
+        showCosts={true}
+      />,
     );
 
     expect(html).not.toContain('Negative stock');
@@ -160,7 +196,13 @@ describe('StockOnHandTable', () => {
 
   it('removes all cost columns for a caller without cost-read access', () => {
     const html = renderToStaticMarkup(
-      <StockOnHandTable items={result.items} onOpenHistory={vi.fn()} showCosts={false} />,
+      <StockOnHandTable
+        controller={controller}
+        pagination={pagination}
+        items={result.items}
+        onOpenHistory={vi.fn()}
+        showCosts={false}
+      />,
     );
 
     expect(html).not.toContain('Average cost');

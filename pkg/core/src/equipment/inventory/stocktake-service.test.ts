@@ -20,7 +20,8 @@ import { seedPartCategory, partValues as testPartValues } from '../test/part-fix
 import { listBuyList } from './buy-list-service.js';
 import { StockMovementDeltaError } from './stock-movement-errors.js';
 import { getStockMovementHistory } from './stock-movement-history-read.js';
-import { listStockOnHand, postAdjustment } from './stock-movement-service.js';
+import { postAdjustment } from './stock-movement-service.js';
+import { listStockOnHand } from './stock-on-hand-list.js';
 import {
   StocktakePartOutOfScopeError,
   StocktakeSessionAlreadyOpenError,

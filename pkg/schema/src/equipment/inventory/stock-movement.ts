@@ -1,7 +1,11 @@
 import { z } from 'zod';
 import { AuthId } from '../../auth/auth-id.js';
 import { DateIso, DateOnlyIso } from '../../common/date.js';
-import { CursorQueryInput, createCursorQueryResult } from '../../common/pagination.js';
+import {
+  CursorQueryInput,
+  createCursorQueryResult,
+  createSearchedSortedCursorQueryInput,
+} from '../../common/pagination.js';
 import { Price } from '../../common/price.js';
 import { nullableTrimmedText, nullableTrimmedTextInput, requiredTrimmedText, SearchText } from '../../common/text.js';
 import { NullableThumbnailDataUrl } from '../../common/thumbnail.js';
@@ -356,6 +360,24 @@ export const StockOnHandRow = z.object({
 });
 
 export const StockOnHandRowCostFields = declareInventoryCostFields(StockOnHandRow, 'averageUnitCost', 'totalValue');
+
+export const StockOnHandSortBy = z.enum([
+  'part',
+  'quantity',
+  'estimatedOnHand',
+  'free',
+  'onOrder',
+  'countStatus',
+  'averageUnitCost',
+  'totalValue',
+]);
+export type StockOnHandListInput = z.infer<typeof StockOnHandListInput>;
+export const StockOnHandListInput = createSearchedSortedCursorQueryInput({
+  shape: {},
+  sortBy: StockOnHandSortBy.default('part'),
+});
+export type StockOnHandListResult = z.infer<typeof StockOnHandListResult>;
+export const StockOnHandListResult = createCursorQueryResult(StockOnHandRow);
 
 export type StockOnHandResult = z.infer<typeof StockOnHandResult>;
 export const StockOnHandResult = z.object({ items: z.array(StockOnHandRow) });

@@ -5,7 +5,7 @@ import { describe, expect } from 'vitest';
 import { postReceipt } from '../inventory/receipt-service.js';
 
 import { postReturnToSupplier } from '../inventory/return-to-supplier-service.js';
-import { listStockOnHand } from '../inventory/stock-movement-service.js';
+import { listStockOnHand } from '../inventory/stock-on-hand-list.js';
 import {
   ACTOR_ID,
   LINEAR_PART_ID,

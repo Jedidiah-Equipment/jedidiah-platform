@@ -11,7 +11,6 @@ import {
 } from '@pkg/db/equipment';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
-
 import {
   actorUserId,
   adjustmentInput,
@@ -29,7 +28,6 @@ import { postReceipt } from './receipt-service.js';
 import { getStockMovementHistory } from './stock-movement-history-read.js';
 import {
   listJobStock,
-  listStockOnHand,
   postAdjustment,
   postCheckout,
   postCheckoutBasket,
@@ -37,6 +35,7 @@ import {
   postReturnToStore,
   postRevaluation,
 } from './stock-movement-service.js';
+import { listStockOnHand } from './stock-on-hand-list.js';
 
 describe('Checkout Basket', () => {
   test('posts a Job Basket as ordinary Checkout rows with shared target and actor', async ({ context }) => {

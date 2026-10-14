@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { breakdownPushMessage, serviceDueSoonPushMessage } from './notifications.js';
+import { breakdownPushMessage, notePushMessage, serviceDueSoonPushMessage } from './notifications.js';
 
 describe('breakdownPushMessage', () => {
   const breakdown = {
@@ -41,3 +41,17 @@ describe('serviceDueSoonPushMessage', () => {
     });
   });
 });
+
+test.each(['job', 'breakdown'] as const)(
+  'a long %s note uses a bounded preview without splitting Unicode characters',
+  (kind) => {
+    const message = notePushMessage({
+      kind,
+      id: '00000000-0000-4000-8000-000000000001',
+      code: 'CJOB-00037',
+      authorName: 'Sipho',
+      text: '🌾'.repeat(2000),
+    });
+    expect(message.body).toBe(`Sipho: ${'🌾'.repeat(240)}…`);
+  },
+);

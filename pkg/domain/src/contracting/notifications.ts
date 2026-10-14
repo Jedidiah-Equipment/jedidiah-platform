@@ -86,11 +86,14 @@ export function notePushMessage(note: {
   text: string;
 }): ContractingPushContent {
   const firstLine = note.text.split('\n')[0]?.trim() ?? '';
+  // Leave room for author, title and navigation in the provider's 4 KiB payload; keep surrogate pairs intact.
+  const characters = Array.from(firstLine);
+  const preview = characters.length > 240 ? `${characters.slice(0, 240).join('')}…` : firstLine;
   const path =
     note.kind === 'job' ? `/contracting/jobs/${note.id}?tab=activity` : `/contracting/workshop/${note.id}?tab=activity`;
   return {
     title: `Note · ${note.code}`,
-    body: `${note.authorName}: ${firstLine}`,
+    body: `${note.authorName}: ${preview}`,
     data: { business: 'contracting', kind: note.kind, id: note.id, path },
     channelId: NOTES_PUSH_CHANNEL_ID,
     priority: 'high',

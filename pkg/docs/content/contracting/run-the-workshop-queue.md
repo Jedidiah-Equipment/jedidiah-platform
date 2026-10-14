@@ -11,7 +11,7 @@ The Workshop queue is every Breakdown reported from the field, for the workshop 
 7. Keep the conversation with the Foreman under **Activity**: choose **Add Note**, write it, and choose **Send**. The card also lists everything else that happened on the Breakdown.
 8. Choose **Mark completed** on the **Fixed** step, write the **Close-out note** — what was wrong and what was done — and choose **Mark completed**. The Breakdown is then Fixed. A Breakdown can go straight to Fixed from Not fixed. Once Fixed, only notes can be added.
 
-Foremen follow their own Breakdowns on the phone: see [Report a Breakdown](./report-a-breakdown). New Breakdowns also alert the workshop manager's phone: see [Get workshop alerts](./get-workshop-alerts).
+Foremen follow their own Breakdowns on the phone: see [Report a Breakdown](./report-a-breakdown). New Breakdowns also alert the workshop manager's phone: see [Get alerts](./get-workshop-alerts).
 
 ## Report a problem on the web
 

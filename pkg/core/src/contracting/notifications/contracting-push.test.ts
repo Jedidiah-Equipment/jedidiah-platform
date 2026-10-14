@@ -9,7 +9,7 @@ import { createTester } from '../../test/create-tester.js';
 import { addBreakdownNote, reportBreakdown } from '../breakdowns/breakdown-service.js';
 import { patchMachine } from '../fleet/machine-service.js';
 import { addJobNote } from '../jobs/job-note-service.js';
-import { createJob } from '../jobs/job-service.js';
+import { cancelJob, createJob, patchJob } from '../jobs/job-service.js';
 import { captureReading } from '../readings/reading-service.js';
 import { admin, adminId, foreman, foremanId, plannedStint, seedJobFixtures } from '../test/job-fixtures.js';
 import { buildContractingPush, dispatchContractingPush } from './contracting-push.js';
@@ -206,6 +206,53 @@ describe('Contracting push fan-out', () => {
     expect(
       recipients(await buildContractingPush({ db, event: { kind: 'breakdown-note.added', noteId: reply.id } })),
     ).toEqual(['ExponentPushToken[jed]', 'ExponentPushToken[sipho]']);
+  });
+
+  test('prior Foremen lose note alerts after reassignment, and Job alerts stop outside readable statuses', async ({
+    context: { db, customer, farm, workType, excavator },
+  }) => {
+    const job = await createJob({
+      db,
+      actor: admin,
+      input: {
+        customerId: customer.id,
+        farmId: farm.id,
+        workTypeId: workType.id,
+        description: null,
+        foremanUserId: foremanId,
+      },
+    });
+    await plannedStint(db, admin, { jobId: job.id, machineId: excavator.id, implementId: null });
+    const { breakdown } = await reportBreakdown({
+      db,
+      actor: admin,
+      input: {
+        subject: { kind: 'machine', id: excavator.id },
+        urgency: 'code-red',
+        description: 'Leak',
+        jobId: job.id,
+      },
+    });
+    await addJobNote({ db, actor: foreman, input: { jobId: job.id, text: 'Gate code' } });
+    await addBreakdownNote({ db, actor: foreman, input: { breakdownId: breakdown.id, text: 'Checking' } });
+    const jobNote = await addJobNote({ db, actor: admin, input: { jobId: job.id, text: 'Management update' } });
+    const breakdownNote = await addBreakdownNote({
+      db,
+      actor: admin,
+      input: { breakdownId: breakdown.id, text: 'Workshop update' },
+    });
+    const jobEvent = { kind: 'job-note.added', noteId: jobNote.id } as const;
+    const breakdownEvent = { kind: 'breakdown-note.added', noteId: breakdownNote.id } as const;
+    for (const event of [jobEvent, breakdownEvent])
+      expect(recipients(await buildContractingPush({ db, event }))).toContain('ExponentPushToken[sipho]');
+    await patchJob({ db, actor: admin, input: { id: job.id, foremanUserId: null } });
+    for (const event of [jobEvent, breakdownEvent])
+      expect(recipients(await buildContractingPush({ db, event }))).not.toContain('ExponentPushToken[sipho]');
+    await patchJob({ db, actor: admin, input: { id: job.id, foremanUserId: foremanId } });
+    await cancelJob({ db, actor: admin, input: { id: job.id, reason: 'Cancelled by customer' } });
+    expect(recipients(await buildContractingPush({ db, event: jobEvent }))).not.toContain('ExponentPushToken[sipho]');
+    // The linked Breakdown still belongs to its Foreman even when the Job closes.
+    expect(recipients(await buildContractingPush({ db, event: breakdownEvent }))).toContain('ExponentPushToken[sipho]');
   });
 
   test.for(['breakdown-note.added', 'job-note.added'] as const)(

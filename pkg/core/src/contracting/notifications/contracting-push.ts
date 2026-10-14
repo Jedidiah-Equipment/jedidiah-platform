@@ -5,21 +5,25 @@ import {
   contractingJobNotes,
   contractingJobs,
 } from '@pkg/db/contracting';
-import { PUSH_KINDS } from '@pkg/domain';
+import { createUserAccessSummaryForUser, PUSH_KINDS } from '@pkg/domain';
 import {
   breakdownNoteRolePushRecipients,
   breakdownPushKind,
   breakdownPushMessage,
+  breakdownReadScope,
   type ContractingPushContent,
   type ContractingPushEvent,
   formatJobNumber,
+  isBreakdownMine,
   jobNoteRolePushRecipients,
+  jobReadMode,
+  jobReadStatuses,
   notePushMessage,
   SERVICE_DUE_SOON_PUSH_KIND,
   serviceDueNeedsAttention,
   serviceDueSoonPushMessage,
 } from '@pkg/domain/contracting';
-import type { AppRole, PushKind } from '@pkg/schema';
+import type { AppRole, PushKind, UserAccessSummary } from '@pkg/schema';
 import { and, eq, inArray, ne, or, sql } from 'drizzle-orm';
 import { deliverPush, type PushDelivery, type PushMessage, type PushSender } from '../../push/push-sender.js';
 import { listPushTokensForUsers } from '../../push/push-token-service.js';
@@ -27,19 +31,20 @@ import { businessRoleSql } from '../../users/business-role.js';
 import { selectBreakdowns, toBreakdownSummary } from '../breakdowns/breakdown-load.js';
 import { getMachine } from '../fleet/machine-service.js';
 
+type NoteAudience = {
+  roles: readonly AppRole[];
+  participants: string[];
+  canRead: (access: UserAccessSummary) => boolean;
+};
+
 /**
  * Eligible role recipients and thread participants share the same filters: never muted, a shared device,
  * a banned account or the author. Selecting users once also deduplicates people reached both ways.
  */
-async function recipientUserIds(
-  db: Db,
-  kind: PushKind,
-  excludeUserId: string | null,
-  audience?: { roles: readonly AppRole[]; participants: string[] },
-) {
+async function recipientUserIds(db: Db, kind: PushKind, excludeUserId: string | null, audience?: NoteAudience) {
   const { business, roles } = PUSH_KINDS[kind];
   const rows = await db
-    .select({ id: user.id })
+    .select({ id: user.id, role: user.role, contractingRole: user.contractingRole })
     .from(user)
     .where(
       and(
@@ -53,7 +58,7 @@ async function recipientUserIds(
         excludeUserId === null ? undefined : ne(user.id, excludeUserId),
       ),
     );
-  return rows.map((row) => row.id);
+  return rows.filter((row) => !audience || audience.canRead(createUserAccessSummaryForUser(row))).map((row) => row.id);
 }
 
 async function addressed(
@@ -61,7 +66,7 @@ async function addressed(
   kind: PushKind,
   excludeUserId: string | null,
   content: ContractingPushContent,
-  audience?: { roles: readonly AppRole[]; participants: string[] },
+  audience?: NoteAudience,
 ): Promise<PushMessage[]> {
   const tokens = await listPushTokensForUsers({
     db,
@@ -106,6 +111,10 @@ export async function buildContractingPush({
       }),
       {
         roles: breakdownNoteRolePushRecipients,
+        canRead: (access) => {
+          const scope = breakdownReadScope(access);
+          return scope === 'all' || (scope === 'own' && isBreakdownMine(breakdown, access.userId));
+        },
         participants: [
           breakdown.reportedByUserId,
           ...(row.jobForemanUserId ? [row.jobForemanUserId] : []),
@@ -134,6 +143,14 @@ export async function buildContractingPush({
       notePushMessage({ kind: 'job', id: job.id, code: formatJobNumber(job.code), authorName, text: note.text }),
       {
         roles: jobNoteRolePushRecipients,
+        canRead: (access) => {
+          const mode = jobReadMode(access);
+          return (
+            mode !== null &&
+            jobReadStatuses[mode].includes(job.status) &&
+            (mode !== 'own' || job.foremanUserId === access.userId)
+          );
+        },
         participants: [...(job.foremanUserId ? [job.foremanUserId] : []), ...authors.map(({ id }) => id)],
       },
     );

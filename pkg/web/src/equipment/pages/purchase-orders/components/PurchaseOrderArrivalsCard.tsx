@@ -99,7 +99,12 @@ export function PurchaseOrderArrivalsCard({
         header: 'Quantity',
         meta: { cellClassName: 'text-right tabular-nums', headerClassName: 'text-right' },
       },
-      { accessorFn: (row) => (row.actorName ? getFirstName(row.actorName) : 'System'), header: 'By', id: 'actor' },
+      {
+        accessorFn: (row) => row.actorName ?? 'System',
+        cell: ({ row }) => (row.original.actorName ? getFirstName(row.original.actorName) : 'System'),
+        header: 'By',
+        id: 'actor',
+      },
       { accessorFn: (row) => row.note ?? '—', header: 'Note', id: 'note' },
     ],
     [],

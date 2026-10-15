@@ -187,7 +187,8 @@ function createStockMovementHistoryColumns({
       id: 'note',
     },
     {
-      accessorFn: (item) => (item.recipientName ? getFirstName(item.recipientName) : '—'),
+      accessorFn: (item) => item.recipientName ?? '—',
+      cell: ({ row }) => (row.original.recipientName ? getFirstName(row.original.recipientName) : '—'),
       header: 'Recipient',
       id: 'recipient',
     },

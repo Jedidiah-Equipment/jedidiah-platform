@@ -55,7 +55,8 @@ export function PurchaseOrderDocumentsCard({
         header: 'Filed',
       },
       {
-        accessorFn: (document) => (document.uploaderName ? getFirstName(document.uploaderName) : '—'),
+        accessorFn: (document) => document.uploaderName ?? '—',
+        cell: ({ row }) => (row.original.uploaderName ? getFirstName(row.original.uploaderName) : '—'),
         header: 'By',
         id: 'uploader',
       },

@@ -36,7 +36,8 @@ export function PurchaseOrderAmendmentsCard({ purchaseOrderId }: { purchaseOrder
       },
       { accessorKey: 'note', header: 'Note' },
       {
-        accessorFn: (amendment) => (amendment.actorName ? getFirstName(amendment.actorName) : '—'),
+        accessorFn: (amendment) => amendment.actorName ?? '—',
+        cell: ({ row }) => (row.original.actorName ? getFirstName(row.original.actorName) : '—'),
         header: 'By',
         id: 'actor',
       },

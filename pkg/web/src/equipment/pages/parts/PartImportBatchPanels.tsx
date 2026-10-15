@@ -42,7 +42,8 @@ const batchColumns: DataTableColumnDef<PartImportBatch>[] = [
     header: 'Imported',
   },
   {
-    accessorFn: (batch) => (batch.importedBy ? getFirstName(batch.importedBy.name) : UNAVAILABLE_IMPORTER),
+    accessorFn: (batch) => batch.importedBy?.name ?? UNAVAILABLE_IMPORTER,
+    cell: ({ row }) => (row.original.importedBy ? getFirstName(row.original.importedBy.name) : UNAVAILABLE_IMPORTER),
     header: 'By',
     id: 'importedBy',
   },

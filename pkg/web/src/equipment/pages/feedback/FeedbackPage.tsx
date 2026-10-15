@@ -1,3 +1,4 @@
+import { getFirstName } from '@pkg/domain';
 import { departmentLabels } from '@pkg/domain/equipment';
 import type { UUID } from '@pkg/schema';
 import {
@@ -242,13 +243,15 @@ function feedbackGlobalFilter(row: { original: FeedbackListItem }, _columnId: st
     feedbackStatusLabels[row.original.status],
     row.original.status,
     ...feedbackTargetLabels(row.original),
+    // The list shows first names; search still matches a target's full name.
+    ...row.original.users.map((user) => user.name),
   ].some((value) => value.toLowerCase().includes(search));
 }
 
 function feedbackTargetLabels(item: FeedbackListItem): string[] {
   return [
     ...item.departments.map((department) => departmentLabels[department]),
-    ...item.users.map((user) => user.name),
+    ...item.users.map((user) => getFirstName(user.name)),
   ];
 }
 
@@ -412,7 +415,7 @@ function UserLabel({ name, thumbnailDataUrl }: { name: string; thumbnailDataUrl:
   return (
     <span className="flex min-w-0 items-center gap-2 font-medium">
       <EntityThumbnail label={name} size="sm" thumbnailDataUrl={thumbnailDataUrl} />
-      <span className="truncate">{name}</span>
+      <span className="truncate">{getFirstName(name)}</span>
     </span>
   );
 }

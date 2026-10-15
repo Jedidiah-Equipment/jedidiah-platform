@@ -11,6 +11,7 @@ import { Label, PolarAngleAxis, PolarRadiusAxis, RadialBar, RadialBarChart } fro
 import { DashboardWidgetEmpty, DashboardWidgetError } from '@/components/common/dashboard/DashboardWidgetCard.js';
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
+import { cn } from '@/lib/utils.js';
 import { useShopFloorBays } from '../use-shop-floor-bays.js';
 
 export const BAY_LOAD_CHART_CONFIG = {
@@ -26,6 +27,8 @@ export const BAY_LOAD_CHART_CONFIG = {
 
 export const BAY_LOAD_DEPARTMENTS: ReadonlySet<Department> = new Set(['fabrication', 'paint']);
 export const BAY_LOAD_CHART_HEIGHT_PX = 80;
+// Two gauges squash below a 24rem card, so a narrow card keeps only the first (Fabrication).
+const WIDE_ONLY = 'hidden @sm:flex';
 
 export const BayLoadTodayWidget: React.FC = () => {
   const bays = useShopFloorBays();
@@ -49,11 +52,11 @@ export const BayLoadTodayWidget: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="@container flex flex-col gap-4">
       <BayLoadLegend />
-      <div className="grid grid-cols-2 gap-3">
-        {departmentLoads.map((load) => (
-          <DepartmentBayLoadChart key={load.department} load={load} />
+      <div className="grid @sm:grid-cols-2 gap-3">
+        {departmentLoads.map((load, index) => (
+          <DepartmentBayLoadChart key={load.department} load={load} className={index > 0 ? WIDE_ONLY : undefined} />
         ))}
       </div>
     </div>
@@ -69,10 +72,10 @@ export function toBayLoadChartData(load: Pick<DepartmentBayLoadToday, 'totalCoun
   ];
 }
 
-function DepartmentBayLoadChart({ load }: { load: DepartmentBayLoadToday }) {
+function DepartmentBayLoadChart({ className, load }: { className?: string | undefined; load: DepartmentBayLoadToday }) {
   return (
     <section
-      className="flex min-w-0 flex-col items-center"
+      className={cn('flex min-w-0 flex-col items-center', className)}
       aria-label={`${departmentLabels[load.department]} Bay load: ${load.loadPercent}%`}
     >
       <h3 className="truncate text-center font-medium text-sm">{departmentLabels[load.department]}</h3>
@@ -155,15 +158,15 @@ function BayLoadLegend() {
 
 function BayLoadTodayWidgetSkeleton() {
   return (
-    <div className="flex flex-col gap-4">
+    <div className="@container flex flex-col gap-4">
       <div className="flex gap-4">
         <Skeleton className="h-3 w-20" />
         <Skeleton className="h-3 w-24" />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid @sm:grid-cols-2 gap-3">
         {JOB_DEPARTMENT_PIPELINE.filter(({ department }) => BAY_LOAD_DEPARTMENTS.has(department)).map(
-          ({ department }) => (
-            <div key={department} className="flex flex-col items-center gap-3">
+          ({ department }, index) => (
+            <div key={department} className={cn('flex flex-col items-center gap-3', index > 0 && WIDE_ONLY)}>
               <Skeleton className="h-4 w-20 max-w-full" />
               <Skeleton className="h-20 w-full max-w-44 rounded-t-full" />
             </div>

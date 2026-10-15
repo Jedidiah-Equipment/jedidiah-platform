@@ -1,4 +1,4 @@
-import { formatDate, hasPermission } from '@pkg/domain';
+import { formatDate, getFirstName, hasPermission } from '@pkg/domain';
 import { departmentLabels, getBayDisplayText, JOB_DEPARTMENT_PIPELINE } from '@pkg/domain/equipment';
 import type { AuthId } from '@pkg/schema';
 import {
@@ -789,7 +789,7 @@ const BayOperatorHistoryItem: React.FC<{ item: JobBayOperatorAssignmentHistoryIt
   <div className="flex min-w-0 items-center gap-2">
     <EntityThumbnail label={item.operator.name} size="sm" thumbnailDataUrl={item.operator.thumbnailDataUrl} />
     <div className="min-w-0">
-      <div className="truncate font-medium text-xs">{item.operator.name}</div>
+      <div className="truncate font-medium text-xs">{getFirstName(item.operator.name)}</div>
       <div className="truncate text-muted-foreground text-xs">
         Assigned {formatDate(item.assignedAt, 'medium')} /{' '}
         {item.unassignedAt ? `Unassigned ${formatDate(item.unassignedAt, 'medium')}` : 'Current'}
@@ -800,7 +800,7 @@ const BayOperatorHistoryItem: React.FC<{ item: JobBayOperatorAssignmentHistoryIt
 
 const OperatorIdentity: React.FC<{ operator: BayOperator }> = ({ operator }) => (
   <div className="min-w-0">
-    <div className="truncate font-medium text-sm">{operator.name}</div>
+    <div className="truncate font-medium text-sm">{getFirstName(operator.name)}</div>
     <div className="truncate text-muted-foreground text-xs">{operator.email}</div>
   </div>
 );

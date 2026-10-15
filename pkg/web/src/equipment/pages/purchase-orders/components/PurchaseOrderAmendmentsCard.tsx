@@ -1,4 +1,4 @@
-import { formatDate, formatNumber } from '@pkg/domain';
+import { formatDate, formatNumber, getFirstName } from '@pkg/domain';
 import type { UUID } from '@pkg/schema';
 import { PURCHASE_ORDER_AMENDMENT_KIND_LABELS, type PurchaseOrderAmendment } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
@@ -37,6 +37,7 @@ export function PurchaseOrderAmendmentsCard({ purchaseOrderId }: { purchaseOrder
       { accessorKey: 'note', header: 'Note' },
       {
         accessorFn: (amendment) => amendment.actorName ?? '—',
+        cell: ({ row }) => (row.original.actorName ? getFirstName(row.original.actorName) : '—'),
         header: 'By',
         id: 'actor',
       },

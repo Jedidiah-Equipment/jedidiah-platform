@@ -8,6 +8,8 @@ import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { QueryContent } from '@/components/common/QueryContent.js';
 import { AutosaveFormCard } from '@/components/form/AutosaveFormCard.js';
 import { useAutosaveForm } from '@/components/form/index.js';
+import { DetailAsideGrid } from '@/components/page-layout/DetailAsideGrid.js';
+import { EditFormFullWidth } from '@/components/page-layout/EditFormLayout.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Button } from '@/components/ui/button.js';
 import { ActivityCard } from '@/contracting/components/activity/ActivityCard.js';
@@ -39,7 +41,6 @@ export function JobPage({ code }: { code: string }) {
       description={
         query.data ? `${query.data.customerName} · ${query.data.farmName} · ${query.data.workTypeName}` : undefined
       }
-      size="lg"
       actions={
         query.data ? (
           <div className="flex items-center gap-2">
@@ -55,20 +56,24 @@ export function JobPage({ code }: { code: string }) {
           sheet ? (
             <div className="space-y-5">
               {job.cancellationReason ? <p>Cancelled: {job.cancellationReason}</p> : null}
-              <SetupCard key={`setup-${job.id}`} job={job} sheet={sheet} />
-              <ActivityCard scope={{ jobId: job.id }} addNote={sheet.action('addNote')} />
-              <MachinesCard job={job} sheet={sheet} />
-              {sheet.showsSignOff ? <SignOffCard job={job} sheet={sheet} /> : null}
-              <PricingCard job={job} sheet={sheet} />
-              <InvoiceCard job={job} sheet={sheet} />
-              {sheet.showsChargeLines ? (
-                <ChargeLinesCard
-                  job={job}
-                  editable={sheet.can('editChargeLines')}
-                  addAction={sheet.action('editChargeLines')}
-                  amountEditable={sheet.can('priceChargeLines')}
-                />
-              ) : null}
+              <DetailAsideGrid>
+                <div className="min-w-0 space-y-5">
+                  <SetupCard key={`setup-${job.id}`} job={job} sheet={sheet} />
+                  <MachinesCard job={job} sheet={sheet} />
+                  {sheet.showsSignOff ? <SignOffCard job={job} sheet={sheet} /> : null}
+                  <PricingCard job={job} sheet={sheet} />
+                  <InvoiceCard job={job} sheet={sheet} />
+                  {sheet.showsChargeLines ? (
+                    <ChargeLinesCard
+                      job={job}
+                      editable={sheet.can('editChargeLines')}
+                      addAction={sheet.action('editChargeLines')}
+                      amountEditable={sheet.can('priceChargeLines')}
+                    />
+                  ) : null}
+                </div>
+                <ActivityCard scope={{ jobId: job.id }} addNote={sheet.action('addNote')} />
+              </DetailAsideGrid>
               <CancelJob job={job} sheet={sheet} />
             </div>
           ) : null
@@ -112,7 +117,6 @@ function SetupCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }) {
   });
   return (
     <section aria-label="Setup">
-      <h2 className="mb-2 font-heading text-lg">Setup</h2>
       <AutosaveFormCard autosave={autosave} formProps={formProps} disabled={!sheet.can('editSetup')}>
         <form.AppField name="customerId">
           {(field) => (
@@ -155,7 +159,9 @@ function SetupCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }) {
             />
           )}
         </form.AppField>
-        <form.AppField name="description">{(field) => <field.TextareaField label="Description" />}</form.AppField>
+        <EditFormFullWidth>
+          <form.AppField name="description">{(field) => <field.TextareaField label="Description" />}</form.AppField>
+        </EditFormFullWidth>
       </AutosaveFormCard>
     </section>
   );

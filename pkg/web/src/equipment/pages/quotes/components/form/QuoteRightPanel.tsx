@@ -1,4 +1,4 @@
-import { createStableRowKeys, formatCurrency, formatNumber, formatPercent } from '@pkg/domain';
+import { createStableRowKeys, formatCurrency, formatNumber, formatPercent, getFirstName } from '@pkg/domain';
 import {
   formatQuoteDeliverySummary,
   getQuoteOfferingName,
@@ -192,7 +192,8 @@ function QuoteAllocationCard({ quote }: { quote: Extract<QuoteDetail, { kind: 'p
               >
                 <span className="font-medium">{competitor.code}</span>
                 <span className="truncate text-muted-foreground text-xs">
-                  {competitor.customerCompanyName} · {competitor.salesPersonName ?? 'Unassigned'} ·{' '}
+                  {competitor.customerCompanyName} ·{' '}
+                  {competitor.salesPersonName ? getFirstName(competitor.salesPersonName) : 'Unassigned'} ·{' '}
                   {quoteStatusLabels[competitor.status]}
                 </span>
               </Link>

@@ -1,3 +1,4 @@
+import { getFirstName } from '@pkg/domain';
 import { IconUserX } from '@tabler/icons-react-native';
 import { Pressable, View } from 'react-native';
 
@@ -48,7 +49,7 @@ export function StoresActorHeader({ onSwitch }: { onSwitch: () => void }) {
             numberOfLines={1}
             weight="bold"
           >
-            {actor?.name ?? 'Tap to choose a name'}
+            {actor ? getFirstName(actor.name) : 'Tap to choose a name'}
           </Text>
         </View>
       </Pressable>

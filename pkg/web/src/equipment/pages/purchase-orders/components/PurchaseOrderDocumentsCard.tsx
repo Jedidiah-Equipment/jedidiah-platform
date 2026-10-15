@@ -1,4 +1,4 @@
-import { formatBytes, formatDate } from '@pkg/domain';
+import { formatBytes, formatDate, getFirstName } from '@pkg/domain';
 import type { UUID } from '@pkg/schema';
 import { PURCHASE_ORDER_DOCUMENT_TYPE_LABELS, type PurchaseOrderDocumentRow } from '@pkg/schema/equipment';
 import { IconEye } from '@tabler/icons-react';
@@ -56,6 +56,7 @@ export function PurchaseOrderDocumentsCard({
       },
       {
         accessorFn: (document) => document.uploaderName ?? '—',
+        cell: ({ row }) => (row.original.uploaderName ? getFirstName(row.original.uploaderName) : '—'),
         header: 'By',
         id: 'uploader',
       },

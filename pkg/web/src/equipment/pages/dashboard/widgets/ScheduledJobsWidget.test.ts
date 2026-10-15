@@ -23,10 +23,10 @@ describe('ScheduledJobRow', () => {
         createElement(ScheduledJobRow, { canOpenJobs: false, job, scheduledJob: { ...scheduledJob, operatorName } }),
       );
 
-    expect(render('Piet Pompies')).toContain('Piet Pompies - Fabrication Bay 1 - Pump skid rebuild');
+    expect(render('Piet Pompies')).toContain('Piet - Fabrication Bay 1 - Pump skid rebuild');
     const unassigned = render(null);
     expect(unassigned).toContain('Fabrication Bay 1 - No operator - Pump skid rebuild');
-    expect(unassigned).not.toContain('Piet Pompies');
+    expect(unassigned).not.toContain('Piet');
   });
 });
 

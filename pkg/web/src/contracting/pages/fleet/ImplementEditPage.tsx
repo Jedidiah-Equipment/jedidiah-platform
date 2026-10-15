@@ -4,6 +4,7 @@ import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { QueryContent } from '@/components/common/QueryContent.js';
 import { AutosaveFormCard } from '@/components/form/AutosaveFormCard.js';
 import { useAutosaveForm } from '@/components/form/index.js';
+import { DetailAsideGrid } from '@/components/page-layout/DetailAsideGrid.js';
 import { EditFormFullWidth } from '@/components/page-layout/EditFormLayout.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { CategoryLabel } from '@/contracting/components/CategoryIcon.js';
@@ -33,7 +34,6 @@ export function ImplementEditPage({ id }: { id: string }) {
         )
       }
       description={query.data ? `${query.data.categoryName} · Implement details` : 'Implement details'}
-      size="md"
     >
       <QueryContent query={query} errorMessage="Unable to load implement.">
         {(implement) => <ImplementForm key={id} implement={implement} />}
@@ -58,33 +58,35 @@ function ImplementForm({ implement }: { implement: Implement }) {
     <>
       <ErrorMessage error={categories.error} fallbackMessage="Unable to load categories." />
       {implement.retiredAt ? <p className="mb-4 text-muted-foreground">Retired — {implement.retiredReason}</p> : null}
-      <AutosaveFormCard formProps={formProps} autosave={autosave} disabled={!canEdit}>
-        <form.AppField name="code">{(field) => <field.TextField label="Code" />}</form.AppField>
-        <form.AppField name="categoryId">
-          {() => (
-            <CategoryPickerField
-              disabled={!canEdit}
-              categories={categories.data ?? []}
-              onValueCommit={autosave.commit}
+      <DetailAsideGrid>
+        <div className="min-w-0 space-y-5">
+          <AutosaveFormCard formProps={formProps} autosave={autosave} disabled={!canEdit}>
+            <form.AppField name="code">{(field) => <field.TextField label="Code" />}</form.AppField>
+            <form.AppField name="categoryId">
+              {() => (
+                <CategoryPickerField
+                  disabled={!canEdit}
+                  categories={categories.data ?? []}
+                  onValueCommit={autosave.commit}
+                />
+              )}
+            </form.AppField>
+            <EditFormFullWidth>
+              <form.AppField name="notes">{(field) => <field.TextareaField label="Notes" />}</form.AppField>
+            </EditFormFullWidth>
+          </AutosaveFormCard>
+          {canEdit ? (
+            <FleetRetirement
+              id={implement.id}
+              noun="implement"
+              autosave={autosave}
+              retire={trpc.contractingFleet.implements.retire.mutationOptions()}
+              remove={trpc.contractingFleet.implements.remove.mutationOptions()}
             />
-          )}
-        </form.AppField>
-        <EditFormFullWidth>
-          <form.AppField name="notes">{(field) => <field.TextareaField label="Notes" />}</form.AppField>
-        </EditFormFullWidth>
-      </AutosaveFormCard>
-      <div className="mt-5">
+          ) : null}
+        </div>
         <FleetHistoryCard subject={{ implementId: implement.id }} />
-      </div>
-      {canEdit ? (
-        <FleetRetirement
-          id={implement.id}
-          noun="implement"
-          autosave={autosave}
-          retire={trpc.contractingFleet.implements.retire.mutationOptions()}
-          remove={trpc.contractingFleet.implements.remove.mutationOptions()}
-        />
-      ) : null}
+      </DetailAsideGrid>
     </>
   );
 }

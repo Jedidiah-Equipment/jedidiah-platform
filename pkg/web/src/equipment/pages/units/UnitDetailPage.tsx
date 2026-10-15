@@ -1,4 +1,4 @@
-import { formatDate } from '@pkg/domain';
+import { formatDate, getFirstName } from '@pkg/domain';
 import { formatJobLifecycleStatus } from '@pkg/domain/equipment';
 import type { UUID } from '@pkg/schema';
 import type { ProductUnitDetail, ProductUnitOwnershipTransfer, ProductUnitUpdateInput } from '@pkg/schema/equipment';
@@ -265,7 +265,7 @@ const OwnershipTransferRow: React.FC<{ transfer: ProductUnitOwnershipTransfer }>
     </div>
     <div className="flex flex-wrap gap-3 text-muted-foreground text-xs">
       {/* A null actor is the system: the backfill, not a person. */}
-      <span>Recorded by {transfer.actor?.name ?? 'the system'}</span>
+      <span>Recorded by {transfer.actor ? getFirstName(transfer.actor.name) : 'the system'}</span>
       {transfer.sourceQuote ? <span>Quote {transfer.sourceQuote.code}</span> : null}
       {transfer.note ? <span>{transfer.note}</span> : null}
     </div>

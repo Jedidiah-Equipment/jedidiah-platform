@@ -1,4 +1,4 @@
-import { formatCurrency, formatPercent } from '@pkg/domain';
+import { formatCurrency, formatPercent, getFirstName } from '@pkg/domain';
 import {
   getQuoteOfferingName,
   getQuoteOfferingSubtitle,
@@ -316,7 +316,7 @@ function SalesPersonCell({ isPriority, quote }: { isPriority: boolean; quote: Qu
   return (
     <div className="flex min-w-0 items-center gap-2">
       <EntityThumbnail label={quote.salesPersonName} size="sm" thumbnailDataUrl={quote.salesPersonThumbnailDataUrl} />
-      <span className="truncate font-medium">{quote.salesPersonName}</span>
+      <span className="truncate font-medium">{getFirstName(quote.salesPersonName)}</span>
     </div>
   );
 }

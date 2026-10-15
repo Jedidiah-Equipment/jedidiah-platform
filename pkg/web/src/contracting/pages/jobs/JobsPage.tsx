@@ -1,4 +1,4 @@
-import { formatCurrency, formatDate, formatNumber } from '@pkg/domain';
+import { formatCurrency, formatDate, formatNumber, getFirstName } from '@pkg/domain';
 import {
   countedAssignmentAttentionLevel,
   jobQueueLabels,
@@ -178,7 +178,7 @@ export function JobsPage({ focus, onFocusApplied }: { focus?: JobsFocus; onFocus
               </div>
             ) : (
               <div className="mt-1 text-xs text-muted-foreground">
-                {row.original.foremanName ?? 'Foreman unassigned'}
+                {row.original.foremanName ? getFirstName(row.original.foremanName) : 'Foreman unassigned'}
               </div>
             )}
           </div>

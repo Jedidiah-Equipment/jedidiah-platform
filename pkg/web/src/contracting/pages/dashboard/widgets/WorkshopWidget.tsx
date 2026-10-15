@@ -1,3 +1,4 @@
+import { getFirstName } from '@pkg/domain';
 import { countPhrase, orderUnsolvedBreakdowns, UNASSIGNED_MECHANIC_LABEL } from '@pkg/domain/contracting';
 import type { BreakdownSummary } from '@pkg/schema/contracting';
 import { useQuery } from '@tanstack/react-query';
@@ -51,14 +52,15 @@ function OpenBreakdownRow({ breakdown }: { breakdown: BreakdownSummary }) {
           }
         />
         <span className="mt-1 block truncate text-muted-foreground text-xs">
-          Reported <DateDisplay date={breakdown.reportedAt} format="duration" /> by {breakdown.reporterName}
+          Reported <DateDisplay date={breakdown.reportedAt} format="duration" /> by{' '}
+          {getFirstName(breakdown.reporterName)}
           {breakdown.jobNumber ? ` · ${breakdown.jobNumber}` : ''}
         </span>
       </span>
       <span className="flex flex-col items-end gap-1">
         <BreakdownStatusBadge status={breakdown.status} />
         <span className={breakdown.mechanicName ? 'text-xs' : 'text-muted-foreground text-xs'}>
-          {breakdown.mechanicName ?? UNASSIGNED_MECHANIC_LABEL}
+          {breakdown.mechanicName ? getFirstName(breakdown.mechanicName) : UNASSIGNED_MECHANIC_LABEL}
         </span>
       </span>
     </div>

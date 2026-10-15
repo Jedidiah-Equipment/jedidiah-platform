@@ -1,4 +1,4 @@
-import { formatCurrency, formatDate } from '@pkg/domain';
+import { formatCurrency, formatDate, getFirstName } from '@pkg/domain';
 import type { JobDetail } from '@pkg/schema/contracting';
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge.js';
@@ -22,7 +22,7 @@ export function InvoiceCard({ job, sheet }: { job: JobDetail; sheet: JobSheet })
               <p>
                 Invoiced {formatDate(job.invoicedAt, 'medium')} ·{' '}
                 <span className="font-mono font-semibold">{job.invoiceNumber}</span>
-                {job.invoicedByName ? ` · by ${job.invoicedByName}` : null}
+                {job.invoicedByName ? ` · by ${getFirstName(job.invoicedByName)}` : null}
               </p>
               <Badge variant="secondary">Locked</Badge>
             </div>

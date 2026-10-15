@@ -1,4 +1,4 @@
-import { type ActivityEventPresentation, statusBadgeColorClassNames } from '@pkg/domain';
+import { type ActivityEventPresentation, getFirstName, statusBadgeColorClassNames } from '@pkg/domain';
 import type { Icon as TablerIcon } from '@tabler/icons-react-native';
 import { type Href, router } from 'expo-router';
 import type { ReactNode } from 'react';
@@ -51,7 +51,7 @@ export function ActivityNoteEntry({
         <View className="absolute -left-1 top-3 h-3 w-3 rotate-45 border-b border-l border-border bg-surface" />
         <View className="overflow-hidden rounded-xl border border-border bg-surface">
           <Text className="px-3 pt-2 text-xs text-muted-foreground" weight="semibold">
-            {author.name}
+            {getFirstName(author.name)}
           </Text>
           <Text
             className="px-3 pb-2.5 pt-0.5 text-sm leading-5 text-surface-foreground"

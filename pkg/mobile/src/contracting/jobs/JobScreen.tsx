@@ -1,4 +1,4 @@
-import { formatHours } from '@pkg/domain';
+import { formatHours, getFirstName } from '@pkg/domain';
 import {
   actionSheet,
   assignmentStateColorClassNames,
@@ -219,7 +219,7 @@ function StintCard({
       <Text className="text-sm text-muted-foreground">
         {stint.categoryName}
         {stint.implementCode ? ` · ${stint.implementCode}` : ''}
-        {stint.driverName ? ` · ${stint.driverName}` : ''}
+        {stint.driverName ? ` · ${getFirstName(stint.driverName)}` : ''}
       </Text>
       {stint.arrival ? (
         <Text className="text-sm text-muted-foreground">

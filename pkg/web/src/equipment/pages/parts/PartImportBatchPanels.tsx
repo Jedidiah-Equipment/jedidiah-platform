@@ -1,4 +1,4 @@
-import { formatNumber } from '@pkg/domain';
+import { formatNumber, getFirstName } from '@pkg/domain';
 import {
   PART_IMPORT_BATCH_OUTCOME_LABELS,
   type PartImportBatch,
@@ -43,6 +43,7 @@ const batchColumns: DataTableColumnDef<PartImportBatch>[] = [
   },
   {
     accessorFn: (batch) => batch.importedBy?.name ?? UNAVAILABLE_IMPORTER,
+    cell: ({ row }) => (row.original.importedBy ? getFirstName(row.original.importedBy.name) : UNAVAILABLE_IMPORTER),
     header: 'By',
     id: 'importedBy',
   },
@@ -186,7 +187,7 @@ export function PartImportBatchView({
         {detail ? (
           <span className="text-sm text-muted-foreground">
             {partImportBatchName(detail.batch)} · <DateDisplay date={detail.batch.completedAt} format="medium" /> ·{' '}
-            {detail.batch.importedBy?.name ?? UNAVAILABLE_IMPORTER}
+            {detail.batch.importedBy ? getFirstName(detail.batch.importedBy.name) : UNAVAILABLE_IMPORTER}
           </span>
         ) : null}
       </div>

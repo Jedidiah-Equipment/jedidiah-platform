@@ -1,4 +1,4 @@
-import { formatDays, formatNumber } from '@pkg/domain';
+import { formatDays, formatNumber, getFirstName } from '@pkg/domain';
 import type { MechanicPerformanceRow, ReportWindowInput } from '@pkg/schema/contracting';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
@@ -25,7 +25,7 @@ const columns: DataTableColumnDef<MechanicPerformanceRow>[] = [
           search={{ mechanic: row.original.mechanicUserId }}
           className="font-medium hover:underline"
         >
-          {row.original.name}
+          {getFirstName(row.original.name)}
         </Link>
       ),
   },

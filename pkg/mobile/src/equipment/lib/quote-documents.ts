@@ -1,4 +1,4 @@
-import { formatBytes, formatDate } from '@pkg/domain';
+import { formatBytes, formatDate, getFirstName } from '@pkg/domain';
 import type { QuoteDocument } from '@pkg/schema/equipment';
 
 export type QuoteDocumentSort = 'uploaded-newest' | 'uploaded-oldest';
@@ -25,7 +25,9 @@ export function presentQuoteDocuments(
 export function quoteDocumentMetaLine(
   document: Pick<QuoteDocument, 'byteSize' | 'createdAt' | 'uploaderEmail' | 'uploaderName'>,
 ): string {
-  const uploader = document.uploaderName ?? document.uploaderEmail ?? 'Unknown uploader';
+  const uploader = document.uploaderName
+    ? getFirstName(document.uploaderName)
+    : (document.uploaderEmail ?? 'Unknown uploader');
   return `${formatBytes(document.byteSize)} · ${uploader} · ${formatDate(document.createdAt, 'short')}`;
 }
 

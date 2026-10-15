@@ -470,6 +470,41 @@ test('scopes evidence to fleet readers and the Foreman’s own Jobs', async ({ c
   });
 });
 
+test('names the Job of the stint each machine reading opened or closed', async ({ context }) => {
+  const { db, actor } = context;
+  const fixtures = await seedJobFixtures(db);
+  const job = await createJob({
+    db,
+    actor: admin,
+    input: {
+      customerId: fixtures.customer.id,
+      farmId: fixtures.farm.id,
+      workTypeId: fixtures.workType.id,
+      description: null,
+      foremanUserId: foremanId,
+    },
+  });
+  const stint = await leftStint(db, job.id, fixtures.excavator.id, 100, 110);
+  const { reading: spot } = await captureReading({
+    db,
+    actor,
+    input: {
+      machineId: fixtures.excavator.id,
+      role: 'spot',
+      value: 120,
+      capturedAt: new Date().toISOString(),
+      disputePrevious: false,
+    },
+  });
+
+  const jobNumbers = new Map(
+    (await listReadingsByMachine({ db, machineId: fixtures.excavator.id })).map((row) => [row.id, row.jobNumber]),
+  );
+  expect(jobNumbers.get(stint.arrivalReadingId)).toBe(job.jobNumber);
+  expect(jobNumbers.get(stint.departureReadingId)).toBe(job.jobNumber);
+  expect(jobNumbers.get(spot.id)).toBeNull();
+});
+
 test('a background check lands on a pending reading against its current value, and never over a re-verify', async ({
   context,
 }) => {

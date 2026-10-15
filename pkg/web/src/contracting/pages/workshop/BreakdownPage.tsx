@@ -1,4 +1,4 @@
-import { formatDate } from '@pkg/domain';
+import { formatDate, getFirstName } from '@pkg/domain';
 import { breakdownUrgencyColorClassNames, breakdownUrgencyLabels } from '@pkg/domain/contracting';
 import { BreakdownDescription, type BreakdownDetail, breakdownUrgencies } from '@pkg/schema/contracting';
 import { IconExternalLink } from '@tabler/icons-react';
@@ -9,6 +9,8 @@ import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { QueryContent } from '@/components/common/QueryContent.js';
 import { AutosaveFormCard } from '@/components/form/AutosaveFormCard.js';
 import { useAutosaveForm } from '@/components/form/index.js';
+import { DetailAsideGrid } from '@/components/page-layout/DetailAsideGrid.js';
+import { EditFormFullWidth } from '@/components/page-layout/EditFormLayout.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { ActivityCard } from '@/contracting/components/activity/ActivityCard.js';
 import { BreakdownStatusBadge, BreakdownSubjectLabel } from '@/contracting/components/BreakdownSubjectLabel.js';
@@ -44,22 +46,25 @@ export function BreakdownPage({ id }: { id: string }) {
         )
       }
       description={
-        breakdown ? `Reported ${formatDate(breakdown.reportedAt, 'medium')} by ${breakdown.reporterName}` : undefined
+        breakdown
+          ? `Reported ${formatDate(breakdown.reportedAt, 'medium')} by ${getFirstName(breakdown.reporterName)}`
+          : undefined
       }
-      size="md"
       actions={breakdown ? <BreakdownStatusBadge status={breakdown.status} /> : null}
     >
       <QueryContent errorMessage="Unable to load the Breakdown." query={query}>
         {(detail) => {
           const sheet = breakdownSheet(detail);
           return (
-            <div className="space-y-5">
-              <ReportCard key={`report-${detail.id}`} breakdown={detail} sheet={sheet} />
-              <BreakdownPhotosCard breakdown={detail} sheet={sheet} />
-              <BreakdownWorkshopCard breakdown={detail} sheet={sheet} />
-              <DispatchHintsCard breakdown={detail} />
+            <DetailAsideGrid>
+              <div className="min-w-0 space-y-5">
+                <ReportCard key={`report-${detail.id}`} breakdown={detail} sheet={sheet} />
+                <BreakdownPhotosCard breakdown={detail} sheet={sheet} />
+                <BreakdownWorkshopCard breakdown={detail} sheet={sheet} />
+                <DispatchHintsCard breakdown={detail} />
+              </div>
               <ActivityCard scope={{ breakdownId: detail.id }} addNote={sheet.action('addNote')} />
-            </div>
+            </DetailAsideGrid>
           );
         }}
       </QueryContent>
@@ -104,7 +109,6 @@ function ReportCard({ breakdown, sheet }: { breakdown: BreakdownDetail; sheet: B
   });
   return (
     <section aria-label="Report" className="space-y-2">
-      <h2 className="font-heading text-lg">Report</h2>
       <ErrorMessage error={jobs.error} fallbackMessage="Unable to load Jobs." />
       <AutosaveFormCard autosave={autosave} formProps={formProps} disabled={!editable}>
         <form.AppField name="urgency">
@@ -137,31 +141,35 @@ function ReportCard({ breakdown, sheet }: { breakdown: BreakdownDetail; sheet: B
               emptyMessage="No open Jobs found."
               options={[{ value: '', label: 'No Job' }, ...jobOptions]}
               onValueCommit={autosave.commit}
+              trailing={
+                breakdown.jobNumber ? (
+                  <Link
+                    className="shrink-0 whitespace-nowrap text-primary text-sm hover:underline"
+                    params={{ code: breakdown.jobNumber }}
+                    to="/contracting/jobs/$code"
+                  >
+                    Open job
+                  </Link>
+                ) : null
+              }
             />
           )}
         </form.AppField>
-        <form.AppField name="description">{(field) => <field.TextareaField label="What is wrong" />}</form.AppField>
+        <EditFormFullWidth>
+          <form.AppField name="description">{(field) => <field.TextareaField label="What is wrong" />}</form.AppField>
+        </EditFormFullWidth>
       </AutosaveFormCard>
-      <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-        {breakdown.jobNumber ? (
-          <Link className="hover:underline" params={{ code: breakdown.jobNumber }} to="/contracting/jobs/$code">
-            Open {breakdown.jobNumber}
-          </Link>
-        ) : null}
-        {breakdown.latitude !== null && breakdown.longitude !== null ? (
-          <a
-            className="inline-flex items-center gap-1 hover:underline"
-            href={`https://www.google.com/maps?q=${breakdown.latitude},${breakdown.longitude}`}
-            rel="noreferrer"
-            target="_blank"
-          >
-            Open in Google Maps
-            <IconExternalLink aria-hidden="true" className="size-3.5" />
-          </a>
-        ) : (
-          <span>No location was captured.</span>
-        )}
-      </div>
+      {breakdown.latitude !== null && breakdown.longitude !== null ? (
+        <a
+          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:underline"
+          href={`https://www.google.com/maps?q=${breakdown.latitude},${breakdown.longitude}`}
+          rel="noreferrer"
+          target="_blank"
+        >
+          Open in Google Maps
+          <IconExternalLink aria-hidden="true" className="size-3.5" />
+        </a>
+      ) : null}
     </section>
   );
 }

@@ -1,4 +1,4 @@
-import { formatDate } from '@pkg/domain';
+import { formatDate, getFirstName } from '@pkg/domain';
 import { formatJobLifecycleStatus } from '@pkg/domain/equipment';
 import type { ProductUnitDetail, ProductUnitJob, ProductUnitOwnershipTransfer } from '@pkg/schema/equipment';
 import { IconChevronRight } from '@tabler/icons-react-native';
@@ -126,7 +126,7 @@ function OwnershipTransferRow({ transfer }: { transfer: ProductUnitOwnershipTran
       <View className="flex-row flex-wrap items-center gap-x-3">
         {/* A null actor is the system: the backfill, not a person. */}
         <Text className="text-[10px] text-muted-foreground" mono>
-          Recorded by {transfer.actor?.name ?? 'the system'}
+          Recorded by {transfer.actor?.name ? getFirstName(transfer.actor.name) : 'the system'}
         </Text>
         {transfer.sourceQuote ? (
           <Text className="text-[10px] text-muted-foreground" mono>

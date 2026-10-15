@@ -1,4 +1,3 @@
-import { getFirstName } from '@pkg/domain';
 import type { UUID } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
@@ -37,7 +36,7 @@ export function PurchaseOrderFeedbackCard({ purchaseOrderId, code }: { purchaseO
           query={query}
           renderItem={(item) => (
             <ActivityNoteEntry
-              author={{ name: getFirstName(item.submitter.name), thumbnailDataUrl: item.submitter.thumbnailDataUrl }}
+              author={{ name: item.submitter.name, thumbnailDataUrl: item.submitter.thumbnailDataUrl }}
               occurredAt={item.occurredAt}
               text={item.text}
             />

@@ -1,3 +1,4 @@
+import { getFirstName } from '@pkg/domain';
 import { countPhrase, openJobQueues, orderJobsNeedingALook } from '@pkg/domain/contracting';
 import type { JobSummary } from '@pkg/schema/contracting';
 import { useQuery } from '@tanstack/react-query';
@@ -42,7 +43,7 @@ function JobNeedingALookRow({ job }: { job: JobSummary }) {
           <span className="font-mono font-semibold">{job.jobNumber}</span> {job.customerName} · {job.farmName}
         </Link>
         <span className="block truncate text-muted-foreground text-xs">
-          {job.workTypeName} · {job.foremanName ?? 'No Foreman'}
+          {job.workTypeName} · {job.foremanName ? getFirstName(job.foremanName) : 'No Foreman'}
         </span>
       </span>
       <JobAttentionBadge attention={job.assignmentAttention} />

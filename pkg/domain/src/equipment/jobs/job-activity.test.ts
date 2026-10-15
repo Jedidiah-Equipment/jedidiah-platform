@@ -37,13 +37,8 @@ describe('presentJobActivityEvent', () => {
 
   test.each([
     ['started', 'started Fabrication work', null, []],
-    ['completed', 'completed Fabrication work', 'Fiona Fabricator', ['Fiona Fabricator']],
-    [
-      'corrected',
-      'corrected Fabrication work times',
-      '1 Aug 2026 → 4 Aug 2026 · Fiona Fabricator',
-      ['Fiona Fabricator'],
-    ],
+    ['completed', 'completed Fabrication work', 'Fiona', ['Fiona Fabricator']],
+    ['corrected', 'corrected Fabrication work times', '1 Aug 2026 → 4 Aug 2026 · Fiona', ['Fiona Fabricator']],
     ['cleared', 'cleared Fabrication work times', null, []],
   ])('presents %s Work Times from the snapshotted state', (action, sentence, detail, crew) => {
     const item = buildChangeItem({
@@ -65,7 +60,7 @@ describe('presentJobActivityEvent', () => {
 
   test.each([
     [null, [], '18 Aug 2026'],
-    [null, ['Fiona Fabricator', 'Sam Smith'], '18 Aug 2026 · Fiona Fabricator, Sam Smith'],
+    [null, ['Fiona Fabricator', 'Sam Smith'], '18 Aug 2026 · Fiona, Sam'],
     ['2026-08-19T12:00:00.000Z', [], '18 Aug 2026 → 19 Aug 2026'],
   ])('keeps the resulting corrected span and crew: %j, %j', (completedAt, crew, detail) => {
     const item = buildChangeItem({

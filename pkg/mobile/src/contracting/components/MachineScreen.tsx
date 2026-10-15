@@ -1,4 +1,4 @@
-import { formatHours } from '@pkg/domain';
+import { formatHours, getFirstName } from '@pkg/domain';
 import {
   hoursToServiceLabel,
   MISSING_PHOTO_EVIDENCE,
@@ -214,7 +214,7 @@ export default function MachineScreen() {
             {machine ? (
               <Text className="text-muted-foreground">
                 {machine.categoryName}
-                {machine.currentDriverName ? ` · ${machine.currentDriverName}` : ''}
+                {machine.currentDriverName ? ` · ${getFirstName(machine.currentDriverName)}` : ''}
               </Text>
             ) : null}
             <Text className="text-3xl text-foreground" weight="bold">

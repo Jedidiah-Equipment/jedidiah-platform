@@ -194,7 +194,8 @@ describe('StockMovementHistoryTable', () => {
     expect(html).toContain('Stores count');
     expect(html).toContain('/equipment/inventory/stocktake/00000000-0000-4000-8000-000000000097');
     expect(html).toContain('10 pc');
-    expect(html).toContain('Test User');
+    expect(html).toContain('>Test<');
+    expect(html).not.toContain('Test User');
     expect(html).toContain('Supplier repriced');
     expect(html).toContain('R 25.00');
     expect(html).toContain('R 250.00');

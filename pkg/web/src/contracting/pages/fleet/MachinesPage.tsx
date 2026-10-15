@@ -1,4 +1,4 @@
-import { formatHours } from '@pkg/domain';
+import { formatHours, getFirstName } from '@pkg/domain';
 import {
   hoursToServiceLabel,
   serviceDueNeedsAttention,
@@ -91,7 +91,12 @@ export function MachinesPage({
       },
       { accessorKey: 'make', header: 'Make', enableGlobalFilter: false },
       { accessorKey: 'model', header: 'Model', enableGlobalFilter: false },
-      { accessorKey: 'currentDriverName', header: 'Driver', enableGlobalFilter: false },
+      {
+        accessorKey: 'currentDriverName',
+        header: 'Driver',
+        enableGlobalFilter: false,
+        cell: ({ row }) => (row.original.currentDriverName ? getFirstName(row.original.currentDriverName) : null),
+      },
       {
         id: 'busyWith',
         header: 'Busy with',

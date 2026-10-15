@@ -1,4 +1,4 @@
-import { formatDate, formatNumber } from '@pkg/domain';
+import { formatDate, formatNumber, getFirstName } from '@pkg/domain';
 import type { SourceCheckoutOption } from '@pkg/schema/equipment';
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
@@ -43,7 +43,7 @@ export function SourceCheckoutPicker({
 
   return (
     <StoresOptionPicker
-      accessibilityLabel={(checkout) => `${checkout.recipientName}, ${checkout.note}`}
+      accessibilityLabel={(checkout) => `${getFirstName(checkout.recipientName)}, ${checkout.note}`}
       changeHint="Choose a different Checkout"
       emptyMessage="No Checkouts without a Job found."
       label="ORIGINAL CHECKOUT"
@@ -56,7 +56,7 @@ export function SourceCheckoutPicker({
         <>
           <View className="flex-row justify-between gap-3">
             <Text className="min-w-0 flex-1 text-base text-surface-foreground" numberOfLines={1} weight="semibold">
-              {checkout.recipientName}
+              {getFirstName(checkout.recipientName)}
             </Text>
             <Text className="text-sm text-muted-foreground" weight="semibold">
               {formatDate(checkout.createdAt, 'medium')}

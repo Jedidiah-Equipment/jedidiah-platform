@@ -19,6 +19,7 @@ export type ComboboxFieldProps = {
   options: readonly SearchableComboboxOption[];
   placeholder?: string;
   resolveInputOnEnter?: (inputValue: string) => string | undefined;
+  trailing?: React.ReactNode;
 };
 
 export function ComboboxField({
@@ -31,32 +32,44 @@ export function ComboboxField({
   options,
   placeholder,
   resolveInputOnEnter,
+  trailing,
 }: ComboboxFieldProps) {
   const field = useFieldContext<string>();
   const fieldErrors = getFieldErrors(field.state.meta.errors);
   const isInvalid = fieldErrors.length > 0;
 
+  const combobox = (
+    <SearchableCombobox
+      aria-invalid={isInvalid}
+      create={create}
+      disabled={disabled}
+      emptyMessage={emptyMessage}
+      inputId={field.name}
+      onBlur={field.handleBlur}
+      onValueChange={(nextValue) => {
+        if (nextValue === field.state.value || onValueSelect?.(nextValue) === false) return;
+
+        field.handleChange(nextValue);
+        onValueCommit?.(nextValue);
+      }}
+      options={options}
+      placeholder={placeholder}
+      resolveInputOnEnter={resolveInputOnEnter}
+      value={field.state.value}
+    />
+  );
+
   return (
     <Field data-invalid={isInvalid}>
       <FieldLabel htmlFor={field.name}>{label}</FieldLabel>
-      <SearchableCombobox
-        aria-invalid={isInvalid}
-        create={create}
-        disabled={disabled}
-        emptyMessage={emptyMessage}
-        inputId={field.name}
-        onBlur={field.handleBlur}
-        onValueChange={(nextValue) => {
-          if (nextValue === field.state.value || onValueSelect?.(nextValue) === false) return;
-
-          field.handleChange(nextValue);
-          onValueCommit?.(nextValue);
-        }}
-        options={options}
-        placeholder={placeholder}
-        resolveInputOnEnter={resolveInputOnEnter}
-        value={field.state.value}
-      />
+      {trailing ? (
+        <div className="flex items-center gap-3">
+          <div className="min-w-0 flex-1">{combobox}</div>
+          {trailing}
+        </div>
+      ) : (
+        combobox
+      )}
       <FieldError errors={fieldErrors} />
     </Field>
   );

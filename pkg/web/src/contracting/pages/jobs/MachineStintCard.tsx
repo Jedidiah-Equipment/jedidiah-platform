@@ -1,4 +1,4 @@
-import { formatDate, formatHours, formatNumber } from '@pkg/domain';
+import { formatDate, formatHours, formatNumber, getFirstName } from '@pkg/domain';
 import {
   actionSheet,
   assignmentAttentionKindLabels,
@@ -102,7 +102,7 @@ function ReadingActions({ reading, stint, onOpen }: { reading: JobReading; stint
 /** When, by whom and why a reading was amended, or null when it never was. */
 function amendmentSummary(reading: JobReading) {
   if (!reading.amendedAt) return null;
-  const by = reading.amendedByName ? ` by ${reading.amendedByName}` : '';
+  const by = reading.amendedByName ? ` by ${getFirstName(reading.amendedByName)}` : '';
   const why = reading.amendmentReason ? ` · ${reading.amendmentReason}` : '';
   return `Amended ${formatDate(reading.amendedAt, 'medium')}${by}${why}`;
 }
@@ -427,7 +427,7 @@ export function MachineStintCard({
                 </>
               ) : null
             }
-            detail={`${stint.implementCode ?? 'No implement'} · ${stint.driverName ?? 'No driver'}`}
+            detail={`${stint.implementCode ?? 'No implement'} · ${stint.driverName ? getFirstName(stint.driverName) : 'No driver'}`}
             title="Planned"
             tone="done"
           />

@@ -1,4 +1,4 @@
-import { getBusinessRole, roleLabels } from '@pkg/domain';
+import { getBusinessRole, getFirstName, roleLabels } from '@pkg/domain';
 import type { Business } from '@pkg/schema';
 import { IconLogout, IconMoon, IconSelector, IconShield, IconSun } from '@tabler/icons-react';
 import type React from 'react';
@@ -49,7 +49,7 @@ export const AppNavUser: React.FC<AppNavUserProps> = ({ business, user, onSignOu
               <AvatarFallback>{user.initials}</AvatarFallback>
             </Avatar>
             <div className="grid flex-1 text-left text-sm leading-tight">
-              <span className="truncate font-medium">{user.name}</span>
+              <span className="truncate font-medium">{getFirstName(user.name)}</span>
               <span className="truncate text-xs">{user.email}</span>
             </div>
             <IconSelector className="ml-auto" />
@@ -68,7 +68,7 @@ export const AppNavUser: React.FC<AppNavUserProps> = ({ business, user, onSignOu
                     <AvatarFallback>{user.initials}</AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-medium">{user.name}</span>
+                    <span className="truncate font-medium">{getFirstName(user.name)}</span>
                     <span className="truncate text-xs">{user.email}</span>
                   </div>
                 </div>

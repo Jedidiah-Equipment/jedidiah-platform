@@ -48,14 +48,16 @@ export const PageLayout: React.FC<PageLayoutProps> = ({
 
   return (
     <div className="flex flex-1 flex-col p-4 pt-6">
-      <div className={cn('@container/page-header flex flex-col gap-4', getPageLayoutSizeClassName(size))}>
+      <div className={cn('flex flex-col gap-4', getPageLayoutSizeClassName(size))}>
         {title !== undefined ? (
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 flex-col gap-1">
               <h1 className="font-heading text-2xl leading-tight font-medium">{title}</h1>
               {description ? <p className="text-muted-foreground text-sm font-mono">{description}</p> : null}
             </div>
-            {actions ? <div className="flex shrink-0 items-center gap-2 text-sm font-sans">{actions}</div> : null}
+            {actions ? (
+              <div className="flex items-center gap-2 text-sm font-sans sm:flex-1 sm:justify-end">{actions}</div>
+            ) : null}
           </div>
         ) : (
           <div className="flex flex-col gap-2">

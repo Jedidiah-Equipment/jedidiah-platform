@@ -11,7 +11,7 @@ export const jobCalendarPageDescription = 'Org Off-Days and per-Bay calendar exc
 export const jobListPageDescription =
   'Searchable roster of Jobs with their schedule state, surfacing the unscheduled ones';
 
-export const inventoryPageDescription = 'Current stock quantities, length buckets, count age, and ledger value';
+export const inventoryPageDescription = 'Stock levels by Part';
 
 export const buyListPageDescription =
   'Parts short for Jobs, below their minimum, or off the shelf — ranked by when the work starts';

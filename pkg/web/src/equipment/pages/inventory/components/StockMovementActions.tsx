@@ -123,7 +123,7 @@ export function StockMovementActions({
           </Button>
         </div>
       ) : null}
-      <PageHeaderActions actions={actions} collapseBelow="80rem" title="Stock on hand" />
+      <PageHeaderActions actions={actions} title="Stock on hand" />
       <PartLabelBatchPrintDialog
         key={labelOpenCount}
         onOpenChange={setLabelsOpen}

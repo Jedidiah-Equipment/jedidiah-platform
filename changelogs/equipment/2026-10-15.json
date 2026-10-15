@@ -1,0 +1,36 @@
+{
+  "business": "equipment",
+  "releasedAt": "2026-10-15T05:20:02.264Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Record feedback on purchase orders",
+          "description": "Submit feedback from a purchase order or a linked job, and search job activity by PO number or supplier. Submitted feedback cannot be edited or deleted."
+        },
+        {
+          "title": "Browse stock on hand in batches",
+          "description": "Load more stock rows as needed. Search and sorting cover the full list, including parts you have not loaded yet."
+        },
+        {
+          "title": "Find stock actions on smaller screens",
+          "description": "Stock on hand now groups its action buttons into an Actions menu when space is limited."
+        },
+        {
+          "title": "Retry loading parts for label printing",
+          "description": "The inventory label picker now shows when parts are loading and offers Retry if loading fails."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Send purchase order feedback from a job",
+          "description": "Choose Send PO Feedback in a job’s Activity tab to leave feedback on a linked purchase order. Feedback appears in linked jobs’ activity and cannot be edited or deleted."
+        }
+      ]
+    }
+  ]
+}

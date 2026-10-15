@@ -1,0 +1,15 @@
+{
+  "business": "contracting",
+  "releasedAt": "2026-10-15T05:20:02.264Z",
+  "sections": [
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Get alerts for new job and breakdown notes",
+          "description": "Receive push notifications for new notes on threads you participate in or oversee, with the author and a short preview. Tap an alert to open the thread’s Activity."
+        }
+      ]
+    }
+  ]
+}

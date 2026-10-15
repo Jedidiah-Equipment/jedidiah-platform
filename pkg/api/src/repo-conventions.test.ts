@@ -167,7 +167,7 @@ describe('light-mode primary', () => {
         'grep',
         '--untracked',
         '-niE',
-        String.raw`#b89600|#f8d300|#806700|#8a6d00|184 150 0|248 211 0`,
+        String.raw`#b89600|#f8d300|#806700|#8a6d00|184,? ?150,? ?0([^0-9]|$)|248,? ?211,? ?0([^0-9]|$)`,
         '--',
         'pkg/web/src/**',
         'pkg/web/index.html',

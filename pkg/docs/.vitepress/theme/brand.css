@@ -7,20 +7,21 @@
 :root {
   --vp-font-family-base: "Geist", ui-sans-serif, system-ui, sans-serif;
 
+  --jed-brand-hover: color-mix(in oklab, var(--jed-brand) 90%, black);
+
   --vp-c-brand-1: var(--jed-brand);
-  --vp-c-brand-2: color-mix(in oklab, var(--jed-brand) 80%, black);
+  --vp-c-brand-2: var(--jed-brand-hover);
   --vp-c-brand-3: var(--jed-brand);
   --vp-c-brand-soft: color-mix(in srgb, var(--jed-brand) 16%, transparent);
 
   --vp-button-brand-bg: var(--jed-brand);
-  --vp-button-brand-hover-bg: color-mix(in oklab, var(--jed-brand) 90%, black);
+  --vp-button-brand-hover-bg: var(--jed-brand-hover);
   --vp-button-brand-text: #0a0a0a;
   --vp-button-brand-border: transparent;
 }
 
 .dark {
-  --vp-c-brand-2: color-mix(in oklab, var(--jed-brand) 90%, black);
-  --vp-button-brand-hover-bg: color-mix(in oklab, var(--jed-brand) 90%, black);
+  --jed-brand-hover: #ffe600;
 }
 
 /* The wordmark, matching `AppBrand` in the web app: name in the text colour, product in the brand. */

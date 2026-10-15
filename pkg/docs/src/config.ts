@@ -18,7 +18,6 @@ export const docsConfig = defineConfig({
   head: [
     ['meta', { name: 'robots', content: 'noindex, nofollow' }],
     ['link', { rel: 'icon', type: 'image/png', href: `/${FAVICON_FILENAME}` }],
-    // `.vitepress/theme/brand.css` derives every brand tone from this, so the site holds no copy of its own.
     ['style', {}, `:root{--jed-brand:${lightColors.primary}}.dark{--jed-brand:${darkColors.primary}}`],
   ],
   // VitePress 1.x pins Vite 5, whose default browser target (down to Safari 14) the workspace-wide

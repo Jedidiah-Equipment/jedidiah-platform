@@ -8,8 +8,8 @@ import { useColorMode } from '@/theme/use-color-mode';
 
 /**
  * The primary-tinted card action — Send Feedback and the Fabrication stamps — for the one call a
- * card is asking the reader to make. Light mode can't paint the brand primary on a light surface and
- * stay legible, so it takes the darkened accent from the brand palette; dark mode uses the token.
+ * card is asking the reader to make. Light mode takes the accent from the brand palette (staging's is
+ * darkened); dark mode uses the token.
  */
 export function AccentButton({
   icon: IconComponent,

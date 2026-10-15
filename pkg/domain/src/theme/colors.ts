@@ -6,8 +6,7 @@ import { JEDIDIAH_BRAND_YELLOW } from '../brand.js';
  * Names and structure mirror the web token set in
  * `pkg/web/src/styles/globals.css` (`:root` light, `.dark` dark) so the two
  * apps stay visually in sync. Values are hex (not `oklch`) so the tokens are
- * safe to consume from React Native, which cannot parse `oklch()`. `primary`
- * is the one definition web, mobile, and the docs site all paint.
+ * safe to consume from React Native, which cannot parse `oklch()`.
  */
 export type ThemeColors = {
   /** App backdrop behind all surfaces. */

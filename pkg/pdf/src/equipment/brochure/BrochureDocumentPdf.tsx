@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
   },
   // Accents a substring of the title, matching the yellow used for the "Features" heading accent.
   titleHighlight: {
-    color: pdfColors.yellowLight,
+    color: pdfColors.gold,
   },
   imageBox: {
     overflow: 'hidden',
@@ -156,7 +156,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   headingAccent: {
-    color: pdfColors.yellowLight,
+    color: pdfColors.gold,
     fontFamily: pdfTitleFontFamily,
     fontSize: 20,
     fontWeight: pdfFontWeight.bold,
@@ -264,7 +264,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   yellowRule: {
-    backgroundColor: pdfColors.yellowLight,
+    backgroundColor: pdfColors.gold,
     height: 2.4,
     marginBottom: 6,
     marginHorizontal: 15,
@@ -768,7 +768,7 @@ function SpecColumnHeader({ accent, heading }: { accent: 'optional' | 'standard'
   const tabPadX = 22;
   const maxTabWidth = layout.assemblyColumnWidth - layout.assemblyHeaderOffsetX - 36;
   const tabWidth = clampNumber(heading.length * fontSize * 0.63 + tabPadX * 2, 112, maxTabWidth);
-  const fillColor = accent === 'standard' ? pdfColors.black : pdfColors.yellowLight;
+  const fillColor = accent === 'standard' ? pdfColors.black : pdfColors.gold;
   const textColor = accent === 'standard' ? pdfColors.white : pdfColors.black;
   const textLeft = layout.assemblyContentPaddingX;
   const textTop = (headerHeight - fontSize) / 2 - 4.2;
@@ -812,7 +812,7 @@ function SpecColumn({
       <SpecColumnHeader accent={accent} heading={heading} />
       <View style={styles.assemblyList}>
         {items.map((item) => (
-          <BulletItem bulletColor={pdfColors.yellowLight} key={item} label={item} layout={a} />
+          <BulletItem bulletColor={pdfColors.gold} key={item} label={item} layout={a} />
         ))}
       </View>
     </View>

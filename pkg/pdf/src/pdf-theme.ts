@@ -15,7 +15,7 @@ export const pdfColors = {
   staleNoticeText: '#5f4300',
   white: '#ffffff',
   yellow: JEDIDIAH_BRAND_YELLOW,
-  yellowLight: JEDIDIAH_BRAND_GOLD,
+  gold: JEDIDIAH_BRAND_GOLD,
 } as const;
 
 export const pdfSpacing = {

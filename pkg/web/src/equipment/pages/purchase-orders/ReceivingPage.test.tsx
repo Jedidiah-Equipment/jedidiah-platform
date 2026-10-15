@@ -90,7 +90,7 @@ describe('ReceivingList', () => {
   });
 
   it('offers Receive only to someone holding the receive right', () => {
-    expect(render()).toContain('Receive');
+    expect(render()).toContain('Receive<');
     expect(render({ canReceive: false })).not.toContain('Receive<');
   });
 

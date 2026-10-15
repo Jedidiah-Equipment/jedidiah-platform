@@ -40,17 +40,16 @@ export const ReceivingPage: React.FC = () => {
         />
       </InputGroup>
       <ErrorMessage error={outstandingQuery.error} fallbackMessage="Unable to load outstanding lines." />
-      {outstandingQuery.isPending ? (
-        <Skeleton className="h-64 w-full" />
-      ) : (
+      {outstandingQuery.isPending ? <Skeleton className="h-64 w-full" /> : null}
+      {outstandingQuery.data ? (
         <ReceivingList
           canReadCosts={canReadCosts}
           canReceive={canReceive}
-          items={outstandingQuery.data?.items ?? []}
+          items={outstandingQuery.data.items}
           search={search}
           today={getPlantDateNow()}
         />
-      )}
+      ) : null}
     </PageLayout>
   );
 };

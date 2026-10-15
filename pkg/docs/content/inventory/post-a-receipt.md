@@ -6,9 +6,8 @@ exists — there is no separate paper step afterwards.
 
 ## Steps
 
-1. Open **Receiving** under Inventory. It lists every line still owed on a sent order, grouped
-   under the order's code and Supplier, with the soonest expected delivery first. Late orders are
-   at the top, marked **Late**.
+1. Open **Receiving** under Inventory. It lists every line still owed on a sent order, soonest
+   expected delivery first, with late orders marked **Late** at the top.
 2. Find the line that arrived. Type the order number, the Supplier, the Part code, or the
    description into the search box to narrow the list. Each line shows **Received** as a running
    `x / y`, and **Outstanding** as what is still to come.
@@ -28,7 +27,7 @@ A **Delivery received** toast confirms it, and the Part's stock on hand goes up 
 with nothing left outstanding drops off the Receiving list, and the order goes with its last line.
 
 You can also receive from the order itself: open **Purchase Orders**, select the order, and use the
-**Receiving** card, which has the same columns and the same **Receive** button.
+**Receiving** card, then continue from step 3.
 
 ## If it warns you
 

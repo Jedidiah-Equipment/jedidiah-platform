@@ -1,10 +1,12 @@
 import type { DateIso, DateOnlyIso } from '@pkg/schema';
 import type {
+  JobActivityFilter,
   JobChangeActivityItem,
   JobWorkTimeActivityAction,
   JobWorkTimeActivityState,
   WorkItemDepartment,
 } from '@pkg/schema/equipment';
+import type { ActivityEventPresentation } from '../../activity/presentation.js';
 import { formatDate, toPlantDateOnly } from '../../formatting/date.js';
 import { getFirstName } from '../../formatting/text.js';
 import type { StatusBadgeColor } from '../../theme/status-badge.js';
@@ -18,6 +20,13 @@ export const JOB_ACTIVITY_EVENT_SENTENCES = {
   documentAdded: 'added a document',
 } as const;
 
+export const jobActivityFilterLabels = {
+  all: 'All',
+  'user-feedback': 'User Feedback',
+  'job-events': 'Job Events',
+  'work-times': 'Work Times',
+} as const satisfies Record<JobActivityFilter, string>;
+
 /** One category tone across web and mobile; event-specific icons carry the finer distinction. */
 const jobActivityEventTone = {
   'job-completed': 'purple',
@@ -27,16 +36,8 @@ const jobActivityEventTone = {
   'job-work-time-updated': 'blue',
 } as const satisfies Record<JobChangeActivityItem['type'], StatusBadgeColor>;
 
-export type JobActivityEventPresentation = {
-  actorName: string;
-  /** The fact beyond the event sentence, or null when there is no additional detail. */
-  detail: string | null;
-  sentence: string;
-  tone: StatusBadgeColor;
-};
-
 /** Shared event wording and context; each app supplies its own icons and layout. */
-export function presentJobActivityEvent(item: JobChangeActivityItem): JobActivityEventPresentation {
+export function presentJobActivityEvent(item: JobChangeActivityItem): ActivityEventPresentation {
   const attribution = {
     // A system action and a deleted actor both leave a null actor, as in the Audit table.
     actorName: item.actor ? getFirstName(item.actor.name) : 'System',

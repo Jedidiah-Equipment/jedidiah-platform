@@ -1,13 +1,13 @@
-import { hasUnreadActivity } from '@pkg/domain';
+import { ACTIVITY_REFETCH_INTERVAL_MS } from '@pkg/domain';
 import { canSeeActivity } from '@pkg/domain/contracting';
 import type { UUID } from '@pkg/schema';
 import type { ActivityFilter } from '@pkg/schema/contracting';
-import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
+import { useActivityUnread as useBusinessActivityUnread } from '@/components/activity/use-activity-unread';
 import { useSessionAccessSummary } from '@/lib/auth-session';
 import { useTRPC } from '@/lib/trpc';
 
 const ACTIVITY_PAGE_SIZE = 20;
-const ACTIVITY_REFETCH_INTERVAL_MS = 60_000;
 
 /** Whether this person has Activity at all: a Jobs or a Workshop reach. */
 export function useCanSeeActivity() {
@@ -51,19 +51,9 @@ export function useActivityFeed({
 /** Whether the newest item lies beyond this person's Contracting Activity View: the Activity tab's dot. */
 export function useActivityUnread() {
   const trpc = useTRPC();
-  const enabled = useCanSeeActivity();
-  const lastSeen = useQuery({
-    ...trpc.contractingActivity.getLastSeen.queryOptions(),
-    enabled,
-    refetchInterval: ACTIVITY_REFETCH_INTERVAL_MS,
+  return useBusinessActivityUnread({
+    enabled: useCanSeeActivity(),
+    lastSeen: trpc.contractingActivity.getLastSeen.queryOptions(),
+    latest: trpc.contractingActivity.list.queryOptions({ limit: 1 }),
   });
-  const latest = useQuery({
-    ...trpc.contractingActivity.list.queryOptions({ limit: 1 }),
-    enabled,
-    refetchInterval: ACTIVITY_REFETCH_INTERVAL_MS,
-  });
-  return (
-    lastSeen.data !== undefined &&
-    hasUnreadActivity({ lastActivitySeen: lastSeen.data, latestActivityAt: latest.data?.items[0]?.occurredAt ?? null })
-  );
 }

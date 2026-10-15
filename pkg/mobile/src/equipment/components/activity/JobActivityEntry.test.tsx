@@ -16,7 +16,7 @@ vi.mock('@tabler/icons-react-native', () => ({
   IconPlus: 'IconPlus',
   IconShoppingCart: 'IconShoppingCart',
 }));
-vi.mock('expo-router', () => ({ useRouter: () => ({ push: vi.fn() }) }));
+vi.mock('expo-router', () => ({ router: { push: vi.fn() } }));
 vi.mock('react-native', () => ({ Pressable: 'Pressable', View: 'View' }));
 vi.mock('@/components/Avatar', () => ({ Avatar: 'Avatar' }));
 vi.mock('@/equipment/components/CustomerName', () => ({ CustomerName: 'CustomerName' }));
@@ -40,7 +40,7 @@ describe('JobActivityEntry', () => {
           supplierName: 'Mount Fifty',
         },
       },
-      false,
+      true,
     );
     const content = JSON.stringify(renderer.toJSON());
     expect(content).toContain('PO-00042');
@@ -56,10 +56,12 @@ describe('JobActivityEntry', () => {
     ['job-work-time-updated', 'blue', 'IconClock'],
   ] as const)('renders %s with its native icon and category palette', async (type, tone, icon) => {
     const renderer = await renderEntry(buildChangeItem(type));
-    const renderedIcon = renderer.root.findByProps({ icon });
+    const renderedIcon = renderer.root.find((node) => node.type === ('Icon' as never) && node.props.icon === icon);
 
     expect(renderedIcon.props.className).toBe(statusBadgeColorClassNames[tone].textByScheme.light);
     expect(renderedIcon.parent?.props.className).toContain(statusBadgeColorClassNames[tone].chip);
+    // A record, not a person: a rounded square.
+    expect(renderedIcon.parent?.props.className).toContain('rounded-lg');
   });
 
   test('keeps the event icon and leads the Job row with the offering visual', async () => {
@@ -71,7 +73,9 @@ describe('JobActivityEntry', () => {
       uri: item.job.thumbnailDataUrl,
     });
 
-    expect(renderer.root.findByProps({ icon: 'IconCheck' })).toBeDefined();
+    expect(
+      renderer.root.find((node) => node.type === ('Icon' as never) && node.props.icon === 'IconCheck'),
+    ).toBeDefined();
     expect(offering.props).toMatchObject({
       kind: item.job.offeringKind,
       name: item.job.displayName,
@@ -84,7 +88,11 @@ describe('JobActivityEntry', () => {
   test('does not offset the title below the event icon', async () => {
     const item = buildChangeItem('job-completed');
     const renderer = await renderEntry(item);
-    const event = renderer.root.findByProps({ accessibilityLabel: `System completed this Job on ${item.job.code}` });
+    const event = renderer.root.find(
+      (node) =>
+        node.type === ('Pressable' as never) &&
+        node.props.accessibilityLabel === `System completed this Job on ${item.job.code}`,
+    );
 
     expect(event.props.className).not.toContain('py-0.5');
   });
@@ -100,17 +108,17 @@ describe('JobActivityEntry', () => {
   test.each([buildChangeItem('job-completed'), buildFeedbackItem()])(
     'does not link back to the Job from a feed already scoped to it',
     async (item) => {
-      const renderer = await renderEntry(item, false);
+      const renderer = await renderEntry(item, true);
 
-      expect(renderer.root.findAllByProps({ accessibilityHint: 'Opens Job details' })).toHaveLength(0);
+      expect(renderer.root.findAllByType('Pressable' as never)).toHaveLength(0);
     },
   );
 });
 
-async function renderEntry(item: JobActivityItem, linkToJob = true): Promise<ReactTestRenderer> {
+async function renderEntry(item: JobActivityItem, inItsOwnThread = false): Promise<ReactTestRenderer> {
   let renderer!: ReactTestRenderer;
   await act(async () => {
-    renderer = create(<JobActivityEntry item={item} last linkToJob={linkToJob} />);
+    renderer = create(<JobActivityEntry item={item} jobId={inItsOwnThread ? item.job.id : undefined} last />);
   });
   return renderer;
 }

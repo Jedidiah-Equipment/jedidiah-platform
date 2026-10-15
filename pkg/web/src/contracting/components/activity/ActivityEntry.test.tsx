@@ -69,7 +69,8 @@ describe('ActivityEntry', () => {
   it('reads an event as its sentence and detail, linked to its record', async () => {
     const html = await render(cancelled);
 
-    expect(html).toContain('Sipho Dlamini cancelled CJOB-00037');
+    expect(html).toContain('Sipho Dlamini');
+    expect(html).toContain('cancelled CJOB-00037');
     expect(html).toContain('Rain all week');
     expect(html).toContain(JOB_HREF);
   });

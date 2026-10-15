@@ -1,8 +1,10 @@
+import { getFirstName } from '@pkg/domain';
 import { useQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { View } from 'react-native';
 
-import { Avatar } from '@/components/Avatar';
-import { DateText } from '@/components/DateText';
+import { ActivityNoteEntry, ActivityNoteFooter } from '@/components/activity/ActivityEntries';
+import { ActivityDayGroups } from '@/components/activity/ActivityTimeline';
 import { Pulse } from '@/components/ui/pulse';
 import { Text } from '@/components/ui/text';
 import { FactCard } from '@/equipment/components/bays/job-facts';
@@ -11,15 +13,16 @@ import { useTRPC } from '@/lib/trpc';
 import { PurchaseOrderFeedbackMarker } from './PurchaseOrderFeedbackMarker';
 
 /**
- * A Job's public (general) feedback, newest first, read-only. Mirrors web's `JobFeedbackList`;
+ * A Job's public (general) feedback, newest first, read-only, drawn as the same note entries its Activity thread uses;
  * corrective feedback never appears here (`feedback.listJobFeedback` is general-only, ADR 0010).
- * The status the item carries stays off the card for the same reason it does on web: this is a note
- * to read, not a queue to triage.
  */
 export function JobFeedbackList({ jobCode, jobId }: { jobCode: string; jobId: string }) {
   const trpc = useTRPC();
   const feedbackQuery = useQuery(trpc.feedback.listJobFeedback.queryOptions({ jobId }));
-  const items = feedbackQuery.data?.items ?? [];
+  const items = useMemo(
+    () => (feedbackQuery.data?.items ?? []).map((item) => ({ ...item, occurredAt: item.createdAt })),
+    [feedbackQuery.data?.items],
+  );
 
   return (
     <FactCard title="Feedback">
@@ -30,19 +33,25 @@ export function JobFeedbackList({ jobCode, jobId }: { jobCode: string; jobId: st
         {feedbackQuery.isSuccess && items.length === 0 ? (
           <Text className="text-sm text-muted-foreground">No feedback submitted for this Job.</Text>
         ) : null}
-        {items.map((item) => (
-          <View className="gap-2 rounded-xl border border-border bg-muted p-3" key={item.id}>
-            <View className="flex-row items-center gap-2">
-              <Avatar className="h-6 w-6 rounded-md" name={item.submitter.name} uri={item.submitter.thumbnailDataUrl} />
-              <Text className="min-w-0 flex-1 text-sm text-surface-foreground" numberOfLines={1} weight="semibold">
-                {item.submitter.name}
-              </Text>
-              <DateText className="text-[10px] text-muted-foreground" date={item.createdAt} mono />
-            </View>
-            <Text className="text-sm leading-5 text-surface-foreground">{item.text}</Text>
-            {item.purchaseOrder ? <PurchaseOrderFeedbackMarker purchaseOrder={item.purchaseOrder} /> : null}
-          </View>
-        ))}
+        <ActivityDayGroups
+          getItemKey={(item) => item.id}
+          items={items}
+          renderItem={(item, last) => (
+            <ActivityNoteEntry
+              author={{ name: getFirstName(item.submitter.name), thumbnailDataUrl: item.submitter.thumbnailDataUrl }}
+              footer={
+                item.purchaseOrder ? (
+                  <ActivityNoteFooter>
+                    <PurchaseOrderFeedbackMarker purchaseOrder={item.purchaseOrder} />
+                  </ActivityNoteFooter>
+                ) : null
+              }
+              last={last}
+              occurredAt={item.occurredAt}
+              text={item.text}
+            />
+          )}
+        />
       </View>
     </FactCard>
   );

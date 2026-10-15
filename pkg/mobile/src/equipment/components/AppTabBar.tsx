@@ -1,4 +1,3 @@
-import { hasUnreadActivity } from '@pkg/domain/equipment';
 import {
   IconActivity,
   IconBarcode,
@@ -9,9 +8,9 @@ import {
   IconPackages,
   type Icon as TablerIcon,
 } from '@tabler/icons-react-native';
-import { useQuery } from '@tanstack/react-query';
 import { useSegments } from 'expo-router';
 
+import { useActivityUnread } from '@/components/activity/use-activity-unread';
 import { TabBar } from '@/components/tab-bar/TabBar';
 import { type AppTab, activeAppTab, appTabHref, appTabLabel, visibleTabs } from '@/equipment/lib/app-tabs';
 import { useTRPC } from '@/lib/trpc';
@@ -27,8 +26,6 @@ const TAB_ICONS = {
   units: IconBuildingWarehouse,
 } as const satisfies Record<AppTab, TablerIcon>;
 
-const ACTIVITY_INDICATOR_REFETCH_INTERVAL_MS = 60_000;
-
 /**
  * Permission-aware bottom bar. Tabs share the bar evenly, and whichever trailing tabs would have
  * to truncate their label at the current width collapse into a MORE menu instead
@@ -38,23 +35,11 @@ export function AppTabBar() {
   const access = useAccess();
   const trpc = useTRPC();
   const tabs = visibleTabs(access.data);
-  const activityVisible = tabs.includes('activity');
-  const lastSeenQuery = useQuery({
-    ...trpc.jobActivity.getLastActivitySeen.queryOptions(),
-    enabled: activityVisible,
-    refetchInterval: ACTIVITY_INDICATOR_REFETCH_INTERVAL_MS,
+  const activityUnread = useActivityUnread({
+    enabled: tabs.includes('activity'),
+    lastSeen: trpc.jobActivity.getLastActivitySeen.queryOptions(),
+    latest: trpc.jobActivity.list.queryOptions({ limit: 1 }),
   });
-  const latestActivityQuery = useQuery({
-    ...trpc.jobActivity.list.queryOptions({ limit: 1 }),
-    enabled: activityVisible,
-    refetchInterval: ACTIVITY_INDICATOR_REFETCH_INTERVAL_MS,
-  });
-  const activityUnread =
-    lastSeenQuery.data !== undefined &&
-    hasUnreadActivity({
-      lastActivitySeen: lastSeenQuery.data,
-      latestActivityAt: latestActivityQuery.data?.items[0]?.occurredAt ?? null,
-    });
   const segments = useSegments();
   const active = activeAppTab(segments);
   return (

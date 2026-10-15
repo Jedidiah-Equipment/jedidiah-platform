@@ -1,3 +1,5 @@
+import { ACTIVITY_REFETCH_INTERVAL_MS } from '@pkg/domain';
+import { jobActivityFilterLabels } from '@pkg/domain/equipment';
 import type { DateIso, UUID } from '@pkg/schema';
 import type { JobActivityFilter } from '@pkg/schema/equipment';
 import { keepPreviousData, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -10,13 +12,9 @@ import { useTRPC } from '@/lib/trpc';
 import { useDebouncedSearch } from '@/lib/use-debounced-search';
 
 const ACTIVITY_BATCH_SIZE = 20;
-const ACTIVITY_REFETCH_INTERVAL_MS = 60_000;
-const FILTER_OPTIONS: readonly ListControlOption<JobActivityFilter>[] = [
-  { label: 'All', value: 'all' },
-  { label: 'User Feedback', value: 'user-feedback' },
-  { label: 'Job Events', value: 'job-events' },
-  { label: 'Work Times', value: 'work-times' },
-];
+const FILTER_OPTIONS: readonly ListControlOption<JobActivityFilter>[] = (
+  Object.keys(jobActivityFilterLabels) as JobActivityFilter[]
+).map((value) => ({ label: jobActivityFilterLabels[value], value }));
 
 export function JobActivityFeed({
   jobId,
@@ -99,7 +97,7 @@ export function JobActivityFeed({
         listHeader={listHeader}
         onViewedLatest={onViewedLatest}
         query={activity}
-        renderItem={(item, last) => <JobActivityEntry item={item} last={last} linkToJob={jobId === undefined} />}
+        renderItem={(item, last) => <JobActivityEntry item={item} jobId={jobId} last={last} />}
       />
     </>
   );

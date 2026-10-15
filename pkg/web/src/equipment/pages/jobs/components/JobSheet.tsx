@@ -215,7 +215,7 @@ const JobDetailsTab: React.FC<{ canOpenQuote: boolean; job: JobDetail; onOpenQuo
         icon={<IconActivity />}
         title="Activity"
       >
-        <JobActivityFeed hideDetail jobId={job.id} />
+        <JobActivityFeed jobId={job.id} />
       </Section>
       <JobCancellationAction job={job} />
     </div>

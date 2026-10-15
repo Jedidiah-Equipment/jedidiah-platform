@@ -50,17 +50,19 @@ describe('presentActivityEvent', () => {
     expect(
       present({ ...base, type: 'breakdown-reported', breakdown, job, firstLine: 'Hydraulic hose burst' } as never),
     ).toEqual({
-      sentence: 'Sipho reported Code Red on T12 at CJOB-00037',
+      actorName: 'Sipho',
+      sentence: 'reported Code Red on T12 at CJOB-00037',
       detail: 'Hydraulic hose burst',
-      tone: 'danger',
+      tone: 'red',
     });
     expect(present({ ...base, type: 'mechanic-assigned', breakdown, job: null, mechanicName: null } as never)).toEqual({
-      sentence: 'Sipho cleared the Mechanic on T12',
+      actorName: 'Sipho',
+      sentence: 'cleared the Mechanic on T12',
       detail: null,
-      tone: 'next',
+      tone: 'green',
     });
     expect(present({ ...base, type: 'job-cancelled', job, reason: 'Rain' } as never)?.sentence).toBe(
-      'Sipho cancelled CJOB-00037',
+      'cancelled CJOB-00037',
     );
   });
 

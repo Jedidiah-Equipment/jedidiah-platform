@@ -42,12 +42,12 @@ function useIsTextClipped(enabled: boolean): [React.RefObject<HTMLParagraphEleme
 }
 
 /**
- * What was said, drawn as the speech bubble it is: a tail pointing back at the speaker, the text clamped to four
- * lines with a toggle when it runs longer, and an optional footer naming where it was said.
+ * What was said, drawn as the speech bubble it is: a tail pointing back at the speaker, who said it, the text clamped
+ * to four lines with a toggle when it runs longer, and an optional footer naming where it was said.
  */
-export const ActivityNoteBubble: React.FC<{ footer?: React.ReactNode; header?: React.ReactNode; text: string }> = ({
+export const ActivityNoteBubble: React.FC<{ author: string; footer?: React.ReactNode; text: string }> = ({
+  author,
   footer,
-  header,
   text,
 }) => {
   const [expanded, setExpanded] = useState(false);
@@ -68,7 +68,7 @@ export const ActivityNoteBubble: React.FC<{ footer?: React.ReactNode; header?: R
         className="absolute top-4 -left-1 size-2.5 rotate-45 border-b border-l border-border/70 bg-card transition-colors group-hover:border-foreground/25"
       />
       <div className="overflow-hidden rounded-xl border border-border/70 bg-card transition-colors group-hover:border-foreground/25">
-        {header}
+        <p className="px-3.5 pt-2.5 -mb-2 font-medium text-muted-foreground text-xs">{author}</p>
         <p
           className={cn('px-3.5 py-2.5 text-sm leading-6 whitespace-pre-wrap', !expanded && 'line-clamp-4')}
           ref={textRef}

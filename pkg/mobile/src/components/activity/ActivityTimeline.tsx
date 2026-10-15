@@ -3,7 +3,7 @@ import type { DateIso } from '@pkg/schema';
 import { IconFilter } from '@tabler/icons-react-native';
 import { useFocusEffect } from 'expo-router';
 import type { ReactElement, ReactNode } from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SectionList, View } from 'react-native';
 import {
   type ListControlOption,
@@ -153,19 +153,45 @@ export function ActivityTimeline<
       refreshControl={<RefreshControl />}
       renderItem={({ index, item, section }) => renderItem(item, index === section.data.length - 1)}
       renderSectionHeader={({ section }) => (
-        <View
-          className={
-            section.day === sections[0]?.day ? 'mb-3 bg-background' : 'mb-3 border-t border-border bg-background pt-6'
-          }
-        >
-          <Text className="text-[11px] uppercase tracking-[1.5px] text-foreground" weight="semibold">
-            {section.label}
-          </Text>
-        </View>
+        <ActivityDayHeading first={section.day === sections[0]?.day} label={section.label} />
       )}
       sections={sections}
       stickySectionHeadersEnabled={false}
     />
+  );
+}
+
+/**
+ * A short thread drawn whole, as day groups, inside a page that already scrolls; a feed that pages is an
+ * {@link ActivityTimeline} instead.
+ */
+export function ActivityDayGroups<TItem extends { occurredAt: DateIso }>({
+  getItemKey,
+  items,
+  renderItem,
+}: {
+  getItemKey: (item: TItem) => string;
+  items: readonly TItem[];
+  renderItem: (item: TItem, last: boolean) => ReactElement;
+}) {
+  return groupActivityByDay(items).map((group, index) => (
+    <View key={group.day}>
+      <ActivityDayHeading first={index === 0} label={group.label} />
+      {group.items.map((item, itemIndex) => (
+        <Fragment key={getItemKey(item)}>{renderItem(item, itemIndex === group.items.length - 1)}</Fragment>
+      ))}
+    </View>
+  ));
+}
+
+/** A day's heading: the first sits under whatever heads the list, and each later day rules itself off. */
+function ActivityDayHeading({ first, label }: { first: boolean; label: string }) {
+  return (
+    <View className={first ? 'mb-3' : 'mb-3 border-t border-border pt-6'}>
+      <Text className="text-[11px] uppercase tracking-[1.5px] text-foreground" weight="semibold">
+        {label}
+      </Text>
+    </View>
   );
 }
 

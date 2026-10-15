@@ -83,7 +83,12 @@ describe('ActivityEntry', () => {
     await act(async () => renderer.root.findByProps({ accessibilityRole: 'button' }).props.onPress());
     expect(push).toHaveBeenLastCalledWith({ pathname: '/contracting/jobs/[jobId]', params: { jobId: job.id } });
     expect(renderer.root.findAllByType('Avatar' as never)).toEqual([]);
-    expect(renderer.root.findByProps({ icon: 'IconX' })).toBeDefined();
-    expect(texts(renderer)).toEqual(expect.arrayContaining(['Sipho cancelled CJOB-00037', 'Rain']));
+    expect(renderer.root.find((node) => node.type === ('Icon' as never) && node.props.icon === 'IconX')).toBeDefined();
+    expect(texts(renderer)).toEqual(expect.arrayContaining(['Sipho', 'Rain']));
+    expect(texts(renderer).some((text) => text.includes(' cancelled CJOB-00037'))).toBe(true);
+    expect(
+      renderer.root.find((node) => node.type === ('Icon' as never) && node.props.icon === 'IconX').parent?.props
+        .className,
+    ).toContain('rounded-lg');
   });
 });

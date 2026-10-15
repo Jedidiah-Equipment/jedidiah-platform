@@ -1,22 +1,27 @@
 # Change an accepted Quote
 
 Whether an accepted Quote can still be edited depends on whether it is **Locked**: a Locked Quote keeps the
-prices and specification the Customer agreed to, so changing those means a new Quote.
+prices and specification the Customer agreed to, so changing those means a new Quote. The discount, deposit,
+and delivery terms are different: they settle the sale, so they can change on any accepted Quote.
 
 ## Which case you are in
 
 - **A From Order Product Quote with no Job yet** is not Locked. Edit it like any other Quote.
 - **A Product Quote that has started a Job** is Locked, even if that Job is completed or cancelled. While
-  the Job is live or completed, follow [Re-quote a Quote that has a Job](#re-quote-a-quote-that-has-a-job).
+  the Job is live or completed, change its price or specification by following
+  [Re-quote a Quote that has a Job](#re-quote-a-quote-that-has-a-job).
 - **A Product Quote whose Job was cancelled** has no Job to move. If the build is going ahead, click
   **Start Job** on it first: the replacement Job keeps the same machine while the Customer still owns it,
   and the re-quote steps then apply. If the sale is off, [cancel the Quote](/sales/cancel-a-quote) instead.
-- **A From Stock Product Quote** locks the moment it is accepted. Its **Discount percent** can still change;
-  for anything else, follow [Re-quote a From Stock Quote](#re-quote-a-from-stock-quote).
+- **A From Stock Product Quote** locks the moment it is accepted. To change its price or specification,
+  follow [Re-quote a From Stock Quote](#re-quote-a-from-stock-quote).
 - **A Custom Quote** locks on acceptance, but its Work Items stay editable. Change the charge in place.
 
-Every Locked Quote still accepts its **Invoice number**, internal and document notes, delivery dates, and
-**Valid until**.
+Every accepted Locked Quote still accepts its **Delivery terms** and **Delivery price**, **Discount percent**,
+**Deposit percent**, **Invoice number**, internal and document notes, delivery dates, and **Valid until**.
+Edit them in place; the Quote total updates. **Delivery terms** cannot go back to **To be confirmed** once a
+Quote is accepted. A Quote Document generated earlier keeps the old figures, so generate a new revision before
+sending the Customer the change.
 
 ## Re-quote a Quote that has a Job
 

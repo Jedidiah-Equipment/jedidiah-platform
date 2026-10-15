@@ -61,11 +61,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
     kind: quote.kind,
     status: quote.status,
   });
-  const lockEditableFields = editableLockedQuoteFields({
-    hasProductUnit: quote.productUnitId !== null,
-    kind: quote.kind,
-    status: quote.status,
-  });
+  const lockEditableFields = editableLockedQuoteFields({ status: quote.status });
   const canEdit = (field: string) => !isLocked || lockEditableFields.has(field);
   const quoteCurrencyCode = quote.product?.currencyCode ?? quote.quotedCurrencyCode;
   const catalogAssemblies = quote.product?.assemblies ?? [];
@@ -208,7 +204,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                       <form.AppField name="deliveryTerms">
                         {(field) => (
                           <field.SelectField
-                            disabled={isLocked}
+                            disabled={!canEdit('deliveryTerms')}
                             label="Delivery terms"
                             onValueCommit={autosave.commit}
                             onValueSelect={(value) => {
@@ -228,7 +224,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                               {(field) => (
                                 <field.CurrencyField
                                   currencyCode={quoteCurrencyCode}
-                                  disabled={isLocked}
+                                  disabled={!canEdit('deliveryPrice')}
                                   label="Delivery price"
                                 />
                               )}
@@ -258,7 +254,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                         {(field) => (
                           <field.NumberField
                             decimals={2}
-                            disabled={isLocked}
+                            disabled={!canEdit('depositPercent')}
                             emptyValue={0}
                             label="Deposit percent"
                             max={100}

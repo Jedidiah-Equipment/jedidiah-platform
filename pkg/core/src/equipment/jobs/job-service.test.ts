@@ -374,10 +374,10 @@ describe('createJob', () => {
         db: context.db,
         input: QuoteUpdateInput.parse({
           ...quoteUpdateInput(quote),
-          discountPercent: 25,
+          status: 'rejected',
         }),
       }),
-    ).rejects.toThrow('Quote is locked because it has already sourced a Job; discountPercent cannot be changed.');
+    ).rejects.toThrow('Quote is locked because it has already sourced a Job; status cannot be changed.');
     const replacement = await createJob({
       actorUserId,
       db: context.db,
@@ -843,10 +843,10 @@ describe('createJob', () => {
         db: context.db,
         input: QuoteUpdateInput.parse({
           ...quoteUpdateInput(quote),
-          discountPercent: 25,
+          status: 'rejected',
         }),
       }),
-    ).rejects.toThrow('Quote is locked because it has already sourced a Job; discountPercent cannot be changed.');
+    ).rejects.toThrow('Quote is locked because it has already sourced a Job; status cannot be changed.');
   });
 
   test('seeds the job build spec from the quote selection and snapshots the CFO from it', async ({ context }) => {

@@ -73,6 +73,7 @@ export const HELP_TOPICS = {
   purchaseOrderFeedback: '/inventory/send-feedback-on-a-purchase-order',
   purchaseOrders: '/inventory/approve-a-purchase-order',
   purchaseOrderCustomLines: '/inventory/add-a-custom-line-to-a-purchase-order',
+  purchaseOrderReceiving: '/inventory/post-a-receipt',
   quotes: '/sales/change-an-accepted-quote',
   quoteInventoryParts: '/sales/add-an-inventory-part-to-a-quote',
   storesTablet: '/inventory/work-the-stores-tablet',

@@ -25,6 +25,8 @@ export const productsPageDescription = 'Product models with assemblies, pricing,
 
 export const purchaseOrdersPageDescription = 'Draft, approve, send, and track supplier orders for Parts and Jobs';
 
+export const receivingPageDescription = 'Every line still owed on a sent Purchase Order, grouped by order';
+
 export const productRangesPageDescription = 'Admin-managed catalog groupings for product presentation';
 
 export const catalogTranslationsPageDescription =

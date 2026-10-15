@@ -6,10 +6,12 @@ exists — there is no separate paper step afterwards.
 
 ## Steps
 
-1. Open **Purchase Orders** and select the order the delivery is against.
-2. Find the **Receiving** card. Each line shows **Received** as a running `x / y`, and
-   **Outstanding** as what is still to come.
-3. Click **Receive** on the line that arrived.
+1. Open **Receiving** under Inventory. It lists every line still owed on a sent order, soonest
+   expected delivery first, with late orders marked **Late** at the top.
+2. Find the line that arrived. Type the order number, the Supplier, the Part code, or the
+   description into the search box to narrow the list. Each line shows **Received** as a running
+   `x / y`, and **Outstanding** as what is still to come.
+3. Click **Receive** on the line.
 4. Check **Operator**. It starts as you; choose whoever is doing the work if that is someone else.
 5. Check **Quantity received**. It is prefilled with the outstanding quantity, which is right when
    the delivery completes the line and wrong when it is a part delivery — change it to what actually
@@ -21,7 +23,11 @@ exists — there is no separate paper step afterwards.
 8. Click **Receive**. If the delivery is bigger than the line ordered, the button reads **Receive it
    anyway** — click it once you have read the panel and the delivery really was that size.
 
-A **Delivery received** toast confirms it, and the Part's stock on hand goes up immediately.
+A **Delivery received** toast confirms it, and the Part's stock on hand goes up immediately. A line
+with nothing left outstanding drops off the Receiving list, and the order goes with its last line.
+
+You can also receive from the order itself: open **Purchase Orders**, select the order, and use the
+**Receiving** card, then continue from step 3.
 
 ## If it warns you
 
@@ -34,7 +40,7 @@ usually right; suppliers round up to a full box. See
 
 A Custom Line's Arrival changes the order's received progress without changing stock. Receive it on web:
 
-1. Open the sent Purchase Order and click **Receive** on the Custom Line.
+1. Find the Custom Line on **Receiving**, or open the sent Purchase Order, and click **Receive** on it.
 2. Enter the quantity that arrived. It starts at the outstanding quantity.
 3. Click **Receive** to record the Arrival.
 4. If an Arrival needs correcting, find the **Arrivals** card and click **Reverse arrival** on that line's row. Two lines can share a description, so check the arrived and ordered quantities beside it. Enter the quantity to reverse, explain why in the required note, and click **Reverse arrival**. The line reopens by that amount.

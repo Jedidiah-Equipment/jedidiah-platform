@@ -321,6 +321,90 @@ describe('buy-list seeding and late orders', () => {
   });
 });
 
+describe('outstanding lines', () => {
+  test('serves every Sent order still owed something, soonest expected first and undated last', async ({ context }) => {
+    const admin = context.createCaller();
+    const stores = context.createCaller(mockSession('stores'));
+    const receive = (purchaseOrderId: string, quantity: number) =>
+      stores.purchaseOrders.receive({ lengthMm: null, partId: PART_ID, purchaseOrderId, quantity, unitCost: null });
+
+    const undated = await sendOrder(admin, 4);
+    const partDelivered = await sendOrder(admin, 4, '2026-12-01');
+    await receive(partDelivered.id, 1);
+    const soonest = await sendOrder(admin, 2, '2026-11-01');
+    const sameDayLater = await sendOrder(admin, 2, '2026-12-01');
+    await receive((await sendOrder(admin, 2, '2026-10-01')).id, 2);
+    await receive((await sendOrder(admin, 2, '2026-10-01')).id, 3);
+    const closedShort = await sendOrder(admin, 4, '2026-10-01');
+    await receive(closedShort.id, 1);
+    await admin.purchaseOrders.closeShort({ id: closedShort.id });
+    const cancelled = await sendOrder(admin, 2, '2026-10-01');
+    await admin.purchaseOrders.cancel({ id: cancelled.id });
+    const approved = await admin.purchaseOrders.create({ expectedDeliveryDate: '2026-10-01', supplierId: SUPPLIER_ID });
+    await admin.purchaseOrders.saveDraft({
+      expectedDeliveryDate: '2026-10-01',
+      id: approved.id,
+      jobIds: [],
+      lines: [{ kind: 'part', partId: PART_ID, quantity: 2, unitPrice: 150 }],
+      supplierId: SUPPLIER_ID,
+    });
+    await admin.purchaseOrders.approve({ id: approved.id });
+    const draft = await admin.purchaseOrders.create({ expectedDeliveryDate: '2026-10-01', supplierId: SUPPLIER_ID });
+    await admin.purchaseOrders.saveDraft({
+      expectedDeliveryDate: '2026-10-01',
+      id: draft.id,
+      jobIds: [],
+      lines: [{ kind: 'part', partId: PART_ID, quantity: 2, unitPrice: 150 }],
+      supplierId: SUPPLIER_ID,
+    });
+
+    const { items } = await stores.purchaseOrders.outstandingLines();
+    expect(items.map((purchaseOrder) => purchaseOrder.id)).toEqual([
+      soonest.id,
+      partDelivered.id,
+      sameDayLater.id,
+      undated.id,
+    ]);
+    expect(items[1]).toMatchObject({ lines: [{ quantity: 4, receivedQuantity: 1, unitPrice: null }] });
+    await expect(admin.purchaseOrders.outstandingLines()).resolves.toMatchObject({
+      items: [{ lines: [{ unitPrice: 150 }] }, {}, {}, {}],
+    });
+  });
+
+  test('keeps an order owed only on a Custom Line, and refuses a reader without Purchase Order read', async ({
+    context,
+  }) => {
+    const admin = context.createCaller();
+    const purchaseOrder = await admin.purchaseOrders.create({ supplierId: SUPPLIER_ID });
+    await admin.purchaseOrders.saveDraft({
+      expectedDeliveryDate: null,
+      id: purchaseOrder.id,
+      jobIds: [],
+      lines: [
+        {
+          description: 'Packing tape',
+          id: '00000000-0000-4000-8000-0000000009c2',
+          kind: 'custom',
+          quantity: 1,
+          supplierCode: null,
+          unit: 'box',
+          unitPrice: 80,
+        },
+      ],
+      supplierId: SUPPLIER_ID,
+    });
+    await admin.purchaseOrders.approve({ id: purchaseOrder.id });
+    await admin.purchaseOrders.markSent({ id: purchaseOrder.id });
+
+    await expect(admin.purchaseOrders.outstandingLines()).resolves.toMatchObject({
+      items: [{ id: purchaseOrder.id, lines: [{ kind: 'custom', receivedQuantity: 0 }] }],
+    });
+    await expect(context.createCaller(mockSession('sales')).purchaseOrders.outstandingLines()).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+  });
+});
+
 describe('amendments, returns, and credit notes', () => {
   test('amends a sent order under equipment_purchase_order:amend and refuses a dock user', async ({ context }) => {
     const admin = context.createCaller();
@@ -570,10 +654,10 @@ async function fileInvoice(db: Db, purchaseOrderId: string): Promise<string> {
   return document.id;
 }
 
-async function sendOrder(admin: AppRouterCaller, quantity: number) {
+async function sendOrder(admin: AppRouterCaller, quantity: number, expectedDeliveryDate: string | null = null) {
   const purchaseOrder = await admin.purchaseOrders.create({ supplierId: SUPPLIER_ID });
   await admin.purchaseOrders.saveDraft({
-    expectedDeliveryDate: null,
+    expectedDeliveryDate,
     id: purchaseOrder.id,
     jobIds: [],
     lines: [{ kind: 'part', partId: PART_ID, quantity, unitPrice: 150 }],

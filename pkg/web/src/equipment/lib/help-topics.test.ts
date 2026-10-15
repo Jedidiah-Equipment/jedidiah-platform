@@ -23,6 +23,7 @@ describe('helpTopicForPath', () => {
     expect(helpTopicForPath('/equipment/inventory/close-out/job-7')).toBe('inventoryCloseOut');
     expect(helpTopicForPath('/equipment/inventory/price-variance')).toBe('inventoryPriceVariance');
     expect(helpTopicForPath('/equipment/jobs/activity')).toBe('jobActivity');
+    expect(helpTopicForPath('/equipment/purchase-orders/receiving')).toBe('purchaseOrderReceiving');
     expect(helpTopicForPath('/equipment/jobs/calendar')).toBe('jobs');
   });
 

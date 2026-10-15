@@ -10,8 +10,8 @@ switch to QR carry a Code 128 barcode; they still scan until you reprint them.
 
 ## One Part
 
-From the **Parts** list, from **Inventory** (a Part's row or its history), or from a Purchase Order's
-**Receiving** card once a line has received something:
+From the **Parts** list, from **Inventory** (a Part's row or its history), or from **Receiving** or a
+Purchase Order's **Receiving** card once a line has received something:
 
 1. Click **Print label** on the Part's row, or at the top of its history.
 2. The label opens in a new browser tab.

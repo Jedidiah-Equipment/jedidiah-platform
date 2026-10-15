@@ -19,6 +19,7 @@ import {
   IconShoppingCartPlus,
   IconTags,
   IconTool,
+  IconTruckDelivery,
   IconUsers,
 } from '@tabler/icons-react';
 import { linkOptions } from '@tanstack/react-router';
@@ -32,6 +33,8 @@ import {
   ReturnsAwaitingCreditNavIndicator,
   StocktakeOverdueNavIndicator,
 } from './AppNavIndicators.js';
+
+const receivingRoute = '/equipment/purchase-orders/receiving';
 
 export const equipmentNavSections = [
   {
@@ -139,6 +142,13 @@ export const equipmentNavSections = [
         link: linkOptions({ to: '/equipment/purchase-orders' }),
         icon: IconShoppingCart,
         indicator: ReturnsAwaitingCreditNavIndicator,
+        isActive: isPurchaseOrdersNavPath,
+      },
+      {
+        title: 'Receiving',
+        permission: 'equipment_purchase_order:read',
+        link: linkOptions({ to: receivingRoute }),
+        icon: IconTruckDelivery,
       },
       {
         title: 'PO vs invoiced',
@@ -231,4 +241,11 @@ export function isInventoryNavPath(pathname: string): boolean {
   }
 
   return pathname === '/equipment/inventory' || /^\/equipment\/inventory\/[^/]+\/?$/.test(pathname);
+}
+
+/** The Receiving list is routed under Purchase Orders but is its own nav item. */
+export function isPurchaseOrdersNavPath(pathname: string): boolean {
+  if (pathname === receivingRoute || pathname.startsWith(`${receivingRoute}/`)) return false;
+
+  return pathname === '/equipment/purchase-orders' || pathname.startsWith('/equipment/purchase-orders/');
 }

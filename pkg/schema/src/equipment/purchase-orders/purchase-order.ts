@@ -345,6 +345,9 @@ export const PurchaseOrderListResult = createCursorQueryResult(PurchaseOrder);
 export type PurchaseOrderListViewResult = z.infer<typeof PurchaseOrderListViewResult>;
 export const PurchaseOrderListViewResult = createCursorQueryResult(PurchaseOrderView);
 
+export type PurchaseOrderOutstandingResult = z.infer<typeof PurchaseOrderOutstandingResult>;
+export const PurchaseOrderOutstandingResult = z.object({ items: z.array(PurchaseOrderView) });
+
 /** The as-sent order: what was asked for, never what has since arrived against it. */
 export type PurchaseOrderPdfModel = z.infer<typeof PurchaseOrderPdfModel>;
 export const PurchaseOrderPdfModel = PurchaseOrder.pick({

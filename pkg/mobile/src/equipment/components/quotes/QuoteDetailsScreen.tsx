@@ -1,9 +1,9 @@
 import {
   computeQuoteSummary,
   editableLockedQuoteFields,
+  getQuoteDeliveryTermsOptions,
   getQuoteOfferingName,
   isQuoteLocked,
-  quoteDeliveryTermsOptions,
 } from '@pkg/domain/equipment';
 import { UUID } from '@pkg/schema';
 import { type PriorityQuote, type QuoteDetail, QuoteStatus, type QuoteUpdateInput } from '@pkg/schema/equipment';
@@ -326,7 +326,7 @@ function QuoteEditor({
                           if (value !== 'additional_charge') form.setFieldValue('deliveryPrice', 0);
                           return undefined;
                         }}
-                        options={quoteDeliveryTermsOptions}
+                        options={getQuoteDeliveryTermsOptions(quote.status)}
                       />
                     )}
                   </form.AppField>

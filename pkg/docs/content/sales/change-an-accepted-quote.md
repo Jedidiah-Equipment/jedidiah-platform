@@ -16,11 +16,11 @@ prices and specification the Customer agreed to, so changing those means a new Q
   follow [Re-quote a From Stock Quote](#re-quote-a-from-stock-quote).
 - **A Custom Quote** locks on acceptance, but its Work Items stay editable. Change the charge in place.
 
-Every accepted Locked Quote can still be edited in place for:
+Every Locked Quote still accepts its **Invoice number**, internal and document notes, delivery dates, and
+**Valid until**. An accepted one can also be edited in place for:
 
 - **Delivery terms** and **Delivery price**. Delivery terms cannot go back to **To be confirmed**.
 - **Discount percent** and **Deposit percent**.
-- **Invoice number**, internal and document notes, delivery dates, and **Valid until**.
 
 A Quote Document generated earlier keeps the old figures, so generate a new revision before sending the
 Customer the change.

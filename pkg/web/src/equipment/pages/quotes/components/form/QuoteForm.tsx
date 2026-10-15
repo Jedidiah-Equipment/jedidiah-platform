@@ -2,8 +2,8 @@ import { formatDate } from '@pkg/domain';
 import {
   computeQuoteSummary,
   editableLockedQuoteFields,
+  getQuoteDeliveryTermsOptions,
   isQuoteLocked,
-  quoteDeliveryTermsOptions,
   quoteOfferingType,
   quoteOfferingTypeLabel,
   quoteStatusLabels,
@@ -213,7 +213,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                               }
                               return undefined;
                             }}
-                            options={quoteDeliveryTermsOptions}
+                            options={getQuoteDeliveryTermsOptions(quote.status)}
                           />
                         )}
                       </form.AppField>

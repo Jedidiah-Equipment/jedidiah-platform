@@ -297,6 +297,31 @@ export async function loadOpenLineCounts({
   return counts;
 }
 
+/**
+ * Every order still owed something, served whole so a receiver can post against any of its lines:
+ * the Receiving list's read. "Owed" is {@link loadOwedLines}'s rule, so an order listed here is the
+ * same order the late list and the buy list count as open. Earliest-promised first, undated last.
+ */
+export async function listOutstandingPurchaseOrders({ db }: { db: Db }): Promise<PurchaseOrder[]> {
+  const owedLines = await loadOwedLines({ db, scope: undefined });
+  const purchaseOrderIds = [...new Set(owedLines.map((line) => line.purchaseOrderId))];
+  if (purchaseOrderIds.length === 0) return [];
+
+  const [rows, documentIds, intake, receiptBuckets] = await Promise.all([
+    db.query.purchaseOrders.findMany({ where: inArray(purchaseOrders.id, purchaseOrderIds), with: purchaseOrderWith }),
+    loadLatestDocumentIds({ db, purchaseOrderIds }),
+    loadLineIntake({ db, purchaseOrderIds }),
+    loadReceiptBuckets({ db, purchaseOrderIds }),
+  ]);
+
+  return rows
+    .sort(
+      (left, right) =>
+        compareNullableDateOnly(left.expectedDeliveryDate, right.expectedDeliveryDate) || left.code - right.code,
+    )
+    .map((row) => mapPurchaseOrder({ documentId: documentIds.get(row.id) ?? null, intake, receiptBuckets, row }));
+}
+
 function compareOpenOrderLines(left: OpenOrderLine, right: OpenOrderLine): number {
   return (
     compareNullableDateOnly(left.expectedDeliveryDate, right.expectedDeliveryDate) ||

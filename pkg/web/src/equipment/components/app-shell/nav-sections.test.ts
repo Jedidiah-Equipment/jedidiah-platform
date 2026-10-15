@@ -2,7 +2,7 @@ import type { AppPermission } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
 import { getVisibleNavSections } from '@/components/app-shell/NavSections.js';
-import { equipmentNavSections, isInventoryNavPath } from './nav-sections.js';
+import { equipmentNavSections, isInventoryNavPath, isPurchaseOrdersNavPath } from './nav-sections.js';
 
 describe('equipmentNavSections', () => {
   it('groups inventory links in the required order', () => {
@@ -27,6 +27,7 @@ describe('equipmentNavSections', () => {
       'Inventory',
       'Buy list',
       'Purchase Orders',
+      'Receiving',
       'PO vs invoiced',
       'Stocktake',
       'Close-out',
@@ -44,6 +45,12 @@ describe('equipmentNavSections', () => {
         ?.indicator,
     ).toBeDefined();
     expect(operations?.items.find((item) => item.title === 'Jobs')?.indicator).toBeDefined();
+  });
+
+  it('leaves Purchase Orders inactive on the Receiving list routed beneath it', () => {
+    expect(isPurchaseOrdersNavPath('/equipment/purchase-orders')).toBe(true);
+    expect(isPurchaseOrdersNavPath('/equipment/purchase-orders/00000000-0000-4000-8000-000000000001')).toBe(true);
+    expect(isPurchaseOrdersNavPath('/equipment/purchase-orders/receiving')).toBe(false);
   });
 
   it('shows the Inventory section when any permitted item is visible', () => {

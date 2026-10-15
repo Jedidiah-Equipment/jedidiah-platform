@@ -15,6 +15,7 @@ import {
   getPurchaseOrder,
   listInvoicePriceVariance,
   listLatePurchaseOrders,
+  listOutstandingPurchaseOrders,
   listPartPurchaseOrderLines,
   listPurchaseOrderAmendments,
   listPurchaseOrderArrivals,
@@ -57,6 +58,7 @@ import {
   PurchaseOrderLineViewCostFields,
   PurchaseOrderListInput,
   PurchaseOrderListViewResult,
+  PurchaseOrderOutstandingResult,
   PurchaseOrderReturnListResult,
   PurchaseOrderReturnRowCostFields,
   PurchaseOrderSaveDraftInput,
@@ -386,6 +388,15 @@ export const purchaseOrdersRouter = router({
   late: authorizedProcedure('equipment_purchase_order:read')
     .output(LatePurchaseOrderResult)
     .query(({ ctx }) => listLatePurchaseOrders({ db: ctx.db })),
+
+  /** The Receiving list: every order still owed something, whole, so any of its lines can be received. */
+  outstandingLines: authorizedProcedure('equipment_purchase_order:read')
+    .output(PurchaseOrderOutstandingResult)
+    .query(async ({ ctx }) => {
+      const purchaseOrders = await listOutstandingPurchaseOrders({ db: ctx.db });
+
+      return { items: purchaseOrders.map((purchaseOrder) => toPurchaseOrderView(purchaseOrder, ctx.access)) };
+    }),
 
   /**
    * The admin sign-off `markSent` now depends on. Reverting is deliberately the same right: only

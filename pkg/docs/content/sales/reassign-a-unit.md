@@ -15,7 +15,7 @@ If the receiving Quote is already building a machine, that machine returns to St
 
 ## What the specification difference means
 
-The confirm step lists Optional Assemblies fitted to the incoming machine that this Quote did not sell, and the ones this Quote sold that the machine does not carry. It never blocks the move. Pricing and specification stay exactly as the Quote agreed them. The receiving Quote locks once the Job arrives, so amend it before you reassign if the deal has really changed.
+The confirm step lists Optional Assemblies fitted to the incoming machine that this Quote did not sell, and the ones this Quote sold that the machine does not carry. It never blocks the move. Pricing and specification stay exactly as the Quote agreed them. The receiving Quote locks once the Job arrives, so amend its price or specification before you reassign if the deal has really changed.
 
 ## Where the trail shows up
 

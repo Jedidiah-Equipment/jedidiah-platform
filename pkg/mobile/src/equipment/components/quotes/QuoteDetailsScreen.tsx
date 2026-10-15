@@ -540,7 +540,9 @@ function describeLockedQuote({ canEdit, kind }: { canEdit: (field: string) => bo
     'invoice number',
     'notes',
     'delivery dates',
-    ...(canEdit('deliveryTerms') ? ['delivery terms', 'discount', 'deposit'] : []),
+    ...(canEdit('deliveryTerms') ? ['delivery terms'] : []),
+    ...(canEdit('discountPercent') ? ['discount'] : []),
+    ...(canEdit('depositPercent') ? ['deposit'] : []),
   ];
   const last = editable.pop();
 

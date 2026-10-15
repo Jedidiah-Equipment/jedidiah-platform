@@ -12,6 +12,7 @@ const EDITABLE_LOCKED_QUOTE_FIELDS: ReadonlySet<string> = new Set([
 
 const EDITABLE_ACCEPTED_LOCKED_QUOTE_FIELDS: ReadonlySet<string> = new Set([
   ...EDITABLE_LOCKED_QUOTE_FIELDS,
+  // The Settling Terms.
   'depositPercent',
   'deliveryTerms',
   'deliveryPrice',
@@ -19,9 +20,9 @@ const EDITABLE_ACCEPTED_LOCKED_QUOTE_FIELDS: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * Which fields a Locked Quote still accepts. The price and specification freeze, but the terms the
- * sale is settled on — discount, deposit, and Delivery Terms — stay open while the Quote is accepted,
- * for anyone who can update Quotes at all (`equipment_quote:update`). A cancelled Quote moves none of them.
+ * Which fields a Locked Quote still accepts. The price and specification freeze, but the Settling Terms
+ * — discount, deposit, and Delivery Terms — stay open while the Quote is accepted, for anyone who can
+ * update Quotes at all (`equipment_quote:update`). A cancelled Quote moves none of them.
  */
 export function editableLockedQuoteFields({ status }: { status: QuoteStatus }): ReadonlySet<string> {
   return status === 'accepted' ? EDITABLE_ACCEPTED_LOCKED_QUOTE_FIELDS : EDITABLE_LOCKED_QUOTE_FIELDS;

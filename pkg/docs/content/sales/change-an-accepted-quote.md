@@ -1,8 +1,7 @@
 # Change an accepted Quote
 
 Whether an accepted Quote can still be edited depends on whether it is **Locked**: a Locked Quote keeps the
-prices and specification the Customer agreed to, so changing those means a new Quote. The discount, deposit,
-and delivery terms are different: they settle the sale, so they can change on any accepted Quote.
+prices and specification the Customer agreed to, so changing those means a new Quote.
 
 ## Which case you are in
 
@@ -17,11 +16,14 @@ and delivery terms are different: they settle the sale, so they can change on an
   follow [Re-quote a From Stock Quote](#re-quote-a-from-stock-quote).
 - **A Custom Quote** locks on acceptance, but its Work Items stay editable. Change the charge in place.
 
-Every accepted Locked Quote still accepts its **Delivery terms** and **Delivery price**, **Discount percent**,
-**Deposit percent**, **Invoice number**, internal and document notes, delivery dates, and **Valid until**.
-Edit them in place; the Quote total updates. **Delivery terms** cannot go back to **To be confirmed** once a
-Quote is accepted. A Quote Document generated earlier keeps the old figures, so generate a new revision before
-sending the Customer the change.
+Every accepted Locked Quote can still be edited in place for:
+
+- **Delivery terms** and **Delivery price**. Delivery terms cannot go back to **To be confirmed**.
+- **Discount percent** and **Deposit percent**.
+- **Invoice number**, internal and document notes, delivery dates, and **Valid until**.
+
+A Quote Document generated earlier keeps the old figures, so generate a new revision before sending the
+Customer the change.
 
 ## Re-quote a Quote that has a Job
 

@@ -764,7 +764,9 @@ describe('quotes.update', () => {
     });
   });
 
-  test('lets a equipment_quote:update holder settle the terms of an accepted Allocation Quote', async ({ context }) => {
+  test('lets a equipment_quote:update holder change the Settling Terms of an accepted Allocation Quote', async ({
+    context,
+  }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
     const [unit] = await context.db
       .insert(productUnits)
@@ -788,7 +790,7 @@ describe('quotes.update', () => {
     });
     const accepted = await salesCaller.quotes.update({ ...toUpdateInput(created), status: 'accepted' });
 
-    // equipment_quote:update alone reopens the discount and deposit on an accepted Locked Quote; the lock holds elsewhere.
+    // equipment_quote:update alone reopens the Settling Terms on an accepted Locked Quote; the lock holds elsewhere.
     const settled = await salesCaller.quotes.update({
       ...toUpdateInput(accepted),
       depositPercent: 10,
@@ -2251,7 +2253,7 @@ describe('jobs.create with quote links', () => {
     }
   });
 
-  test('allows logistics, free-text, and accepted-terms quote fields after a job exists', async ({ context }) => {
+  test('allows logistics, free-text, and Settling Terms quote fields after a job exists', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
     const adminCaller = context.createCaller(mockSession('admin'));
     const created = await createReadyQuote(salesCaller, context.product.id);

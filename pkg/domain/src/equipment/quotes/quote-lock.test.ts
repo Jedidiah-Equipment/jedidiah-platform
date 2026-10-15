@@ -11,7 +11,7 @@ const alwaysEditableFields = [
   'validUntil',
   'workItems',
 ];
-const acceptedTermsFields = ['depositPercent', 'deliveryTerms', 'deliveryPrice', 'discountPercent'];
+const settlingTermsFields = ['depositPercent', 'deliveryTerms', 'deliveryPrice', 'discountPercent'];
 const frozenFields = [
   'customerId',
   'productId',
@@ -38,7 +38,7 @@ describe('assertQuoteEditable', () => {
     });
   });
 
-  it.each([...frozenFields, ...acceptedTermsFields, ...alwaysEditableFields])(
+  it.each([...frozenFields, ...settlingTermsFields, ...alwaysEditableFields])(
     'allows %s before a quote has a job',
     (field) => {
       expect(
@@ -83,7 +83,7 @@ describe('assertQuoteEditable', () => {
     });
   });
 
-  it.each([...frozenFields, ...acceptedTermsFields])(
+  it.each([...frozenFields, ...settlingTermsFields])(
     'allows custom quote %s changes before acceptance even with a job',
     (field) => {
       expect(
@@ -141,17 +141,17 @@ describe('assertQuoteEditable', () => {
     ['a custom quote', { hasEverSourcedJob: false, hasProductUnit: false, kind: 'custom' }],
   ] as const;
 
-  it.each(acceptedLockedQuotes)('allows the accepted terms and every always-editable field on %s', (_label, quote) => {
+  it.each(acceptedLockedQuotes)('allows the Settling Terms and every always-editable field on %s', (_label, quote) => {
     expect(
       assertQuoteEditable({
         ...quote,
-        changedFields: [...acceptedTermsFields, ...alwaysEditableFields],
+        changedFields: [...settlingTermsFields, ...alwaysEditableFields],
         status: 'accepted',
       }),
     ).toEqual({ allowed: true });
   });
 
-  it.each(acceptedTermsFields)('rejects %s once a quote is cancelled', (field) => {
+  it.each(settlingTermsFields)('rejects %s once a quote is cancelled', (field) => {
     expect(
       assertQuoteEditable({
         changedFields: [field],

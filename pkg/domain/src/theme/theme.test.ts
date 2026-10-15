@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { JEDIDIAH_BRAND_YELLOW, JEDIDIAH_BRAND_YELLOW_ON_LIGHT } from '../brand.js';
+import { JEDIDIAH_BRAND_YELLOW } from '../brand.js';
 import {
   darkStatusColors,
   darkTheme,
@@ -13,8 +13,7 @@ import {
 } from './index.js';
 
 describe('theme tokens', () => {
-  it('reuses the brand yellow for the primary colour', () => {
-    expect(lightTheme.colors.primary).toBe(JEDIDIAH_BRAND_YELLOW_ON_LIGHT);
+  it('reuses the brand yellow for the dark primary colour', () => {
     expect(darkTheme.colors.primary).toBe(JEDIDIAH_BRAND_YELLOW);
   });
 

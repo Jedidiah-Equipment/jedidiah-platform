@@ -1,4 +1,5 @@
-import { formatDate, formatNumber } from '@pkg/domain';
+import { formatDate } from '@pkg/domain';
+import { formatPartQuantityValue } from '@pkg/domain/equipment';
 import type { UUID } from '@pkg/schema';
 import { type PurchaseOrderReturnRow, STOCK_RETURN_TO_SUPPLIER_REASON_LABELS } from '@pkg/schema/equipment';
 import { IconLoader2 } from '@tabler/icons-react';
@@ -95,7 +96,7 @@ export function PurchaseOrderCreditNoteDialog({
                     }}
                   />
                   <label htmlFor={`credit-note-return-${row.id}`}>
-                    <span className="font-medium">{row.partCode}</span> · {formatNumber(row.quantity)} ·{' '}
+                    <span className="font-medium">{row.partCode}</span> · {formatPartQuantityValue(row.quantity)} ·{' '}
                     {STOCK_RETURN_TO_SUPPLIER_REASON_LABELS[row.reason]}
                     <span className="text-muted-foreground"> · {formatDate(row.createdAt)}</span>
                   </label>

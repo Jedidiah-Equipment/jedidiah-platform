@@ -1,4 +1,5 @@
-import { formatCurrency, formatDate, formatNumber } from '@pkg/domain';
+import { formatCurrency, formatDate } from '@pkg/domain';
+import { formatPartQuantityValue } from '@pkg/domain/equipment';
 import {
   type PurchaseOrderReturnRow,
   type PurchaseOrderView,
@@ -64,7 +65,7 @@ export function PurchaseOrderReturnsCard({
       },
       {
         accessorKey: 'quantity',
-        cell: ({ row }) => formatNumber(row.original.quantity),
+        cell: ({ row }) => formatPartQuantityValue(row.original.quantity),
         header: 'Quantity',
         meta: { cellClassName: 'text-right tabular-nums', headerClassName: 'text-right' },
       },

@@ -50,13 +50,11 @@ const arrival = PurchaseOrderArrival.parse({
   quantity: 2,
 });
 
-async function render(canReverse: boolean) {
+async function render(canReverse: boolean, order = purchaseOrder) {
   const container = document.createElement('div');
   document.body.append(container);
   const root = createRoot(container);
-  await act(async () =>
-    root.render(<PurchaseOrderArrivalsCard canReverse={canReverse} purchaseOrder={purchaseOrder} />),
-  );
+  await act(async () => root.render(<PurchaseOrderArrivalsCard canReverse={canReverse} purchaseOrder={order} />));
 
   return container;
 }
@@ -90,4 +88,17 @@ it('reverses the line whose row was clicked when two lines share a description',
   await act(async () => reverse.click());
 
   expect(container.textContent).toContain(`Reversing ${TWIN_LINE_ID}`);
+});
+
+it('shows fractional quantities instead of rounding them to whole numbers', async () => {
+  const fractionalOrder = {
+    ...purchaseOrder,
+    lines: [{ ...customLine, id: LINE_ID, quantity: 2.5, receivedQuantity: 1.25 }],
+  } as PurchaseOrderView;
+  arrivals.items = [{ ...arrival, quantity: 1.375 }];
+
+  const container = await render(false, fractionalOrder);
+
+  expect(container.textContent).toContain('1.25 / 2.5 box');
+  expect(container.textContent).toContain('+1.375');
 });

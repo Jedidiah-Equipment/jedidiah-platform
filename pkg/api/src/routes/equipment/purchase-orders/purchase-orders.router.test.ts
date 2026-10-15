@@ -349,6 +349,14 @@ describe('outstanding lines', () => {
       supplierId: SUPPLIER_ID,
     });
     await admin.purchaseOrders.approve({ id: approved.id });
+    const draft = await admin.purchaseOrders.create({ expectedDeliveryDate: '2026-10-01', supplierId: SUPPLIER_ID });
+    await admin.purchaseOrders.saveDraft({
+      expectedDeliveryDate: '2026-10-01',
+      id: draft.id,
+      jobIds: [],
+      lines: [{ kind: 'part', partId: PART_ID, quantity: 2, unitPrice: 150 }],
+      supplierId: SUPPLIER_ID,
+    });
 
     const { items } = await stores.purchaseOrders.outstandingLines();
     expect(items.map((purchaseOrder) => purchaseOrder.id)).toEqual([

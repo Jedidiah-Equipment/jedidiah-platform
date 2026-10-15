@@ -133,17 +133,17 @@ function toOwedGroups(items: PurchaseOrderView[]): OwedGroup[] {
 
 /**
  * Keeps the server's order of orders. A match on the order itself keeps every owed line, so a whole
- * delivery shows when searched by its note; otherwise only the matching lines stay.
+ * delivery shows when searched by its delivery note's order number or Supplier; otherwise only the matching lines stay.
  */
 function searchOwedGroups(groups: OwedGroup[], search: string): OwedGroup[] {
   const query = search.trim().toLowerCase();
   if (query === '') return groups;
-  const codeQuery = query.replace(/^po-?/, '');
+  const codeQuery = withoutCodePrefix(query);
 
   return groups.flatMap((group) => {
     const { purchaseOrder } = group;
     const orderMatches =
-      (codeQuery !== '' && purchaseOrder.code.toLowerCase().replace(/^po-?/, '').includes(codeQuery)) ||
+      (codeQuery !== '' && withoutCodePrefix(purchaseOrder.code.toLowerCase()).includes(codeQuery)) ||
       purchaseOrder.supplier.companyName.toLowerCase().includes(query);
     if (orderMatches) return [group];
     const lines = group.lines.filter(
@@ -154,4 +154,8 @@ function searchOwedGroups(groups: OwedGroup[], search: string): OwedGroup[] {
 
     return lines.length === 0 ? [] : [{ ...group, lines }];
   });
+}
+
+function withoutCodePrefix(code: string): string {
+  return code.replace(/^po-?/, '');
 }

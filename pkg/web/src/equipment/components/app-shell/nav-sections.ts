@@ -34,6 +34,8 @@ import {
   StocktakeOverdueNavIndicator,
 } from './AppNavIndicators.js';
 
+const receivingRoute = '/equipment/purchase-orders/receiving';
+
 export const equipmentNavSections = [
   {
     label: '',
@@ -145,7 +147,7 @@ export const equipmentNavSections = [
       {
         title: 'Receiving',
         permission: 'equipment_purchase_order:read',
-        link: linkOptions({ to: '/equipment/purchase-orders/receiving' }),
+        link: linkOptions({ to: receivingRoute }),
         icon: IconTruckDelivery,
       },
       {
@@ -240,8 +242,6 @@ export function isInventoryNavPath(pathname: string): boolean {
 
   return pathname === '/equipment/inventory' || /^\/equipment\/inventory\/[^/]+\/?$/.test(pathname);
 }
-
-const receivingRoute = '/equipment/purchase-orders/receiving';
 
 /** The Receiving list is routed under Purchase Orders but is its own nav item. */
 export function isPurchaseOrdersNavPath(pathname: string): boolean {

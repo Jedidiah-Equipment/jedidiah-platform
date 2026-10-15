@@ -307,19 +307,16 @@ export async function listOutstandingPurchaseOrders({ db }: { db: Db }): Promise
   const purchaseOrderIds = [...new Set(owedLines.map((line) => line.purchaseOrderId))];
   if (purchaseOrderIds.length === 0) return [];
 
-  const [rows, documentIds, intake, receiptBuckets] = await Promise.all([
-    db.query.purchaseOrders.findMany({ where: inArray(purchaseOrders.id, purchaseOrderIds), with: purchaseOrderWith }),
-    loadLatestDocumentIds({ db, purchaseOrderIds }),
-    loadLineIntake({ db, purchaseOrderIds }),
-    loadReceiptBuckets({ db, purchaseOrderIds }),
-  ]);
+  const rows = await db.query.purchaseOrders.findMany({
+    where: inArray(purchaseOrders.id, purchaseOrderIds),
+    with: purchaseOrderWith,
+  });
+  rows.sort(
+    (left, right) =>
+      compareNullableDateOnly(left.expectedDeliveryDate, right.expectedDeliveryDate) || left.code - right.code,
+  );
 
-  return rows
-    .sort(
-      (left, right) =>
-        compareNullableDateOnly(left.expectedDeliveryDate, right.expectedDeliveryDate) || left.code - right.code,
-    )
-    .map((row) => mapPurchaseOrder({ documentId: documentIds.get(row.id) ?? null, intake, receiptBuckets, row }));
+  return hydratePurchaseOrders({ db, rows });
 }
 
 function compareOpenOrderLines(left: OpenOrderLine, right: OpenOrderLine): number {
@@ -453,17 +450,11 @@ export async function listPurchaseOrders({
     where,
     with: purchaseOrderWith,
   });
-  const purchaseOrderIds = rows.map((row) => row.id);
-  const [[totalRow], documentIds, intake, receiptBuckets] = await Promise.all([
+  const [[totalRow], items] = await Promise.all([
     db.select({ value: count() }).from(purchaseOrders).where(where),
-    loadLatestDocumentIds({ db, purchaseOrderIds }),
-    loadLineIntake({ db, purchaseOrderIds }),
-    loadReceiptBuckets({ db, purchaseOrderIds }),
+    hydratePurchaseOrders({ db, rows }),
   ]);
   const total = totalRow?.value ?? 0;
-  const items = rows.map((row) =>
-    mapPurchaseOrder({ documentId: documentIds.get(row.id) ?? null, intake, receiptBuckets, row }),
-  );
 
   return { items, nextCursor: getNextCursor({ count: items.length, cursor: input.cursor, total }), total };
 }
@@ -794,6 +785,25 @@ const purchaseOrderWith = {
   lines: { with: { part: true } },
   supplier: true,
 } as const;
+
+async function hydratePurchaseOrders({
+  db,
+  rows,
+}: {
+  db: PurchaseOrderDb;
+  rows: PurchaseOrderAggregate[];
+}): Promise<PurchaseOrder[]> {
+  const purchaseOrderIds = rows.map((row) => row.id);
+  const [documentIds, intake, receiptBuckets] = await Promise.all([
+    loadLatestDocumentIds({ db, purchaseOrderIds }),
+    loadLineIntake({ db, purchaseOrderIds }),
+    loadReceiptBuckets({ db, purchaseOrderIds }),
+  ]);
+
+  return rows.map((row) =>
+    mapPurchaseOrder({ documentId: documentIds.get(row.id) ?? null, intake, receiptBuckets, row }),
+  );
+}
 
 async function loadPurchaseOrderAggregate({ db, id }: { db: PurchaseOrderDb; id: UUID }) {
   return db.query.purchaseOrders.findFirst({ where: eq(purchaseOrders.id, id), with: purchaseOrderWith });

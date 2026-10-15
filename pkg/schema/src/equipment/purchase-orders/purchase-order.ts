@@ -345,7 +345,6 @@ export const PurchaseOrderListResult = createCursorQueryResult(PurchaseOrder);
 export type PurchaseOrderListViewResult = z.infer<typeof PurchaseOrderListViewResult>;
 export const PurchaseOrderListViewResult = createCursorQueryResult(PurchaseOrderView);
 
-/** Every order still owed something, whole, in the order the Receiving list shows them. */
 export type PurchaseOrderOutstandingResult = z.infer<typeof PurchaseOrderOutstandingResult>;
 export const PurchaseOrderOutstandingResult = z.object({ items: z.array(PurchaseOrderView) });
 

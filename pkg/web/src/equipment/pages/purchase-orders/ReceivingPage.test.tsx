@@ -65,6 +65,7 @@ describe('ReceivingList', () => {
     expect(html).not.toContain('HOSE-12');
     expect(html).toContain('NIP-8');
     expect(html).toContain('3 / 10');
+    expect(html).toMatch(/3 \/ 10<\/td><td[^>]*>7</);
     expect(html).toContain('Expected 1 Oct 2026');
     expect(html).not.toContain('PO-00043');
     expect(html.indexOf('PO-00041')).toBeLessThan(html.indexOf('PO-00042'));

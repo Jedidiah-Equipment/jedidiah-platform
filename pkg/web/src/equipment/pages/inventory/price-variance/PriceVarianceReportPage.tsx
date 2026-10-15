@@ -1,5 +1,5 @@
-import { formatCurrency, formatNumber } from '@pkg/domain';
-import { formatPurchaseOrderLineLabel } from '@pkg/domain/equipment';
+import { formatCurrency } from '@pkg/domain';
+import { formatPartQuantityValue, formatPurchaseOrderLineLabel } from '@pkg/domain/equipment';
 import type { InvoicePriceVarianceRow } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
@@ -48,7 +48,7 @@ const columns: DataTableColumnDef<InvoicePriceVarianceRow>[] = [
   {
     accessorKey: 'quantity',
     // Null where the invoice printed a price against no quantity — the variance is unknown, not zero.
-    cell: ({ row }) => (row.original.quantity === null ? '—' : formatNumber(row.original.quantity)),
+    cell: ({ row }) => (row.original.quantity === null ? '—' : formatPartQuantityValue(row.original.quantity)),
     header: 'Quantity',
     meta: { cellClassName: 'text-right tabular-nums', headerClassName: 'text-right' },
   },

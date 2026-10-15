@@ -1,4 +1,5 @@
-import { formatCurrency, formatDate, formatNumber } from '@pkg/domain';
+import { formatCurrency, formatDate } from '@pkg/domain';
+import { formatPartQuantityValue } from '@pkg/domain/equipment';
 import type { UUID } from '@pkg/schema';
 import {
   INVOICE_MATCH_FLAG_LABELS,
@@ -304,8 +305,8 @@ function summary(invoice: SupplierInvoiceReview, outstanding: number): string {
 }
 
 function quantityPair(row: SupplierInvoiceMatchRow): string {
-  return `${row.orderedQuantity === null ? '—' : formatNumber(row.orderedQuantity)} / ${
-    row.invoiceQuantity === null ? '—' : formatNumber(row.invoiceQuantity)
+  return `${row.orderedQuantity === null ? '—' : formatPartQuantityValue(row.orderedQuantity)} / ${
+    row.invoiceQuantity === null ? '—' : formatPartQuantityValue(row.invoiceQuantity)
   }`;
 }
 

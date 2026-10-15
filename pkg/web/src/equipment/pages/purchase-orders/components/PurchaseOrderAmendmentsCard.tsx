@@ -1,4 +1,5 @@
-import { formatDate, formatNumber, getFirstName } from '@pkg/domain';
+import { formatDate, getFirstName } from '@pkg/domain';
+import { formatPartQuantityValue } from '@pkg/domain/equipment';
 import type { UUID } from '@pkg/schema';
 import { PURCHASE_ORDER_AMENDMENT_KIND_LABELS, type PurchaseOrderAmendment } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
@@ -86,14 +87,16 @@ function describeAmendment(amendment: PurchaseOrderAmendment): string {
     : (amendment.customDescription ?? '—');
 
   if (amendment.kind === 'add-line') {
-    return `${part} — ${formatNumber(amendment.newQuantity ?? 0)} added`;
+    return `${part} — ${formatPartQuantityValue(amendment.newQuantity ?? 0)} added`;
   }
 
   if (amendment.kind === 'substitute-part') {
-    return `${part} → ${amendment.newPartCode ?? '—'} · ${amendment.newPartName ?? ''} (${formatNumber(amendment.newQuantity ?? 0)})`;
+    return `${part} → ${amendment.newPartCode ?? '—'} · ${amendment.newPartName ?? ''} (${formatPartQuantityValue(amendment.newQuantity ?? 0)})`;
   }
 
-  if (amendment.kind === 'remove-line') return `${part} — ${formatNumber(amendment.oldQuantity ?? 0)} removed`;
+  if (amendment.kind === 'remove-line') {
+    return `${part} — ${formatPartQuantityValue(amendment.oldQuantity ?? 0)} removed`;
+  }
 
-  return `${part} — ${formatNumber(amendment.oldQuantity ?? 0)} → ${formatNumber(amendment.newQuantity ?? 0)}`;
+  return `${part} — ${formatPartQuantityValue(amendment.oldQuantity ?? 0)} → ${formatPartQuantityValue(amendment.newQuantity ?? 0)}`;
 }

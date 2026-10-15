@@ -1,4 +1,5 @@
-import { formatDate, formatNumber, getFirstName } from '@pkg/domain';
+import { formatDate, getFirstName } from '@pkg/domain';
+import { formatPartQuantityValue } from '@pkg/domain/equipment';
 import type { PurchaseOrderArrival, PurchaseOrderCustomLineView, PurchaseOrderView } from '@pkg/schema/equipment';
 import { IconArrowBackUp } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
@@ -51,7 +52,7 @@ export function PurchaseOrderArrivalsCard({
       {
         accessorKey: 'receivedQuantity',
         cell: ({ row }) =>
-          `${formatNumber(row.original.receivedQuantity)} / ${formatNumber(row.original.quantity)} ${row.original.unit}`,
+          `${formatPartQuantityValue(row.original.receivedQuantity)} / ${formatPartQuantityValue(row.original.quantity)} ${row.original.unit}`,
         header: 'Arrived',
         meta: { cellClassName: 'text-right tabular-nums', headerClassName: 'text-right' },
       },
@@ -95,7 +96,7 @@ export function PurchaseOrderArrivalsCard({
       { accessorKey: 'lineDescription', header: 'Line' },
       {
         accessorKey: 'quantity',
-        cell: ({ row }) => `${row.original.quantity > 0 ? '+' : ''}${formatNumber(row.original.quantity)}`,
+        cell: ({ row }) => `${row.original.quantity > 0 ? '+' : ''}${formatPartQuantityValue(row.original.quantity)}`,
         header: 'Quantity',
         meta: { cellClassName: 'text-right tabular-nums', headerClassName: 'text-right' },
       },

@@ -7,23 +7,21 @@ import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { cn } from '@/lib/utils.js';
 
-/** How often an open feed, or the unread dot beside its nav item, picks up activity recorded elsewhere. */
-export const ACTIVITY_REFETCH_INTERVAL_MS = 60_000;
-
-type ActivityTimelineItem = { id: string; occurredAt: DateIso; type: string };
-
-/** The slice of an infinite query the timeline reads: its state, and how to fetch the next page. */
+/**
+ * The slice of a query the timeline reads: its state, and for an infinite query how to fetch the next page. A plain
+ * query (a record's whole thread in one read) leaves the paging out.
+ */
 type ActivityTimelineQuery = {
   error: unknown;
-  fetchNextPage: () => Promise<unknown>;
-  hasNextPage: boolean;
-  isFetchingNextPage: boolean;
+  fetchNextPage?: () => Promise<unknown>;
+  hasNextPage?: boolean;
+  isFetchingNextPage?: boolean;
   isPending: boolean;
   isSuccess: boolean;
 };
 
 /** Entries under a heading per day, newest day first as given; renders nothing for no entries. */
-export function ActivityDayGroups<TItem extends { occurredAt: DateIso }>({
+function ActivityDayGroups<TItem extends { occurredAt: DateIso }>({
   getItemKey,
   items,
   renderItem,
@@ -56,28 +54,36 @@ export function ActivityDayGroups<TItem extends { occurredAt: DateIso }>({
  * day is what a reader navigates by — "what happened yesterday" rather than "the eleventh entry" — so it gets a rule
  * and a heading, and the spine restarts beneath each one. Older pages load as the reader scrolls to the end.
  */
-export function ActivityTimeline<TItem extends ActivityTimelineItem>({
-  getItemKey = (item) => `${item.type}:${item.id}`,
+export function ActivityTimeline<TItem extends { occurredAt: DateIso }>({
+  getItemKey,
   emptyMessage,
   errorMessage,
   items,
+  onViewedLatest,
   query,
   renderItem,
 }: {
-  getItemKey?: (item: TItem) => string;
+  getItemKey: (item: TItem) => string;
   emptyMessage: string;
   errorMessage: string;
   items: readonly TItem[];
+  /** Called with the newest item's instant once the feed has loaded; the feed decides when a view counts. */
+  onViewedLatest?: ((occurredAt: DateIso) => void) | undefined;
   query: ActivityTimelineQuery;
   renderItem: (item: TItem) => React.ReactNode;
 }) {
   const loadMoreRef = useRef<HTMLDivElement>(null);
-  const { fetchNextPage, hasNextPage, isFetchingNextPage } = query;
+  const { fetchNextPage, hasNextPage, isFetchingNextPage, isSuccess } = query;
+  const latestOccurredAt = items[0]?.occurredAt;
+
+  useEffect(() => {
+    if (isSuccess && latestOccurredAt !== undefined) onViewedLatest?.(latestOccurredAt);
+  }, [isSuccess, latestOccurredAt, onViewedLatest]);
 
   useEffect(() => {
     const loadMore = loadMoreRef.current;
 
-    if (!loadMore || !hasNextPage) {
+    if (!loadMore || !hasNextPage || !fetchNextPage) {
       return;
     }
 

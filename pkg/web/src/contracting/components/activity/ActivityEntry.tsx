@@ -1,11 +1,4 @@
-import { statusBadgeColorClassNames } from '@pkg/domain';
-import {
-  type ActivityEventItem,
-  type ActivityEventTone,
-  type ActivityNoteItem,
-  isActivityNote,
-  presentActivityEvent,
-} from '@pkg/domain/contracting';
+import { type ActivityNoteItem, isActivityNote, presentActivityEvent } from '@pkg/domain/contracting';
 import type { ActivityItem, ActivityItemType } from '@pkg/schema/contracting';
 import {
   IconArrowBarToDown,
@@ -22,13 +15,12 @@ import {
 import { Link, type LinkProps } from '@tanstack/react-router';
 
 import {
-  ActivityEntryShell,
-  ActivityEventMarker,
-  ActivityNoteMarker,
-  activityEntryLinkClassName,
-} from '@/components/activity/ActivityEntryShell.js';
-import { ActivityNoteBubble } from '@/components/activity/ActivityNoteBubble.js';
-import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
+  ActivityEventEntry,
+  ActivityNoteEntry,
+  ActivityNoteFooter,
+  activityNoteFooterLinkClassName,
+} from '@/components/activity/ActivityEntries.js';
+import { activityEntryLinkClassName } from '@/components/activity/ActivityEntryShell.js';
 import { cn } from '@/lib/utils.js';
 
 /**
@@ -61,90 +53,45 @@ function entryTarget(item: ActivityItem, scope: ActivityScope): EntryTarget | nu
 
 /** One Contracting feed entry: a note as a bubble from its author, every other item as one sentence. */
 export function ActivityEntry({ item, scope }: { item: ActivityItem; scope: ActivityScope }) {
+  const target = entryTarget(item, scope);
   return isActivityNote(item) ? (
-    <NoteEntry item={item} target={entryTarget(item, scope)} />
-  ) : (
-    <EventEntry item={item} target={entryTarget(item, scope)} />
-  );
-}
-
-function NoteEntry({ item, target }: { item: ActivityNoteItem; target: EntryTarget | null }) {
-  return (
-    <ActivityEntryShell
-      marker={<ActivityNoteMarker />}
+    <ActivityNoteEntry
+      author={item.actor}
+      footer={target ? <NoteFooter target={target} /> : null}
       occurredAt={item.occurredAt}
-      who={
-        <EntityThumbnail
-          className="z-10"
-          label={item.actor.name}
-          shape="circle"
-          thumbnailDataUrl={item.actor.thumbnailDataUrl}
-        />
-      }
-    >
-      <ActivityNoteBubble
-        footer={target ? <NoteFooter target={target} /> : null}
-        header={<p className="px-3.5 pt-2.5 -mb-2 font-medium text-muted-foreground text-xs">{item.actor.name}</p>}
-        text={item.text}
-      />
-    </ActivityEntryShell>
-  );
-}
-
-function NoteFooter({ target }: { target: EntryTarget }) {
-  const className = 'block border-t border-border/70 bg-muted/40 px-3.5 py-1.5 font-mono text-muted-foreground text-xs';
-  return target.link ? (
-    <Link
-      {...target.link}
-      aria-label={`Open ${target.label}`}
-      className={cn(className, 'relative z-10 transition-colors hover:bg-muted hover:text-foreground')}
-    >
-      {target.label}
-    </Link>
+      text={item.text}
+    />
   ) : (
-    <p className={className}>{target.label}</p>
-  );
-}
-
-function EventEntry({ item, target }: { item: ActivityEventItem; target: EntryTarget | null }) {
-  const presentation = presentActivityEvent(item);
-  const tone = statusBadgeColorClassNames[TONE_COLOUR[presentation.tone]];
-  const Icon = EVENT_ICONS[item.type];
-  return (
-    <ActivityEntryShell
-      dense
+    <ActivityEventEntry
+      icon={EVENT_ICONS[item.type]}
       link={
         target?.link ? (
           <Link {...target.link} aria-label={`Open ${target.label}`} className={activityEntryLinkClassName} />
         ) : null
       }
-      marker={<ActivityEventMarker />}
       occurredAt={item.occurredAt}
-      who={
-        // A record, not a person: a rounded square.
-        <span className={cn('flex size-8 items-center justify-center rounded-lg border', tone.chip, tone.text)}>
-          <Icon aria-hidden className="size-3.5" />
-        </span>
-      }
-    >
-      <div className="min-w-0">
-        <p className="text-sm leading-6">{presentation.sentence}</p>
-        {presentation.detail === null ? null : (
-          <p className="text-sm leading-6 text-muted-foreground whitespace-pre-wrap">{presentation.detail}</p>
-        )}
-      </div>
-    </ActivityEntryShell>
+      presentation={presentActivityEvent(item)}
+    />
   );
 }
 
-const TONE_COLOUR = {
-  danger: 'red',
-  warning: 'orange',
-  next: 'green',
-  'in-progress': 'blue',
-  done: 'purple',
-  muted: 'gray',
-} as const satisfies Record<ActivityEventTone, keyof typeof statusBadgeColorClassNames>;
+function NoteFooter({ target }: { target: EntryTarget }) {
+  return (
+    <ActivityNoteFooter>
+      {target.link ? (
+        <Link
+          {...target.link}
+          aria-label={`Open ${target.label}`}
+          className={cn('font-mono', activityNoteFooterLinkClassName)}
+        >
+          {target.label}
+        </Link>
+      ) : (
+        <span className="font-mono">{target.label}</span>
+      )}
+    </ActivityNoteFooter>
+  );
+}
 
 const EVENT_ICONS = {
   'breakdown-reported': IconFlagFilled,

@@ -1,33 +1,19 @@
-import { hasUnreadActivity } from '@pkg/domain/equipment';
 import { buyListReasonsNotify, STOCKTAKE_SCOPE_LABELS } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
 
+import { useActivityUnread } from '@/components/activity/use-activity-unread.js';
 import { NavWarningDot } from '@/components/app-shell/NavWarningDot.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 
-const ACTIVITY_INDICATOR_REFETCH_INTERVAL_MS = 60_000;
-
 export const ActivityUnreadNavIndicator: React.FC = () => {
   const trpc = useTRPC();
-  const activityAccess = useCan('equipment_job:read');
-  const lastSeenQuery = useQuery({
-    ...trpc.jobActivity.getLastActivitySeen.queryOptions(),
-    enabled: activityAccess.can,
-    refetchInterval: ACTIVITY_INDICATOR_REFETCH_INTERVAL_MS,
+  const unread = useActivityUnread({
+    enabled: useCan('equipment_job:read').can,
+    lastSeen: trpc.jobActivity.getLastActivitySeen.queryOptions(),
+    latest: trpc.jobActivity.list.queryOptions({ limit: 1 }),
   });
-  const latestActivityQuery = useQuery({
-    ...trpc.jobActivity.list.queryOptions({ limit: 1 }),
-    enabled: activityAccess.can,
-    refetchInterval: ACTIVITY_INDICATOR_REFETCH_INTERVAL_MS,
-  });
-  const unread =
-    lastSeenQuery.data !== undefined &&
-    hasUnreadActivity({
-      lastActivitySeen: lastSeenQuery.data,
-      latestActivityAt: latestActivityQuery.data?.items[0]?.occurredAt ?? null,
-    });
 
   return unread ? <NavWarningDot label="New Job Activity" /> : null;
 };

@@ -1,9 +1,10 @@
+import { ACTIVITY_REFETCH_INTERVAL_MS } from '@pkg/domain';
 import type { DateIso, UUID } from '@pkg/schema';
 import type { ActivityFilter } from '@pkg/schema/contracting';
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 
-import { ACTIVITY_REFETCH_INTERVAL_MS, ActivityTimeline } from '@/components/activity/ActivityTimeline.js';
+import { ActivityTimeline } from '@/components/activity/ActivityTimeline.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 
@@ -43,14 +44,8 @@ export function ActivityFeed({
     ),
   );
   const items = useMemo(() => query.data?.pages.flatMap((page) => page.items) ?? [], [query.data?.pages]);
-  const newestOccurredAt = items[0]?.occurredAt;
   const scoped = jobId !== undefined || breakdownId !== undefined;
   const unfiltered = filter === 'all' && !search;
-
-  useEffect(() => {
-    if (query.isSuccess && newestOccurredAt !== undefined && unfiltered && !scoped)
-      onGlobalFeedViewed?.(newestOccurredAt);
-  }, [query.isSuccess, newestOccurredAt, unfiltered, scoped, onGlobalFeedViewed]);
 
   const subject = breakdownId ? 'this Breakdown' : jobId ? 'this Job' : 'your Jobs and Breakdowns';
   return (
@@ -59,7 +54,9 @@ export function ActivityFeed({
         unfiltered ? `Nothing has been said or done on ${subject} yet.` : 'No activity matches this search or filter.'
       }
       errorMessage="Unable to load Activity."
+      getItemKey={(item) => `${item.type}:${item.id}`}
       items={items}
+      onViewedLatest={unfiltered && !scoped ? onGlobalFeedViewed : undefined}
       query={query}
       renderItem={(item) => <ActivityEntry item={item} scope={{ jobId, breakdownId, canOpenJob }} />}
     />

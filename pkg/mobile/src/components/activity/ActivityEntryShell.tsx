@@ -33,3 +33,13 @@ export function ActivityEntryShell({
     </View>
   );
 }
+
+/** The filled node a note hangs off: what was said gets the weight. */
+export function ActivityNoteMarker() {
+  return <View className="h-2 w-2 rounded-full bg-primary" />;
+}
+
+/** The hollow node an event hangs off: what was done stays flat beside what was said. */
+export function ActivityEventMarker() {
+  return <View className="h-2 w-2 rounded-full border border-muted-foreground bg-background" />;
+}

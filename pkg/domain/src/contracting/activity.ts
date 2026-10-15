@@ -1,5 +1,6 @@
 import type { AppPermission, UserAccessSummary } from '@pkg/schema';
 import type { ActivityFilter, ActivityItem, ActivityItemType, ActivityJobRef } from '@pkg/schema/contracting';
+import type { ActivityEventPresentation } from '../activity/presentation.js';
 import { hasPermission } from '../auth/authorization.js';
 import { formatDate } from '../formatting/date.js';
 import { formatHours } from '../formatting/number.js';
@@ -42,9 +43,6 @@ export const activityPermissions = [
 export const canSeeActivity = (access: UserAccessSummary | null | undefined) =>
   activityPermissions.some((permission) => hasPermission(access, permission));
 
-/** How an event reads at a glance; each app picks its own icon and colour for it. */
-export type ActivityEventTone = 'danger' | 'warning' | 'next' | 'in-progress' | 'done' | 'muted';
-export type ActivityEventPresentation = { sentence: string; detail: string | null; tone: ActivityEventTone };
 export type ActivityNoteItem = Extract<ActivityItem, { type: 'job-note' | 'breakdown-note' }>;
 export type ActivityEventItem = Exclude<ActivityItem, ActivityNoteItem>;
 
@@ -65,56 +63,59 @@ function hoursDetail(item: { hours: number; readAt: string; occurredAt: string; 
   return parts.join(' · ');
 }
 
-/** The one sentence an event item shows; notes render as bubbles and never come here. */
+/** What an event item says; notes render as bubbles and never come here. */
 export function presentActivityEvent(item: ActivityEventItem): ActivityEventPresentation {
+  const actorName = item.actor.name;
   switch (item.type) {
     case 'breakdown-reported':
       return {
-        sentence: `${item.actor.name} reported ${breakdownUrgencyLabels[item.breakdown.urgency]} on ${item.breakdown.subject.code}${at(item.job)}`,
+        actorName,
+        sentence: `reported ${breakdownUrgencyLabels[item.breakdown.urgency]} on ${item.breakdown.subject.code}${at(item.job)}`,
         detail: item.firstLine,
-        tone: item.breakdown.urgency === 'code-red' ? 'danger' : 'warning',
+        tone: item.breakdown.urgency === 'code-red' ? 'red' : 'orange',
       };
     case 'mechanic-assigned':
       return {
+        actorName,
         sentence: item.mechanicName
-          ? `${item.actor.name} assigned ${item.mechanicName} to ${item.breakdown.subject.code}`
-          : `${item.actor.name} cleared the Mechanic on ${item.breakdown.subject.code}`,
+          ? `assigned ${item.mechanicName} to ${item.breakdown.subject.code}`
+          : `cleared the Mechanic on ${item.breakdown.subject.code}`,
         detail: null,
-        tone: 'next',
+        tone: 'green',
       };
     case 'breakdown-started':
-      return {
-        sentence: `${item.actor.name} started fixing ${item.breakdown.subject.code}`,
-        detail: null,
-        tone: 'in-progress',
-      };
+      return { actorName, sentence: `started fixing ${item.breakdown.subject.code}`, detail: null, tone: 'blue' };
     case 'breakdown-solved':
       return {
-        sentence: `${item.actor.name} marked ${item.breakdown.subject.code} Fixed`,
+        actorName,
+        sentence: `marked ${item.breakdown.subject.code} Fixed`,
         detail: item.closeOutNote,
-        tone: 'done',
+        tone: 'purple',
       };
     case 'job-started':
       return {
-        sentence: `${item.job.jobNumber} started at ${item.job.farmName}`,
-        detail: `${item.machine.code} arrived · ${item.actor.name}`,
-        tone: 'in-progress',
+        actorName,
+        sentence: `started ${item.job.jobNumber} at ${item.job.farmName}`,
+        detail: `${item.machine.code} arrived`,
+        tone: 'blue',
       };
     case 'job-completed':
-      return { sentence: `${item.actor.name} signed off ${item.job.jobNumber}`, detail: null, tone: 'done' };
+      return { actorName, sentence: `signed off ${item.job.jobNumber}`, detail: null, tone: 'purple' };
     case 'job-cancelled':
-      return { sentence: `${item.actor.name} cancelled ${item.job.jobNumber}`, detail: item.reason, tone: 'muted' };
+      return { actorName, sentence: `cancelled ${item.job.jobNumber}`, detail: item.reason, tone: 'gray' };
     case 'machine-arrived':
       return {
-        sentence: `${item.actor.name} put ${item.machine.code} on site at ${item.job.jobNumber}`,
+        actorName,
+        sentence: `put ${item.machine.code} on site at ${item.job.jobNumber}`,
         detail: hoursDetail(item),
-        tone: 'in-progress',
+        tone: 'blue',
       };
     case 'machine-left':
       return {
-        sentence: `${item.actor.name} took ${item.machine.code} off site at ${item.job.jobNumber}`,
+        actorName,
+        sentence: `took ${item.machine.code} off site at ${item.job.jobNumber}`,
         detail: hoursDetail(item),
-        tone: 'muted',
+        tone: 'gray',
       };
   }
 }

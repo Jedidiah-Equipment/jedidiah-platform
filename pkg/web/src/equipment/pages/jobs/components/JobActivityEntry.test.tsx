@@ -7,6 +7,7 @@ import { renderWithRouter } from '@/test/router-harness.js';
 import { JobActivityEntry } from './JobActivityEntry.js';
 
 const THUMBNAIL_DATA_URL = 'data:image/webp;base64,YWN0b3I=';
+const JOB_ID = '30000000-0000-4000-8000-000000000000';
 
 describe('JobActivityEntry', () => {
   it('links the PO marker only for a reader with PO access', async () => {
@@ -25,7 +26,7 @@ describe('JobActivityEntry', () => {
     expect(denied).toContain('PO-00042');
   });
 
-  it('keeps the PO marker when the Job reference is hidden', async () => {
+  it("keeps the PO marker inside the Job's own thread", async () => {
     const item = {
       ...buildItem(),
       purchaseOrder: {
@@ -34,7 +35,7 @@ describe('JobActivityEntry', () => {
         supplierName: 'Mount Fifty',
       },
     };
-    const html = await renderWithRouter(<JobActivityEntry hideDetail item={item} />);
+    const html = await renderWithRouter(<JobActivityEntry item={item} jobId={JOB_ID} />);
     expect(html).toContain('PO-00042');
     expect(html).toContain('Mount Fifty');
     expect(html).not.toContain('>JOB-00042<');
@@ -58,15 +59,15 @@ describe('JobActivityEntry', () => {
     expect(html).toContain('Stock');
   });
 
-  it('links the whole entry to the Job Sheet and the icon to the Gantt', async () => {
+  it('links the Job to its Job Sheet and the icon to the Gantt', async () => {
     const html = await renderWithRouter(<JobActivityEntry item={buildItem()} />);
 
     expect(html).toContain('href="/equipment/jobs/activity?job=30000000-0000-4000-8000-000000000000"');
     expect(html).toContain('href="/equipment/jobs?job=30000000-0000-4000-8000-000000000000"');
   });
 
-  it('can hide repeated Job detail while keeping the feedback', async () => {
-    const html = await renderWithRouter(<JobActivityEntry hideDetail item={buildItem()} />);
+  it('stops naming the Job inside its own thread while keeping the feedback', async () => {
+    const html = await renderWithRouter(<JobActivityEntry item={buildItem()} jobId={JOB_ID} />);
 
     expect(html).toContain('Paint bay handover was missed on this job.');
     expect(html).not.toContain('>JOB-00042<');
@@ -124,7 +125,7 @@ describe('JobActivityEntry', () => {
     expect(html).toContain('aria-label="Cane 8 ton"');
     expect(html).toContain('tabler-icon-package');
     expect(html).toContain('tabler-icon-check');
-    expect(html).toContain('font-mono font-medium text-muted-foreground text-sm">JOB-00042');
+    expect(html).toContain('>JOB-00042<');
   });
 
   it('uses the custom-work icon for a non-feedback event without a thumbnail', async () => {
@@ -149,24 +150,22 @@ describe('JobActivityEntry', () => {
     expect(workTimeHtml).toContain(statusBadgeColorClassNames.blue.text);
   });
 
-  it('top-aligns a non-feedback title with its activity icon', async () => {
+  it('draws a Job event as a record, not a person: a rounded square', async () => {
     const html = await renderWithRouter(<JobActivityEntry item={buildChangeItem('job-completed')} />);
 
-    expect(html).not.toContain('min-w-0 pt-1.5');
-    expect(html).toContain('truncate text-sm leading-6');
-    expect(html).toContain('font-medium text-sm">Thabo');
+    expect(html).toContain('rounded-lg border');
+    expect(html).toContain('font-medium">Thabo');
   });
 
   it('keeps the feedback Job footer one size below non-feedback text', async () => {
     const html = await renderWithRouter(<JobActivityEntry item={buildItem()} />);
 
-    expect(html).toContain('border-t border-border/70 bg-muted/40 py-1 pe-1.5 ps-3 text-xs');
-    expect(html).not.toContain('font-mono font-medium text-muted-foreground text-sm">JOB-00042');
+    expect(html).toContain('bg-muted/40 px-3.5 py-1.5 text-muted-foreground text-xs');
   });
 
-  it('keeps event-specific detail when repeated Job detail is hidden', async () => {
+  it("keeps event-specific detail inside the Job's own thread", async () => {
     const html = await renderWithRouter(
-      <JobActivityEntry hideDetail item={buildChangeItem('job-description-updated')} />,
+      <JobActivityEntry item={buildChangeItem('job-description-updated')} jobId={JOB_ID} />,
     );
 
     expect(html).toContain('Fit the heavy-duty boom.');

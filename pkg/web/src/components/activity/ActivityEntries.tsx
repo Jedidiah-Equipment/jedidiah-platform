@@ -42,6 +42,13 @@ export function ActivityNoteEntry({
   );
 }
 
+/**
+ * The class for the link inside an {@link ActivityNoteFooter} that opens the record: it stretches across the whole
+ * strip, as the phone's footer does, and any control raised above it (`relative z-10`) stays clickable on its own.
+ */
+export const activityNoteFooterLinkClassName =
+  'transition-colors after:absolute after:inset-0 hover:text-foreground focus-rings:focus-visible:underline focus-rings:focus-visible:outline-none';
+
 /** The strip under a note naming the record it was said on; controls inside it stay clickable. */
 export function ActivityNoteFooter({ children }: { children: React.ReactNode }) {
   return (

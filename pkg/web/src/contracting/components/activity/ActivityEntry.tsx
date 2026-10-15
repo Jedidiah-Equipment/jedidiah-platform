@@ -14,8 +14,14 @@ import {
 } from '@tabler/icons-react';
 import { Link, type LinkProps } from '@tanstack/react-router';
 
-import { ActivityEventEntry, ActivityNoteEntry, ActivityNoteFooter } from '@/components/activity/ActivityEntries.js';
+import {
+  ActivityEventEntry,
+  ActivityNoteEntry,
+  ActivityNoteFooter,
+  activityNoteFooterLinkClassName,
+} from '@/components/activity/ActivityEntries.js';
 import { activityEntryLinkClassName } from '@/components/activity/ActivityEntryShell.js';
+import { cn } from '@/lib/utils.js';
 
 /**
  * The thread an entry sits in (a link back to that same Job or Breakdown would go nowhere), and whether this reader
@@ -76,7 +82,7 @@ function NoteFooter({ target }: { target: EntryTarget }) {
         <Link
           {...target.link}
           aria-label={`Open ${target.label}`}
-          className="font-mono transition-colors hover:text-foreground hover:underline"
+          className={cn('font-mono', activityNoteFooterLinkClassName)}
         >
           {target.label}
         </Link>

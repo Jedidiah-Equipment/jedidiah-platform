@@ -14,13 +14,19 @@ import {
 import { Link } from '@tanstack/react-router';
 import type React from 'react';
 
-import { ActivityEventEntry, ActivityNoteEntry, ActivityNoteFooter } from '@/components/activity/ActivityEntries.js';
+import {
+  ActivityEventEntry,
+  ActivityNoteEntry,
+  ActivityNoteFooter,
+  activityNoteFooterLinkClassName,
+} from '@/components/activity/ActivityEntries.js';
 import { activityEntryLinkClassName } from '@/components/activity/ActivityEntryShell.js';
 import { Button } from '@/components/ui/button.js';
 import { Separator } from '@/components/ui/separator.js';
 import { StockBadge } from '@/equipment/components/common/StockBadge.js';
 import { PurchaseOrderFeedbackMarker } from '@/equipment/components/feedback/PurchaseOrderFeedbackMarker.js';
 import { OfferingThumbnail } from '@/equipment/components/thumbnail/OfferingThumbnail.js';
+import { cn } from '@/lib/utils.js';
 
 type Job = JobActivityItem['job'];
 
@@ -50,7 +56,7 @@ export const JobActivityEntry: React.FC<{
             <ActivityNoteFooter>
               <Link
                 aria-label={`Open ${formatJobLabel(item.job)}`}
-                className="flex min-w-0 items-center gap-2 transition-colors hover:text-foreground"
+                className={cn('flex min-w-0 items-center gap-2', activityNoteFooterLinkClassName)}
                 search={{ job: item.job.id }}
                 to="/equipment/jobs/activity"
               >

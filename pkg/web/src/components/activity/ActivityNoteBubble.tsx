@@ -65,9 +65,9 @@ export const ActivityNoteBubble: React.FC<{ author: string; footer?: React.React
       */}
       <span
         aria-hidden
-        className="absolute top-4 -left-1 size-2.5 rotate-45 border-b border-l border-border/70 bg-card transition-colors group-hover:border-foreground/25"
+        className="absolute top-4 -left-1 size-2.5 rotate-45 border-b border-l border-border/70 bg-card"
       />
-      <div className="overflow-hidden rounded-xl border border-border/70 bg-card transition-colors group-hover:border-foreground/25">
+      <div className="overflow-hidden rounded-xl border border-border/70 bg-card">
         <p className="px-3.5 pt-2.5 -mb-2 font-medium text-muted-foreground text-xs">{author}</p>
         <p
           className={cn('px-3.5 py-2.5 text-sm leading-6 whitespace-pre-wrap', !expanded && 'line-clamp-4')}

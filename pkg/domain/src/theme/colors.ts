@@ -1,4 +1,4 @@
-import { JEDIDIAH_BRAND_YELLOW, JEDIDIAH_BRAND_YELLOW_ON_LIGHT } from '../brand.js';
+import { JEDIDIAH_BRAND_YELLOW } from '../brand.js';
 
 /**
  * Neutral + brand surface colours for a single colour scheme.
@@ -6,7 +6,8 @@ import { JEDIDIAH_BRAND_YELLOW, JEDIDIAH_BRAND_YELLOW_ON_LIGHT } from '../brand.
  * Names and structure mirror the web token set in
  * `pkg/web/src/styles/globals.css` (`:root` light, `.dark` dark) so the two
  * apps stay visually in sync. Values are hex (not `oklch`) so the tokens are
- * safe to consume from React Native, which cannot parse `oklch()`.
+ * safe to consume from React Native, which cannot parse `oklch()`. `primary`
+ * is the one definition web, mobile, and the docs site all paint.
  */
 export type ThemeColors = {
   /** App backdrop behind all surfaces. */
@@ -23,7 +24,7 @@ export type ThemeColors = {
   mutedForeground: string;
   /** Hairline dividers and surface outlines. */
   border: string;
-  /** Brand yellow used for primary actions and accents. */
+  /** Brand yellow used for primary actions, links, and accents. */
   primary: string;
   /** Near-black text/icon colour that sits on `primary`. */
   primaryForeground: string;
@@ -38,7 +39,9 @@ export const lightColors = {
   muted: '#f5f5f5',
   mutedForeground: '#737373',
   border: '#e5e5e5',
-  primary: JEDIDIAH_BRAND_YELLOW_ON_LIGHT,
+  // Darkened from the brand gold so it still reads as text on white while a near-black label stays crisp
+  // on it as a fill.
+  primary: '#b89600',
   primaryForeground: '#0a0a0a',
 } as const satisfies ThemeColors;
 

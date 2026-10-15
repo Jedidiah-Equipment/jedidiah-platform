@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { darkColors, lightColors } from '@pkg/domain';
 import { describe, expect, it } from 'vitest';
 import { docsConfig } from './config';
 import { CONTENT_DIR, listContentPages } from './pages';
@@ -20,6 +21,14 @@ describe('docs site config', () => {
 
   it('marks every page noindex', () => {
     expect(docsConfig.head).toContainEqual(['meta', { name: 'robots', content: 'noindex, nofollow' }]);
+  });
+
+  it('paints the brand from the palette the apps share', () => {
+    expect(docsConfig.head).toContainEqual([
+      'style',
+      {},
+      `:root{--jed-brand:${lightColors.primary}}.dark{--jed-brand:${darkColors.primary}}`,
+    ]);
   });
 
   it('enables the built-in local search', () => {

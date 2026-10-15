@@ -157,6 +157,38 @@ describe('Contracting Job Actions', () => {
   });
 });
 
+describe('light-mode primary', () => {
+  it('is defined once, in @pkg/domain, and every app surface reads it from there', () => {
+    // Today's value, the old #f8d300 primary, and the hand-darkened text accents it replaced, as hex
+    // or as the NativeWind "r g b" triplet.
+    const result = spawnSync(
+      'git',
+      [
+        'grep',
+        '--untracked',
+        '-niE',
+        String.raw`#b89600|#f8d300|#806700|#8a6d00|184 150 0|248 211 0`,
+        '--',
+        'pkg/web/src/**',
+        'pkg/web/index.html',
+        'pkg/mobile/app/**',
+        'pkg/mobile/src/**',
+        'pkg/docs/src/**',
+        'pkg/docs/.vitepress/**',
+        'pkg/domain/src/theme/**',
+        ':!pkg/docs/.vitepress/cache/**',
+        ':!*.test.ts',
+        ':!*.test.tsx',
+      ],
+      { cwd: repoRoot, encoding: 'utf8' },
+    );
+    const definitions = result.stdout.split('\n').filter((line) => line.length > 0);
+
+    expect(definitions).toHaveLength(1);
+    expect(definitions[0]).toMatch(/^pkg\/domain\/src\/theme\/colors\.ts:\d+:\s+primary: '#b89600',$/);
+  });
+});
+
 describe('.git-blame-ignore-revs', () => {
   it('lists only commits reachable from HEAD', () => {
     const entries = readFileSync(join(repoRoot, '.git-blame-ignore-revs'), 'utf8')

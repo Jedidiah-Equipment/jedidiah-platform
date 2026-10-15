@@ -1,4 +1,4 @@
-import { JEDIDIAH_BRAND_YELLOW, JEDIDIAH_BRAND_YELLOW_ON_LIGHT } from '@pkg/domain';
+import { JEDIDIAH_BRAND_GOLD, JEDIDIAH_BRAND_YELLOW } from '@pkg/domain';
 
 export const pdfColors = {
   black: '#151515',
@@ -15,7 +15,7 @@ export const pdfColors = {
   staleNoticeText: '#5f4300',
   white: '#ffffff',
   yellow: JEDIDIAH_BRAND_YELLOW,
-  yellowLight: JEDIDIAH_BRAND_YELLOW_ON_LIGHT,
+  yellowLight: JEDIDIAH_BRAND_GOLD,
 } as const;
 
 export const pdfSpacing = {

@@ -1,4 +1,4 @@
-import { formatHours } from '@pkg/domain';
+import { formatHours, getFirstName } from '@pkg/domain';
 import { presentAction, reportToSolvedHours } from '@pkg/domain/contracting';
 import { type BreakdownDetail, CloseOutNote } from '@pkg/schema/contracting';
 import { IconPlayerPlay, IconPlayerStop } from '@tabler/icons-react-native';
@@ -25,7 +25,7 @@ function FixedSummary({ breakdown }: { breakdown: BreakdownDetail }) {
     <Card>
       <DetailRow label="Mechanic">
         <Text className="text-right text-foreground" weight="semibold">
-          {breakdown.mechanicName ?? 'None assigned'}
+          {breakdown.mechanicName ? getFirstName(breakdown.mechanicName) : 'None assigned'}
         </Text>
       </DetailRow>
       <DetailRow label="Started">
@@ -40,7 +40,7 @@ function FixedSummary({ breakdown }: { breakdown: BreakdownDetail }) {
       </DetailRow>
       {breakdown.solvedByName ? (
         <DetailRow label="Closed out by">
-          <Text className="text-right text-foreground">{breakdown.solvedByName}</Text>
+          <Text className="text-right text-foreground">{getFirstName(breakdown.solvedByName)}</Text>
         </DetailRow>
       ) : null}
       {hours !== null ? (
@@ -92,7 +92,9 @@ export function BreakdownWorkshopCard({ breakdown }: { breakdown: BreakdownDetai
           )}
         </VerdictGroup>
       ) : (
-        <Text className="text-foreground">Mechanic: {breakdown.mechanicName ?? 'not assigned yet'}</Text>
+        <Text className="text-foreground">
+          Mechanic: {breakdown.mechanicName ? getFirstName(breakdown.mechanicName) : 'not assigned yet'}
+        </Text>
       )}
       {breakdown.startedAt ? (
         <DetailRow label="Started">

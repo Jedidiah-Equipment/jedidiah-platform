@@ -1,4 +1,4 @@
-import { type ActivityEventPresentation, statusBadgeColorClassNames } from '@pkg/domain';
+import { type ActivityEventPresentation, getFirstName, statusBadgeColorClassNames } from '@pkg/domain';
 import type { DateIso } from '@pkg/schema';
 import type { TablerIcon } from '@tabler/icons-react';
 import type React from 'react';
@@ -37,7 +37,7 @@ export function ActivityNoteEntry({
         />
       }
     >
-      <ActivityNoteBubble author={author.name} footer={footer} text={text} />
+      <ActivityNoteBubble author={getFirstName(author.name)} footer={footer} text={text} />
     </ActivityEntryShell>
   );
 }

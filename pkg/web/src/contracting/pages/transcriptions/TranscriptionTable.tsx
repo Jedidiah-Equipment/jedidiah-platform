@@ -1,4 +1,4 @@
-import { formatNumber } from '@pkg/domain';
+import { formatNumber, getFirstName } from '@pkg/domain';
 import type { TranscriptionHintStatus, TranscriptionListInput, TranscriptionReviewItem } from '@pkg/schema/contracting';
 import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
@@ -99,7 +99,7 @@ export function TranscriptionTable() {
         enableColumnFilter: true,
         enableSorting: false,
         meta: { filterOptions: userOptions, filterVariant: 'multi-select' },
-        cell: ({ row }) => <span className="min-w-28">{row.original.createdByName}</span>,
+        cell: ({ row }) => <span className="min-w-28">{getFirstName(row.original.createdByName)}</span>,
       },
       {
         accessorKey: 'purpose',

@@ -1,4 +1,4 @@
-import { formatDate } from '@pkg/domain';
+import { formatDate, getFirstName } from '@pkg/domain';
 import { stocktakeSessionStatusOf } from '@pkg/domain/equipment';
 import { STOCKTAKE_SCOPE_LABELS, type StocktakeSession } from '@pkg/schema/equipment';
 import { Link, useNavigate } from '@tanstack/react-router';
@@ -27,7 +27,7 @@ const sessionColumns: DataTableColumnDef<StocktakeSession>[] = [
     cell: ({ row }) => (
       <>
         <span className="block">{formatDate(row.original.openedAt)}</span>
-        <span className="block text-muted-foreground text-xs">{row.original.openedByName}</span>
+        <span className="block text-muted-foreground text-xs">{getFirstName(row.original.openedByName)}</span>
       </>
     ),
     header: 'Opened',
@@ -40,7 +40,9 @@ const sessionColumns: DataTableColumnDef<StocktakeSession>[] = [
       ) : (
         <>
           <span className="block">{formatDate(row.original.closedAt)}</span>
-          <span className="block text-muted-foreground text-xs">{row.original.closedByName}</span>
+          <span className="block text-muted-foreground text-xs">
+            {row.original.closedByName ? getFirstName(row.original.closedByName) : null}
+          </span>
         </>
       ),
     header: 'Closed',

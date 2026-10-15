@@ -3,9 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { getBayDisplayText } from './bay-display.js';
 
 describe('getBayDisplayText', () => {
-  it('promotes the full assigned Operator name ahead of the physical Bay', () => {
+  it("promotes the assigned Operator's first name ahead of the physical Bay", () => {
     expect(getBayDisplayText({ bayName: 'Supply 1', operatorName: '  Piet Pompies  ' })).toEqual({
-      primaryText: 'Piet Pompies',
+      primaryText: 'Piet',
       secondaryText: 'Supply 1',
     });
   });
@@ -18,7 +18,7 @@ describe('getBayDisplayText', () => {
 
   it('removes one exact trailing full-name suffix', () => {
     expect(getBayDisplayText({ bayName: 'Fabrication 1 - Piet Pompies', operatorName: ' Piet Pompies ' })).toEqual({
-      primaryText: 'Piet Pompies',
+      primaryText: 'Piet',
       secondaryText: 'Fabrication 1',
     });
     expect(

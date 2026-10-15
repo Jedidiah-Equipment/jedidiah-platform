@@ -1,3 +1,5 @@
+import { getFirstName } from '../../formatting/text.js';
+
 /** The identity of a physical Bay together with its assigned Operator. */
 export function getBayDisplayText({ bayName, operatorName }: { bayName: string; operatorName: string | null }): {
   primaryText: string;
@@ -8,6 +10,6 @@ export function getBayDisplayText({ bayName, operatorName }: { bayName: string; 
   const withoutSuffix = operator && bayName.endsWith(suffix) ? bayName.slice(0, -suffix.length) : bayName;
   const displayBayName = withoutSuffix.trim() ? withoutSuffix : bayName;
   return operator
-    ? { primaryText: operator, secondaryText: displayBayName }
+    ? { primaryText: getFirstName(operator), secondaryText: displayBayName }
     : { primaryText: bayName, secondaryText: 'No operator' };
 }

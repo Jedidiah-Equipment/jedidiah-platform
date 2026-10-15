@@ -1,5 +1,11 @@
 import { useElementSize } from '@mantine/hooks';
-import { DOCUMENT_ZIP_CONTENT_TYPE, documentContentTypeLabel, formatBytes, formatDate } from '@pkg/domain';
+import {
+  DOCUMENT_ZIP_CONTENT_TYPE,
+  documentContentTypeLabel,
+  formatBytes,
+  formatDate,
+  getFirstName,
+} from '@pkg/domain';
 import type { DocumentSummary } from '@pkg/schema/equipment';
 import {
   IconDownload,
@@ -246,7 +252,10 @@ function DocumentCard<TDocument extends DocumentSummary>({
         <CardContent>
           <dl className="flex flex-wrap items-center gap-x-6 gap-y-1">
             <DocumentFact label="Size" value={formatBytes(document.byteSize)} />
-            <DocumentFact label="Uploader" value={getDocumentUploader(document)} />
+            <DocumentFact
+              label="Uploader"
+              value={document.uploaderName ? getFirstName(document.uploaderName) : getDocumentUploader(document)}
+            />
             <DocumentFact label="Uploaded" value={formatDate(document.createdAt, 'medium')} />
           </dl>
         </CardContent>

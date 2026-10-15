@@ -1,4 +1,4 @@
-import { formatDate, formatNumber } from '@pkg/domain';
+import { formatDate, formatNumber, getFirstName } from '@pkg/domain';
 import type { PurchaseOrderArrival, PurchaseOrderCustomLineView, PurchaseOrderView } from '@pkg/schema/equipment';
 import { IconArrowBackUp } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
@@ -99,7 +99,7 @@ export function PurchaseOrderArrivalsCard({
         header: 'Quantity',
         meta: { cellClassName: 'text-right tabular-nums', headerClassName: 'text-right' },
       },
-      { accessorFn: (row) => row.actorName ?? 'System', header: 'By', id: 'actor' },
+      { accessorFn: (row) => (row.actorName ? getFirstName(row.actorName) : 'System'), header: 'By', id: 'actor' },
       { accessorFn: (row) => row.note ?? '—', header: 'Note', id: 'note' },
     ],
     [],

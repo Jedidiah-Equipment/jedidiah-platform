@@ -1,3 +1,4 @@
+import { getFirstName } from '@pkg/domain';
 import { breakdownSubjectKindLabels, breakdownUrgencyLabels } from '@pkg/domain/contracting';
 import type { BreakdownSummary } from '@pkg/schema/contracting';
 import { router } from 'expo-router';
@@ -28,7 +29,10 @@ export function BreakdownRow({ breakdown }: { breakdown: BreakdownSummary }) {
             mono
           />
           <Text className="min-w-0 flex-1 text-[10px] text-muted-foreground" mono numberOfLines={1}>
-            {` · ${[breakdown.reporterName, breakdown.mechanicName].filter(Boolean).join(' · ')}`}
+            {` · ${[breakdown.reporterName, breakdown.mechanicName]
+              .filter((name): name is string => Boolean(name))
+              .map(getFirstName)
+              .join(' · ')}`}
           </Text>
         </>
       }

@@ -1,4 +1,3 @@
-import { getFirstName } from '@pkg/domain';
 import { presentJobActivityEvent } from '@pkg/domain/equipment';
 import type { JobActivityItem, JobChangeActivityItem } from '@pkg/schema/equipment';
 import {
@@ -32,7 +31,7 @@ export function JobActivityEntry({ item, jobId, last }: { item: JobActivityItem;
     return (
       <ActivityNoteEntry
         author={{
-          name: getFirstName(item.feedback.submitter.name),
+          name: item.feedback.submitter.name,
           thumbnailDataUrl: item.feedback.submitter.thumbnailDataUrl,
         }}
         footer={

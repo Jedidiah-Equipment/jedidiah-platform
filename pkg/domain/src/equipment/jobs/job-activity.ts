@@ -119,7 +119,7 @@ function jobWorkTimeActivityDetail({
 }): string | null {
   if (timing === null) return null;
 
-  const crew = timing.crew.join(', ');
+  const crew = timing.crew.map(getFirstName).join(', ');
   if (action !== 'corrected') return crew || null;
 
   const span = timing.completedAt

@@ -4,6 +4,7 @@ import type { ActivityEventPresentation } from '../activity/presentation.js';
 import { hasPermission } from '../auth/authorization.js';
 import { formatDate } from '../formatting/date.js';
 import { formatHours } from '../formatting/number.js';
+import { getFirstName } from '../formatting/text.js';
 import { breakdownUrgencyLabels } from './breakdowns.js';
 
 export const activityFilterLabels: Record<ActivityFilter, string> = {
@@ -65,7 +66,7 @@ function hoursDetail(item: { hours: number; readAt: string; occurredAt: string; 
 
 /** What an event item says; notes render as bubbles and never come here. */
 export function presentActivityEvent(item: ActivityEventItem): ActivityEventPresentation {
-  const actorName = item.actor.name;
+  const actorName = getFirstName(item.actor.name);
   switch (item.type) {
     case 'breakdown-reported':
       return {
@@ -78,7 +79,7 @@ export function presentActivityEvent(item: ActivityEventItem): ActivityEventPres
       return {
         actorName,
         sentence: item.mechanicName
-          ? `assigned ${item.mechanicName} to ${item.breakdown.subject.code}`
+          ? `assigned ${getFirstName(item.mechanicName)} to ${item.breakdown.subject.code}`
           : `cleared the Mechanic on ${item.breakdown.subject.code}`,
         detail: null,
         tone: 'green',

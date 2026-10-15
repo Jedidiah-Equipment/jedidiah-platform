@@ -1,4 +1,4 @@
-import { formatDate, formatNumber } from '@pkg/domain';
+import { formatDate, formatNumber, getFirstName } from '@pkg/domain';
 import { departmentCrewLabels, departmentLabels, WORK_ITEM_DEPARTMENTS } from '@pkg/domain/equipment';
 import type { UUID } from '@pkg/schema';
 import type { ProductBuildMetrics, WorkItemDepartment } from '@pkg/schema/equipment';
@@ -162,7 +162,7 @@ const DepartmentCrewRankingCard: React.FC<{ department: WorkItemDepartment; rank
   const crewLabels = departmentCrewLabels[department];
   const columns = useMemo<DataTableColumnDef<RankingRow>[]>(
     () => [
-      { accessorKey: 'name', header: crewLabels.singular },
+      { accessorKey: 'name', cell: ({ row }) => getFirstName(row.original.name), header: crewLabels.singular },
       {
         accessorFn: (row) => formatNumber(row.averageWorkingDays, { decimals: 1 }),
         header: 'Average days',

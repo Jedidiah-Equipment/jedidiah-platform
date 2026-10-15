@@ -1,4 +1,4 @@
-import { formatDate, formatNumber } from '@pkg/domain';
+import { formatDate, formatNumber, getFirstName } from '@pkg/domain';
 import { deriveMovementWarnings } from '@pkg/domain/equipment';
 import type { SourceCheckoutOption, StockMovementWarningCode } from '@pkg/schema/equipment';
 import { keepPreviousData, useMutation } from '@tanstack/react-query';
@@ -166,5 +166,5 @@ export function ReturnFromCheckoutDialog({
 }
 
 function sourceCheckoutLabel(item: SourceCheckoutOption) {
-  return `${formatDate(item.createdAt, 'medium')} · ${item.partCode} · ${item.recipientName} · ${item.note} · ${formatNumber(item.returnedQuantity)}/${formatNumber(item.quantity)} returned`;
+  return `${formatDate(item.createdAt, 'medium')} · ${item.partCode} · ${getFirstName(item.recipientName)} · ${item.note} · ${formatNumber(item.returnedQuantity)}/${formatNumber(item.quantity)} returned`;
 }

@@ -1,4 +1,4 @@
-import { formatCurrency, formatDate, hasPermission } from '@pkg/domain';
+import { formatCurrency, formatDate, getFirstName, hasPermission } from '@pkg/domain';
 import { stocktakeSessionStatusOf } from '@pkg/domain/equipment';
 import type { UUID } from '@pkg/schema';
 import { STOCKTAKE_SCOPE_LABELS, type StocktakeSession } from '@pkg/schema/equipment';
@@ -80,9 +80,9 @@ export function StocktakeSessionPage({ sessionId }: { sessionId: UUID }) {
 }
 
 function describeSession({ closedAt, closedByName, openedAt, openedByName }: StocktakeSession): string {
-  const opened = `Opened ${formatDate(openedAt)} by ${openedByName}`;
+  const opened = `Opened ${formatDate(openedAt)} by ${getFirstName(openedByName)}`;
 
   if (closedAt === null) return `${opened}. Still open — counts may still be posted against it.`;
 
-  return `${opened} · closed ${formatDate(closedAt)}${closedByName === null ? '' : ` by ${closedByName}`}.`;
+  return `${opened} · closed ${formatDate(closedAt)}${closedByName === null ? '' : ` by ${getFirstName(closedByName)}`}.`;
 }

@@ -1,4 +1,4 @@
-import { formatHours, statusBadgeColorClassNames } from '@pkg/domain';
+import { formatHours, getFirstName, statusBadgeColorClassNames } from '@pkg/domain';
 import { amendmentSettledFinding, assignmentAttentionLevelColorClassNames } from '@pkg/domain/contracting';
 import type { JobReading } from '@pkg/schema/contracting';
 import { IconAlertTriangle, IconChevronRight, IconPencil, IconRefresh } from '@tabler/icons-react';
@@ -141,7 +141,10 @@ export function ReadingDialog({
                       <div className="text-sm text-muted-foreground">
                         Captured <DateDisplay date={reading.capturedAt} format="medium" />
                         <br />
-                        by <span className="font-medium text-foreground">{reading.capturedByName ?? 'Unknown'}</span>
+                        by{' '}
+                        <span className="font-medium text-foreground">
+                          {reading.capturedByName ? getFirstName(reading.capturedByName) : 'Unknown'}
+                        </span>
                       </div>
                       {reading.comment ? (
                         <div className="mt-4 border-l-2 pl-2.5 text-xs text-muted-foreground">
@@ -197,7 +200,9 @@ export function ReadingDialog({
                       <h4 className="pr-10 text-base font-semibold">Recorded as {formatHours(reading.value)}</h4>
                       <p className="mt-1 text-sm text-muted-foreground">
                         Amended <DateDisplay date={reading.amendedAt} format="medium" /> by{' '}
-                        <span className="font-medium text-foreground">{reading.amendedByName ?? 'Unknown'}</span>
+                        <span className="font-medium text-foreground">
+                          {reading.amendedByName ? getFirstName(reading.amendedByName) : 'Unknown'}
+                        </span>
                       </p>
                       {reading.amendmentReason ? (
                         <blockquote className="mt-3 border-l-2 pl-2.5 text-sm">{reading.amendmentReason}</blockquote>

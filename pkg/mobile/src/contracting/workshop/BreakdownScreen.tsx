@@ -1,3 +1,4 @@
+import { getFirstName } from '@pkg/domain';
 import { breakdownSubjectKindLabels, fieldJobAccessMode, presentAction } from '@pkg/domain/contracting';
 import { BreakdownDescription, type BreakdownDetail } from '@pkg/schema/contracting';
 import { IconMapPin, IconPencil } from '@tabler/icons-react-native';
@@ -119,7 +120,7 @@ function HeaderCard({ breakdown }: { breakdown: BreakdownDetail }) {
       )}
       <Text className="text-sm text-muted-foreground">
         Reported <DateText className="text-sm text-muted-foreground" date={breakdown.reportedAt} format="medium" /> by{' '}
-        {breakdown.reporterName}
+        {getFirstName(breakdown.reporterName)}
       </Text>
     </Card>
   );

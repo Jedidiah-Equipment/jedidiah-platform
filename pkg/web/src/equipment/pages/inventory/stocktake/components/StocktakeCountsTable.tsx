@@ -1,4 +1,4 @@
-import { formatCurrency, formatDate } from '@pkg/domain';
+import { formatCurrency, formatDate, getFirstName } from '@pkg/domain';
 import { formatEstimatedStockOnHand } from '@pkg/domain/equipment';
 import type { StocktakeSessionCount } from '@pkg/schema/equipment';
 import { useMemo } from 'react';
@@ -120,7 +120,7 @@ function createCountColumns(showCosts: boolean): DataTableColumnDef<StocktakeSes
       cell: ({ row }) => (
         <>
           <span className="block">{formatDate(row.original.countedAt)}</span>
-          <span className="block text-muted-foreground text-xs">{row.original.countedByName}</span>
+          <span className="block text-muted-foreground text-xs">{getFirstName(row.original.countedByName)}</span>
         </>
       ),
       header: 'Counted',

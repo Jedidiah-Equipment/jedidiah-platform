@@ -18,7 +18,9 @@ import { useCan } from '@/hooks/use-access.js';
 import { useShopFloorBays } from '../use-shop-floor-bays.js';
 
 const SCHEDULED_JOBS_MAX_ROWS = 10;
-const SCHEDULED_JOBS_SKELETON_ROWS = ['first', 'second', 'third'] as const;
+// Two 40px rows plus the padding and divider between them; the rest scroll so the card keeps its row's height.
+const SCHEDULED_JOBS_LIST_MAX_HEIGHT_PX = 106;
+const SCHEDULED_JOBS_SKELETON_ROWS = ['first', 'second'] as const;
 
 export const ScheduledJobsWidget: React.FC = () => {
   const bays = useShopFloorBays();
@@ -43,7 +45,7 @@ export const ScheduledJobsWidget: React.FC = () => {
 
   return (
     <div className="flex min-h-0 flex-col gap-3">
-      <ScrollArea className="max-h-64">
+      <ScrollArea style={{ maxHeight: SCHEDULED_JOBS_LIST_MAX_HEIGHT_PX }}>
         <DashboardList className="pr-3">
           {visibleJobs.map((scheduledJob) => (
             <DashboardListItem key={scheduledJob.jobId}>

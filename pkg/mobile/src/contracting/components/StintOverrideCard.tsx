@@ -1,3 +1,4 @@
+import { getFirstName } from '@pkg/domain';
 import { useStore } from '@tanstack/react-form';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
@@ -40,7 +41,8 @@ export function StintOverrideCard({
     <FieldShell label="Implement & driver">
       <View className="flex-row items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3">
         <Text className="min-w-0 flex-1 text-sm text-foreground" numberOfLines={1}>
-          {planned.implementCode ?? 'No implement'} · {planned.driverName ?? 'No driver'}
+          {planned.implementCode ?? 'No implement'} ·{' '}
+          {planned.driverName ? getFirstName(planned.driverName) : 'No driver'}
         </Text>
         <Pressable
           accessibilityRole="button"

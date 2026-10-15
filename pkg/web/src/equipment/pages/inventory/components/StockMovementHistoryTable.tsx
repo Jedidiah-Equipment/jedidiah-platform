@@ -1,4 +1,4 @@
-import { formatCurrency, formatDate, formatNumber } from '@pkg/domain';
+import { formatCurrency, formatDate, formatNumber, getFirstName } from '@pkg/domain';
 import { isCheckoutWithoutJob } from '@pkg/domain/equipment';
 import type { UUID } from '@pkg/schema';
 import {
@@ -187,12 +187,13 @@ function createStockMovementHistoryColumns({
       id: 'note',
     },
     {
-      accessorFn: (item) => item.recipientName ?? '—',
+      accessorFn: (item) => (item.recipientName ? getFirstName(item.recipientName) : '—'),
       header: 'Recipient',
       id: 'recipient',
     },
     {
       accessorKey: 'actorName',
+      cell: ({ row }) => (row.original.actorName ? getFirstName(row.original.actorName) : null),
       header: 'Operator',
     },
     ...(onReturnCheckout

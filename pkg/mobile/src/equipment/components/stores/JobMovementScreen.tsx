@@ -1,3 +1,4 @@
+import { getFirstName } from '@pkg/domain';
 import type { JobStockMovementType, StockOnHandRow } from '@pkg/schema/equipment';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { type RefObject, useEffect, useRef, useState } from 'react';
@@ -182,7 +183,7 @@ function JobMovementForm({
             OPERATOR
           </Text>
           <Text className="text-base text-surface-foreground" weight="semibold">
-            {actor?.name ?? 'Nobody selected'}
+            {actor?.name ? getFirstName(actor.name) : 'Nobody selected'}
           </Text>
         </View>
       ) : null}

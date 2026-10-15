@@ -1,4 +1,3 @@
-import { getFirstName } from '@pkg/domain';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { View } from 'react-native';
@@ -38,7 +37,7 @@ export function JobFeedbackList({ jobCode, jobId }: { jobCode: string; jobId: st
           items={items}
           renderItem={(item, last) => (
             <ActivityNoteEntry
-              author={{ name: getFirstName(item.submitter.name), thumbnailDataUrl: item.submitter.thumbnailDataUrl }}
+              author={{ name: item.submitter.name, thumbnailDataUrl: item.submitter.thumbnailDataUrl }}
               footer={
                 item.purchaseOrder ? (
                   <ActivityNoteFooter>

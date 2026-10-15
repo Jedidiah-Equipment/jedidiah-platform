@@ -11,6 +11,7 @@ import { hasPermission, validateFile } from '@pkg/domain';
 import {
   assignmentState,
   FUTURE_READ_AT_TOLERANCE_MS,
+  formatJobNumber,
   type JobActor,
   jobReadStatuses,
   judgeCapture,
@@ -64,11 +65,23 @@ const descriptor = defineAuditDescriptor<Row>({
 });
 export async function listReadingsByMachine({ db, machineId }: { db: Db; machineId: string }) {
   const rows = await db
-    .select()
+    .select({ ...getTableColumns(contractingHourReadings), jobCode: contractingJobs.code })
     .from(contractingHourReadings)
+    // An arrival or departure opens or closes exactly one stint; baseline and spot readings have no Job.
+    .leftJoin(
+      contractingMachineAssignments,
+      or(
+        eq(contractingMachineAssignments.arrivalReadingId, contractingHourReadings.id),
+        eq(contractingMachineAssignments.departureReadingId, contractingHourReadings.id),
+      ),
+    )
+    .leftJoin(contractingJobs, eq(contractingJobs.id, contractingMachineAssignments.jobId))
     .where(eq(contractingHourReadings.machineId, machineId))
     .orderBy(desc(contractingHourReadings.sequence));
-  return rows.map(withHint);
+  return rows.map(({ jobCode, ...row }) => ({
+    ...withHint(row),
+    jobNumber: jobCode === null ? null : formatJobNumber(jobCode),
+  }));
 }
 
 /** A photo capture: the bytes and where they are kept. The AI checks them after the capture lands. */

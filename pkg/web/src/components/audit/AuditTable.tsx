@@ -1,3 +1,4 @@
+import { getFirstName } from '@pkg/domain';
 import {
   AuditChanges,
   type AuditEntityType,
@@ -279,7 +280,7 @@ const ActorCell: React.FC<ActorCellProps> = ({ event }) => {
     return <span className="text-muted-foreground">System</span>;
   }
 
-  const actorLabel = event.actorName || event.actorEmail || event.actorUserId;
+  const actorLabel = (event.actorName && getFirstName(event.actorName)) || event.actorEmail || event.actorUserId;
 
   return (
     <div className="min-w-0">

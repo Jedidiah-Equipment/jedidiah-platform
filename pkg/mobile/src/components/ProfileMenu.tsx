@@ -1,4 +1,4 @@
-import { type HelpTopic, hasBothBusinessAccess, helpUrl } from '@pkg/domain';
+import { getFirstName, type HelpTopic, hasBothBusinessAccess, helpUrl } from '@pkg/domain';
 import type { Business } from '@pkg/schema';
 import { IconHelpCircle, IconLogout, IconSettings, IconSwitchHorizontal } from '@tabler/icons-react-native';
 import Constants from 'expo-constants';
@@ -67,7 +67,7 @@ export function ProfileMenu({
         <Avatar className="h-9 w-9 rounded-lg" name={user.name} uri={user.image} />
         <View className="min-w-0 flex-1">
           <Text className="text-sm text-surface-foreground" numberOfLines={1} weight="semibold">
-            {user.name}
+            {getFirstName(user.name)}
           </Text>
           <Text className="mt-0.5 text-xs text-muted-foreground" numberOfLines={1}>
             {user.email}

@@ -31,7 +31,7 @@ describe('Quote Document presentation', () => {
     });
 
     expect(`Rev ${document.metadata.revision}`).toBe('Rev 4');
-    expect(quoteDocumentMetaLine(document)).toBe('2 KB · Dean van Niekerk · 20 Jul 2026');
+    expect(quoteDocumentMetaLine(document)).toBe('2 KB · Dean · 20 Jul 2026');
     expect(quoteDocumentCountLabel(0)).toBe('0 documents');
     expect(quoteDocumentCountLabel(1)).toBe('1 document');
     expect(quoteDocumentCountLabel(2)).toBe('2 documents');

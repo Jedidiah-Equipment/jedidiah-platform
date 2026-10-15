@@ -1,4 +1,3 @@
-import { getFirstName } from '@pkg/domain';
 import { presentJobActivityEvent } from '@pkg/domain/equipment';
 import type { UUID } from '@pkg/schema';
 import type { JobActivityItem, JobChangeActivityItem } from '@pkg/schema/equipment';
@@ -48,7 +47,7 @@ export const JobActivityEntry: React.FC<{
     return (
       <ActivityNoteEntry
         author={{
-          name: getFirstName(item.feedback.submitter.name),
+          name: item.feedback.submitter.name,
           thumbnailDataUrl: item.feedback.submitter.thumbnailDataUrl,
         }}
         footer={

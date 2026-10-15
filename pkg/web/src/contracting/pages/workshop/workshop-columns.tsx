@@ -1,4 +1,4 @@
-import { formatNumber } from '@pkg/domain';
+import { formatNumber, getFirstName } from '@pkg/domain';
 import { breakdownStatusLabels, breakdownUrgencyLabels, UNASSIGNED_MECHANIC_LABEL } from '@pkg/domain/contracting';
 import {
   type BreakdownFilterOptions,
@@ -162,7 +162,7 @@ export function useWorkshopColumns({
         enableColumnFilter: true,
         enableSorting: false,
         meta: { filterOptions: filterOptions.reporters, filterVariant: 'multi-select' },
-        cell: ({ row }) => <span className="whitespace-nowrap">{row.original.reporterName}</span>,
+        cell: ({ row }) => <span className="whitespace-nowrap">{getFirstName(row.original.reporterName)}</span>,
       },
       {
         id: MECHANIC_COLUMN_ID,
@@ -182,7 +182,7 @@ export function useWorkshopColumns({
             />
           ) : (
             <span className={row.original.mechanicName ? undefined : 'text-muted-foreground'}>
-              {row.original.mechanicName ?? UNASSIGNED_MECHANIC_LABEL}
+              {row.original.mechanicName ? getFirstName(row.original.mechanicName) : UNASSIGNED_MECHANIC_LABEL}
             </span>
           ),
       },

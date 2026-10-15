@@ -105,7 +105,7 @@ const ProductEditTabs: React.FC<ProductEditTabsProps> = ({ onProductSave, onTabC
         size="sm"
         value={activeTab}
       >
-        <TabsList className="max-w-full justify-start overflow-x-auto" variant="default">
+        <TabsList className="max-w-full justify-start overflow-x-auto overflow-y-hidden" variant="default">
           <TabsTrigger value="details">Details</TabsTrigger>
           <ProductBaysTabTrigger productId={product.id} />
           <ProductAssembliesTabTrigger productId={product.id} />

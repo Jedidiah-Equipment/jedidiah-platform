@@ -1,3 +1,4 @@
+import { getFirstName } from '@pkg/domain';
 import { departmentLabels } from '@pkg/domain/equipment';
 import type { UUID } from '@pkg/schema';
 import {
@@ -188,7 +189,7 @@ export function createFeedbackInboxColumns(): DataTableColumnDef<FeedbackListIte
     {
       accessorFn: (item) => feedbackTargetLabels(item).join(', '),
       cell: ({ row }) => {
-        const labels = feedbackTargetLabels(row.original);
+        const labels = feedbackTargetLabels(row.original, getFirstName);
 
         return labels.length > 0 ? (
           <span className="block truncate">{labels.join(', ')}</span>
@@ -245,10 +246,10 @@ function feedbackGlobalFilter(row: { original: FeedbackListItem }, _columnId: st
   ].some((value) => value.toLowerCase().includes(search));
 }
 
-function feedbackTargetLabels(item: FeedbackListItem): string[] {
+function feedbackTargetLabels(item: FeedbackListItem, formatUserName = (name: string) => name): string[] {
   return [
     ...item.departments.map((department) => departmentLabels[department]),
-    ...item.users.map((user) => user.name),
+    ...item.users.map((user) => formatUserName(user.name)),
   ];
 }
 
@@ -412,7 +413,7 @@ function UserLabel({ name, thumbnailDataUrl }: { name: string; thumbnailDataUrl:
   return (
     <span className="flex min-w-0 items-center gap-2 font-medium">
       <EntityThumbnail label={name} size="sm" thumbnailDataUrl={thumbnailDataUrl} />
-      <span className="truncate">{name}</span>
+      <span className="truncate">{getFirstName(name)}</span>
     </span>
   );
 }

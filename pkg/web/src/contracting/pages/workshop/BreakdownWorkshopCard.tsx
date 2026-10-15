@@ -1,4 +1,4 @@
-import { formatHours } from '@pkg/domain';
+import { formatHours, getFirstName } from '@pkg/domain';
 import { reportToSolvedHours } from '@pkg/domain/contracting';
 import type { BreakdownDetail } from '@pkg/schema/contracting';
 import { IconCheck, IconPencil, IconPlayerPlay, IconPlayerStop, IconUserPlus } from '@tabler/icons-react';
@@ -102,7 +102,7 @@ export function BreakdownWorkshopCard({ breakdown, sheet }: { breakdown: Breakdo
           <TimelineRow
             detail={
               <>
-                <DateDisplay date={breakdown.reportedAt} format="medium" /> by {breakdown.reporterName}
+                <DateDisplay date={breakdown.reportedAt} format="medium" /> by {getFirstName(breakdown.reporterName)}
               </>
             }
             title="Reported"
@@ -110,7 +110,13 @@ export function BreakdownWorkshopCard({ breakdown, sheet }: { breakdown: Breakdo
           />
           <TimelineRow
             actions={mechanicAction}
-            detail={breakdown.mechanicName ?? (solved ? 'No mechanic was assigned' : 'Not assigned yet')}
+            detail={
+              breakdown.mechanicName
+                ? getFirstName(breakdown.mechanicName)
+                : solved
+                  ? 'No mechanic was assigned'
+                  : 'Not assigned yet'
+            }
             title="Mechanic"
             tone={tones.mechanic}
           />
@@ -153,7 +159,7 @@ export function BreakdownWorkshopCard({ breakdown, sheet }: { breakdown: Breakdo
                 <>
                   <span className="block">
                     <DateDisplay date={breakdown.solvedAt} format="medium" />
-                    {breakdown.solvedByName ? ` · closed out by ${breakdown.solvedByName}` : null}
+                    {breakdown.solvedByName ? ` · closed out by ${getFirstName(breakdown.solvedByName)}` : null}
                     {solvedHours !== null ? ` · ${formatHours(solvedHours)} from report` : null}
                   </span>
                   {breakdown.closeOutNote ? (

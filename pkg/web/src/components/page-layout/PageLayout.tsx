@@ -56,7 +56,7 @@ export const PageLayout: React.FC<PageLayoutProps> = ({
               {description ? <p className="text-muted-foreground text-sm font-mono">{description}</p> : null}
             </div>
             {actions ? (
-              <div className="flex items-center gap-2 text-sm font-sans sm:flex-1 sm:justify-end">{actions}</div>
+              <div className="flex shrink-0 items-center gap-2 text-sm font-sans sm:grow sm:justify-end">{actions}</div>
             ) : null}
           </div>
         ) : (

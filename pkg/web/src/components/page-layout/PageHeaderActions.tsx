@@ -22,16 +22,26 @@ export type PageHeaderAction = {
  * Place in PageLayout.actions. Keep action dialogs outside this group so closing the menu cannot unmount them.
  * The buttons collapse into a menu only when they no longer fit on one row beside the page title.
  */
-export function PageHeaderActions({ actions, title }: { actions: readonly PageHeaderAction[]; title: string }) {
+export function PageHeaderActions({
+  actions,
+  status,
+  title,
+}: {
+  actions: readonly PageHeaderAction[];
+  /** Feedback shown under the actions, so it never takes the row's width from them. */
+  status?: ReactNode;
+  title: string;
+}) {
   const areaRef = useRef<HTMLDivElement>(null);
   const measureRef = useRef<HTMLDivElement>(null);
   const [collapsed, setCollapsed] = useState(false);
   const hasActions = actions.length > 0;
+  const canCollapse = actions.length > 1;
 
   useLayoutEffect(() => {
     const area = areaRef.current;
     const row = measureRef.current;
-    if (!hasActions || !area || !row) return;
+    if (!canCollapse || !area || !row) return;
     // The hidden copy keeps the one-row width known while the menu is showing.
     const measure = () => setCollapsed(row.offsetWidth > area.clientWidth);
     measure();
@@ -39,7 +49,7 @@ export function PageHeaderActions({ actions, title }: { actions: readonly PageHe
     observer.observe(area);
     observer.observe(row);
     return () => observer.disconnect();
-  }, [hasActions]);
+  }, [canCollapse]);
 
   if (!hasActions) return null;
   const buttons = actions.map((action) => (
@@ -52,19 +62,21 @@ export function PageHeaderActions({ actions, title }: { actions: readonly PageHe
   return (
     <div
       ref={areaRef}
-      className={cn('relative flex w-0 min-w-0 flex-1 sm:justify-end', collapsed && 'min-w-fit')}
+      className={cn(
+        'relative flex w-0 min-w-0 flex-1 flex-col items-start gap-1 sm:items-end',
+        collapsed && 'min-w-fit',
+      )}
       data-slot="page-header-actions"
     >
       <div
         ref={measureRef}
-        aria-hidden
         className="invisible absolute top-0 right-0 flex w-max items-center gap-2"
         data-slot="page-header-actions-measure"
         inert
       >
         {buttons}
       </div>
-      {collapsed ? (
+      {collapsed && canCollapse ? (
         <DropdownMenu>
           <DropdownMenuTrigger render={<Button variant="outline" />}>
             Actions
@@ -85,6 +97,7 @@ export function PageHeaderActions({ actions, title }: { actions: readonly PageHe
       ) : (
         <div className="flex items-center gap-2">{buttons}</div>
       )}
+      {status}
     </div>
   );
 }

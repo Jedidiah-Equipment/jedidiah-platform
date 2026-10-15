@@ -114,16 +114,22 @@ export function StockMovementActions({
 
   return (
     <>
-      {stockQuery.isFetching ? <span role="status">Loading Parts…</span> : null}
-      {stockQuery.isError ? (
-        <div role="alert">
-          {getApiQueryErrorMessage(stockQuery.error, 'Unable to load Parts.')}
-          <Button onClick={() => void stockQuery.refetch()} variant="link">
-            Retry
-          </Button>
-        </div>
-      ) : null}
-      <PageHeaderActions actions={actions} title="Stock on hand" />
+      <PageHeaderActions
+        actions={actions}
+        status={
+          stockQuery.isError ? (
+            <div role="alert">
+              {getApiQueryErrorMessage(stockQuery.error, 'Unable to load Parts.')}
+              <Button onClick={() => void stockQuery.refetch()} variant="link">
+                Retry
+              </Button>
+            </div>
+          ) : stockQuery.isFetching ? (
+            <span role="status">Loading Parts…</span>
+          ) : null
+        }
+        title="Stock on hand"
+      />
       <PartLabelBatchPrintDialog
         key={labelOpenCount}
         onOpenChange={setLabelsOpen}

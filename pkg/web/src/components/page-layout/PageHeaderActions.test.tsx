@@ -74,8 +74,20 @@ test('shows every action as a button while they fit on one row, and collapses on
   }
 });
 
+test('a lone action stays a button, since a menu would not save any room', async () => {
+  layout.available = 0;
+  const { container, unmount } = await render(
+    <PageHeaderActions title="Stock on hand" actions={[{ label: 'Print labels', onClick: () => {} }]} />,
+  );
+  try {
+    expect(visibleButtons(container)).toEqual(['Print labels']);
+  } finally {
+    await unmount();
+  }
+});
+
 test('a menu action opens its dialog after the menu closes, with disabled actions unavailable', async () => {
-  layout.available = 100;
+  layout.available = layout.buttons - 1;
   const disabledAction = vi.fn();
   function Header() {
     const [open, setOpen] = useState(false);

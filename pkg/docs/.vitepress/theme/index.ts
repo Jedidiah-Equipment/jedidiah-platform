@@ -32,7 +32,7 @@ const BusinessSwitcher = defineComponent({
 });
 
 /**
- * The default theme wearing the app's brand: Geist, the two brand yellows, and the two-tone
+ * The default theme wearing the app's brand: Geist, the shared primary, and the two-tone
  * wordmark. `themeConfig.siteTitle` is off so this slot owns the title instead of plain text.
  */
 export default {

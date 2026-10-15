@@ -1,5 +1,6 @@
 export const JEDIDIAH_BRAND_YELLOW = '#fff000';
-export const JEDIDIAH_BRAND_YELLOW_ON_LIGHT = '#f8d300';
+/** The printed brand gold. Not the app's light-mode primary, which is `lightColors.primary`. */
+export const JEDIDIAH_BRAND_GOLD = '#f8d300';
 
 // Path relative to the package's exported `./assets/*`, resolved by consumers.
 export const JEDIDIAH_LOGO_ASSET_PATH = 'brand/jedidiah-logo-full.png';

@@ -1,3 +1,4 @@
+import { darkColors, lightColors } from '@pkg/domain';
 import { defineConfig } from 'vitepress';
 import { FAVICON_FILENAME } from './favicon';
 import { listContentPages } from './pages';
@@ -17,6 +18,7 @@ export const docsConfig = defineConfig({
   head: [
     ['meta', { name: 'robots', content: 'noindex, nofollow' }],
     ['link', { rel: 'icon', type: 'image/png', href: `/${FAVICON_FILENAME}` }],
+    ['style', {}, `:root{--jed-brand:${lightColors.primary}}.dark{--jed-brand:${darkColors.primary}}`],
   ],
   // VitePress 1.x pins Vite 5, whose default browser target (down to Safari 14) the workspace-wide
   // esbuild override refuses to transform destructuring for. Modern browsers are the only audience

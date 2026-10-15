@@ -1,3 +1,4 @@
+import { formatNumber } from '@pkg/domain';
 import type { PurchaseOrderLineView, PurchaseOrderView } from '@pkg/schema/equipment';
 import { IconTruckDelivery } from '@tabler/icons-react';
 import { useMemo, useState } from 'react';
@@ -25,7 +26,7 @@ export function PurchaseOrderReceivingLines({
   purchaseOrder: PurchaseOrderView;
 }) {
   const [receivingLineId, setReceivingLineId] = useState<string | null>(null);
-  const receivingLine = lines.find((line) => line.id === receivingLineId) ?? null;
+  const receivingLine = purchaseOrder.lines.find((line) => line.id === receivingLineId) ?? null;
   const columns = useMemo<DataTableColumnDef<PurchaseOrderLineView>[]>(
     () => [
       {
@@ -45,12 +46,13 @@ export function PurchaseOrderReceivingLines({
       },
       {
         accessorKey: 'receivedQuantity',
-        cell: ({ row }) => `${row.original.receivedQuantity} / ${row.original.quantity}`,
+        cell: ({ row }) => `${formatNumber(row.original.receivedQuantity)} / ${formatNumber(row.original.quantity)}`,
         header: 'Received',
         meta: { cellClassName: 'text-right tabular-nums', headerClassName: 'text-right' },
       },
       {
         accessorFn: outstandingQuantity,
+        cell: ({ row }) => formatNumber(outstandingQuantity(row.original)),
         header: 'Outstanding',
         id: 'outstanding',
         meta: { cellClassName: 'text-right tabular-nums', headerClassName: 'text-right' },
@@ -92,7 +94,7 @@ export function PurchaseOrderReceivingLines({
         paginationMode="complete"
         table={table}
         total={lines.length}
-        totalLabel={(value) => `${value} ${value === 1 ? 'line' : 'lines'}`}
+        totalLabel={(value) => `${formatNumber(value)} ${value === 1 ? 'line' : 'lines'}`}
       />
       {receivingLine?.kind === 'custom' ? (
         <PurchaseOrderArrivalDialog

@@ -19,7 +19,6 @@ export type ComboboxFieldProps = {
   options: readonly SearchableComboboxOption[];
   placeholder?: string;
   resolveInputOnEnter?: (inputValue: string) => string | undefined;
-  /** Rendered beside the combobox, such as a link to the selected record. */
   trailing?: React.ReactNode;
 };
 

@@ -5,6 +5,7 @@ import { QueryContent } from '@/components/common/QueryContent.js';
 import { withCurrentOption } from '@/components/common/SearchableCombobox.js';
 import { AutosaveFormCard } from '@/components/form/AutosaveFormCard.js';
 import { useAutosaveForm } from '@/components/form/index.js';
+import { DetailAsideGrid } from '@/components/page-layout/DetailAsideGrid.js';
 import { EditFormFullWidth } from '@/components/page-layout/EditFormLayout.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
@@ -96,7 +97,7 @@ function MachineForm({
           {readsServices ? <TabsTrigger value="service">Service</TabsTrigger> : null}
         </TabsList>
         <TabsContent className="pt-4" value="details">
-          <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+          <DetailAsideGrid>
             <div className="min-w-0 space-y-5">
               <AutosaveFormCard formProps={formProps} autosave={autosave} disabled={!canEdit}>
                 <form.AppField name="code">{(field) => <field.TextField label="Code" />}</form.AppField>
@@ -167,7 +168,7 @@ function MachineForm({
               ) : null}
             </div>
             <FleetHistoryCard subject={{ machineId: machine.id }} onOpenService={() => onTabChange('service')} />
-          </div>
+          </DetailAsideGrid>
         </TabsContent>
         {readsServices ? (
           <TabsContent className="pt-4" value="service">

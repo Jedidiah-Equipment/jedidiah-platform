@@ -1,4 +1,4 @@
-import { formatDate, formatHours, getFirstName, type StatusBadgeColor, statusBadgeColorClassNames } from '@pkg/domain';
+import { formatDate, formatHours, getFirstName, type StatusBadgeColor } from '@pkg/domain';
 import { breakdownStatusLabels, breakdownUrgencyLabels, readingRoleLabels } from '@pkg/domain/contracting';
 import {
   type BreakdownStatus,
@@ -6,21 +6,22 @@ import {
   breakdownStatuses,
   type ReadingRole,
 } from '@pkg/schema/contracting';
-import { IconArrowBarToDown, IconArrowBarUp, IconGauge, IconTool, type TablerIcon } from '@tabler/icons-react';
+import { IconGauge, IconTool, type TablerIcon } from '@tabler/icons-react';
 import { skipToken, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useMemo } from 'react';
+import { ActivityEventTile } from '@/components/activity/ActivityEntries.js';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { ClientDataTable } from '@/components/data-table/ClientDataTable.js';
 import type { DataTableColumnDef } from '@/components/data-table/features.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
+import { ACTIVITY_EVENT_ICONS } from '@/contracting/components/activity/ActivityEntry.js';
 import { BreakdownStatusBadge, BreakdownUrgencyIcon } from '@/contracting/components/BreakdownSubjectLabel.js';
 import { readingEvidence } from '@/contracting/components/ReadingEvidence.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { cn } from '@/lib/utils.js';
 import { historyKindColumn, historyKindLabels } from './history-kind-column.js';
 
 type HistoryKind = keyof typeof historyKindLabels;
@@ -30,48 +31,30 @@ type HistoryRow = {
   kindLabel: string;
   /** An instant, or a plant date for a service; both sort as ISO strings. */
   at: string;
-  /** What the row says, as plain text for search; the cell draws it with the record's own icons and badges. */
-  summary: string;
+  searchText: string;
   title: string;
   detail: string | null;
   /** The reading's photo and AI evidence, as the stint card labels it. */
   evidence?: string;
   readingRole?: ReadingRole;
-  /** The Job whose stint the reading opened or closed; the row opens it. */
-  jobNumber?: string;
-  breakdown?: { id: string; urgency: BreakdownUrgency; status: BreakdownStatus };
+  breakdown?: { urgency: BreakdownUrgency; status: BreakdownStatus };
+  opens: { to: 'breakdown'; id: string } | { to: 'job'; jobNumber: string } | { to: 'service' } | null;
 };
 
-/** Readings and services draw the tiles Activity gives the same events; a Breakdown draws its urgency flag. */
 const readingTiles: Partial<Record<ReadingRole, { icon: TablerIcon; tone: StatusBadgeColor }>> = {
-  arrival: { icon: IconArrowBarToDown, tone: 'blue' },
-  departure: { icon: IconArrowBarUp, tone: 'gray' },
+  arrival: { icon: ACTIVITY_EVENT_ICONS['machine-arrived'], tone: 'blue' },
+  departure: { icon: ACTIVITY_EVENT_ICONS['machine-left'], tone: 'gray' },
 };
 const otherReadingTile = { icon: IconGauge, tone: 'gray' } as const;
 const serviceTile = { icon: IconTool, tone: 'green' } as const;
 
-function HistoryTile({ icon: Icon, tone }: { icon: TablerIcon; tone: StatusBadgeColor }) {
-  const colours = statusBadgeColorClassNames[tone];
-  return (
-    <span
-      className={cn(
-        'inline-flex size-[26px] shrink-0 items-center justify-center rounded-md border',
-        colours.chip,
-        colours.text,
-      )}
-    >
-      <Icon aria-hidden className="size-4" />
-    </span>
-  );
-}
-
 function HistoryWhatHappened({ row }: { row: HistoryRow }) {
   const icon = row.breakdown ? (
-    <BreakdownUrgencyIcon urgency={row.breakdown.urgency} size={16} />
+    <BreakdownUrgencyIcon urgency={row.breakdown.urgency} size={20} />
   ) : row.kind === 'service' ? (
-    <HistoryTile {...serviceTile} />
+    <ActivityEventTile {...serviceTile} />
   ) : (
-    <HistoryTile {...((row.readingRole && readingTiles[row.readingRole]) ?? otherReadingTile)} />
+    <ActivityEventTile {...((row.readingRole && readingTiles[row.readingRole]) ?? otherReadingTile)} />
   );
   return (
     <div className="flex min-w-48 items-center gap-3">
@@ -124,11 +107,11 @@ export function FleetHistoryCard({
           kind: 'reading' as const,
           kindLabel: historyKindLabels.reading,
           at: reading.capturedAt,
-          summary: `Reading · ${formatHours(reading.value)} · ${readingRoleLabels[reading.role]}`,
+          searchText: `Reading · ${formatHours(reading.value)} · ${readingRoleLabels[reading.role]} · ${reading.jobNumber ?? ''}`,
           title: `${readingRoleLabels[reading.role]} · ${formatHours(reading.value)}`,
           detail: reading.jobNumber,
           readingRole: reading.role,
-          ...(reading.jobNumber ? { jobNumber: reading.jobNumber } : {}),
+          opens: reading.jobNumber ? { to: 'job' as const, jobNumber: reading.jobNumber } : null,
           evidence: readingEvidence({ ...reading, photoBacked: reading.photo !== null }).evidenceLabel,
         })),
         ...(breakdowns.data?.items ?? []).map((breakdown) => ({
@@ -136,15 +119,16 @@ export function FleetHistoryCard({
           kind: 'breakdown' as const,
           kindLabel: historyKindLabels.breakdown,
           at: breakdown.reportedAt,
-          summary: `Breakdown · ${breakdownUrgencyLabels[breakdown.urgency]} · ${breakdown.firstLine} · ${breakdownStatusLabels[breakdown.status]}`,
+          searchText: `Breakdown · ${breakdownUrgencyLabels[breakdown.urgency]} · ${breakdown.firstLine} · ${breakdownStatusLabels[breakdown.status]}`,
           title: breakdown.firstLine,
           detail: breakdown.jobNumber
             ? `${breakdown.jobNumber} · reported by ${getFirstName(breakdown.reporterName)}`
             : `Reported by ${getFirstName(breakdown.reporterName)}`,
-          breakdown: { id: breakdown.id, urgency: breakdown.urgency, status: breakdown.status },
+          breakdown: { urgency: breakdown.urgency, status: breakdown.status },
+          opens: { to: 'breakdown' as const, id: breakdown.id },
         })),
         ...(services.data ?? []).map((service) => {
-          const summary = [
+          const title = [
             'Service',
             service.readingAtServiceHours === null ? 'in the workshop' : formatHours(service.readingAtServiceHours),
             service.mechanicName ? getFirstName(service.mechanicName) : null,
@@ -156,16 +140,17 @@ export function FleetHistoryCard({
             kind: 'service' as const,
             kindLabel: historyKindLabels.service,
             at: service.endDate ?? service.startDate,
-            summary,
-            title: summary,
+            searchText: title,
+            title,
             detail:
               service.nextServiceDueHoursSet === null
                 ? null
                 : `Next service due set to ${formatHours(service.nextServiceDueHoursSet)}`,
+            opens: onOpenService ? { to: 'service' as const } : null,
           };
         }),
       ].sort((left, right) => right.at.localeCompare(left.at)),
-    [readings.data, breakdowns.data, services.data],
+    [readings.data, breakdowns.data, services.data, onOpenService],
   );
   const columns = useMemo<DataTableColumnDef<HistoryRow>[]>(
     () => [
@@ -183,7 +168,7 @@ export function FleetHistoryCard({
       },
       historyKindColumn({ isMachine: machineId !== null, readsBreakdowns, readsServices }),
       {
-        accessorKey: 'summary',
+        accessorKey: 'searchText',
         header: 'What happened',
         cell: ({ row }) => <HistoryWhatHappened row={row.original} />,
       },
@@ -210,10 +195,12 @@ export function FleetHistoryCard({
             (readsBreakdowns && breakdowns.isPending) ||
             (readsServices && services.isPending)
           }
-          onOpen={(row) => {
-            if (row.breakdown) void navigate({ to: '/contracting/workshop/$id', params: { id: row.breakdown.id } });
-            else if (row.jobNumber) void navigate({ to: '/contracting/jobs/$code', params: { code: row.jobNumber } });
-            else if (row.kind === 'service') onOpenService?.();
+          canOpen={(row) => row.opens !== null}
+          onOpen={({ opens }) => {
+            if (opens?.to === 'breakdown') void navigate({ to: '/contracting/workshop/$id', params: { id: opens.id } });
+            else if (opens?.to === 'job')
+              void navigate({ to: '/contracting/jobs/$code', params: { code: opens.jobNumber } });
+            else if (opens?.to === 'service') onOpenService?.();
           }}
           emptyMessage="Nothing has happened to it yet."
           searchPlaceholder="Search history…"

@@ -189,7 +189,7 @@ export function createFeedbackInboxColumns(): DataTableColumnDef<FeedbackListIte
     {
       accessorFn: (item) => feedbackTargetLabels(item).join(', '),
       cell: ({ row }) => {
-        const labels = feedbackTargetLabels(row.original, getFirstName);
+        const labels = feedbackTargetLabels(row.original);
 
         return labels.length > 0 ? (
           <span className="block truncate">{labels.join(', ')}</span>
@@ -243,13 +243,15 @@ function feedbackGlobalFilter(row: { original: FeedbackListItem }, _columnId: st
     feedbackStatusLabels[row.original.status],
     row.original.status,
     ...feedbackTargetLabels(row.original),
+    // The list shows first names; search still matches a target's full name.
+    ...row.original.users.map((user) => user.name),
   ].some((value) => value.toLowerCase().includes(search));
 }
 
-function feedbackTargetLabels(item: FeedbackListItem, formatUserName = (name: string) => name): string[] {
+function feedbackTargetLabels(item: FeedbackListItem): string[] {
   return [
     ...item.departments.map((department) => departmentLabels[department]),
-    ...item.users.map((user) => formatUserName(user.name)),
+    ...item.users.map((user) => getFirstName(user.name)),
   ];
 }
 

@@ -72,7 +72,7 @@ export function toBayLoadChartData(load: Pick<DepartmentBayLoadToday, 'totalCoun
   ];
 }
 
-function DepartmentBayLoadChart({ className, load }: { className?: string; load: DepartmentBayLoadToday }) {
+function DepartmentBayLoadChart({ className, load }: { className?: string | undefined; load: DepartmentBayLoadToday }) {
   return (
     <section
       className={cn('flex min-w-0 flex-col items-center', className)}

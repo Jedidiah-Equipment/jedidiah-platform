@@ -80,9 +80,10 @@ describe('JobActivityEntry', () => {
   it('keeps the submitter discoverable when their avatar has no image', async () => {
     const html = await renderWithRouter(<JobActivityEntry item={buildItem({ submitterThumbnailDataUrl: null })} />);
 
-    expect(html).toContain('aria-label="Thabo"');
-    expect(html).toContain('>T<');
-    expect(html).not.toContain('Thabo Mokoena');
+    // The avatar keeps the full name for its label and initials; the bubble shows the first name.
+    expect(html).toContain('aria-label="Thabo Mokoena"');
+    expect(html).toContain('>TM<');
+    expect(html).toContain('>Thabo<');
   });
 
   // The toggle itself is driven by measuring the clamped paragraph, which needs layout — so it is

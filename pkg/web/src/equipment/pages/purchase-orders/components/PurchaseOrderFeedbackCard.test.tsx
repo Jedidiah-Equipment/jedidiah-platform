@@ -79,7 +79,7 @@ it('renders the newest-first PO timeline with attribution and no Job links or st
     expect(container.textContent).toContain('Earlier delivery update');
     const content = container.textContent ?? '';
     expect(content.indexOf('Newest delivery update')).toBeLessThan(content.indexOf('Earlier delivery update'));
-    expect(container.querySelectorAll('[aria-label="Alex"]')).toHaveLength(2);
+    expect(container.querySelectorAll('[aria-label="Alex Smith"]')).toHaveLength(2);
     expect(container.querySelectorAll('a[href*="/jobs"]')).toHaveLength(0);
     expect(container.querySelector('[aria-label="Help with Purchase Order Feedback"]')?.getAttribute('href')).toBe(
       'https://help.example.com/inventory/send-feedback-on-a-purchase-order',

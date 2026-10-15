@@ -63,7 +63,7 @@ export function ActivityEntry({ item, scope }: { item: ActivityItem; scope: Acti
     />
   ) : (
     <ActivityEventEntry
-      icon={EVENT_ICONS[item.type]}
+      icon={ACTIVITY_EVENT_ICONS[item.type]}
       link={
         target?.link ? (
           <Link {...target.link} aria-label={`Open ${target.label}`} className={activityEntryLinkClassName} />
@@ -93,7 +93,7 @@ function NoteFooter({ target }: { target: EntryTarget }) {
   );
 }
 
-const EVENT_ICONS = {
+export const ACTIVITY_EVENT_ICONS = {
   'breakdown-reported': IconFlagFilled,
   'mechanic-assigned': IconUserCheck,
   'breakdown-started': IconTool,

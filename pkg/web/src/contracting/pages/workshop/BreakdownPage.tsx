@@ -9,6 +9,7 @@ import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { QueryContent } from '@/components/common/QueryContent.js';
 import { AutosaveFormCard } from '@/components/form/AutosaveFormCard.js';
 import { useAutosaveForm } from '@/components/form/index.js';
+import { DetailAsideGrid } from '@/components/page-layout/DetailAsideGrid.js';
 import { EditFormFullWidth } from '@/components/page-layout/EditFormLayout.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { ActivityCard } from '@/contracting/components/activity/ActivityCard.js';
@@ -55,7 +56,7 @@ export function BreakdownPage({ id }: { id: string }) {
         {(detail) => {
           const sheet = breakdownSheet(detail);
           return (
-            <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+            <DetailAsideGrid>
               <div className="min-w-0 space-y-5">
                 <ReportCard key={`report-${detail.id}`} breakdown={detail} sheet={sheet} />
                 <BreakdownPhotosCard breakdown={detail} sheet={sheet} />
@@ -63,7 +64,7 @@ export function BreakdownPage({ id }: { id: string }) {
                 <DispatchHintsCard breakdown={detail} />
               </div>
               <ActivityCard scope={{ breakdownId: detail.id }} addNote={sheet.action('addNote')} />
-            </div>
+            </DetailAsideGrid>
           );
         }}
       </QueryContent>

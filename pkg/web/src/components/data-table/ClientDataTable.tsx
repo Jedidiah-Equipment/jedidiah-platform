@@ -10,6 +10,7 @@ export function ClientDataTable<T extends RowData>({
   columns,
   loading,
   onOpen,
+  canOpen,
   controls,
   emptyMessage,
   searchPlaceholder,
@@ -21,6 +22,7 @@ export function ClientDataTable<T extends RowData>({
   columns: DataTableColumnDef<T>[];
   loading: boolean;
   onOpen: (row: T) => void;
+  canOpen?: (row: T) => boolean;
   controls?: ReactNode;
   emptyMessage: string;
   searchPlaceholder?: string;
@@ -49,6 +51,7 @@ export function ClientDataTable<T extends RowData>({
       emptyMessage={emptyMessage}
       isLoading={loading}
       onRowClick={onOpen}
+      canOpenRow={canOpen}
       rightSection={controls}
       {...(searchPlaceholder ? { globalFilterPlaceholder: searchPlaceholder } : {})}
       hideGlobalFilter={hideGlobalFilter}

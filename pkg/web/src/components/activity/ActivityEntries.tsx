@@ -1,4 +1,9 @@
-import { type ActivityEventPresentation, getFirstName, statusBadgeColorClassNames } from '@pkg/domain';
+import {
+  type ActivityEventPresentation,
+  getFirstName,
+  type StatusBadgeColor,
+  statusBadgeColorClassNames,
+} from '@pkg/domain';
 import type { DateIso } from '@pkg/schema';
 import type { TablerIcon } from '@tabler/icons-react';
 import type React from 'react';
@@ -64,7 +69,7 @@ export function ActivityNoteFooter({ children }: { children: React.ReactNode }) 
  */
 export function ActivityEventEntry({
   context,
-  icon: Icon,
+  icon,
   link,
   occurredAt,
   presentation,
@@ -75,19 +80,13 @@ export function ActivityEventEntry({
   occurredAt: DateIso;
   presentation: ActivityEventPresentation;
 }) {
-  const tone = statusBadgeColorClassNames[presentation.tone];
   return (
     <ActivityEntryShell
       dense
       link={link}
       marker={<ActivityEventMarker />}
       occurredAt={occurredAt}
-      who={
-        // A record, not a person: a rounded square.
-        <span className={cn('flex size-8 items-center justify-center rounded-lg border', tone.chip, tone.text)}>
-          <Icon aria-hidden className="size-3.5" />
-        </span>
-      }
+      who={<ActivityEventTile icon={icon} tone={presentation.tone} />}
     >
       <div className="min-w-0">
         <p className="text-sm leading-6">
@@ -99,5 +98,17 @@ export function ActivityEventEntry({
         )}
       </div>
     </ActivityEntryShell>
+  );
+}
+
+/** A record's event icon in its tone; a rounded square, because a circle means a person. */
+export function ActivityEventTile({ icon: Icon, tone }: { icon: TablerIcon; tone: StatusBadgeColor }) {
+  const colours = statusBadgeColorClassNames[tone];
+  return (
+    <span
+      className={cn('flex size-8 shrink-0 items-center justify-center rounded-lg border', colours.chip, colours.text)}
+    >
+      <Icon aria-hidden className="size-3.5" />
+    </span>
   );
 }

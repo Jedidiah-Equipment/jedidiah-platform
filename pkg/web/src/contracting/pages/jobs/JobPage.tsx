@@ -8,6 +8,7 @@ import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { QueryContent } from '@/components/common/QueryContent.js';
 import { AutosaveFormCard } from '@/components/form/AutosaveFormCard.js';
 import { useAutosaveForm } from '@/components/form/index.js';
+import { DetailAsideGrid } from '@/components/page-layout/DetailAsideGrid.js';
 import { EditFormFullWidth } from '@/components/page-layout/EditFormLayout.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Button } from '@/components/ui/button.js';
@@ -55,7 +56,7 @@ export function JobPage({ code }: { code: string }) {
           sheet ? (
             <div className="space-y-5">
               {job.cancellationReason ? <p>Cancelled: {job.cancellationReason}</p> : null}
-              <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+              <DetailAsideGrid>
                 <div className="min-w-0 space-y-5">
                   <SetupCard key={`setup-${job.id}`} job={job} sheet={sheet} />
                   <MachinesCard job={job} sheet={sheet} />
@@ -72,7 +73,7 @@ export function JobPage({ code }: { code: string }) {
                   ) : null}
                 </div>
                 <ActivityCard scope={{ jobId: job.id }} addNote={sheet.action('addNote')} />
-              </div>
+              </DetailAsideGrid>
               <CancelJob job={job} sheet={sheet} />
             </div>
           ) : null

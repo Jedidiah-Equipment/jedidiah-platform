@@ -30,7 +30,7 @@ import {
   ReadingAmendInput,
   ReadingCaptureInput,
 } from '@pkg/schema/contracting';
-import { and, asc, desc, eq, getTableColumns, gt, inArray, or } from 'drizzle-orm';
+import { and, asc, desc, eq, getTableColumns, gt, inArray, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { defineAuditDescriptor, recordAuditCreate } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
@@ -64,20 +64,21 @@ const descriptor = defineAuditDescriptor<Row>({
   }),
 });
 export async function listReadingsByMachine({ db, machineId }: { db: Db; machineId: string }) {
+  const opensStint = eq(contractingMachineAssignments.arrivalReadingId, contractingHourReadings.id);
   const rows = await db
-    .select({ ...getTableColumns(contractingHourReadings), jobCode: contractingJobs.code })
+    // A reading that closed one stint and opened the next appears once, under the Job it opened.
+    .selectDistinctOn([contractingHourReadings.sequence], {
+      ...getTableColumns(contractingHourReadings),
+      jobCode: contractingJobs.code,
+    })
     .from(contractingHourReadings)
-    // An arrival or departure opens or closes exactly one stint; baseline and spot readings have no Job.
     .leftJoin(
       contractingMachineAssignments,
-      or(
-        eq(contractingMachineAssignments.arrivalReadingId, contractingHourReadings.id),
-        eq(contractingMachineAssignments.departureReadingId, contractingHourReadings.id),
-      ),
+      or(opensStint, eq(contractingMachineAssignments.departureReadingId, contractingHourReadings.id)),
     )
     .leftJoin(contractingJobs, eq(contractingJobs.id, contractingMachineAssignments.jobId))
     .where(eq(contractingHourReadings.machineId, machineId))
-    .orderBy(desc(contractingHourReadings.sequence));
+    .orderBy(desc(contractingHourReadings.sequence), sql`${opensStint} desc nulls last`);
   return rows.map(({ jobCode, ...row }) => ({
     ...withHint(row),
     jobNumber: jobCode === null ? null : formatJobNumber(jobCode),

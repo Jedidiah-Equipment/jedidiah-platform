@@ -38,6 +38,8 @@ type DataTableLoadMoreProps = {
 };
 
 type DataTableProps<TData extends RowData> = {
+  /** Rows it rejects render without the click affordance; every row opens when omitted. */
+  canOpenRow?: ((item: TData) => boolean) | undefined;
   emptyMessage: string;
   errorMessage?: string | undefined;
   filterDebounceMs?: number;
@@ -82,6 +84,7 @@ type DataTableProps<TData extends RowData> = {
 const DEFAULT_INCREMENTAL_PAGE_SIZE = 25;
 
 export function DataTable<TData extends RowData>({
+  canOpenRow,
   emptyMessage,
   errorMessage,
   filterDebounceMs = 250,
@@ -187,7 +190,7 @@ export function DataTable<TData extends RowData>({
                       getRowClassName={getRowClassName}
                       getRowState={getRowState}
                       key={row.id}
-                      onRowClick={onRowClick}
+                      onRowClick={canOpenRow && !canOpenRow(row.original) ? undefined : onRowClick}
                       row={row}
                     />
                   ))

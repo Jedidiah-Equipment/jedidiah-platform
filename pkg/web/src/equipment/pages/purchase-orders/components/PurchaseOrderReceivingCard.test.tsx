@@ -36,7 +36,7 @@ const purchaseOrder = {
       quantity: 4,
       receivedQuantity: 0,
     },
-    { description: 'Packing tape', id: CUSTOM_LINE_ID, kind: 'custom', quantity: 5, receivedQuantity: 0 },
+    { description: 'Packing tape', id: CUSTOM_LINE_ID, kind: 'custom', quantity: 2.5, receivedQuantity: 1.25 },
     {
       description: 'Grease nipple',
       id: RECEIVED_PART_LINE_ID,
@@ -75,11 +75,10 @@ it('lists every line with what it still owes and a label button only once stock 
   const hoseRow = rowFor(container, 'P-100');
   expect(hoseRow.textContent).toContain('0 / 4');
   expect(hoseRow.textContent).not.toContain('Print label');
-  const greaseRow = rowFor(container, 'P-200');
-  expect(greaseRow.textContent).toContain('3 / 10');
-  expect(greaseRow.textContent).toContain('7');
-  expect(greaseRow.textContent).toContain('Print label');
-  expect(rowFor(container, 'Packing tape').textContent).toContain('0 / 5');
+  const greaseCells = [...rowFor(container, 'P-200').querySelectorAll('td')].map((cell) => cell.textContent);
+  expect(greaseCells.slice(1)).toEqual(['3 / 10', '7', 'Print label Receive']);
+  const tapeCells = [...rowFor(container, 'Packing tape').querySelectorAll('td')].map((cell) => cell.textContent);
+  expect(tapeCells.slice(1, 3)).toEqual(['1.25 / 2.5', '1.25']);
   await act(async () => root.unmount());
 });
 

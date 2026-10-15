@@ -1,4 +1,5 @@
 import { formatNumber } from '@pkg/domain';
+import { formatPartQuantityValue } from '@pkg/domain/equipment';
 import type { PurchaseOrderLineView, PurchaseOrderView } from '@pkg/schema/equipment';
 import { IconTruckDelivery } from '@tabler/icons-react';
 import { useMemo, useState } from 'react';
@@ -46,13 +47,14 @@ export function PurchaseOrderReceivingLines({
       },
       {
         accessorKey: 'receivedQuantity',
-        cell: ({ row }) => `${formatNumber(row.original.receivedQuantity)} / ${formatNumber(row.original.quantity)}`,
+        cell: ({ row }) =>
+          `${formatPartQuantityValue(row.original.receivedQuantity)} / ${formatPartQuantityValue(row.original.quantity)}`,
         header: 'Received',
         meta: { cellClassName: 'text-right tabular-nums', headerClassName: 'text-right' },
       },
       {
         accessorFn: outstandingQuantity,
-        cell: ({ row }) => formatNumber(outstandingQuantity(row.original)),
+        cell: ({ row }) => formatPartQuantityValue(outstandingQuantity(row.original)),
         header: 'Outstanding',
         id: 'outstanding',
         meta: { cellClassName: 'text-right tabular-nums', headerClassName: 'text-right' },

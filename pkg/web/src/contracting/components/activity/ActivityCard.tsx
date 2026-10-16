@@ -1,29 +1,23 @@
 import { canSeeActivity, type presentAction } from '@pkg/domain/contracting';
-import type { UUID } from '@pkg/schema';
-import { BreakdownNoteText, JobNoteText } from '@pkg/schema/contracting';
+import { NoteText } from '@pkg/schema/contracting';
 import { IconActivity, IconMessagePlus } from '@tabler/icons-react';
-import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
-import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button.js';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
-import { useContractingWrite, useResetOnOpen } from '@/contracting/hooks/use-contracting-write.js';
-import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
+import { useResetOnOpen } from '@/contracting/hooks/use-contracting-write.js';
 import { useAccess } from '@/hooks/use-access.js';
-import { useTRPC } from '@/lib/trpc.js';
 
 import { ReasonDialog } from '../ReasonDialog.js';
 import { ActivityFeed } from './ActivityFeed.js';
-
-type ActivityCardScope = { jobId: UUID } | { breakdownId: UUID };
+import { type NoteThreadRef, useAddNote } from './use-add-note.js';
 
 /** One Job's thread (its Breakdowns included) or one Breakdown's, with Add Note when the record allows one. */
 export function ActivityCard({
-  scope,
+  thread,
   addNote,
 }: {
-  scope: ActivityCardScope;
+  thread: NoteThreadRef;
   /** The verdict behind the button: `sheet.action('addNote')`, or null to hide it. */
   addNote: ReturnType<typeof presentAction>;
 }) {
@@ -42,12 +36,12 @@ export function ActivityCard({
             <Button {...addNote} onClick={() => setOpen(true)} size="sm" variant="outline">
               <IconMessagePlus /> Add Note
             </Button>
-            <AddNoteDialog onOpenChange={setOpen} open={open} scope={scope} />
+            <AddNoteDialog onOpenChange={setOpen} open={open} thread={thread} />
           </CardAction>
         ) : null}
       </CardHeader>
       <CardContent>
-        <ActivityFeed {...scope} />
+        <ActivityFeed {...(thread.kind === 'job' ? { jobId: thread.id } : { breakdownId: thread.id })} />
       </CardContent>
     </Card>
   );
@@ -56,41 +50,23 @@ export function ActivityCard({
 function AddNoteDialog({
   open,
   onOpenChange,
-  scope,
+  thread,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  scope: ActivityCardScope;
+  thread: NoteThreadRef;
 }) {
-  const trpc = useTRPC();
-  const { invalidateActivity, invalidateJobs, invalidateWorkshop } = useQueryInvalidation();
-  // Workshop refreshes carry Activity already; a Job Note refreshes the Job's own reads beside it.
-  const write = useContractingWrite(
-    'jobId' in scope ? () => Promise.all([invalidateJobs(), invalidateActivity()]) : invalidateWorkshop,
-  );
-  const onSuccess = async () => {
-    await write.invalidate();
-    toast.success('Note added');
-  };
-  const addJobNote = useMutation(trpc.contractingJobs.notes.add.mutationOptions({ onSuccess, onError: write.report }));
-  const addBreakdownNote = useMutation(
-    trpc.contractingBreakdowns.notes.add.mutationOptions({ onSuccess, onError: write.report }),
-  );
-  const add = 'jobId' in scope ? addJobNote : addBreakdownNote;
-  useResetOnOpen(add, open);
+  const addNote = useAddNote(thread);
+  useResetOnOpen(addNote, open);
   return (
     <ReasonDialog
-      error={add.error}
+      error={addNote.error}
       fallbackMessage="Unable to add the note."
       label="Note"
       onOpenChange={onOpenChange}
       open={open}
-      schema={'jobId' in scope ? JobNoteText : BreakdownNoteText}
-      submit={(text) =>
-        'jobId' in scope
-          ? addJobNote.mutateAsync({ jobId: scope.jobId, text })
-          : addBreakdownNote.mutateAsync({ breakdownId: scope.breakdownId, text })
-      }
+      schema={NoteText}
+      submit={addNote.send}
       submitLabel="Send"
       title="Add Note"
     />

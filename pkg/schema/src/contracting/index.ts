@@ -14,6 +14,7 @@ export * from './jobs/job-card.js';
 export * from './jobs/job-enums.js';
 export * from './jobs/job-note.js';
 export * from './jobs/pricing.js';
+export * from './notes/note.js';
 export * from './rate-card/rate-card.js';
 export * from './readings/reading.js';
 export * from './readings/reading-enums.js';

@@ -63,7 +63,10 @@ export function BreakdownPage({ id }: { id: string }) {
                 <BreakdownWorkshopCard breakdown={detail} sheet={sheet} />
                 <DispatchHintsCard breakdown={detail} />
               </div>
-              <ActivityCard scope={{ breakdownId: detail.id }} addNote={sheet.action('addNote')} />
+              <ActivityCard
+                thread={{ kind: 'breakdown', id: detail.id, code: detail.subject.code }}
+                addNote={sheet.action('addNote')}
+              />
             </DetailAsideGrid>
           );
         }}

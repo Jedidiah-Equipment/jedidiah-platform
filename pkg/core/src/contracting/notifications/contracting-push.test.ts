@@ -1,15 +1,17 @@
 import { type Db, pushTokens, session, user } from '@pkg/db';
+import { noteAdded, noteThreads } from '@pkg/domain/contracting';
 import { accessForRole } from '@pkg/domain/testing';
-import type { ContractingRole } from '@pkg/schema';
+import type { ContractingRole, UserAccessSummary } from '@pkg/schema';
+import { noteThreadKinds } from '@pkg/schema/contracting';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 import { setPushPreferences } from '../../push/push-preference-service.js';
 import type { PushMessage } from '../../push/push-sender.js';
 import { createTester } from '../../test/create-tester.js';
-import { addBreakdownNote, reportBreakdown } from '../breakdowns/breakdown-service.js';
+import { reportBreakdown } from '../breakdowns/breakdown-service.js';
 import { patchMachine } from '../fleet/machine-service.js';
-import { addJobNote } from '../jobs/job-note-service.js';
 import { cancelJob, createJob, patchJob } from '../jobs/job-service.js';
+import { addNote } from '../notes/note-service.js';
 import { captureReading } from '../readings/reading-service.js';
 import { admin, adminId, foreman, foremanId, plannedStint, seedJobFixtures } from '../test/job-fixtures.js';
 import { buildContractingPush, dispatchContractingPush } from './contracting-push.js';
@@ -71,6 +73,8 @@ const test = createTester(async ({ db }) => {
   return fixtures;
 });
 
+type Fixtures = Awaited<ReturnType<typeof seedJobFixtures>> & { db: Db };
+
 const recipients = (messages: readonly PushMessage[]) => messages.map((message) => message.to).sort();
 
 async function report(db: Db, machineId: string, urgency: 'code-red' | 'code-green', reporter = admin) {
@@ -83,66 +87,100 @@ async function report(db: Db, machineId: string, urgency: 'code-red' | 'code-gre
 }
 
 describe('Contracting push fan-out', () => {
-  test('Breakdown Notes reach participants and workshop, exclude their author, and respect per-kind mutes', async ({
-    context: { db, excavator },
-  }) => {
-    const { breakdown } = await reportBreakdown({
-      db,
-      actor: foreman,
-      input: {
-        subject: { kind: 'machine', id: excavator.id },
-        urgency: 'code-red',
-        description: 'Leak',
-        jobId: null,
+  // Sipho takes part in each record; the outsider reads it but is neither always reached nor a participant.
+  const threads = {
+    job: {
+      open: async ({ db, customer, farm, workType }: Fixtures) => {
+        const job = await createJob({
+          db,
+          actor: admin,
+          input: {
+            customerId: customer.id,
+            farmId: farm.id,
+            workTypeId: workType.id,
+            description: null,
+            foremanUserId: foremanId,
+          },
+        });
+        return job.id;
       },
-    });
-    await addBreakdownNote({
-      db,
-      actor: accessForRole('contracting-manager', 'mo'),
-      input: { breakdownId: breakdown.id, text: 'Parts ordered' },
-    });
-    await addBreakdownNote({
-      db,
-      actor: accessForRole('workshop-manager', 'wendy'),
-      input: { breakdownId: breakdown.id, text: 'Checking parts' },
-    });
-    const note = await addBreakdownNote({
-      db,
-      actor: foreman,
-      input: { breakdownId: breakdown.id, text: 'Still leaking\nSecond line' },
-    });
-    const messages = await buildContractingPush({ db, event: { kind: 'breakdown-note.added', noteId: note.id } });
-    expect(recipients(messages)).toEqual([
-      'ExponentPushToken[mo]',
-      'ExponentPushToken[wendy-1]',
-      'ExponentPushToken[wendy-2]',
-    ]);
-    expect(messages[0]).toMatchObject({
+      input: (jobId: string, text: string) => ({ jobId, text }),
+      title: 'Note · CJOB-00001',
+      path: (id: string) => `/contracting/jobs/${id}?tab=activity`,
+      alwaysReached: ['jed', 'mo', 'sam'],
+      replier: { actor: accessForRole('contracting-manager', 'mo'), othersReached: ['jed', 'sam'] },
+      outsider: { id: 'wendy', role: 'workshop-manager', tokens: ['wendy-1', 'wendy-2'] },
+    },
+    breakdown: {
+      open: async ({ db, excavator }: Fixtures) => {
+        const { breakdown } = await reportBreakdown({
+          db,
+          actor: foreman,
+          input: {
+            subject: { kind: 'machine', id: excavator.id },
+            urgency: 'code-red',
+            description: 'Leak',
+            jobId: null,
+          },
+        });
+        return breakdown.id;
+      },
+      input: (breakdownId: string, text: string) => ({ breakdownId, text }),
       title: 'Note · CAT320-1',
-      body: 'Sipho: Still leaking',
-      channelId: 'notes',
-      data: { path: `/contracting/workshop/${breakdown.id}?tab=activity` },
-    });
-    const reply = await addBreakdownNote({
-      db,
-      actor: accessForRole('workshop-manager', 'wendy'),
-      input: { breakdownId: breakdown.id, text: 'On my way' },
-    });
-    const event = { kind: 'breakdown-note.added', noteId: reply.id } as const;
-    expect(recipients(await buildContractingPush({ db, event }))).toEqual([
-      'ExponentPushToken[mo]',
-      'ExponentPushToken[sipho]',
-    ]);
-    await setPushPreferences({ db, userId: foremanId, input: { muted: ['contracting.breakdown-note'] } });
-    expect(recipients(await buildContractingPush({ db, event }))).toEqual(['ExponentPushToken[mo]']);
-    await db.update(user).set({ contractingRole: 'contracting-invoicing' }).where(eq(user.id, 'mo'));
-    expect(await buildContractingPush({ db, event })).toEqual([]);
-    await db.update(user).set({ contractingRole: 'contracting-manager' }).where(eq(user.id, 'mo'));
-    await db.update(user).set({ banned: true }).where(eq(user.id, 'mo'));
-    expect(await buildContractingPush({ db, event })).toEqual([]);
-  });
+      path: (id: string) => `/contracting/workshop/${id}?tab=activity`,
+      alwaysReached: ['wendy-1', 'wendy-2'],
+      replier: { actor: accessForRole('workshop-manager', 'wendy'), othersReached: [] },
+      outsider: { id: 'mo', role: 'contracting-manager', tokens: ['mo'] },
+    },
+  } as const;
+  const token = (name: string) => `ExponentPushToken[${name}]`;
+  const tokens = (...names: readonly (readonly string[])[]) => names.flat().map(token).sort();
 
-  test('Job Notes reach the Foreman and management, add prior authors, and mute independently of Breakdown Notes', async ({
+  test.for(noteThreadKinds)(
+    '%s Notes reach the always-reached roles, participants and prior authors, never their author, and mute per kind',
+    async (kind, { context }) => {
+      const { db } = context;
+      const thread = threads[kind];
+      const id = await thread.open(context);
+      const add = (actor: UserAccessSummary, text: string) =>
+        addNote({ db, actor, thread: kind, input: thread.input(id, text) });
+      const { outsider } = thread;
+      await add(accessForRole(outsider.role, outsider.id), 'Parts ordered');
+      const note = await add(foreman, 'Still leaking\nSecond line');
+
+      const messages = await buildContractingPush({ db, event: noteAdded(kind, note.id) });
+      expect(recipients(messages)).toEqual(tokens(thread.alwaysReached, outsider.tokens));
+      expect(messages[0]).toMatchObject({
+        title: thread.title,
+        body: 'Sipho: Still leaking',
+        channelId: 'notes',
+        data: { path: thread.path(id) },
+      });
+
+      const reply = await add(thread.replier.actor, 'On my way');
+      const event = noteAdded(kind, reply.id);
+      expect(recipients(await buildContractingPush({ db, event }))).toEqual(
+        tokens(thread.replier.othersReached, outsider.tokens, ['sipho']),
+      );
+      const otherKind = noteThreadKinds.find((other) => other !== kind) ?? kind;
+      await setPushPreferences({ db, userId: foremanId, input: { muted: [noteThreads[otherKind].pushKind] } });
+      expect(recipients(await buildContractingPush({ db, event }))).toContain(token('sipho'));
+      await setPushPreferences({ db, userId: foremanId, input: { muted: [noteThreads[kind].pushKind] } });
+      expect(recipients(await buildContractingPush({ db, event }))).not.toContain(token('sipho'));
+
+      // A prior author reached only by having noted drops out once they cannot read the record, or are banned.
+      const outsiderReached = async () =>
+        recipients(await buildContractingPush({ db, event })).includes(token(outsider.tokens[0]));
+      await db.update(user).set({ contractingRole: 'contracting-invoicing' }).where(eq(user.id, outsider.id));
+      expect(await outsiderReached()).toBe(false);
+      await db.update(user).set({ contractingRole: outsider.role }).where(eq(user.id, outsider.id));
+      expect(await outsiderReached()).toBe(true);
+      await db.update(user).set({ banned: true }).where(eq(user.id, outsider.id));
+      expect(await outsiderReached()).toBe(false);
+    },
+  );
+
+  test('a Breakdown Note reaches the Foreman of its Job even when someone else reported it', async ({
     context: { db, customer, farm, workType, excavator },
   }) => {
     const job = await createJob({
@@ -156,38 +194,7 @@ describe('Contracting push fan-out', () => {
         foremanUserId: foremanId,
       },
     });
-    const note = await addJobNote({
-      db,
-      actor: accessForRole('contracting-manager', 'mo'),
-      input: { jobId: job.id, text: 'Start tomorrow' },
-    });
-    const event = { kind: 'job-note.added', noteId: note.id } as const;
-    const messages = await buildContractingPush({ db, event });
-    expect(recipients(messages)).toEqual([
-      'ExponentPushToken[jed]',
-      'ExponentPushToken[sam]',
-      'ExponentPushToken[sipho]',
-    ]);
-    expect(messages[0]).toMatchObject({
-      title: 'Note · CJOB-00001',
-      body: 'mo: Start tomorrow',
-      channelId: 'notes',
-      data: { path: `/contracting/jobs/${job.id}?tab=activity` },
-    });
-    await addJobNote({
-      db,
-      actor: accessForRole('workshop-manager', 'wendy'),
-      input: { jobId: job.id, text: 'Machine ready' },
-    });
-    await setPushPreferences({ db, userId: foremanId, input: { muted: ['contracting.job-note'] } });
-    expect(recipients(await buildContractingPush({ db, event }))).toEqual([
-      'ExponentPushToken[jed]',
-      'ExponentPushToken[sam]',
-      'ExponentPushToken[wendy-1]',
-      'ExponentPushToken[wendy-2]',
-    ]);
     await plannedStint(db, admin, { jobId: job.id, machineId: excavator.id, implementId: null });
-    // The Job's Foreman participates even when someone else reported its Breakdown.
     const { breakdown } = await reportBreakdown({
       db,
       actor: admin,
@@ -198,14 +205,16 @@ describe('Contracting push fan-out', () => {
         jobId: job.id,
       },
     });
-    const reply = await addBreakdownNote({
+    const reply = await addNote({
       db,
       actor: accessForRole('workshop-manager', 'wendy'),
+      thread: 'breakdown',
       input: { breakdownId: breakdown.id, text: 'Checking' },
     });
-    expect(
-      recipients(await buildContractingPush({ db, event: { kind: 'breakdown-note.added', noteId: reply.id } })),
-    ).toEqual(['ExponentPushToken[jed]', 'ExponentPushToken[sipho]']);
+    expect(recipients(await buildContractingPush({ db, event: noteAdded('breakdown', reply.id) }))).toEqual([
+      'ExponentPushToken[jed]',
+      'ExponentPushToken[sipho]',
+    ]);
   });
 
   test('prior Foremen lose note alerts after reassignment, and Job alerts stop outside readable statuses', async ({
@@ -233,16 +242,22 @@ describe('Contracting push fan-out', () => {
         jobId: job.id,
       },
     });
-    await addJobNote({ db, actor: foreman, input: { jobId: job.id, text: 'Gate code' } });
-    await addBreakdownNote({ db, actor: foreman, input: { breakdownId: breakdown.id, text: 'Checking' } });
-    const jobNote = await addJobNote({ db, actor: admin, input: { jobId: job.id, text: 'Management update' } });
-    const breakdownNote = await addBreakdownNote({
+    await addNote({ db, actor: foreman, thread: 'job', input: { jobId: job.id, text: 'Gate code' } });
+    await addNote({ db, actor: foreman, thread: 'breakdown', input: { breakdownId: breakdown.id, text: 'Checking' } });
+    const jobNote = await addNote({
       db,
       actor: admin,
+      thread: 'job',
+      input: { jobId: job.id, text: 'Management update' },
+    });
+    const breakdownNote = await addNote({
+      db,
+      actor: admin,
+      thread: 'breakdown',
       input: { breakdownId: breakdown.id, text: 'Workshop update' },
     });
-    const jobEvent = { kind: 'job-note.added', noteId: jobNote.id } as const;
-    const breakdownEvent = { kind: 'breakdown-note.added', noteId: breakdownNote.id } as const;
+    const jobEvent = noteAdded('job', jobNote.id);
+    const breakdownEvent = noteAdded('breakdown', breakdownNote.id);
     for (const event of [jobEvent, breakdownEvent])
       expect(recipients(await buildContractingPush({ db, event }))).toContain('ExponentPushToken[sipho]');
     await patchJob({ db, actor: admin, input: { id: job.id, foremanUserId: null } });
@@ -255,14 +270,11 @@ describe('Contracting push fan-out', () => {
     expect(recipients(await buildContractingPush({ db, event: breakdownEvent }))).toContain('ExponentPushToken[sipho]');
   });
 
-  test.for(['breakdown-note.added', 'job-note.added'] as const)(
-    'a missing note sends nothing for %s',
-    async (kind, { context: { db } }) => {
-      expect(
-        await buildContractingPush({ db, event: { kind, noteId: '00000000-0000-4000-8000-000000000001' } }),
-      ).toEqual([]);
-    },
-  );
+  test.for(noteThreadKinds)('a missing %s note sends nothing', async (kind, { context: { db } }) => {
+    expect(await buildContractingPush({ db, event: noteAdded(kind, '00000000-0000-4000-8000-000000000001') })).toEqual(
+      [],
+    );
+  });
 
   test('Code Green reaches every workshop manager install and nobody else', async ({ context: { db, excavator } }) => {
     const messages = await report(db, excavator.id, 'code-green');

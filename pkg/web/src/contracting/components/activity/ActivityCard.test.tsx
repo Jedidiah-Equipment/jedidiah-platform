@@ -15,7 +15,7 @@ const JOB_ID = '00000000-0000-4000-8000-000000000002';
 
 function renderAs(contractingRole: ContractingRole) {
   access.current = createUserAccessSummary({ userId: 'me', equipmentRole: null, contractingRole });
-  return renderToStaticMarkup(<ActivityCard addNote={null} scope={{ jobId: JOB_ID }} />);
+  return renderToStaticMarkup(<ActivityCard addNote={null} thread={{ kind: 'job', id: JOB_ID, code: 'CJOB-00001' }} />);
 }
 
 describe('ActivityCard', () => {

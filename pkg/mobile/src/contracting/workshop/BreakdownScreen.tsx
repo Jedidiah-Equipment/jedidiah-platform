@@ -42,7 +42,12 @@ export default function BreakdownScreen() {
       {breakdown && tab === 'activity' ? (
         <ContractingActivityFeed
           breakdownId={breakdown.id}
-          listHeader={<AddNoteButton breakdown={breakdown} />}
+          listHeader={
+            <AddNoteButton
+              thread={{ kind: 'breakdown', id: breakdown.id, code: breakdown.subject.code }}
+              verdict={breakdown.actions.addNote}
+            />
+          }
           showControls={false}
         />
       ) : (

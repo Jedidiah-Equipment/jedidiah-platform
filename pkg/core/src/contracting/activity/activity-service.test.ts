@@ -7,8 +7,8 @@ import { expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
 import { assignMechanic, reportBreakdown, solveBreakdown } from '../breakdowns/breakdown-service.js';
 import { stampInvoice } from '../jobs/invoicing-service.js';
-import { addJobNote } from '../jobs/job-note-service.js';
 import { cancelJob, createJob } from '../jobs/job-service.js';
+import { addNote } from '../notes/note-service.js';
 import { admin, foreman, foremanId, invoicing, leftStint, pricedJob, seedJobFixtures } from '../test/job-fixtures.js';
 import { activityPageQuery, listActivity } from './activity-service.js';
 
@@ -63,8 +63,8 @@ test('a Foreman sees his own Jobs and Breakdowns, the workshop sees everything, 
   context,
 }) => {
   const { db, excavator, siphosJobId, thabosJobId } = context;
-  await addJobNote({ db, actor: foreman, input: { jobId: siphosJobId, text: 'Gate code is 4471' } });
-  await addJobNote({ db, actor: admin, input: { jobId: thabosJobId, text: 'Thabo’s Job only' } });
+  await addNote({ db, actor: foreman, thread: 'job', input: { jobId: siphosJobId, text: 'Gate code is 4471' } });
+  await addNote({ db, actor: admin, thread: 'job', input: { jobId: thabosJobId, text: 'Thabo’s Job only' } });
   await reportBreakdown({
     db,
     actor: foreman,
@@ -171,7 +171,7 @@ test('Add Note works on an Invoiced Job for management and is refused to a Forem
   const { db, tipper } = fixtures;
   const priced = await pricedJob({ ...fixtures, db }, [{ machineId: tipper.id, arrival: 10, departure: 20 }]);
   await expect(
-    addJobNote({ db, actor: foreman, input: { jobId: priced.jobId, text: 'Too late' } }),
+    addNote({ db, actor: foreman, thread: 'job', input: { jobId: priced.jobId, text: 'Too late' } }),
   ).rejects.toMatchObject({
     code: 'contracting_job.wrong_status',
     message: 'This Job is Priced, so you can no longer add a note.',
@@ -182,7 +182,12 @@ test('Add Note works on an Invoiced Job for management and is refused to a Forem
     actor: admin,
     input: { id: priced.jobId, invoiceNumber: 'INV-1', expectedTotal: priced.total },
   });
-  const note = await addJobNote({ db, actor: admin, input: { jobId: priced.jobId, text: '  Paid in full  ' } });
+  const note = await addNote({
+    db,
+    actor: admin,
+    thread: 'job',
+    input: { jobId: priced.jobId, text: '  Paid in full  ' },
+  });
   expect(note).toMatchObject({ authorName: 'Jed', text: 'Paid in full' });
   expect((await list(db, admin, { filter: 'notes' })).items).toMatchObject([
     { type: 'job-note', text: 'Paid in full' },

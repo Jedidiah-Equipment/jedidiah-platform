@@ -8,10 +8,10 @@ import { createTester } from '../../test/create-tester.js';
 import { listActivity } from '../activity/activity-service.js';
 import { onSiteAssignment } from '../fleet/on-site-assignment.js';
 import { createJob } from '../jobs/job-service.js';
+import { addNote } from '../notes/note-service.js';
 import { captureReading } from '../readings/reading-service.js';
 import { admin, foreman, foremanId, plannedStint, seedJobFixtures } from '../test/job-fixtures.js';
 import {
-  addBreakdownNote,
   addBreakdownPhotos,
   assignMechanic,
   getBreakdown,
@@ -225,8 +225,18 @@ test('the report and each transition are audited; notes append without an audit 
   const breakdown = await reportNew({ db, actor: foreman, input: report({ kind: 'machine', id: excavator.id }) });
   await assignMechanic({ db, actor: workshop, input: { id: breakdown.id, mechanicUserId: 'danie' } });
   await startBreakdown({ db, actor: workshop, id: breakdown.id });
-  await addBreakdownNote({ db, actor: workshop, input: { breakdownId: breakdown.id, text: 'Which hose?' } });
-  await addBreakdownNote({ db, actor: foreman, input: { breakdownId: breakdown.id, text: 'The boom ram one' } });
+  await addNote({
+    db,
+    actor: workshop,
+    thread: 'breakdown',
+    input: { breakdownId: breakdown.id, text: 'Which hose?' },
+  });
+  await addNote({
+    db,
+    actor: foreman,
+    thread: 'breakdown',
+    input: { breakdownId: breakdown.id, text: 'The boom ram one' },
+  });
   await solveBreakdown({ db, actor: workshop, input: { id: breakdown.id, closeOutNote: 'Replaced' } });
   const events = await db
     .select({ action: auditEvents.action, actorUserId: auditEvents.actorUserId })

@@ -98,7 +98,7 @@ function FieldNoteDetail({ note, onLeave }: { note: FieldNote; onLeave: () => vo
         <SecondaryToolbar
           title="Field Note"
           subtitle={formatDate(note.createdAt, 'medium')}
-          parentLabel="Notes"
+          parentLabel="Field Notes"
           onBack={backToNotes}
           badge={
             <StatusBadge

@@ -253,7 +253,7 @@ describe('buildJobCardModel', () => {
     ]);
   });
 
-  test('the internal copy prints the work and travel split, the gap reason, evidence markers and site notes', () => {
+  test('the internal copy prints the work and travel split, the gap reason, evidence markers and sign-off notes', () => {
     const yardGrader = {
       ...grader,
       gapHours: 9.1,

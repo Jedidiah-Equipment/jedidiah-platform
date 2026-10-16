@@ -80,7 +80,7 @@ export const JobCardModel = z.object({
   discount: z.object({ label: z.string(), amount: Money }).nullable(),
   /** Null while any line is un-priced; every amount on the card is then null too. */
   totals: z.object({ subtotal: Money, diesel: Money, total: Money }).nullable(),
-  /** Internal copy only: site notes. */
+  /** Internal copy only: sign-off notes. */
   notes: z.string().nullable(),
   /** Internal copy only: why a reopened Job was re-priced. */
   repricingNote: z.string().nullable(),

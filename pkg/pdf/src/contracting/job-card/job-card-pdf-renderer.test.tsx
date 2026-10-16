@@ -34,7 +34,7 @@ describe('Job Card PDF', () => {
     expect(text).not.toMatch(evidence);
   });
 
-  test('the internal copy adds the travel split, gap reasons, evidence markers, comments and site notes', () => {
+  test('the internal copy adds the travel split, gap reasons, evidence markers, comments and sign-off notes', () => {
     const text = collectText(JobCardPdf({ document: jobCardFixture('internal') })).join('\n');
 
     for (const expected of [

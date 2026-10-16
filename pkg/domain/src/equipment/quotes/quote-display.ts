@@ -41,10 +41,17 @@ export const quoteDeliveryTermsLabels: Record<QuoteDeliveryTerms, string> = {
   tbc: 'To be confirmed',
 };
 
-export const quoteDeliveryTermsOptions = QuoteDeliveryTermsSchema.options.map((deliveryTerms) => ({
+const quoteDeliveryTermsOptions = QuoteDeliveryTermsSchema.options.map((deliveryTerms) => ({
   label: quoteDeliveryTermsLabels[deliveryTerms],
   value: deliveryTerms,
 }));
+
+/** An accepted Quote can never go back to To be confirmed, so it is not offered there. */
+export function getQuoteDeliveryTermsOptions(status: QuoteStatus) {
+  return status === 'accepted'
+    ? quoteDeliveryTermsOptions.filter((option) => option.value !== 'tbc')
+    : quoteDeliveryTermsOptions;
+}
 
 /**
  * The Delivery line of a pricing summary: the charge when there is one, the term when it costs

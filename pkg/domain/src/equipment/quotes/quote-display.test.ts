@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  getQuoteDeliveryTermsOptions,
   getQuoteOfferingName,
   getQuoteOfferingSubtitle,
   quoteKindLabels,
@@ -99,5 +100,24 @@ describe('quoteProductSourceOf', () => {
 
   it('gives a Custom Quote no product source', () => {
     expect(quoteProductSourceOf({ kind: 'custom', productUnitId: null })).toBeNull();
+  });
+});
+
+describe('getQuoteDeliveryTermsOptions', () => {
+  it('offers every Delivery Term before acceptance', () => {
+    expect(getQuoteDeliveryTermsOptions('sent').map((option) => option.value)).toEqual([
+      'included',
+      'additional_charge',
+      'ex_factory',
+      'tbc',
+    ]);
+  });
+
+  it('withholds To be confirmed from an accepted Quote', () => {
+    expect(getQuoteDeliveryTermsOptions('accepted').map((option) => option.value)).toEqual([
+      'included',
+      'additional_charge',
+      'ex_factory',
+    ]);
   });
 });

@@ -764,7 +764,9 @@ describe('quotes.update', () => {
     });
   });
 
-  test('lets a equipment_quote:update holder discount an accepted Allocation Quote', async ({ context }) => {
+  test('lets a equipment_quote:update holder change the Settling Terms of an accepted Allocation Quote', async ({
+    context,
+  }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
     const [unit] = await context.db
       .insert(productUnits)
@@ -788,16 +790,18 @@ describe('quotes.update', () => {
     });
     const accepted = await salesCaller.quotes.update({ ...toUpdateInput(created), status: 'accepted' });
 
-    // equipment_quote:update alone reopens the discount on an accepted Allocation Quote; the lock holds elsewhere.
-    const discounted = await salesCaller.quotes.update({ ...toUpdateInput(accepted), discountPercent: 5 });
-    expect(discounted.discountPercent).toBe(5);
+    // equipment_quote:update alone reopens the Settling Terms on an accepted Locked Quote; the lock holds elsewhere.
+    const settled = await salesCaller.quotes.update({
+      ...toUpdateInput(accepted),
+      depositPercent: 10,
+      discountPercent: 5,
+    });
+    expect(settled).toMatchObject({ depositPercent: 10, discountPercent: 5 });
 
-    await expect(salesCaller.quotes.update({ ...toUpdateInput(discounted), depositPercent: 10 })).rejects.toMatchObject(
-      {
-        appCode: 'quote.locked',
-        message: 'Quote is locked because it has been accepted; depositPercent cannot be changed.',
-      },
-    );
+    await expect(salesCaller.quotes.update({ ...toUpdateInput(settled), status: 'sent' })).rejects.toMatchObject({
+      appCode: 'quote.locked',
+      message: 'Quote is locked because it has been accepted; status cannot be changed.',
+    });
   });
 
   test('edits and reprices Work Items after acceptance and Job creation', async ({ context }) => {
@@ -2183,11 +2187,11 @@ describe('jobs.create with quote links', () => {
     await expect(
       salesCaller.quotes.update({
         ...toUpdateInput(accepted),
-        discountPercent: 10,
+        status: 'sent',
       }),
     ).rejects.toMatchObject({
       code: 'BAD_REQUEST',
-      message: 'Quote is locked because it has already sourced a Job; discountPercent cannot be changed.',
+      message: 'Quote is locked because it has already sourced a Job; status cannot be changed.',
     });
   });
 
@@ -2207,35 +2211,6 @@ describe('jobs.create with quote links', () => {
       productId: context.product.id,
     });
     const frozenChanges = [
-      {
-        field: 'deliveryTerms',
-        input: (quote: QuoteDetail) => ({
-          ...toUpdateInput(quote),
-          deliveryPrice: 0,
-          deliveryTerms: 'ex_factory' as const,
-        }),
-      },
-      {
-        field: 'deliveryPrice',
-        input: (quote: QuoteDetail) => ({
-          ...toUpdateInput(quote),
-          deliveryPrice: quote.deliveryPrice + 25,
-        }),
-      },
-      {
-        field: 'depositPercent',
-        input: (quote: QuoteDetail) => ({
-          ...toUpdateInput(quote),
-          depositPercent: quote.depositPercent + 25,
-        }),
-      },
-      {
-        field: 'discountPercent',
-        input: (quote: QuoteDetail) => ({
-          ...toUpdateInput(quote),
-          discountPercent: quote.discountPercent + 25,
-        }),
-      },
       {
         field: 'salesPersonId',
         input: (quote: QuoteDetail) => ({
@@ -2278,7 +2253,7 @@ describe('jobs.create with quote links', () => {
     }
   });
 
-  test('allows logistics and free-text quote fields after a job exists', async ({ context }) => {
+  test('allows logistics, free-text, and Settling Terms quote fields after a job exists', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
     const adminCaller = context.createCaller(mockSession('admin'));
     const created = await createReadyQuote(salesCaller, context.product.id);
@@ -2293,6 +2268,10 @@ describe('jobs.create with quote links', () => {
     await expect(
       salesCaller.quotes.update({
         ...toUpdateInput(accepted),
+        deliveryPrice: 3500,
+        deliveryTerms: 'additional_charge',
+        depositPercent: 30,
+        discountPercent: 5,
         notes: 'Post-sale logistics note',
         documentNotes: 'Balance before delivery',
         plannedDeliveryDate: '2026-08-15',
@@ -2300,6 +2279,10 @@ describe('jobs.create with quote links', () => {
         validUntil: '2026-07-31T00:00:00.000Z',
       }),
     ).resolves.toMatchObject({
+      deliveryPrice: 3500,
+      deliveryTerms: 'additional_charge',
+      depositPercent: 30,
+      discountPercent: 5,
       notes: 'Post-sale logistics note',
       documentNotes: 'Balance before delivery',
       plannedDeliveryDate: '2026-08-15',

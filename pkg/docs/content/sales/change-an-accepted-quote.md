@@ -7,16 +7,23 @@ prices and specification the Customer agreed to, so changing those means a new Q
 
 - **A From Order Product Quote with no Job yet** is not Locked. Edit it like any other Quote.
 - **A Product Quote that has started a Job** is Locked, even if that Job is completed or cancelled. While
-  the Job is live or completed, follow [Re-quote a Quote that has a Job](#re-quote-a-quote-that-has-a-job).
+  the Job is live or completed, change its price or specification by following
+  [Re-quote a Quote that has a Job](#re-quote-a-quote-that-has-a-job).
 - **A Product Quote whose Job was cancelled** has no Job to move. If the build is going ahead, click
   **Start Job** on it first: the replacement Job keeps the same machine while the Customer still owns it,
   and the re-quote steps then apply. If the sale is off, [cancel the Quote](/sales/cancel-a-quote) instead.
-- **A From Stock Product Quote** locks the moment it is accepted. Its **Discount percent** can still change;
-  for anything else, follow [Re-quote a From Stock Quote](#re-quote-a-from-stock-quote).
+- **A From Stock Product Quote** locks the moment it is accepted. To change its price or specification,
+  follow [Re-quote a From Stock Quote](#re-quote-a-from-stock-quote).
 - **A Custom Quote** locks on acceptance, but its Work Items stay editable. Change the charge in place.
 
 Every Locked Quote still accepts its **Invoice number**, internal and document notes, delivery dates, and
-**Valid until**.
+**Valid until**. An accepted one can also be edited in place for:
+
+- **Delivery terms** and **Delivery price**. Delivery terms cannot go back to **To be confirmed**.
+- **Discount percent** and **Deposit percent**.
+
+A Quote Document generated earlier keeps the old figures, so generate a new revision before sending the
+Customer the change.
 
 ## Re-quote a Quote that has a Job
 

@@ -10,29 +10,22 @@ const EDITABLE_LOCKED_QUOTE_FIELDS: ReadonlySet<string> = new Set([
   'workItems',
 ]);
 
-const EDITABLE_LOCKED_ALLOCATION_QUOTE_FIELDS: ReadonlySet<string> = new Set([
+const EDITABLE_ACCEPTED_LOCKED_QUOTE_FIELDS: ReadonlySet<string> = new Set([
   ...EDITABLE_LOCKED_QUOTE_FIELDS,
+  // The Settling Terms.
+  'depositPercent',
+  'deliveryTerms',
+  'deliveryPrice',
   'discountPercent',
 ]);
 
 /**
- * Which fields a Locked Quote still accepts. An Allocation Quote locks the moment it is accepted
- * rather than when it sources a Job, so its price freezes before the sale is settled and there is
- * no later window to negotiate in; the discount alone stays open, on that Quote alone, for anyone
- * who can update Quotes at all (`equipment_quote:update`).
+ * Which fields a Locked Quote still accepts. The price and specification freeze, but the Settling Terms
+ * — discount, deposit, and Delivery Terms — stay open while the Quote is accepted, for anyone who can
+ * update Quotes at all (`equipment_quote:update`). A cancelled Quote moves none of them.
  */
-export function editableLockedQuoteFields({
-  hasProductUnit,
-  kind,
-  status,
-}: {
-  hasProductUnit: boolean;
-  kind: QuoteKind;
-  status: QuoteStatus;
-}): ReadonlySet<string> {
-  const isAcceptedAllocationQuote = kind === 'product' && hasProductUnit && status === 'accepted';
-
-  return isAcceptedAllocationQuote ? EDITABLE_LOCKED_ALLOCATION_QUOTE_FIELDS : EDITABLE_LOCKED_QUOTE_FIELDS;
+export function editableLockedQuoteFields({ status }: { status: QuoteStatus }): ReadonlySet<string> {
+  return status === 'accepted' ? EDITABLE_ACCEPTED_LOCKED_QUOTE_FIELDS : EDITABLE_LOCKED_QUOTE_FIELDS;
 }
 
 export type QuoteEditableResult =
@@ -67,7 +60,7 @@ export function assertQuoteEditable({
       : kind === 'product' && !hasProductUnit
         ? 'it has already sourced a Job'
         : 'it has been accepted';
-  const editableFields = editableLockedQuoteFields({ hasProductUnit, kind, status });
+  const editableFields = editableLockedQuoteFields({ status });
 
   for (const field of changedFields) {
     if (!editableFields.has(field)) {

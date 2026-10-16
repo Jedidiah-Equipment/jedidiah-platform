@@ -1,9 +1,9 @@
 import {
   computeQuoteSummary,
   editableLockedQuoteFields,
+  getQuoteDeliveryTermsOptions,
   getQuoteOfferingName,
   isQuoteLocked,
-  quoteDeliveryTermsOptions,
 } from '@pkg/domain/equipment';
 import { UUID } from '@pkg/schema';
 import { type PriorityQuote, type QuoteDetail, QuoteStatus, type QuoteUpdateInput } from '@pkg/schema/equipment';
@@ -162,11 +162,7 @@ function QuoteEditor({
     [quote, values],
   );
   const quoteCurrencyCode = quote.product?.currencyCode ?? quote.quotedCurrencyCode;
-  const lockEditableFields = editableLockedQuoteFields({
-    hasProductUnit: quote.productUnitId !== null,
-    kind: quote.kind,
-    status: quote.status,
-  });
+  const lockEditableFields = editableLockedQuoteFields({ status: quote.status });
   const canEdit = (field: string) => canUpdate && (!isLocked || lockEditableFields.has(field));
   const setupReadOnly = !canUpdate || isLocked;
 
@@ -323,21 +319,21 @@ function QuoteEditor({
                   <form.AppField name="deliveryTerms">
                     {(field) => (
                       <field.SelectField
-                        disabled={setupReadOnly}
+                        disabled={!canEdit('deliveryTerms')}
                         label="Delivery terms"
                         onValueCommit={autosave.commit}
                         onValueSelect={(value) => {
                           if (value !== 'additional_charge') form.setFieldValue('deliveryPrice', 0);
                           return undefined;
                         }}
-                        options={quoteDeliveryTermsOptions}
+                        options={getQuoteDeliveryTermsOptions(quote.status)}
                       />
                     )}
                   </form.AppField>
                   <form.AppField name="deliveryPrice">
                     {(field) => (
                       <field.CurrencyField
-                        disabled={setupReadOnly || values.deliveryTerms !== 'additional_charge'}
+                        disabled={!canEdit('deliveryPrice') || values.deliveryTerms !== 'additional_charge'}
                         label="Delivery price"
                         onValueCommit={autosave.commit}
                       />
@@ -362,7 +358,7 @@ function QuoteEditor({
                       <form.AppField name="depositPercent">
                         {(field) => (
                           <field.NumberField
-                            disabled={setupReadOnly}
+                            disabled={!canEdit('depositPercent')}
                             label="Deposit percent"
                             onValueCommit={autosave.commit}
                           />
@@ -544,7 +540,9 @@ function describeLockedQuote({ canEdit, kind }: { canEdit: (field: string) => bo
     'invoice number',
     'notes',
     'delivery dates',
+    ...(canEdit('deliveryTerms') ? ['delivery terms'] : []),
     ...(canEdit('discountPercent') ? ['discount'] : []),
+    ...(canEdit('depositPercent') ? ['deposit'] : []),
   ];
   const last = editable.pop();
 

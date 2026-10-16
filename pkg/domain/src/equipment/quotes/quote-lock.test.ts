@@ -1,11 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  assertQuoteEditable,
-  editableLockedQuoteFields,
-  isQuoteLocked,
-  shouldOfferQuoteCancellation,
-} from './quote-lock.js';
+import { assertQuoteEditable, isQuoteLocked, shouldOfferQuoteCancellation } from './quote-lock.js';
 
 const alwaysEditableFields = [
   'invoiceNumber',
@@ -16,12 +11,9 @@ const alwaysEditableFields = [
   'validUntil',
   'workItems',
 ];
-const lockedFields = [
+const settlingTermsFields = ['depositPercent', 'deliveryTerms', 'deliveryPrice', 'discountPercent'];
+const frozenFields = [
   'customerId',
-  'depositPercent',
-  'deliveryTerms',
-  'deliveryPrice',
-  'discountPercent',
   'productId',
   'quotedBasePrice',
   'salesPersonId',
@@ -46,19 +38,22 @@ describe('assertQuoteEditable', () => {
     });
   });
 
-  it.each([...lockedFields, ...alwaysEditableFields])('allows %s before a quote has a job', (field) => {
-    expect(
-      assertQuoteEditable({
-        changedFields: [field],
-        hasEverSourcedJob: false,
-        hasProductUnit: false,
-        kind: 'product',
-        status: 'accepted',
-      }),
-    ).toEqual({ allowed: true });
-  });
+  it.each([...frozenFields, ...settlingTermsFields, ...alwaysEditableFields])(
+    'allows %s before a quote has a job',
+    (field) => {
+      expect(
+        assertQuoteEditable({
+          changedFields: [field],
+          hasEverSourcedJob: false,
+          hasProductUnit: false,
+          kind: 'product',
+          status: 'accepted',
+        }),
+      ).toEqual({ allowed: true });
+    },
+  );
 
-  it.each(lockedFields)('rejects %s after a product quote has a job', (field) => {
+  it.each(frozenFields)('rejects %s after a product quote has a job', (field) => {
     expect(
       assertQuoteEditable({
         changedFields: [field],
@@ -71,18 +66,6 @@ describe('assertQuoteEditable', () => {
       allowed: false,
       reason: `Quote is locked because it has already sourced a Job; ${field} cannot be changed.`,
     });
-  });
-
-  it.each(alwaysEditableFields)('allows %s after a quote has a job', (field) => {
-    expect(
-      assertQuoteEditable({
-        changedFields: [field],
-        hasEverSourcedJob: true,
-        hasProductUnit: false,
-        kind: 'product',
-        status: 'accepted',
-      }),
-    ).toEqual({ allowed: true });
   });
 
   it('rejects unknown changed fields after a quote has a job', () => {
@@ -100,19 +83,22 @@ describe('assertQuoteEditable', () => {
     });
   });
 
-  it.each(lockedFields)('allows custom quote %s changes before acceptance even with a job', (field) => {
-    expect(
-      assertQuoteEditable({
-        changedFields: [field],
-        hasEverSourcedJob: true,
-        hasProductUnit: false,
-        kind: 'custom',
-        status: 'sent',
-      }),
-    ).toEqual({ allowed: true });
-  });
+  it.each([...frozenFields, ...settlingTermsFields])(
+    'allows custom quote %s changes before acceptance even with a job',
+    (field) => {
+      expect(
+        assertQuoteEditable({
+          changedFields: [field],
+          hasEverSourcedJob: true,
+          hasProductUnit: false,
+          kind: 'custom',
+          status: 'sent',
+        }),
+      ).toEqual({ allowed: true });
+    },
+  );
 
-  it.each(lockedFields)('rejects custom quote %s changes after acceptance', (field) => {
+  it.each(frozenFields)('rejects custom quote %s changes after acceptance', (field) => {
     expect(
       assertQuoteEditable({
         changedFields: [field],
@@ -127,16 +113,57 @@ describe('assertQuoteEditable', () => {
     });
   });
 
-  it.each(alwaysEditableFields)('allows custom quote %s changes after acceptance', (field) => {
+  it.each(frozenFields)('rejects %s on an accepted stock sale', (field) => {
     expect(
       assertQuoteEditable({
         changedFields: [field],
         hasEverSourcedJob: false,
-        hasProductUnit: false,
-        kind: 'custom',
+        hasProductUnit: true,
+        kind: 'product',
+        status: 'accepted',
+      }),
+    ).toEqual({
+      allowed: false,
+      reason: `Quote is locked because it has been accepted; ${field} cannot be changed.`,
+    });
+  });
+
+  const acceptedLockedQuotes = [
+    [
+      'a build-to-order quote that has sourced a job',
+      { hasEverSourcedJob: true, hasProductUnit: false, kind: 'product' },
+    ],
+    ['a stock sale', { hasEverSourcedJob: false, hasProductUnit: true, kind: 'product' }],
+    [
+      'a stock sale that went on to source a rework job',
+      { hasEverSourcedJob: true, hasProductUnit: true, kind: 'product' },
+    ],
+    ['a custom quote', { hasEverSourcedJob: false, hasProductUnit: false, kind: 'custom' }],
+  ] as const;
+
+  it.each(acceptedLockedQuotes)('allows the Settling Terms and every always-editable field on %s', (_label, quote) => {
+    expect(
+      assertQuoteEditable({
+        ...quote,
+        changedFields: [...settlingTermsFields, ...alwaysEditableFields],
         status: 'accepted',
       }),
     ).toEqual({ allowed: true });
+  });
+
+  it.each(settlingTermsFields)('rejects %s once a quote is cancelled', (field) => {
+    expect(
+      assertQuoteEditable({
+        changedFields: [field],
+        hasEverSourcedJob: true,
+        hasProductUnit: false,
+        kind: 'product',
+        status: 'cancelled',
+      }),
+    ).toEqual({
+      allowed: false,
+      reason: `Quote is locked because it has been cancelled; ${field} cannot be changed.`,
+    });
   });
 
   it.each(alwaysEditableFields)('allows %s changes after a custom quote is cancelled', (field) => {
@@ -149,113 +176,6 @@ describe('assertQuoteEditable', () => {
         status: 'cancelled',
       }),
     ).toEqual({ allowed: true });
-  });
-
-  it('allows a discount change on an accepted stock sale', () => {
-    expect(
-      assertQuoteEditable({
-        changedFields: ['discountPercent'],
-        hasEverSourcedJob: false,
-        hasProductUnit: true,
-        kind: 'product',
-        status: 'accepted',
-      }),
-    ).toEqual({ allowed: true });
-  });
-
-  it('allows a discount change on a stock sale that went on to source a rework job', () => {
-    expect(
-      assertQuoteEditable({
-        changedFields: ['discountPercent'],
-        hasEverSourcedJob: true,
-        hasProductUnit: true,
-        kind: 'product',
-        status: 'accepted',
-      }),
-    ).toEqual({ allowed: true });
-  });
-
-  it.each(lockedFields.filter((field) => field !== 'discountPercent'))(
-    'still rejects %s on an accepted stock sale',
-    (field) => {
-      expect(
-        assertQuoteEditable({
-          changedFields: [field],
-          hasEverSourcedJob: false,
-          hasProductUnit: true,
-          kind: 'product',
-          status: 'accepted',
-        }),
-      ).toEqual({
-        allowed: false,
-        reason: `Quote is locked because it has been accepted; ${field} cannot be changed.`,
-      });
-    },
-  );
-
-  it('rejects a discount change on a cancelled stock sale', () => {
-    expect(
-      assertQuoteEditable({
-        changedFields: ['discountPercent'],
-        hasEverSourcedJob: false,
-        hasProductUnit: true,
-        kind: 'product',
-        status: 'cancelled',
-      }),
-    ).toEqual({
-      allowed: false,
-      reason: 'Quote is locked because it has been cancelled; discountPercent cannot be changed.',
-    });
-  });
-
-  it('rejects a discount change on a job-locked build-to-order quote', () => {
-    expect(
-      assertQuoteEditable({
-        changedFields: ['discountPercent'],
-        hasEverSourcedJob: true,
-        hasProductUnit: false,
-        kind: 'product',
-        status: 'accepted',
-      }),
-    ).toEqual({
-      allowed: false,
-      reason: 'Quote is locked because it has already sourced a Job; discountPercent cannot be changed.',
-    });
-  });
-
-  it('rejects a discount change on an accepted custom quote', () => {
-    expect(
-      assertQuoteEditable({
-        changedFields: ['discountPercent'],
-        hasEverSourcedJob: false,
-        hasProductUnit: false,
-        kind: 'custom',
-        status: 'accepted',
-      }),
-    ).toEqual({
-      allowed: false,
-      reason: 'Quote is locked because it has been accepted; discountPercent cannot be changed.',
-    });
-  });
-});
-
-describe('editableLockedQuoteFields', () => {
-  it('adds the discount on an accepted stock sale', () => {
-    expect([
-      ...editableLockedQuoteFields({
-        hasProductUnit: true,
-        kind: 'product',
-        status: 'accepted',
-      }),
-    ]).toEqual([...alwaysEditableFields, 'discountPercent']);
-  });
-
-  it.each([
-    ['a cancelled stock sale', { hasProductUnit: true, kind: 'product', status: 'cancelled' }],
-    ['a build-to-order quote', { hasProductUnit: false, kind: 'product', status: 'accepted' }],
-    ['a custom quote', { hasProductUnit: false, kind: 'custom', status: 'accepted' }],
-  ] as const)('withholds the discount on %s', (_label, quote) => {
-    expect([...editableLockedQuoteFields(quote)]).toEqual(alwaysEditableFields);
   });
 });
 

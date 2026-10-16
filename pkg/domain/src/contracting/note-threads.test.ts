@@ -17,7 +17,7 @@ describe('noteReaches', () => {
     expect(noteReaches('breakdown', as('contracting-manager'), breakdown, [])).toBe(false);
   });
 
-  test('reaches the record’s participants', () => {
+  test('reaches the people the record names', () => {
     expect(noteReaches('job', as('foreman'), { ...job, status: 'active', foremanUserId: 'me' }, [])).toBe(true);
     expect(noteReaches('breakdown', as('foreman'), { ...breakdown, reportedByUserId: 'me' }, [])).toBe(true);
     expect(noteReaches('breakdown', as('foreman'), { ...breakdown, jobForemanUserId: 'me' }, [])).toBe(true);

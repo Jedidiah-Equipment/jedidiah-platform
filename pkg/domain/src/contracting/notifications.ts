@@ -1,8 +1,8 @@
 import type { PushKind } from '@pkg/schema';
 import type { BreakdownUrgency, NoteThreadKind } from '@pkg/schema/contracting';
 import { formatHours } from '../formatting/number.js';
-import { PUSH_KINDS } from '../push/push-kinds.js';
 import { breakdownUrgencyLabels } from './breakdowns.js';
+import { alertFor } from './push-alert.js';
 import { serviceDueStatusLabels } from './service-due.js';
 
 /** The Push Kind a reported Breakdown is, decided from the record: its urgency picks the kind. */
@@ -24,9 +24,6 @@ export type ContractingPushContent = {
   priority: 'high';
   sound: 'default';
 };
-
-export const alertFor = (kind: PushKind) =>
-  ({ channelId: PUSH_KINDS[kind].channel.id, priority: 'high', sound: 'default' }) as const;
 
 export function breakdownPushMessage(breakdown: {
   id: string;

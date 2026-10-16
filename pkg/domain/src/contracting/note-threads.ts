@@ -3,7 +3,8 @@ import type { JobStatus, NoteThreadKind } from '@pkg/schema/contracting';
 import { getBusinessRole } from '../auth/authorization.js';
 import { breakdownFirstLine, canReadBreakdown, isBreakdownMine } from './breakdowns.js';
 import { canReadJob } from './jobs.js';
-import { alertFor, type ContractingPushContent, type ContractingPushEvent } from './notifications.js';
+import type { ContractingPushContent, ContractingPushEvent } from './notifications.js';
+import { alertFor } from './push-alert.js';
 
 /** What each thread kind's reach rule reads off its record. */
 export type NoteThreadRecord = {
@@ -17,10 +18,10 @@ type NoteThread<K extends NoteThreadKind> = {
   path: (id: string) => string;
   /** Roles that reach every entry of this kind, whether or not they took part. */
   alwaysReaches: readonly AppRole[];
-  /** Whether the thread's record still lets this person read it; participation is judged by `noteReaches`. */
+  /** Whether the thread's record still lets this person read it; who else is reached is judged by `noteReaches`. */
   canRead: (access: UserAccessSummary, record: NoteThreadRecord[K]) => boolean;
-  /** The record's own participants: a Job's Foreman; a Breakdown's reporter and its Job's Foreman. */
-  participates: (record: NoteThreadRecord[K], userId: AuthId) => boolean;
+  /** The people the record itself names: a Job's Foreman; a Breakdown's reporter and its Job's Foreman. */
+  involves: (record: NoteThreadRecord[K], userId: AuthId) => boolean;
 };
 
 // Typed as a mapped type, not `satisfies`, so `noteThreads[kind]` reads as `NoteThread<K>` for a generic kind.
@@ -30,20 +31,20 @@ export const noteThreads: { [K in NoteThreadKind]: NoteThread<K> } = {
     path: (id) => `/contracting/jobs/${id}?tab=activity`,
     alwaysReaches: ['contracting-manager', 'contracting-admin', 'super-admin'],
     canRead: canReadJob,
-    participates: (job, userId) => job.foremanUserId === userId,
+    involves: (job, userId) => job.foremanUserId === userId,
   },
   breakdown: {
     pushKind: 'contracting.breakdown-note',
     path: (id) => `/contracting/workshop/${id}?tab=activity`,
     alwaysReaches: ['workshop-manager'],
     canRead: canReadBreakdown,
-    participates: isBreakdownMine,
+    involves: isBreakdownMine,
   },
 };
 
 /**
  * Whether a new entry reaches this person: they can still read the record, and they hold an always-reaches role,
- * take part in the record, or have noted the thread before. The author is excluded upstream, in dispatch.
+ * are named by the record, or have noted the thread before. The author is excluded upstream, in dispatch.
  */
 export function noteReaches<K extends NoteThreadKind>(
   kind: K,
@@ -56,7 +57,7 @@ export function noteReaches<K extends NoteThreadKind>(
   const role = getBusinessRole(access, 'contracting');
   return (
     (role !== null && thread.alwaysReaches.includes(role)) ||
-    thread.participates(record, access.userId) ||
+    thread.involves(record, access.userId) ||
     authorIds.includes(access.userId)
   );
 }

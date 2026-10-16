@@ -440,7 +440,7 @@ async function jobForemanOf(tx: DatabaseTransaction, jobId: string | null) {
 }
 
 /** Refuses unless the actor may take this action on the locked row. */
-export async function assertBreakdownActionOn(
+async function assertActionOn(
   tx: DatabaseTransaction,
   action: BreakdownActionName,
   before: Row,
@@ -452,6 +452,19 @@ export async function assertBreakdownActionOn(
     { status: before.status, reportedByUserId: before.reportedByUserId, jobForemanUserId },
     actor,
   );
+}
+
+/** Locks a Breakdown and refuses unless this actor may take this Breakdown Action on it now. */
+export async function lockBreakdownFor(
+  tx: DatabaseTransaction,
+  id: string,
+  action: BreakdownActionName,
+  actor: BreakdownActor,
+) {
+  const [before] = await tx.select().from(contractingBreakdowns).where(eq(contractingBreakdowns.id, id)).for('update');
+  if (!before) throw breakdownNotFound();
+  await assertActionOn(tx, action, before, actor);
+  return before;
 }
 
 /**
@@ -482,7 +495,7 @@ function writeBreakdown<TPrepared = void>({
       id,
       notFound: breakdownNotFound,
       assert: async (tx, before) => {
-        await assertBreakdownActionOn(tx, action, before, actor);
+        await assertActionOn(tx, action, before, actor);
         return (await assert?.(tx, before)) as TPrepared;
       },
       set: (before, prepared) => ({ ...set(before, prepared), updatedAt: new Date() }),

@@ -15,9 +15,8 @@ import {
   type NoteThreadKind,
 } from '@pkg/schema/contracting';
 import { eq } from 'drizzle-orm';
-import { breakdownNotFound } from '../breakdowns/breakdown-errors.js';
 import { selectBreakdowns, toBreakdownSummary } from '../breakdowns/breakdown-load.js';
-import { assertBreakdownActionOn } from '../breakdowns/breakdown-service.js';
+import { lockBreakdownFor } from '../breakdowns/breakdown-service.js';
 import { lockJobFor } from '../jobs/job-lock.js';
 
 type NoteRow = { id: string; threadId: string; authorUserId: AuthId; text: string; createdAt: Date };
@@ -89,16 +88,7 @@ export const noteThreadStore: { [K in NoteThreadKind]: NoteThreadStore<K> } = {
       const { breakdownId, text } = BreakdownNoteCreateInput.parse(raw);
       return { id: breakdownId, text };
     },
-    lock: async (tx, id, actor) => {
-      const [before] = await tx
-        .select()
-        .from(contractingBreakdowns)
-        .where(eq(contractingBreakdowns.id, id))
-        .for('update');
-      if (!before) throw breakdownNotFound();
-      await assertBreakdownActionOn(tx, 'addNote', before, actor);
-      return before;
-    },
+    lock: (tx, id, actor) => lockBreakdownFor(tx, id, 'addNote', actor),
     insert: async (tx, { threadId, authorUserId, text }) => {
       const [note] = await tx
         .insert(contractingBreakdownNotes)

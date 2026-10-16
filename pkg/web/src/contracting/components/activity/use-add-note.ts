@@ -45,7 +45,6 @@ export function useAddNote(thread: NoteThreadRef) {
   const mutation = useMutation(options);
   return {
     send: (text: string) => mutation.mutateAsync(client.input(text)),
-    busy: mutation.isPending,
     error: mutation.error,
     reset: mutation.reset,
   };

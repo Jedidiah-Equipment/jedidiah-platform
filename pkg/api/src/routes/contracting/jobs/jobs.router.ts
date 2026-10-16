@@ -112,7 +112,7 @@ export const createContractingJobsRouter = (push: ContractingPushScheduler) =>
           mapCoreErrors(() => cancelJob({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
         ),
     }),
-    // The Job Action `addNote` is the gate, judged inside `addNote`: it is open to every Job reader.
+    // The Job Action `addNote` is the gate, judged under the Job's lock in core: it is open to every Job reader.
     notes: router({
       add: businessProcedure('contracting')
         .input(JobNoteCreateInput)

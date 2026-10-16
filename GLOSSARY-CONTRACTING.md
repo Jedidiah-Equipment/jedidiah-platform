@@ -53,12 +53,17 @@ dispute trail of readings and amounts that shows **one total hours figure per li
 work/travel split**. Reading values print; meter photos stay in the app. Diesel is shown
 VAT-exempt. Its ex-VAT total is a works summary — a Job Card is never an invoice.
 
-**Job Note** is one entry in a Job's append-only note thread: author, text (typed or from a Voice
-Note), time. Anyone whose Jobs reach includes the Job may add one, in every status — a note moves no Job
-data, so the Invoiced wall does not stop it. It is added from the Job's Activity, appears in Activity as a
-note, and pushes the Job's participants — its Foreman, everyone who has noted it, and the
-contracting-manager, contracting-admin and super-admin roles — never its author. It is not the Job's
-**sign-off notes**, the one free-text field management fills at Completion.
+**Note Thread** is a record's append-only conversation: a Job has one and a Breakdown has one, and each
+entry is a Job Note or a Breakdown Note — author, text (typed or from a Voice Note), time. A thread is read
+from its record's Activity and from the cross-Job Activity feed, and a new entry pushes the thread's
+**participants** — never its author. Who counts as a participant, and who may add an entry, is the
+record's own rule, stated on its entry below; everything else about a thread is the same for both.
+_Avoid_: comments, chat, conversation, discussion
+
+**Job Note** is one entry in a Job's Note Thread. Anyone whose Jobs reach includes the Job may add one, in
+every status — a note moves no Job data, so the Invoiced wall does not stop it. Its participants are the
+Job's Foreman, everyone who has noted it, and the contracting-manager, contracting-admin and super-admin
+roles. It is not the Job's **sign-off notes**, the one free-text field management fills at Completion.
 _Avoid_: comment, message, chat message, feedback
 
 **Job Actions** are the derived verdicts of what one person may do to a Job in its current status:
@@ -245,11 +250,11 @@ the workshop-manager role; Code Red also reaches contracting-manager, contractin
 super-admin. The reporter never receives their own ping, and anyone may mute a Push Kind in App
 Settings (see [GLOSSARY-MAP.md](GLOSSARY-MAP.md)).
 
-**Breakdown Note** is one entry in a Breakdown's append-only note thread: author, text (typed
-or from a Voice Note), time. It is added from the Breakdown's Activity, appears in Activity as a note, and
-pushes the Breakdown's participants — its reporter, the Foreman of its Job, everyone who has noted it,
-and the workshop-manager role — never its author. Contracting's own mechanism — never the Equipment
-context's Feedback.
+**Breakdown Note** is one entry in a Breakdown's Note Thread. Whoever may update Breakdowns may add one to
+any Breakdown, and whoever may report them may add one to a Breakdown that is theirs — reported by them or
+on their Job — in every status. Its participants are the Breakdown's reporter, the Foreman of its Job,
+everyone who has noted it, and the workshop-manager role. Contracting's own mechanism — never the
+Equipment context's Feedback.
 _Avoid_: comment, message, chat message
 
 **Mechanic** is a non-login user record, like Driver: mechanics take instructions and never sign

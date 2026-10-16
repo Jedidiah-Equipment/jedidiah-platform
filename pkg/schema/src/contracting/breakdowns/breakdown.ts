@@ -5,6 +5,7 @@ import { createCursorQueryResult, createSearchedSortedCursorQueryInput } from '.
 import { UUID } from '../../common/uuid.js';
 import { CategoryColour, CategoryIconKey } from '../fleet/fleet.js';
 import { JobNumber } from '../jobs/job.js';
+import { NoteText } from '../notes/note.js';
 import { BreakdownActions } from './breakdown-actions.js';
 import {
   breakdownStatuses,
@@ -14,7 +15,7 @@ import {
 } from './breakdown-enums.js';
 
 export const BreakdownDescription = z.string().trim().min(1, 'Describe the problem').max(4000);
-export const BreakdownNoteText = z.string().trim().min(1).max(4000);
+export const BreakdownNoteText = NoteText;
 export const CloseOutNote = z.string().trim().min(1, 'A close-out note is required').max(4000);
 export const Latitude = z.number().min(-90).max(90);
 export const Longitude = z.number().min(-180).max(180);

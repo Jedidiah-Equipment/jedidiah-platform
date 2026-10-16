@@ -112,7 +112,7 @@ test('note mutations schedule their committed notes and rejected notes schedule 
   const contracting = { push: { schedule: (event: ContractingPushEvent) => events.push(event) } };
   const sipho = context.createCaller(sessionAs('sipho', 'foreman'), { contracting });
   const note = await sipho.contractingJobs.notes.add({ jobId: context.jobId, text: 'Gate is locked' });
-  expect(events).toEqual([{ kind: 'job-note.added', noteId: note.id }]);
+  expect(events).toEqual([{ kind: 'note.added', thread: 'job', noteId: note.id }]);
   const category = await createCategory({
     db: context.db,
     actorUserId: 'jed',
@@ -146,8 +146,8 @@ test('note mutations schedule their committed notes and rejected notes schedule 
   });
   const reply = await sipho.contractingBreakdowns.notes.add({ breakdownId: breakdown.id, text: 'Still leaking' });
   expect(events).toEqual([
-    { kind: 'job-note.added', noteId: note.id },
-    { kind: 'breakdown-note.added', noteId: reply.id },
+    { kind: 'note.added', thread: 'job', noteId: note.id },
+    { kind: 'note.added', thread: 'breakdown', noteId: reply.id },
   ]);
   events.length = 0;
   const karen = context.createCaller(sessionAs('karen', 'contracting-invoicing'), { contracting });

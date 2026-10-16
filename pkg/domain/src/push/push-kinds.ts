@@ -18,7 +18,7 @@ export type PushKindDefinition = {
   /** One sentence under the label: when it fires. */
   description: string;
   /** The roles this kind can reach; role membership is the opt-in, a mute the only per-person opt-out. A note kind
-   * narrows this further to the people its thread reaches (`jobNoteReaches`, `breakdownNoteReaches`). */
+   * narrows this further to the people its thread reaches (`noteReaches`). */
   roles: readonly AppRole[];
   /** The Android channel it rings on. */
   channel: PushChannel;

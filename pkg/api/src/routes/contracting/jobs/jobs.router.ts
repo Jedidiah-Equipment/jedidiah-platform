@@ -1,5 +1,5 @@
 import {
-  addJobNote,
+  addNote,
   cancelJob,
   clearStintRate,
   completeJob,
@@ -29,6 +29,7 @@ import {
   stampInvoice,
   summarizeJobQueues,
 } from '@pkg/core/contracting';
+import { noteAdded } from '@pkg/domain/contracting';
 import {
   AssignmentIdInput,
   AssignmentPatchInput,
@@ -111,13 +112,16 @@ export const createContractingJobsRouter = (push: ContractingPushScheduler) =>
           mapCoreErrors(() => cancelJob({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
         ),
     }),
-    // The Job Action `addNote` is the gate, judged inside `addJobNote`: it is open to every Job reader.
+    // The Job Action `addNote` is the gate, judged under the Job's lock in core: it is open to every Job reader.
     notes: router({
       add: businessProcedure('contracting')
         .input(JobNoteCreateInput)
         .mutation(async ({ ctx, input }) => {
-          const note = await mapCoreErrors(() => addJobNote({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily);
-          push.schedule({ kind: 'job-note.added', noteId: note.id });
+          const note = await mapCoreErrors(
+            () => addNote({ db: ctx.db, actor: ctx.access, thread: 'job', input }),
+            jobErrorFamily,
+          );
+          push.schedule(noteAdded('job', note.id));
           return note;
         }),
     }),

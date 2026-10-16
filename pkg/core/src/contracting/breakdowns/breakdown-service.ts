@@ -5,11 +5,9 @@ import {
   type Db,
   getSortOrder,
   onCalendarDays,
-  user,
   withPagination,
 } from '@pkg/db';
 import {
-  contractingBreakdownNotes,
   contractingBreakdowns,
   contractingFarms,
   contractingImplements,
@@ -38,8 +36,6 @@ import {
   BreakdownJobOption,
   type BreakdownListInput,
   type BreakdownListResult,
-  BreakdownNote,
-  BreakdownNoteCreateInput,
   BreakdownPatchInput,
   BreakdownPhotoRemoveInput,
   BreakdownQueueSummary,
@@ -266,9 +262,6 @@ export async function reportBreakdown({
   );
 }
 
-const toNote = (note: typeof contractingBreakdownNotes.$inferSelect, authorName: string) =>
-  BreakdownNote.parse({ ...note, authorName, createdAt: note.createdAt.toISOString() });
-
 async function toDetail(db: DbOrTx, actor: BreakdownActor, row: LoadedBreakdown): Promise<BreakdownDetail> {
   const { breakdown } = row;
   const hints = breakdown.jobId
@@ -461,6 +454,19 @@ async function assertActionOn(
   );
 }
 
+/** Locks a Breakdown and refuses unless this actor may take this Breakdown Action on it now. */
+export async function lockBreakdownFor(
+  tx: DatabaseTransaction,
+  id: string,
+  action: BreakdownActionName,
+  actor: BreakdownActor,
+) {
+  const [before] = await tx.select().from(contractingBreakdowns).where(eq(contractingBreakdowns.id, id)).for('update');
+  if (!before) throw breakdownNotFound();
+  await assertActionOn(tx, action, before, actor);
+  return before;
+}
+
 /**
  * An audited write to one Breakdown, gated by a Breakdown Action under the row lock; answers the fresh detail.
  * What `assert` resolves under the lock reaches `set`, as `mutateEntity` hands it on.
@@ -603,35 +609,6 @@ export async function solveBreakdown({
       solvedByUserId: actor.userId,
       closeOutNote: input.closeOutNote,
     }),
-  });
-}
-
-/** Appends a Breakdown Note under the Breakdown's lock. Notes are authored and append-only, so not audited. */
-export async function addBreakdownNote({
-  db,
-  actor,
-  input: raw,
-}: {
-  db: Db;
-  actor: BreakdownActor;
-  input: BreakdownNoteCreateInput;
-}): Promise<BreakdownNote> {
-  const input = BreakdownNoteCreateInput.parse(raw);
-  return db.transaction(async (tx) => {
-    const [before] = await tx
-      .select()
-      .from(contractingBreakdowns)
-      .where(eq(contractingBreakdowns.id, input.breakdownId))
-      .for('update');
-    if (!before) throw breakdownNotFound();
-    await assertActionOn(tx, 'addNote', before, actor);
-    const [note] = await tx
-      .insert(contractingBreakdownNotes)
-      .values({ breakdownId: before.id, authorUserId: actor.userId, text: input.text })
-      .returning();
-    if (!note) throw new Error('Breakdown Note insert returned no row');
-    const [author] = await tx.select({ name: user.name }).from(user).where(eq(user.id, actor.userId));
-    return toNote(note, author?.name ?? '');
   });
 }
 

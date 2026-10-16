@@ -72,7 +72,10 @@ export function JobPage({ code }: { code: string }) {
                     />
                   ) : null}
                 </div>
-                <ActivityCard scope={{ jobId: job.id }} addNote={sheet.action('addNote')} />
+                <ActivityCard
+                  thread={{ kind: 'job', id: job.id, code: job.jobNumber }}
+                  addNote={sheet.action('addNote')}
+                />
               </DetailAsideGrid>
               <CancelJob job={job} sheet={sheet} />
             </div>

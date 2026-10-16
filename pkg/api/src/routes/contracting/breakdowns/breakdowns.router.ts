@@ -1,5 +1,5 @@
 import {
-  addBreakdownNote,
+  addNote,
   assignMechanic,
   getBreakdown,
   getBreakdownReportContext,
@@ -13,6 +13,7 @@ import {
   startBreakdown,
   summarizeBreakdownQueue,
 } from '@pkg/core/contracting';
+import { noteAdded } from '@pkg/domain/contracting';
 import {
   BreakdownAssignMechanicInput,
   BreakdownDetail,
@@ -99,10 +100,10 @@ export const createContractingBreakdownsRouter = (push: ContractingPushScheduler
         .output(BreakdownNote)
         .mutation(async ({ ctx, input }) => {
           const note = await mapCoreErrors(
-            () => addBreakdownNote({ db: ctx.db, actor: ctx.access, input }),
+            () => addNote({ db: ctx.db, actor: ctx.access, thread: 'breakdown', input }),
             breakdownErrorFamily,
           );
-          push.schedule({ kind: 'breakdown-note.added', noteId: note.id });
+          push.schedule(noteAdded('breakdown', note.id));
           return note;
         }),
     }),

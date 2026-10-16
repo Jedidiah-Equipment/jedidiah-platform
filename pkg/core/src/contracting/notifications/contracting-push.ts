@@ -1,31 +1,27 @@
 import { type Db, user } from '@pkg/db';
-import {
-  contractingBreakdownNotes,
-  contractingBreakdowns,
-  contractingJobNotes,
-  contractingJobs,
-} from '@pkg/db/contracting';
+import { contractingBreakdowns } from '@pkg/db/contracting';
 import { createUserAccessSummaryForUser, PUSH_KINDS } from '@pkg/domain';
 import {
-  breakdownNoteReaches,
   breakdownPushKind,
   breakdownPushMessage,
   type ContractingPushContent,
   type ContractingPushEvent,
-  formatJobNumber,
-  jobNoteReaches,
   notePushMessage,
+  noteReaches,
+  noteThreads,
   SERVICE_DUE_SOON_PUSH_KIND,
   serviceDueNeedsAttention,
   serviceDueSoonPushMessage,
 } from '@pkg/domain/contracting';
 import type { PushKind, UserAccessSummary } from '@pkg/schema';
+import type { NoteThreadKind } from '@pkg/schema/contracting';
 import { and, eq, inArray, ne, sql } from 'drizzle-orm';
 import { deliverPush, type PushDelivery, type PushMessage, type PushSender } from '../../push/push-sender.js';
 import { listPushTokensForUsers } from '../../push/push-token-service.js';
 import { businessRoleSql } from '../../users/business-role.js';
 import { selectBreakdowns, toBreakdownSummary } from '../breakdowns/breakdown-load.js';
 import { getMachine } from '../fleet/machine-service.js';
+import { noteThreadStore } from '../notes/note-thread.js';
 
 /**
  * The people holding a role the kind can reach who have not muted it and whom `reaches` keeps: never a shared device
@@ -67,53 +63,18 @@ async function addressed(
   return tokens.map(({ token }) => ({ to: token, ...content }));
 }
 
-async function breakdownNotePush(db: Db, noteId: string): Promise<PushMessage[]> {
-  const [record] = await db
-    .select({ note: contractingBreakdownNotes, authorName: user.name })
-    .from(contractingBreakdownNotes)
-    .innerJoin(user, eq(user.id, contractingBreakdownNotes.authorUserId))
-    .where(eq(contractingBreakdownNotes.id, noteId));
-  if (!record) return [];
-  const { note, authorName } = record;
-  const [[row], authors] = await Promise.all([
-    selectBreakdowns(db).where(eq(contractingBreakdowns.id, note.breakdownId)).limit(1),
-    db
-      .selectDistinct({ id: contractingBreakdownNotes.authorUserId })
-      .from(contractingBreakdownNotes)
-      .where(eq(contractingBreakdownNotes.breakdownId, note.breakdownId)),
-  ]);
-  if (!row) return [];
-  const breakdown = toBreakdownSummary(row);
-  const authorIds = authors.map(({ id }) => id);
+async function notePush<K extends NoteThreadKind>(db: Db, kind: K, noteId: string): Promise<PushMessage[]> {
+  const store = noteThreadStore[kind];
+  const loaded = await store.loadForPush(db, noteId);
+  if (!loaded) return [];
+  const { note, authorName, record, code } = loaded;
+  const authorIds = await store.authorsOf(db, note.threadId);
   return addressed(
     db,
-    'contracting.breakdown-note',
+    noteThreads[kind].pushKind,
     note.authorUserId,
-    notePushMessage({ kind: 'breakdown', id: breakdown.id, code: breakdown.subject.code, authorName, text: note.text }),
-    (access) => breakdownNoteReaches(access, breakdown, authorIds),
-  );
-}
-
-async function jobNotePush(db: Db, noteId: string): Promise<PushMessage[]> {
-  const [record] = await db
-    .select({ note: contractingJobNotes, authorName: user.name, job: contractingJobs })
-    .from(contractingJobNotes)
-    .innerJoin(user, eq(user.id, contractingJobNotes.authorUserId))
-    .innerJoin(contractingJobs, eq(contractingJobs.id, contractingJobNotes.jobId))
-    .where(eq(contractingJobNotes.id, noteId));
-  if (!record) return [];
-  const { note, authorName, job } = record;
-  const authors = await db
-    .selectDistinct({ id: contractingJobNotes.authorUserId })
-    .from(contractingJobNotes)
-    .where(eq(contractingJobNotes.jobId, job.id));
-  const authorIds = authors.map(({ id }) => id);
-  return addressed(
-    db,
-    'contracting.job-note',
-    note.authorUserId,
-    notePushMessage({ kind: 'job', id: job.id, code: formatJobNumber(job.code), authorName, text: note.text }),
-    (access) => jobNoteReaches(access, job, authorIds),
+    notePushMessage({ kind, id: note.threadId, code, authorName, text: note.text }),
+    (access) => noteReaches(kind, access, record, authorIds),
   );
 }
 
@@ -151,10 +112,8 @@ export function buildContractingPush({ db, event }: { db: Db; event: Contracting
       return breakdownReportedPush(db, event.breakdownId);
     case 'machine.service-due-soon':
       return serviceDueSoonPush(db, event.machineId);
-    case 'breakdown-note.added':
-      return breakdownNotePush(db, event.noteId);
-    case 'job-note.added':
-      return jobNotePush(db, event.noteId);
+    case 'note.added':
+      return notePush(db, event.thread, event.noteId);
   }
 }
 

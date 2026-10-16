@@ -38,7 +38,9 @@ async function renderMark(view: Parameters<typeof useActivityViewMark>[1]) {
 test('acknowledging the global feed writes the resolved mark under the business’s last-seen key', async () => {
   const { acknowledge, queryClient, unmount } = await renderMark(globalView);
   try {
-    await act(async () => acknowledge()?.(seen));
+    const acknowledgeLatest = acknowledge();
+    expect(acknowledgeLatest).toBeDefined();
+    await act(async () => acknowledgeLatest?.(seen));
     await expect.poll(() => queryClient.getQueryData(LAST_SEEN_KEY)).toBe(seen);
   } finally {
     await unmount();

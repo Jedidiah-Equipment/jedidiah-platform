@@ -24,14 +24,20 @@ describe('route layout contract', () => {
       join(MOBILE_DIR, 'src/equipment/components/activity/JobActivityFeed.tsx'),
       'utf8',
     );
+    const activityViewClient = readFileSync(
+      join(MOBILE_DIR, 'src/equipment/components/activity/activity-view-client.ts'),
+      'utf8',
+    );
     const activityRoute = readFileSync(join(MOBILE_DIR, 'app/(protected)/equipment/(tabs)/activity/index.tsx'), 'utf8');
     const timeline = readFileSync(join(MOBILE_DIR, 'src/components/activity/ActivityTimeline.tsx'), 'utf8');
 
-    expect(tabBar).toContain('trpc.jobActivity.getLastActivitySeen.queryOptions()');
+    expect(tabBar).toContain('useEquipmentActivityViewClient()');
+    expect(activityViewClient).toContain('trpc.jobActivity.getLastActivitySeen.queryOptions()');
     expect(tabBar).toContain("badge: tab === 'activity' && activityUnread");
     expect(sharedTabBar).toContain('<TabBadge />');
     expect(sharedTabBar).toContain('bg-orange-500');
-    expect(activityFeed).toContain('trpc.jobActivity.setLastActivitySeen.mutationOptions');
+    expect(activityViewClient).toContain('trpc.jobActivity.setLastActivitySeen.mutationOptions');
+    expect(activityFeed).toContain('useActivityViewMark(useEquipmentActivityViewClient()');
     expect(activityFeed).toContain('<ActivityTimeline');
     expect(timeline).toContain('useFocusEffect');
     expect(activityRoute).toContain('trackGlobalView');
@@ -45,7 +51,8 @@ describe('route layout contract', () => {
     expect(read('src/contracting/components/ContractingTabBar.tsx')).toContain('useActivityUnread()');
     expect(hooks).toContain('trpc.contractingActivity.getLastSeen.queryOptions()');
     expect(hooks).not.toContain('jobActivity');
-    expect(feed).toContain('trpc.contractingActivity.setLastSeen.mutationOptions');
+    expect(hooks).toContain('trpc.contractingActivity.setLastSeen.mutationOptions');
+    expect(feed).toContain('useActivityViewMark(useContractingActivityViewClient()');
     expect(feed).toContain('<ActivityTimeline');
     expect(read('src/contracting/activity/ActivityScreen.tsx')).toContain('trackGlobalView');
   });

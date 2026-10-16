@@ -1,26 +1,21 @@
 import { activityFilterLabels, fieldJobAccessMode, fieldReaderSeesJob } from '@pkg/domain/contracting';
-import type { DateIso } from '@pkg/schema';
 import { type ActivityFilter, activityFilters } from '@pkg/schema/contracting';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ActivityTimeline } from '@/components/activity/ActivityTimeline';
+import { useActivityViewMark } from '@/components/activity/use-activity-view';
 import type { ListControlOption } from '@/components/ListControls';
 import { useSessionAccessSummary } from '@/lib/auth-session';
-import { useTRPC } from '@/lib/trpc';
 import { useDebouncedSearch } from '@/lib/use-debounced-search';
 import { ActivityEntry } from './ActivityEntry';
-import { useActivityFeed } from './use-activity';
+import { useActivityFeed, useContractingActivityViewClient } from './use-activity';
 
 const FILTER_OPTIONS: readonly ListControlOption<ActivityFilter>[] = activityFilters.map((value) => ({
   label: activityFilterLabels[value],
   value,
 }));
 
-/**
- * The Contracting feed: every reachable item on the Activity tab, or one Job's or one Breakdown's thread. Only the
- * tab, focused on everything with no search, advances the Activity View.
- */
+/** The Contracting feed: every reachable item on the Activity tab, or one Job's or one Breakdown's thread. */
 export function ContractingActivityFeed({
   jobId,
   breakdownId,
@@ -34,25 +29,18 @@ export function ContractingActivityFeed({
   showControls?: boolean;
   trackGlobalView?: boolean;
 }) {
-  const trpc = useTRPC();
-  const queryClient = useQueryClient();
   const [filter, setFilter] = useState<ActivityFilter>('all');
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedSearch(search);
   const activity = useActivityFeed({ filter, search: debouncedSearch, jobId, breakdownId });
   const items = useMemo(() => activity.data?.pages.flatMap((page) => page.items) ?? [], [activity.data?.pages]);
-  const { mutate: markSeen } = useMutation(
-    trpc.contractingActivity.setLastSeen.mutationOptions({
-      onSuccess: (seen) => queryClient.setQueryData(trpc.contractingActivity.getLastSeen.queryKey(), seen),
-    }),
-  );
+  const onViewedLatest = useActivityViewMark(useContractingActivityViewClient(), {
+    track: trackGlobalView,
+    filter,
+    search: debouncedSearch,
+    scoped: jobId !== undefined || breakdownId !== undefined,
+  });
   const unfiltered = filter === 'all' && !debouncedSearch;
-  const onViewedLatest = useCallback(
-    (seenAt: DateIso) => {
-      if (trackGlobalView && unfiltered) markSeen({ seenAt });
-    },
-    [markSeen, trackGlobalView, unfiltered],
-  );
   const access = useSessionAccessSummary();
   const scope = useMemo(
     () => ({

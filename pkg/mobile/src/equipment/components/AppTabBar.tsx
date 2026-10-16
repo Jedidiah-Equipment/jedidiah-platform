@@ -10,10 +10,10 @@ import {
 } from '@tabler/icons-react-native';
 import { useSegments } from 'expo-router';
 
-import { useActivityUnread } from '@/components/activity/use-activity-unread';
+import { useActivityUnread } from '@/components/activity/use-activity-view';
 import { TabBar } from '@/components/tab-bar/TabBar';
+import { useEquipmentActivityViewClient } from '@/equipment/components/activity/activity-view-client';
 import { type AppTab, activeAppTab, appTabHref, appTabLabel, visibleTabs } from '@/equipment/lib/app-tabs';
-import { useTRPC } from '@/lib/trpc';
 import { useAccess } from '@/lib/use-access';
 
 const TAB_ICONS = {
@@ -33,13 +33,8 @@ const TAB_ICONS = {
  */
 export function AppTabBar() {
   const access = useAccess();
-  const trpc = useTRPC();
   const tabs = visibleTabs(access.data);
-  const activityUnread = useActivityUnread({
-    enabled: tabs.includes('activity'),
-    lastSeen: trpc.jobActivity.getLastActivitySeen.queryOptions(),
-    latest: trpc.jobActivity.list.queryOptions({ limit: 1 }),
-  });
+  const activityUnread = useActivityUnread(useEquipmentActivityViewClient(), tabs.includes('activity'));
   const segments = useSegments();
   const active = activeAppTab(segments);
   return (

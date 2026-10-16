@@ -363,8 +363,8 @@ _Avoid_: timeline, history, feed (as a noun for the whole), chat, log
 **Activity View** is the per-user, per-business high-water mark of Activity: the occurrence time of the
 newest item that user has received in the unfiltered feed. An item newer than it is **Unread Activity**,
 which badges the phone tab and dots the web nav item. A client advances the mark only to the newest item
-it displayed, and only on the unfiltered, unsearched view. The two businesses' marks are independent
-(see [GLOSSARY-MAP.md](GLOSSARY-MAP.md)).
+it displayed, and only from the unfiltered, unsearched, unscoped view — never from one Job's or one
+Breakdown's own thread. The two businesses' marks are independent (see [GLOSSARY-MAP.md](GLOSSARY-MAP.md)).
 
 ## Reporting
 

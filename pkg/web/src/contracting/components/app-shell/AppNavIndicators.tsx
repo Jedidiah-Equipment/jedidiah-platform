@@ -3,8 +3,9 @@ import { canSeeActivity } from '@pkg/domain/contracting';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
 
-import { useActivityUnread } from '@/components/activity/use-activity-unread.js';
+import { useActivityUnread } from '@/components/activity/use-activity-view.js';
 import { NavWarningDot } from '@/components/app-shell/NavWarningDot.js';
+import { useContractingActivityViewClient } from '@/contracting/components/activity/activity-view-client.js';
 import { DASHBOARD_REFETCH_INTERVAL_MS } from '@/contracting/pages/dashboard/dashboard-refresh.js';
 import { useAccess, useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -45,12 +46,7 @@ export const WorkshopNavIndicator: React.FC = () => {
 
 /** The newest Activity item lies beyond this person's Contracting Activity View; opening Activity on All clears it. */
 export const ActivityUnreadNavIndicator: React.FC = () => {
-  const trpc = useTRPC();
-  const unread = useActivityUnread({
-    enabled: canSeeActivity(useAccess().data),
-    lastSeen: trpc.contractingActivity.getLastSeen.queryOptions(),
-    latest: trpc.contractingActivity.list.queryOptions({ limit: 1 }),
-  });
+  const unread = useActivityUnread(useContractingActivityViewClient(), canSeeActivity(useAccess().data));
 
   return unread ? <NavWarningDot label="New Activity" /> : null;
 };

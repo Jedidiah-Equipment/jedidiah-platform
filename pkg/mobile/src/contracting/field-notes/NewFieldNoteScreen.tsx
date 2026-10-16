@@ -74,7 +74,7 @@ export default function NewFieldNoteScreen() {
         <SecondaryToolbar
           title="New Field Note"
           subtitle="CONTRACTING"
-          parentLabel="Notes"
+          parentLabel="Field Notes"
           onBack={() => {
             if (!busy) backToNotes();
           }}

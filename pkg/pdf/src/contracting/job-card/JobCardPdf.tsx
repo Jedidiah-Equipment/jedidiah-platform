@@ -167,7 +167,7 @@ export function JobCardPdf({ document }: { document: JobCardModel }) {
         ) : null}
         {internal && document.notes ? (
           <View style={styles.notes} wrap={false}>
-            <Text style={documentFrameStyles.label}>Site notes</Text>
+            <Text style={documentFrameStyles.label}>Sign-off notes</Text>
             <Text>{document.notes}</Text>
           </View>
         ) : null}

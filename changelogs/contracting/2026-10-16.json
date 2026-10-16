@@ -1,0 +1,60 @@
+{
+  "business": "contracting",
+  "releasedAt": "2026-10-16T04:54:08.047Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "View job and breakdown activity beside the details",
+          "description": "Job and breakdown pages now use more screen space, with Activity alongside the details on wider screens."
+        },
+        {
+          "title": "Navigate fleet history more easily",
+          "description": "Machine and implement pages show History beside their details, and machines have separate Details and Service tabs. History entries open related breakdowns, jobs or the Service tab, and readings can be searched by job number."
+        },
+        {
+          "title": "Find sign-off notes under a clearer label",
+          "description": "The job's Completion text field is now labelled Sign-off notes, including on the printed Job Card."
+        },
+        {
+          "title": "Read gold text more easily in light mode",
+          "description": "Gold text and accents now use a darker shade to improve readability against light backgrounds."
+        },
+        {
+          "title": "Access page actions directly",
+          "description": "Header actions stay visible as buttons while they fit beside the title. Single actions remain visible without opening a menu."
+        },
+        {
+          "title": "Scan activity more easily",
+          "description": "Activity feeds now use consistent note bubbles with author labels and distinct icons for events. Links beneath notes are easier to select."
+        },
+        {
+          "title": "Recognise people by their first names",
+          "description": "Everyday user labels now show first names. Full names remain available in user lists, user dropdowns and avatar hover labels."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Return to Field Notes with clearer links",
+          "description": "Back links on Field Note screens now read Field Notes."
+        },
+        {
+          "title": "Read updated light-mode accents",
+          "description": "Gold text and accents now use an updated shade in light mode."
+        },
+        {
+          "title": "Scan activity more easily",
+          "description": "Activity feeds now use consistent note bubbles with author labels and distinct icons for events."
+        },
+        {
+          "title": "Recognise people by their first names",
+          "description": "Everyday user labels now show first names across activity and other screens."
+        }
+      ]
+    }
+  ]
+}

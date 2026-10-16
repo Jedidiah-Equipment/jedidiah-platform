@@ -1,0 +1,68 @@
+{
+  "business": "equipment",
+  "releasedAt": "2026-10-16T04:54:08.047Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Receive outstanding orders from one page",
+          "description": "Open Inventory > Receiving to find outstanding purchase order lines, search orders and receive deliveries. Orders appear by expected date, with late deliveries clearly marked."
+        },
+        {
+          "title": "See fractional purchase quantities accurately",
+          "description": "Receiving, arrivals, returns, amendments, credit notes and invoice checks now show fractional quantities without rounding them to whole numbers."
+        },
+        {
+          "title": "Adjust terms after accepting a quote",
+          "description": "You can now update the discount, deposit, delivery terms and delivery charge on accepted locked quotes. The price and specification remain locked."
+        },
+        {
+          "title": "Read dashboard cards on smaller screens",
+          "description": "Scroll through scheduled jobs after the first two rows. Narrow Bay load cards show one readable gauge."
+        },
+        {
+          "title": "Browse product tabs without an extra scrollbar",
+          "description": "The product tab bar no longer shows an unnecessary vertical scrollbar."
+        },
+        {
+          "title": "Read gold text more easily in light mode",
+          "description": "Gold text and accents now use a darker shade to improve readability against light backgrounds."
+        },
+        {
+          "title": "Access page actions directly",
+          "description": "Header actions stay visible as buttons while they fit beside the title. Single actions remain visible without opening a menu."
+        },
+        {
+          "title": "Scan activity more easily",
+          "description": "Activity feeds now use consistent note bubbles with author labels and distinct icons for events. Links beneath notes are easier to select."
+        },
+        {
+          "title": "Recognise people by their first names",
+          "description": "Everyday user labels now show first names. Full names remain available in user lists, user dropdowns and avatar hover labels."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Adjust terms after accepting a quote",
+          "description": "You can now update the discount, deposit, delivery terms and delivery charge on accepted locked quotes. The price and specification remain locked."
+        },
+        {
+          "title": "Read updated light-mode accents",
+          "description": "Gold text and accents now use an updated shade in light mode."
+        },
+        {
+          "title": "Scan activity more easily",
+          "description": "Activity feeds now use consistent note bubbles with author labels and distinct icons for events."
+        },
+        {
+          "title": "Recognise people by their first names",
+          "description": "Everyday user labels now show first names across activity and other screens."
+        }
+      ]
+    }
+  ]
+}

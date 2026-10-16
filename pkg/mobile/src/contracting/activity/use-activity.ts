@@ -1,9 +1,12 @@
 import { ACTIVITY_REFETCH_INTERVAL_MS } from '@pkg/domain';
 import { canSeeActivity } from '@pkg/domain/contracting';
 import type { UUID } from '@pkg/schema';
-import type { ActivityFilter } from '@pkg/schema/contracting';
+import type { ActivityFilter, ActivityListResult } from '@pkg/schema/contracting';
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
-import { useActivityUnread as useBusinessActivityUnread } from '@/components/activity/use-activity-unread';
+import {
+  type ActivityViewClient,
+  useActivityUnread as useBusinessActivityUnread,
+} from '@/components/activity/use-activity-view';
 import { useSessionAccessSummary } from '@/lib/auth-session';
 import { useTRPC } from '@/lib/trpc';
 
@@ -48,12 +51,17 @@ export function useActivityFeed({
   );
 }
 
-/** Whether the newest item lies beyond this person's Contracting Activity View: the Activity tab's dot. */
-export function useActivityUnread() {
+/** Contracting's Activity View procedures, in the shape the shared root hooks take. */
+export function useContractingActivityViewClient(): ActivityViewClient<ActivityListResult> {
   const trpc = useTRPC();
-  return useBusinessActivityUnread({
-    enabled: useCanSeeActivity(),
+  return {
     lastSeen: trpc.contractingActivity.getLastSeen.queryOptions(),
     latest: trpc.contractingActivity.list.queryOptions({ limit: 1 }),
-  });
+    setLastSeen: (options) => trpc.contractingActivity.setLastSeen.mutationOptions(options),
+  };
+}
+
+/** Whether the newest item lies beyond this person's Contracting Activity View: the Activity tab's dot. */
+export function useActivityUnread() {
+  return useBusinessActivityUnread(useContractingActivityViewClient(), useCanSeeActivity());
 }

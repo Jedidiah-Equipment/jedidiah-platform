@@ -29,3 +29,20 @@ export function hasUnreadActivity({
 }): boolean {
   return latestActivityAt !== null && Date.parse(latestActivityAt) > Date.parse(lastActivitySeen);
 }
+
+/**
+ * Whether a view of the feed may advance the Activity View: only the unfiltered, unsearched, unscoped feed — never
+ * one record's own thread, a filter tab or a search. `filter` is the business's filter value; `'all'` is the literal
+ * both businesses share.
+ */
+export function advancesActivityView({
+  filter,
+  search,
+  scoped,
+}: {
+  filter: string;
+  search: string;
+  scoped: boolean;
+}): boolean {
+  return filter === 'all' && search === '' && !scoped;
+}

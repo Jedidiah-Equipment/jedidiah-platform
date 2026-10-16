@@ -2,18 +2,14 @@ import { buyListReasonsNotify, STOCKTAKE_SCOPE_LABELS } from '@pkg/schema/equipm
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
 
-import { useActivityUnread } from '@/components/activity/use-activity-unread.js';
+import { useActivityUnread } from '@/components/activity/use-activity-view.js';
 import { NavWarningDot } from '@/components/app-shell/NavWarningDot.js';
+import { useEquipmentActivityViewClient } from '@/equipment/pages/jobs/components/activity-view-client.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 export const ActivityUnreadNavIndicator: React.FC = () => {
-  const trpc = useTRPC();
-  const unread = useActivityUnread({
-    enabled: useCan('equipment_job:read').can,
-    lastSeen: trpc.jobActivity.getLastActivitySeen.queryOptions(),
-    latest: trpc.jobActivity.list.queryOptions({ limit: 1 }),
-  });
+  const unread = useActivityUnread(useEquipmentActivityViewClient(), useCan('equipment_job:read').can);
 
   return unread ? <NavWarningDot label="New Job Activity" /> : null;
 };

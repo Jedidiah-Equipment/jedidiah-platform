@@ -1,6 +1,6 @@
 import { DateIso } from '@pkg/schema';
 import { describe, expect, test } from 'vitest';
-import { activityViewFor, advanceActivityView } from './activity-view.js';
+import { activityViewFor, advanceActivityView, advancesActivityView } from './activity-view.js';
 
 const iso = (value: string) => DateIso.parse(value);
 const createdAt = iso('2026-10-01T08:00:00.000Z');
@@ -18,5 +18,16 @@ describe('the per-business Activity View', () => {
     expect(advanceActivityView(map, 'contracting', seen, createdAt)).toEqual({ ...map, contracting: seen });
     expect(advanceActivityView(map, 'equipment', iso('2026-10-04T08:00:00.000Z'), createdAt)).toBe(map);
     expect(advanceActivityView({}, 'contracting', iso('2026-09-30T08:00:00.000Z'), createdAt)).toEqual({});
+  });
+});
+
+describe('which view of the feed advances the Activity View', () => {
+  test.each([
+    { view: 'the unfiltered, unsearched, unscoped feed', filter: 'all', search: '', scoped: false, advances: true },
+    { view: 'a filter tab', filter: 'notes', search: '', scoped: false, advances: false },
+    { view: 'a search', filter: 'all', search: 'gearbox', scoped: false, advances: false },
+    { view: 'one record’s own thread', filter: 'all', search: '', scoped: true, advances: false },
+  ])('$view → $advances', ({ filter, search, scoped, advances }) => {
+    expect(advancesActivityView({ filter, search, scoped })).toBe(advances);
   });
 });

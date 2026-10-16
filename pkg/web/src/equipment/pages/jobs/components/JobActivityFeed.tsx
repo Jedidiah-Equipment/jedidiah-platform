@@ -1,27 +1,26 @@
 import { ACTIVITY_REFETCH_INTERVAL_MS } from '@pkg/domain';
-import type { DateIso, UUID } from '@pkg/schema';
+import type { UUID } from '@pkg/schema';
 import type { JobActivityFilter } from '@pkg/schema/equipment';
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import type React from 'react';
 
 import { ActivityTimeline } from '@/components/activity/ActivityTimeline.js';
+import { useActivityViewMark } from '@/components/activity/use-activity-view.js';
 import { WEB_LIST_BATCH_SIZE } from '@/components/data-table/constants.js';
 import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 
+import { useEquipmentActivityViewClient } from './activity-view-client.js';
 import { JobActivityEntry } from './JobActivityEntry.js';
 
-/**
- * The Equipment feed, newest first: every Job, or one Job's thread. Only the unfiltered, unsearched, unscoped feed
- * reports that it was viewed, the same rule Contracting's feed and the phone apply.
- */
+/** The Equipment feed, newest first: every Job, or one Job's thread. Only the Job Activity page tracks the global view. */
 export const JobActivityFeed: React.FC<{
   filter?: JobActivityFilter;
   jobId?: UUID;
-  onGlobalFeedViewed?: (seenAt: DateIso) => void;
   search?: string;
-}> = ({ filter = 'all', jobId, onGlobalFeedViewed, search = '' }) => {
+  trackGlobalView?: boolean;
+}> = ({ filter = 'all', jobId, search = '', trackGlobalView = false }) => {
   const trpc = useTRPC();
   const purchaseOrderAccess = useCan('equipment_purchase_order:read');
   const activityQuery = useInfiniteQuery(
@@ -35,6 +34,12 @@ export const JobActivityFeed: React.FC<{
     ),
   );
   const { items } = useCombinedCursorQueryPages(activityQuery.data?.pages);
+  const onViewedLatest = useActivityViewMark(useEquipmentActivityViewClient(), {
+    track: trackGlobalView,
+    filter,
+    search,
+    scoped: jobId !== undefined,
+  });
 
   return (
     <ActivityTimeline
@@ -42,7 +47,7 @@ export const JobActivityFeed: React.FC<{
       errorMessage="Unable to load job activity."
       items={items}
       getItemKey={(item) => `${item.type}:${item.id}:${item.job.id}`}
-      onViewedLatest={filter === 'all' && !jobId && !search ? onGlobalFeedViewed : undefined}
+      onViewedLatest={onViewedLatest}
       query={activityQuery}
       renderItem={(item) => (
         <JobActivityEntry canReadPurchaseOrder={purchaseOrderAccess.can} item={item} jobId={jobId} />

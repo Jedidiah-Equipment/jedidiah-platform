@@ -1,12 +1,14 @@
 import { ACTIVITY_REFETCH_INTERVAL_MS } from '@pkg/domain';
 import { jobActivityFilterLabels } from '@pkg/domain/equipment';
-import type { DateIso, UUID } from '@pkg/schema';
+import type { UUID } from '@pkg/schema';
 import type { JobActivityFilter } from '@pkg/schema/equipment';
-import { keepPreviousData, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ActivityTimeline } from '@/components/activity/ActivityTimeline';
+import { useActivityViewMark } from '@/components/activity/use-activity-view';
 import type { ListControlOption } from '@/components/ListControls';
+import { useEquipmentActivityViewClient } from '@/equipment/components/activity/activity-view-client';
 import { JobActivityEntry } from '@/equipment/components/activity/JobActivityEntry';
 import { useTRPC } from '@/lib/trpc';
 import { useDebouncedSearch } from '@/lib/use-debounced-search';
@@ -30,7 +32,6 @@ export function JobActivityFeed({
   trackGlobalView?: boolean;
 }) {
   const trpc = useTRPC();
-  const queryClient = useQueryClient();
   const [filter, setFilter] = useState<JobActivityFilter>('all');
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedSearch(search);
@@ -52,19 +53,13 @@ export function JobActivityFeed({
   );
   const items = useMemo(() => activity.data?.pages.flatMap((page) => page.items) ?? [], [activity.data?.pages]);
   const total = activity.data?.pages.at(-1)?.total ?? null;
-  const lastSeenOptions = trpc.jobActivity.getLastActivitySeen.queryOptions();
-  const { mutate: markActivitySeen } = useMutation(
-    trpc.jobActivity.setLastActivitySeen.mutationOptions({
-      onSuccess: (lastActivitySeen) => queryClient.setQueryData(lastSeenOptions.queryKey, lastActivitySeen),
-    }),
-  );
+  const onViewedLatest = useActivityViewMark(useEquipmentActivityViewClient(), {
+    track: trackGlobalView,
+    filter,
+    search: debouncedSearch,
+    scoped: jobId !== undefined,
+  });
   const unfiltered = filter === 'all' && !debouncedSearch;
-  const onViewedLatest = useCallback(
-    (seenAt: DateIso) => {
-      if (trackGlobalView && unfiltered) markActivitySeen({ seenAt });
-    },
-    [markActivitySeen, trackGlobalView, unfiltered],
-  );
 
   return (
     <>

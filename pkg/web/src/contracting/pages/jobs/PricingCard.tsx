@@ -1,6 +1,5 @@
 import { formatCurrency, formatDate } from '@pkg/domain';
-import type { JobSheet } from '@pkg/domain/contracting';
-import { pricingGateReasons } from '@pkg/domain/contracting';
+import { type JobSheet, pricingGateReasons } from '@pkg/domain/contracting';
 import type { JobDetail } from '@pkg/schema/contracting';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useLocation } from '@tanstack/react-router';

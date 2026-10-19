@@ -1,6 +1,11 @@
 import { formatDate, formatNumber } from '@pkg/domain';
-import type { JobSheet } from '@pkg/domain/contracting';
-import { canComplete, completionGateReasons, groupStints, suggestJobDates } from '@pkg/domain/contracting';
+import {
+  canComplete,
+  completionGateReasons,
+  groupStints,
+  type JobSheet,
+  suggestJobDates,
+} from '@pkg/domain/contracting';
 import { DateOnlyIso } from '@pkg/schema';
 import { JobCompleteInput, type JobDetail, JobPatchInput, Litres } from '@pkg/schema/contracting';
 import { useMutation } from '@tanstack/react-query';

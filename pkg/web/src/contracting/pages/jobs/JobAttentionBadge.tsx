@@ -1,8 +1,5 @@
-import {
-  assignmentAttentionLevelColorClassNames,
-  countedAssignmentAttentionLevel,
-  countPhrase,
-} from '@pkg/domain/contracting';
+import { countPhrase } from '@pkg/domain';
+import { assignmentAttentionLevelColorClassNames, countedAssignmentAttentionLevel } from '@pkg/domain/contracting';
 import type { JobSummary } from '@pkg/schema/contracting';
 import { IconAlertTriangle } from '@tabler/icons-react';
 

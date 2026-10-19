@@ -1,15 +1,18 @@
-import { getFirstName } from '@pkg/domain';
-import { countPhrase, orderUnsolvedBreakdowns, UNASSIGNED_MECHANIC_LABEL } from '@pkg/domain/contracting';
+import { countPhrase, getFirstName } from '@pkg/domain';
+import { orderUnsolvedBreakdowns, UNASSIGNED_MECHANIC_LABEL } from '@pkg/domain/contracting';
 import type { BreakdownSummary } from '@pkg/schema/contracting';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
+import {
+  DashboardListBlock,
+  dashboardRowClassName,
+  dashboardRowLinkClassName,
+} from '@/components/common/dashboard/DashboardListBlock.js';
 import { PrimaryLink } from '@/components/common/PrimaryLink.js';
 import { BreakdownStatusBadge, BreakdownSubjectLabel } from '@/contracting/components/BreakdownSubjectLabel.js';
-import { DASHBOARD_REFETCH_INTERVAL_MS } from '@/contracting/pages/dashboard/dashboard-refresh.js';
+import { DASHBOARD_REFETCH_INTERVAL_MS } from '@/contracting/lib/dashboard-refresh.js';
 import { useTRPC } from '@/lib/trpc.js';
-
-import { DashboardListBlock, dashboardRowClassName, dashboardRowLinkClassName } from './DashboardListBlock.js';
 
 export function WorkshopWidget() {
   const trpc = useTRPC();

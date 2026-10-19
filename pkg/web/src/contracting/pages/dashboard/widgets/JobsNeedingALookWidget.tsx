@@ -1,14 +1,17 @@
-import { getFirstName } from '@pkg/domain';
-import { countPhrase, openJobQueues, orderJobsNeedingALook } from '@pkg/domain/contracting';
+import { countPhrase, getFirstName } from '@pkg/domain';
+import { openJobQueues, orderJobsNeedingALook, UNASSIGNED_FOREMAN_LABEL } from '@pkg/domain/contracting';
 import type { JobSummary } from '@pkg/schema/contracting';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
+import {
+  DashboardListBlock,
+  dashboardRowClassName,
+  dashboardRowLinkClassName,
+} from '@/components/common/dashboard/DashboardListBlock.js';
 import { PrimaryLink } from '@/components/common/PrimaryLink.js';
-import { DASHBOARD_REFETCH_INTERVAL_MS } from '@/contracting/pages/dashboard/dashboard-refresh.js';
+import { DASHBOARD_REFETCH_INTERVAL_MS } from '@/contracting/lib/dashboard-refresh.js';
 import { JobAttentionBadge } from '@/contracting/pages/jobs/JobAttentionBadge.js';
 import { useTRPC } from '@/lib/trpc.js';
-
-import { DashboardListBlock, dashboardRowClassName, dashboardRowLinkClassName } from './DashboardListBlock.js';
 
 export function JobsNeedingALookWidget() {
   const trpc = useTRPC();
@@ -43,7 +46,7 @@ function JobNeedingALookRow({ job }: { job: JobSummary }) {
           <span className="font-mono font-semibold">{job.jobNumber}</span> {job.customerName} · {job.farmName}
         </Link>
         <span className="block truncate text-muted-foreground text-xs">
-          {job.workTypeName} · {job.foremanName ? getFirstName(job.foremanName) : 'No Foreman'}
+          {job.workTypeName} · {job.foremanName ? getFirstName(job.foremanName) : UNASSIGNED_FOREMAN_LABEL}
         </span>
       </span>
       <JobAttentionBadge attention={job.assignmentAttention} />

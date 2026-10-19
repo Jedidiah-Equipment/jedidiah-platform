@@ -1,25 +1,21 @@
 import { hasPermission } from '@pkg/domain';
 import { jobQueues } from '@pkg/schema/contracting';
 import { createFileRoute, redirect } from '@tanstack/react-router';
-import { useCallback } from 'react';
 import { z } from 'zod';
-import { JobsPage } from '@/contracting/pages/jobs/JobsPage.js';
+import { focusJobsOn, JobsPage } from '@/contracting/pages/jobs/JobsPage.js';
 import { getRouteAccess } from '@/lib/route-auth.js';
 
 export const Route = createFileRoute('/_authed/contracting/jobs/')({
-  beforeLoad: async ({ context }) => {
+  /** `stage` and `needsALook` arrive from the Dashboard once: written into the saved filters and the URL cleared. */
+  validateSearch: z.object({ stage: z.enum(jobQueues).optional(), needsALook: z.boolean().optional() }),
+  beforeLoad: async ({ context, search, preload }) => {
     if (!hasPermission(await getRouteAccess(context), 'contracting_job:read'))
       throw redirect({ to: '/contracting/invoicing' });
+    // Intent preload runs this on hover; only a committed navigation may touch the saved filters.
+    if (preload || !(search.stage || search.needsALook)) return;
+    focusJobsOn(search);
+    throw redirect({ to: '/contracting/jobs', search: {}, replace: true });
   },
-  /** `stage` and `needsALook` arrive from the Dashboard once; the page applies them to the saved filters and clears them. */
-  validateSearch: z.object({ stage: z.enum(jobQueues).optional(), needsALook: z.boolean().optional() }),
-  component: JobsRoute,
+  component: JobsPage,
   staticData: { pageLabel: 'Jobs' },
 });
-
-function JobsRoute() {
-  const { stage, needsALook } = Route.useSearch();
-  const navigate = Route.useNavigate();
-  const clearFocus = useCallback(() => void navigate({ search: {}, replace: true }), [navigate]);
-  return <JobsPage focus={{ stage, needsALook }} onFocusApplied={clearFocus} />;
-}

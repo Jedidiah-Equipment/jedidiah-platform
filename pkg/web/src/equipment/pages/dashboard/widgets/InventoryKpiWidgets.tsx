@@ -4,41 +4,50 @@ import { STOCK_ADJUSTMENT_REASON_LABELS } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import type React from 'react';
+import { DashboardTile } from '@/components/common/dashboard/DashboardTile.js';
 import { DashboardWidgetEmpty, DashboardWidgetError } from '@/components/common/dashboard/DashboardWidgetCard.js';
-import { StatCard, StatCardSkeleton } from '@/components/common/StatCard.js';
+import { StatCardSkeleton } from '@/components/common/StatCard.js';
 import { useTRPC } from '@/lib/trpc.js';
 
+const INVENTORY_KPI_LINK_CLASS_NAME = 'flex flex-1 hover:underline';
+
 export const InventoryValueWidget: React.FC = () => {
+  const query = useInventoryKpis();
+
   return (
-    <InventoryKpiQuery>
-      {(data) => (
-        <Link className="flex flex-1 hover:underline" to="/equipment/inventory">
-          <StatCard
-            sublabel={
-              data.inventoryValue === null
-                ? 'Uncosted stock prevents a complete valuation'
-                : 'Negative stock balances subtract from value'
-            }
-            value={formatValue(data.inventoryValue)}
-          />
-        </Link>
-      )}
-    </InventoryKpiQuery>
+    <DashboardTile
+      value={query.data ? formatValue(query.data.inventoryValue) : undefined}
+      error={query.error}
+      errorMessage={INVENTORY_KPI_ERROR_MESSAGE}
+      sublabel={
+        query.data
+          ? query.data.inventoryValue === null
+            ? 'Uncosted stock prevents a complete valuation'
+            : 'Negative stock balances subtract from value'
+          : undefined
+      }
+      link={inventoryLink}
+    />
   );
 };
 
 export const InventoryTurnsWidget: React.FC = () => {
+  const query = useInventoryKpis();
+
   return (
-    <InventoryKpiQuery>
-      {(data) => (
-        <Link className="flex flex-1 hover:underline" to="/equipment/inventory">
-          <StatCard
-            sublabel="Annualized, trailing 90d, perpetual stock"
-            value={data.inventoryTurns === null ? '—' : `${formatNumber(data.inventoryTurns, { decimals: 2 })}×`}
-          />
-        </Link>
-      )}
-    </InventoryKpiQuery>
+    <DashboardTile
+      value={
+        query.data
+          ? query.data.inventoryTurns === null
+            ? '—'
+            : `${formatNumber(query.data.inventoryTurns, { decimals: 2 })}×`
+          : undefined
+      }
+      error={query.error}
+      errorMessage={INVENTORY_KPI_ERROR_MESSAGE}
+      sublabel="Annualized, trailing 90d, perpetual stock"
+      link={inventoryLink}
+    />
   );
 };
 
@@ -74,13 +83,28 @@ export const TopScrapItemsWidget: React.FC = () => {
   );
 };
 
-function InventoryKpiQuery({ children }: { children: (data: InventoryKpis) => React.ReactNode }) {
+const INVENTORY_KPI_ERROR_MESSAGE = 'Unable to load inventory KPIs.';
+
+function useInventoryKpis() {
   const trpc = useTRPC();
   // All four registry entries share this key, so React Query keeps the dashboard to one server read.
-  const query = useQuery(trpc.inventory.inventoryKpis.queryOptions());
+  return useQuery(trpc.inventory.inventoryKpis.queryOptions());
+}
+
+function inventoryLink(body: React.ReactNode) {
+  return (
+    <Link className={INVENTORY_KPI_LINK_CLASS_NAME} to="/equipment/inventory">
+      {body}
+    </Link>
+  );
+}
+
+/** The two list-shaped KPIs are not tiles, so they keep their own loading cascade around the shared query. */
+function InventoryKpiQuery({ children }: { children: (data: InventoryKpis) => React.ReactNode }) {
+  const query = useInventoryKpis();
 
   if (query.error) {
-    return <DashboardWidgetError error={query.error} fallbackMessage="Unable to load inventory KPIs." />;
+    return <DashboardWidgetError error={query.error} fallbackMessage={INVENTORY_KPI_ERROR_MESSAGE} />;
   }
   if (query.isPending) return <StatCardSkeleton />;
 

@@ -9,7 +9,7 @@ import type {
   RateBasis,
   StintPricing,
 } from '@pkg/schema/contracting';
-import { countPhrase } from './count-phrase.js';
+import { countPhrase } from '../formatting/count-phrase.js';
 
 export const round2 = (value: number) => Math.round(value * 100) / 100;
 

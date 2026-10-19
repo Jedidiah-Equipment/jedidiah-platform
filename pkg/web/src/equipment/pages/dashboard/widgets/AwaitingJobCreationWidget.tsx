@@ -2,12 +2,7 @@ import { formatDate } from '@pkg/domain';
 import type { QuoteSummary } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
-import {
-  DashboardList,
-  DashboardListItem,
-  DashboardListScrollArea,
-} from '@/components/common/dashboard/DashboardList.js';
-import { DashboardWidgetEmpty, DashboardWidgetError } from '@/components/common/dashboard/DashboardWidgetCard.js';
+import { DashboardListBlock, dashboardRowClassName } from '@/components/common/dashboard/DashboardListBlock.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -19,42 +14,17 @@ export const AwaitingJobCreationWidget: React.FC = () => {
   const trpc = useTRPC();
   const jobAccess = useCan('equipment_job:read');
   const awaitingQuotesQuery = useQuery(trpc.quotes.awaitingJobCreation.queryOptions());
-  const quotes = awaitingQuotesQuery.data ?? [];
-
-  if (awaitingQuotesQuery.error) {
-    return (
-      <DashboardListScrollArea>
-        <DashboardWidgetError error={awaitingQuotesQuery.error} fallbackMessage="Unable to load awaiting quotes." />
-      </DashboardListScrollArea>
-    );
-  }
-
-  if (awaitingQuotesQuery.isPending) {
-    return (
-      <DashboardListScrollArea>
-        <AwaitingJobCreationWidgetSkeleton />
-      </DashboardListScrollArea>
-    );
-  }
-
-  if (quotes.length === 0) {
-    return (
-      <DashboardListScrollArea>
-        <DashboardWidgetEmpty>No accepted quotes need follow-up.</DashboardWidgetEmpty>
-      </DashboardListScrollArea>
-    );
-  }
 
   return (
-    <DashboardListScrollArea>
-      <DashboardList className="pr-3">
-        {quotes.map((quote) => (
-          <DashboardListItem key={quote.id}>
-            <AwaitingJobCreationRow canOpenJobs={jobAccess.can} quote={quote} />
-          </DashboardListItem>
-        ))}
-      </DashboardList>
-    </DashboardListScrollArea>
+    <DashboardListBlock
+      rows={awaitingQuotesQuery.data}
+      error={awaitingQuotesQuery.error}
+      errorMessage="Unable to load awaiting quotes."
+      empty="No accepted quotes need follow-up."
+      skeleton={<AwaitingJobCreationWidgetSkeleton />}
+      rowKey={(quote) => quote.id}
+      renderRow={(quote) => <AwaitingJobCreationRow canOpenJobs={jobAccess.can} quote={quote} />}
+    />
   );
 };
 
@@ -62,7 +32,7 @@ export function AwaitingJobCreationRow({ canOpenJobs, quote }: { canOpenJobs: bo
   const earliestDeliveryDate = getEarliestDeliveryDate(quote);
 
   return (
-    <div className="grid min-w-0 grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1 text-sm">
+    <div className={dashboardRowClassName}>
       <DashboardQuoteIdentity canOpenJob={canOpenJobs} quote={quote} />
       <span className="text-right">
         {earliestDeliveryDate ? (

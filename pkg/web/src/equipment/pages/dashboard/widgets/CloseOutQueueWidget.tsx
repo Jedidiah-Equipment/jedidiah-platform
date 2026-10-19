@@ -1,30 +1,28 @@
+import { formatNumber } from '@pkg/domain';
 import { STALE_CLOSE_OUT_DAYS } from '@pkg/domain/equipment';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import type React from 'react';
-import { DashboardWidgetError } from '@/components/common/dashboard/DashboardWidgetCard.js';
-import { StatCard, StatCardSkeleton } from '@/components/common/StatCard.js';
+import { DashboardTile } from '@/components/common/dashboard/DashboardTile.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 export const CloseOutQueueWidget: React.FC = () => {
   const trpc = useTRPC();
   const queueQuery = useQuery(trpc.inventory.closeOutQueue.queryOptions());
-
-  if (queueQuery.error) {
-    return <DashboardWidgetError error={queueQuery.error} fallbackMessage="Unable to load the close-out queue." />;
-  }
-
-  if (queueQuery.isPending) {
-    return <StatCardSkeleton />;
-  }
-
-  const items = queueQuery.data.items;
-  const staleCount = items.filter((item) => item.isStale).length;
+  const items = queueQuery.data?.items;
 
   return (
-    <Link className="flex flex-1 hover:underline" to="/equipment/inventory/close-out">
-      <StatCard sublabel={describeQueue(items.length, staleCount)} value={items.length} />
-    </Link>
+    <DashboardTile
+      value={items ? formatNumber(items.length) : undefined}
+      error={queueQuery.error}
+      errorMessage="Unable to load the close-out queue."
+      sublabel={items ? describeQueue(items.length, items.filter((item) => item.isStale).length) : undefined}
+      link={(body) => (
+        <Link className="flex flex-1 hover:underline" to="/equipment/inventory/close-out">
+          {body}
+        </Link>
+      )}
+    />
   );
 };
 

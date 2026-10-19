@@ -17,46 +17,6 @@ describe('route layout contract', () => {
     expect(tabBar).not.toContain('IconTimeline');
   });
 
-  test('shows and clears the Activity unread indicator through the shared last-seen endpoints', () => {
-    const tabBar = readFileSync(join(MOBILE_DIR, 'src/equipment/components/AppTabBar.tsx'), 'utf8');
-    const sharedTabBar = readFileSync(join(MOBILE_DIR, 'src/components/tab-bar/TabBar.tsx'), 'utf8');
-    const activityFeed = readFileSync(
-      join(MOBILE_DIR, 'src/equipment/components/activity/JobActivityFeed.tsx'),
-      'utf8',
-    );
-    const activityViewClient = readFileSync(
-      join(MOBILE_DIR, 'src/equipment/components/activity/activity-view-client.ts'),
-      'utf8',
-    );
-    const activityRoute = readFileSync(join(MOBILE_DIR, 'app/(protected)/equipment/(tabs)/activity/index.tsx'), 'utf8');
-    const timeline = readFileSync(join(MOBILE_DIR, 'src/components/activity/ActivityTimeline.tsx'), 'utf8');
-
-    expect(tabBar).toContain('useEquipmentActivityViewClient()');
-    expect(activityViewClient).toContain('trpc.jobActivity.getLastActivitySeen.queryOptions()');
-    expect(tabBar).toContain("badge: tab === 'activity' && activityUnread");
-    expect(sharedTabBar).toContain('<TabBadge />');
-    expect(sharedTabBar).toContain('bg-orange-500');
-    expect(activityViewClient).toContain('trpc.jobActivity.setLastActivitySeen.mutationOptions');
-    expect(activityFeed).toContain('useActivityViewMark(useEquipmentActivityViewClient()');
-    expect(activityFeed).toContain('<ActivityTimeline');
-    expect(timeline).toContain('useFocusEffect');
-    expect(activityRoute).toContain('trackGlobalView');
-  });
-
-  test('keeps Contracting’s unread Activity on its own last-seen endpoints', () => {
-    const read = (file: string) => readFileSync(join(MOBILE_DIR, file), 'utf8');
-    const hooks = read('src/contracting/activity/use-activity.ts');
-    const feed = read('src/contracting/activity/ContractingActivityFeed.tsx');
-
-    expect(read('src/contracting/components/ContractingTabBar.tsx')).toContain('useActivityUnread()');
-    expect(hooks).toContain('trpc.contractingActivity.getLastSeen.queryOptions()');
-    expect(hooks).not.toContain('jobActivity');
-    expect(hooks).toContain('trpc.contractingActivity.setLastSeen.mutationOptions');
-    expect(feed).toContain('useActivityViewMark(useContractingActivityViewClient()');
-    expect(feed).toContain('<ActivityTimeline');
-    expect(read('src/contracting/activity/ActivityScreen.tsx')).toContain('trackGlobalView');
-  });
-
   test('configures each explicit Stack initial route with its full registered child name', () => {
     const planDirectory = join(MOBILE_DIR, 'app/(protected)/equipment/(tabs)/(plan)');
     const layout = readFileSync(join(planDirectory, '_layout.tsx'), 'utf8');

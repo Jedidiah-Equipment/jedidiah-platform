@@ -118,12 +118,6 @@ export const snapshotTableDefinitions = [
       contractingRole: null,
       quoteSalesperson: row.role === 'admin' || row.role === 'super-admin' || row.role === 'sales',
     }),
-    // Sources read before the per-business Activity View store one Equipment instant. Delete once every
-    // snapshot source has been re-read.
-    seedRowTransform: (row) =>
-      typeof row.lastActivitySeen === 'string'
-        ? { ...row, lastActivitySeen: { equipment: row.lastActivitySeen } }
-        : row,
   },
   {
     fileName: 'user_department.json',

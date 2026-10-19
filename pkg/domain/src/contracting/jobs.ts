@@ -38,6 +38,12 @@ export function fieldJobAccessMode(access: UserAccessSummary | null | undefined)
 export const fieldReaderSeesJob = (access: UserAccessSummary, job: { foremanUserId: string | null }): boolean =>
   fieldJobAccessMode(access) === 'all' || job.foremanUserId === access.userId;
 
+/** Whether this phone opens a Job: the person has the field Jobs tab at all, and this Job is one it shows them. */
+export const fieldReaderOpensJob = (
+  access: UserAccessSummary | null | undefined,
+  job: { foremanUserId: string | null },
+): boolean => access != null && fieldJobAccessMode(access) !== null && fieldReaderSeesJob(access, job);
+
 /** Every Job, a Foreman's own Jobs without money, or Invoicing's Completed-onward Jobs. */
 export type JobReadMode = 'all' | 'own' | 'priced';
 

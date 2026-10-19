@@ -55,13 +55,9 @@ export const CONTRACTING_MUTATION_EVENTS = {
     event: 'breakdown photo removed',
     properties: (variables) => pickRecordIds(variables, ['id', 'photoId']),
   },
-  'contractingBreakdowns.notes.add': {
-    event: 'breakdown note added',
-    properties: (variables) => pickRecordIds(variables, ['breakdownId']),
-  },
-  'contractingJobs.notes.add': {
-    event: 'job note added',
-    properties: (variables) => pickRecordIds(variables, ['jobId']),
+  'contractingNotes.add': {
+    event: 'note added',
+    properties: (variables) => pickRecordIds(variables, ['thread', 'id']),
   },
   'contractingActivity.setLastSeen': { event: 'activity seen', properties: () => ({}) },
   'contractingJobs.assignments.add': {

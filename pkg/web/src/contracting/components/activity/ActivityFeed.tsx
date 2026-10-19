@@ -1,5 +1,4 @@
 import { ACTIVITY_REFETCH_INTERVAL_MS } from '@pkg/domain';
-import type { UUID } from '@pkg/schema';
 import type { ActivityFilter } from '@pkg/schema/contracting';
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
@@ -9,7 +8,7 @@ import { useActivityViewMark } from '@/components/activity/use-activity-view.js'
 import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 
-import { ActivityEntry } from './ActivityEntry.js';
+import { ActivityEntry, type ActivityThreadRef } from './ActivityEntry.js';
 import { useContractingActivityViewClient } from './activity-view-client.js';
 
 const ACTIVITY_PAGE_SIZE = 20;
@@ -21,21 +20,21 @@ const ACTIVITY_PAGE_SIZE = 20;
 export function ActivityFeed({
   filter = 'all',
   search = '',
-  jobId,
-  breakdownId,
+  thread,
   trackGlobalView = false,
 }: {
   filter?: ActivityFilter;
   search?: string;
-  jobId?: UUID;
-  breakdownId?: UUID;
+  thread?: ActivityThreadRef;
   trackGlobalView?: boolean;
 }) {
   const trpc = useTRPC();
   const canOpenJob = useCan('contracting_job:read').can;
+  // The list names the thread by the record's own id field.
+  const scope = thread === undefined ? {} : thread.kind === 'job' ? { jobId: thread.id } : { breakdownId: thread.id };
   const query = useInfiniteQuery(
     trpc.contractingActivity.list.infiniteQueryOptions(
-      { filter, search: search || undefined, jobId, breakdownId, limit: ACTIVITY_PAGE_SIZE },
+      { filter, search: search || undefined, ...scope, limit: ACTIVITY_PAGE_SIZE },
       {
         getNextPageParam: (page) => page.nextCursor,
         initialCursor: null,
@@ -49,11 +48,13 @@ export function ActivityFeed({
     track: trackGlobalView,
     filter,
     search,
-    scoped: jobId !== undefined || breakdownId !== undefined,
+    scoped: thread !== undefined,
   });
   const unfiltered = filter === 'all' && !search;
 
-  const subject = breakdownId ? 'this Breakdown' : jobId ? 'this Job' : 'your Jobs and Breakdowns';
+  const subject = { breakdown: 'this Breakdown', job: 'this Job', none: 'your Jobs and Breakdowns' }[
+    thread?.kind ?? 'none'
+  ];
   return (
     <ActivityTimeline
       emptyMessage={
@@ -64,7 +65,7 @@ export function ActivityFeed({
       items={items}
       onViewedLatest={onViewedLatest}
       query={query}
-      renderItem={(item) => <ActivityEntry item={item} scope={{ jobId, breakdownId, canOpenJob }} />}
+      renderItem={(item) => <ActivityEntry item={item} scope={{ thread, canOpenJob }} />}
     />
   );
 }

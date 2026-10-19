@@ -1,9 +1,7 @@
 import {
-  type ActivityError,
   type BreakdownError,
   type DirectoryError,
   type FleetError,
-  isActivityError,
   isBreakdownError,
   isDirectoryError,
   isFleetError,
@@ -24,11 +22,6 @@ import {
 import { defineCoreErrorFamily } from '../../trpc/errors.js';
 
 /** The Contracting boundary's error families, shared by the tRPC routers and the upload routes. */
-
-export const activityErrorFamily = defineCoreErrorFamily<ActivityError>({
-  codes: { 'activity.forbidden': 'FORBIDDEN' },
-  is: isActivityError,
-});
 
 export const fleetErrorFamily = defineCoreErrorFamily<FleetError>({
   codes: {

@@ -128,5 +128,3 @@ function jobWorkTimeActivityDetail({
 
   return crew ? `${span} · ${crew}` : span;
 }
-
-export { hasUnreadActivity } from '../../activity/activity-view.js';

@@ -6,6 +6,7 @@ import {
   type BreakdownUrgency,
   breakdownStatuses,
 } from '@pkg/schema/contracting';
+import { splitGraphemes } from 'unicode-segmenter/grapheme';
 import { hasPermission } from '../auth/authorization.js';
 import { type BadgeColorClassNames, statusBadgeColorClassNames } from '../theme/status-badge.js';
 import { round1 } from './hours.js';
@@ -66,8 +67,6 @@ export function canReadBreakdown(
   return scope === 'all' || (scope === 'own' && isBreakdownMine(breakdown, access.userId));
 }
 
-const graphemes = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
-
 /** The text's first non-blank line, cut to `max` characters without splitting one, for lists and push bodies. */
 export function breakdownFirstLine(description: string, max = 120): string {
   const line =
@@ -75,7 +74,7 @@ export function breakdownFirstLine(description: string, max = 120): string {
       .split('\n')
       .map((part) => part.trim())
       .find((part) => part !== '') ?? '';
-  const characters = Array.from(graphemes.segment(line), ({ segment }) => segment);
+  const characters = Array.from(splitGraphemes(line));
   return characters.length > max
     ? `${characters
         .slice(0, max - 1)

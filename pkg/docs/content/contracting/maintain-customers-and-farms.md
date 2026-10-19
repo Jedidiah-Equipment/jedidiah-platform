@@ -8,3 +8,4 @@ Contracting keeps its own Customer directory, separate from Equipment.
 4. Under **Farms**, choose **New farm**, enter the **Farm name**, and choose **Save**. The Farm belongs to this Customer. The same name is allowed under another Customer, but cannot repeat here, ignoring letter case.
 5. Select a Farm to correct its **Farm name**. Changes save automatically.
 6. To remove an unused Farm, select it, choose **Delete farm**, and confirm. A referenced Farm cannot be deleted.
+7. Open **Jobs** to list every Job for this Customer, newest first. Filter the **Stage** column to narrow it, and open a Job from its row.

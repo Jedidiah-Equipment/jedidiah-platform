@@ -8,7 +8,7 @@ import type { DataTableColumnDef } from '@/components/data-table/features.js';
 import { useCreateEntityFlow } from '@/components/form/hooks/use-create-entity-flow.js';
 import { AutosaveStatus, CreateEntityDialog, useAutosaveForm } from '@/components/form/index.js';
 import { Button } from '@/components/ui/button.js';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useCan } from '@/hooks/use-access.js';
@@ -34,9 +34,14 @@ export function Farms({ customerId }: { customerId: string }) {
     onCreated: (farm) => setSelectedId(farm.id),
   });
   return (
-    <Card className="mt-6">
+    <Card>
       <CardHeader>
         <CardTitle>Farms</CardTitle>
+        {canEdit ? (
+          <CardAction>
+            <Button onClick={flow.open}>New farm</Button>
+          </CardAction>
+        ) : null}
       </CardHeader>
       <CardContent className="grid gap-4">
         <ErrorMessage error={query.error} fallbackMessage="Unable to load farms." />
@@ -47,7 +52,6 @@ export function Farms({ customerId }: { customerId: string }) {
           onOpen={(farm) => setSelectedId(farm.id)}
           emptyMessage="No entries found."
           searchPlaceholder="Search farms…"
-          controls={canEdit ? <Button onClick={flow.open}>New farm</Button> : undefined}
         />
         {selected ? <FarmForm key={selected.id} farm={selected} onClose={() => setSelectedId(null)} /> : null}
       </CardContent>

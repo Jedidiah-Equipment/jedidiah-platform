@@ -19,6 +19,11 @@ describe('listedStages', () => {
     expect(listedStages(stage([]))).toHaveLength(5);
   });
 
+  it('lists the given stages instead until one is picked', () => {
+    expect(listedStages([], jobQueues)).toEqual([...jobQueues]);
+    expect(listedStages(stage(['cancelled']), jobQueues)).toEqual(['cancelled']);
+  });
+
   it('lists the picked stages in queue order and ignores unknown values', () => {
     expect(listedStages(stage(['cancelled', 'bogus', 'upcoming']))).toEqual(['upcoming', 'cancelled']);
   });

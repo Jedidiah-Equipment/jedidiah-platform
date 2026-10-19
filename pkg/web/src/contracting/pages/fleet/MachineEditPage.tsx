@@ -1,3 +1,4 @@
+import { hasPermission } from '@pkg/domain';
 import type { Machine } from '@pkg/schema/contracting';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
@@ -11,7 +12,8 @@ import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
 import { CategoryLabel } from '@/contracting/components/CategoryIcon.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
-import { useCan } from '@/hooks/use-access.js';
+import { JobsTable } from '@/contracting/pages/jobs/JobsPage.js';
+import { useAccess, useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { CategoryPickerField } from './CategoryFields.js';
 import { FleetHistoryCard } from './FleetHistoryCard.js';
@@ -66,7 +68,10 @@ function MachineForm({
   const { invalidateFleet } = useQueryInvalidation();
   const canEdit = useCan('contracting_machine:update').can && !machine.retiredAt;
   const readsServices = useCan('contracting_service:read').can;
-  const activeTab = resolveMachineEditTab(tab, readsServices);
+  const access = useAccess().data;
+  const readsJobs =
+    hasPermission(access, 'contracting_job:read') || hasPermission(access, 'contracting_job:read-priced');
+  const activeTab = resolveMachineEditTab(tab, { readsServices, readsJobs });
   const categories = useQuery(trpc.contractingFleet.categories.list.queryOptions({ kind: 'machine' }));
   const options = useQuery(trpc.contractingFleet.machines.options.queryOptions());
   const patch = useMutation(trpc.contractingFleet.machines.patch.mutationOptions({ onSuccess: invalidateFleet }));
@@ -95,6 +100,7 @@ function MachineForm({
         <TabsList variant="default">
           <TabsTrigger value="details">Details</TabsTrigger>
           {readsServices ? <TabsTrigger value="service">Service</TabsTrigger> : null}
+          {readsJobs ? <TabsTrigger value="jobs">Jobs</TabsTrigger> : null}
         </TabsList>
         <TabsContent className="pt-4" value="details">
           <DetailAsideGrid>
@@ -173,6 +179,11 @@ function MachineForm({
         {readsServices ? (
           <TabsContent className="pt-4" value="service">
             <MachineServiceCard machine={machine} />
+          </TabsContent>
+        ) : null}
+        {readsJobs ? (
+          <TabsContent className="pt-4" value="jobs">
+            <JobsTable machineId={machine.id} />
           </TabsContent>
         ) : null}
       </Tabs>

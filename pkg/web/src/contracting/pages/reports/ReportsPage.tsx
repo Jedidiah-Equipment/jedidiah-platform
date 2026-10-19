@@ -25,12 +25,18 @@ export function ReportsPage({
   const window = parseReportWindowParam(search.window, today);
   const subject = parseReportSubject(search.subject);
   return (
-    <PageLayout title="Reports" description="How hard the fleet works and how fast the workshop fixes it." size="full">
-      <ReportWindowPicker
-        window={window}
-        today={today}
-        onChange={(next) => onSearchChange({ window: formatReportWindowParam(next) })}
-      />
+    <PageLayout
+      title="Reports"
+      description="How hard the fleet works and how fast the workshop fixes it."
+      size="full"
+      actions={
+        <ReportWindowPicker
+          window={window}
+          today={today}
+          onChange={(next) => onSearchChange({ window: formatReportWindowParam(next) })}
+        />
+      }
+    >
       <Tabs
         value={search.tab ?? 'utilisation'}
         onValueChange={(value) => onSearchChange({ tab: value as ReportTab })}

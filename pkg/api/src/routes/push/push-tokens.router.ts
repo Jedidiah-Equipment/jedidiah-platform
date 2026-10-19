@@ -2,7 +2,7 @@ import { registerPushToken } from '@pkg/core';
 import { PushTokenRegisterInput } from '@pkg/schema';
 import { mapCoreErrors } from '../../trpc/errors.js';
 import { protectedProcedure, router } from '../../trpc/init.js';
-import { pushErrorFamily } from './push-errors.js';
+import { pushErrorFamily } from '../shared-error-families.js';
 
 /**
  * Any signed-in person may register their install; who is pinged is each business's decision, server-side. Nothing

@@ -10,10 +10,6 @@ import {
   deleteJobBay,
   getJob,
   getJobCancellationPlan,
-  isJobCoreError,
-  isProductUnitCoreError,
-  isQuoteCoreError,
-  type JobCoreError,
   listBayOperatorAssignmentHistory,
   listBayOperators,
   listBays,
@@ -22,9 +18,7 @@ import {
   listJobCustomerOptions,
   listJobs,
   moveJobSlot,
-  type ProductUnitCoreError,
   previewBoard,
-  type QuoteCoreError,
   removeBayCalendarException,
   removeJobSlot,
   renameJobBay,
@@ -70,8 +64,9 @@ import {
 } from '@pkg/schema/equipment';
 import { z } from 'zod';
 
-import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../../trpc/errors.js';
+import { mapCoreErrors } from '../../../trpc/errors.js';
 import { authorizedProcedure, fullyAuthorizedProcedure, router } from '../../../trpc/init.js';
+import { jobErrorFamily, productUnitErrorFamily, quoteErrorFamily } from '../equipment-error-families.js';
 
 export const jobsRouter = router({
   listBays: authorizedProcedure('equipment_job:read')
@@ -80,7 +75,7 @@ export const jobsRouter = router({
 
   previewSchedule: authorizedProcedure('equipment_job:read')
     .input(BoardPreviewInput)
-    .query(({ ctx, input }) => mapJobErrors(() => previewBoard({ db: ctx.db, input }))),
+    .query(({ ctx, input }) => mapCoreErrors(() => previewBoard({ db: ctx.db, input }), jobErrorFamily)),
 
   listJobBays: authorizedProcedure(['equipment_job:read', 'equipment_job_bay:read'])
     .input(JobBayListInput)
@@ -89,25 +84,25 @@ export const jobsRouter = router({
   createBay: authorizedProcedure('equipment_job_bay:update')
     .input(JobBayCreateInput)
     .mutation(({ ctx, input }) =>
-      mapJobErrors(() => createJobBay({ db: ctx.db, actorUserId: ctx.session.user.id, input })),
+      mapCoreErrors(() => createJobBay({ db: ctx.db, actorUserId: ctx.session.user.id, input }), jobErrorFamily),
     ),
 
   renameBay: authorizedProcedure('equipment_job_bay:update')
     .input(JobBayRenameInput)
     .mutation(({ ctx, input }) =>
-      mapJobErrors(() => renameJobBay({ db: ctx.db, actorUserId: ctx.session.user.id, input })),
+      mapCoreErrors(() => renameJobBay({ db: ctx.db, actorUserId: ctx.session.user.id, input }), jobErrorFamily),
     ),
 
   deleteBay: authorizedProcedure('equipment_job_bay:update')
     .input(JobBayDeleteInput)
     .mutation(({ ctx, input }) =>
-      mapJobErrors(() => deleteJobBay({ db: ctx.db, actorUserId: ctx.session.user.id, input })),
+      mapCoreErrors(() => deleteJobBay({ db: ctx.db, actorUserId: ctx.session.user.id, input }), jobErrorFamily),
     ),
 
   setBayDisabled: authorizedProcedure('equipment_job_bay:update')
     .input(JobBaySetDisabledInput)
     .mutation(({ ctx, input }) =>
-      mapJobErrors(() => setJobBayDisabled({ db: ctx.db, actorUserId: ctx.session.user.id, input })),
+      mapCoreErrors(() => setJobBayDisabled({ db: ctx.db, actorUserId: ctx.session.user.id, input }), jobErrorFamily),
     ),
 
   /**
@@ -122,23 +117,31 @@ export const jobsRouter = router({
 
   listBayOperatorAssignmentHistory: authorizedProcedure('equipment_job_bay:read')
     .input(JobBayOperatorAssignmentHistoryInput)
-    .query(({ ctx, input }) => mapJobErrors(() => listBayOperatorAssignmentHistory({ db: ctx.db, input }))),
+    .query(({ ctx, input }) =>
+      mapCoreErrors(() => listBayOperatorAssignmentHistory({ db: ctx.db, input }), jobErrorFamily),
+    ),
 
   assignBayOperator: authorizedProcedure('equipment_job_bay:update')
     .input(JobBayAssignOperatorInput)
     .mutation(({ ctx, input }) =>
-      mapJobErrors(() => assignJobBayOperator({ db: ctx.db, actorUserId: ctx.session.user.id, input })),
+      mapCoreErrors(
+        () => assignJobBayOperator({ db: ctx.db, actorUserId: ctx.session.user.id, input }),
+        jobErrorFamily,
+      ),
     ),
 
   unassignBayOperator: authorizedProcedure('equipment_job_bay:update')
     .input(JobBayUnassignOperatorInput)
     .mutation(({ ctx, input }) =>
-      mapJobErrors(() => unassignJobBayOperator({ db: ctx.db, actorUserId: ctx.session.user.id, input })),
+      mapCoreErrors(
+        () => unassignJobBayOperator({ db: ctx.db, actorUserId: ctx.session.user.id, input }),
+        jobErrorFamily,
+      ),
     ),
 
   toggleOffDay: authorizedProcedure('equipment_job:update-calendar')
     .input(ToggleOffDayInput)
-    .mutation(({ ctx, input }) => mapJobErrors(() => toggleOffDay({ db: ctx.db, input }))),
+    .mutation(({ ctx, input }) => mapCoreErrors(() => toggleOffDay({ db: ctx.db, input }), jobErrorFamily)),
 
   list: authorizedProcedure('equipment_job:read')
     .input(JobListInput)
@@ -162,7 +165,7 @@ export const jobsRouter = router({
   get: authorizedProcedure('equipment_job:read')
     .input(z.object({ id: UUID }))
     .query(({ ctx, input }) =>
-      mapJobErrors(() => getJob({ db: ctx.db, id: input.id })).then((job) => ({
+      mapCoreErrors(() => getJob({ db: ctx.db, id: input.id }), jobErrorFamily).then((job) => ({
         ...job,
         documents: hasPermission(ctx.access, 'equipment_inventory_cost:read')
           ? job.documents
@@ -173,21 +176,25 @@ export const jobsRouter = router({
   create: authorizedProcedure('equipment_job:create')
     .input(JobCreateInput)
     .mutation(({ ctx, input }) =>
-      mapCreateJobErrors(() =>
-        createJob({
-          actorUserId: ctx.session.user.id,
-          brochureRenderer: renderBrochurePdf,
-          db: ctx.db,
-          input,
-          storage: ctx.storage,
-        }),
+      mapCoreErrors(
+        () =>
+          createJob({
+            actorUserId: ctx.session.user.id,
+            brochureRenderer: renderBrochurePdf,
+            db: ctx.db,
+            input,
+            storage: ctx.storage,
+          }),
+        jobErrorFamily,
+        quoteErrorFamily,
+        productUnitErrorFamily,
       ),
     ),
 
   update: authorizedProcedure('equipment_job:update')
     .input(JobUpdateInput)
     .mutation(({ ctx, input }) =>
-      mapJobErrors(() => updateJob({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
+      mapCoreErrors(() => updateJob({ actorUserId: ctx.session.user.id, db: ctx.db, input }), jobErrorFamily),
     ),
 
   /**
@@ -197,25 +204,36 @@ export const jobsRouter = router({
   startDepartmentTiming: authorizedProcedure('equipment_job:update')
     .input(JobDepartmentTimingStartInput)
     .mutation(({ ctx, input }) =>
-      mapJobErrors(() => startDepartmentTiming({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
+      mapCoreErrors(
+        () => startDepartmentTiming({ actorUserId: ctx.session.user.id, db: ctx.db, input }),
+        jobErrorFamily,
+      ),
     ),
 
   completeDepartmentTiming: authorizedProcedure('equipment_job:update')
     .input(JobDepartmentTimingCompleteInput)
     .mutation(({ ctx, input }) =>
-      mapJobErrors(() => completeDepartmentTiming({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
+      mapCoreErrors(
+        () => completeDepartmentTiming({ actorUserId: ctx.session.user.id, db: ctx.db, input }),
+        jobErrorFamily,
+      ),
     ),
 
   updateDepartmentTiming: authorizedProcedure('equipment_job:update')
     .input(JobDepartmentTimingUpdateInput)
     .mutation(({ ctx, input }) =>
-      mapJobErrors(() => updateDepartmentTiming({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
+      mapCoreErrors(
+        () => updateDepartmentTiming({ actorUserId: ctx.session.user.id, db: ctx.db, input }),
+        jobErrorFamily,
+      ),
     ),
 
   /** What the cancel dialog is about to touch. A Job with a Quote is never offered its machine. */
   cancellationPlan: authorizedProcedure('equipment_job:read')
     .input(z.object({ id: UUID }))
-    .query(({ ctx, input }) => mapJobErrors(() => getJobCancellationPlan({ db: ctx.db, id: input.id }))),
+    .query(({ ctx, input }) =>
+      mapCoreErrors(() => getJobCancellationPlan({ db: ctx.db, id: input.id }), jobErrorFamily),
+    ),
 
   /**
    * Its own gate rather than `equipment_job:update`: this is terminal and irreversible, so it sits with
@@ -224,189 +242,38 @@ export const jobsRouter = router({
   cancel: authorizedProcedure('equipment_job:cancel')
     .input(JobCancelInput)
     .mutation(({ ctx, input }) =>
-      mapJobErrors(() => cancelJob({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
+      mapCoreErrors(() => cancelJob({ actorUserId: ctx.session.user.id, db: ctx.db, input }), jobErrorFamily),
     ),
 
   bookSlot: authorizedProcedure('equipment_job:schedule')
     .input(BookJobSlotInput)
-    .mutation(({ ctx, input }) => mapJobErrors(() => bookJobSlot({ db: ctx.db, input }))),
+    .mutation(({ ctx, input }) => mapCoreErrors(() => bookJobSlot({ db: ctx.db, input }), jobErrorFamily)),
 
   addIdleSlot: authorizedProcedure('equipment_job:schedule')
     .input(AddIdleJobSlotInput)
-    .mutation(({ ctx, input }) => mapJobErrors(() => addIdleJobSlot({ db: ctx.db, input }))),
+    .mutation(({ ctx, input }) => mapCoreErrors(() => addIdleJobSlot({ db: ctx.db, input }), jobErrorFamily)),
 
   addBayException: authorizedProcedure('equipment_job:schedule')
     .input(AddBayCalendarExceptionInput)
-    .mutation(({ ctx, input }) => mapJobErrors(() => addBayCalendarException({ db: ctx.db, input }))),
+    .mutation(({ ctx, input }) => mapCoreErrors(() => addBayCalendarException({ db: ctx.db, input }), jobErrorFamily)),
 
   removeBayException: authorizedProcedure('equipment_job:schedule')
     .input(RemoveBayCalendarExceptionInput)
-    .mutation(({ ctx, input }) => mapJobErrors(() => removeBayCalendarException({ db: ctx.db, input }))),
+    .mutation(({ ctx, input }) =>
+      mapCoreErrors(() => removeBayCalendarException({ db: ctx.db, input }), jobErrorFamily),
+    ),
 
   resizeSlot: authorizedProcedure('equipment_job:schedule')
     .input(ResizeJobSlotInput)
-    .mutation(({ ctx, input }) => mapJobErrors(() => resizeJobSlot({ db: ctx.db, input }))),
+    .mutation(({ ctx, input }) => mapCoreErrors(() => resizeJobSlot({ db: ctx.db, input }), jobErrorFamily)),
 
   moveSlot: authorizedProcedure('equipment_job:schedule')
     .input(MoveJobSlotInput)
     .mutation(({ ctx, input }) =>
-      mapJobErrors(() => moveJobSlot({ db: ctx.db, actorUserId: ctx.session.user.id, input })),
+      mapCoreErrors(() => moveJobSlot({ db: ctx.db, actorUserId: ctx.session.user.id, input }), jobErrorFamily),
     ),
 
   removeSlot: authorizedProcedure('equipment_job:schedule')
     .input(RemoveJobSlotInput)
-    .mutation(({ ctx, input }) => mapJobErrors(() => removeJobSlot({ db: ctx.db, input }))),
+    .mutation(({ ctx, input }) => mapCoreErrors(() => removeJobSlot({ db: ctx.db, input }), jobErrorFamily)),
 });
-
-async function mapJobErrors<T>(action: () => Promise<T>): Promise<T> {
-  return mapKnownCoreError(action, isJobCoreError, mapJobCoreError);
-}
-
-// Job creation crosses Quote and Product Unit boundaries, so map both feature errors alongside Job errors.
-async function mapCreateJobErrors<T>(action: () => Promise<T>): Promise<T> {
-  return mapJobErrors(() =>
-    mapKnownCoreError(
-      () => mapKnownCoreError(action, isProductUnitCoreError, mapProductUnitCoreError),
-      isQuoteCoreError,
-      mapJobQuoteCoreError,
-    ),
-  );
-}
-
-function mapProductUnitCoreError(error: ProductUnitCoreError): CoreErrorMapping<ProductUnitCoreError['code']> {
-  if (error.code === 'product_unit.not_found') {
-    return { appCode: error.code, code: 'NOT_FOUND', message: 'Product unit not found.' };
-  }
-
-  return { appCode: error.code, code: 'BAD_REQUEST', message: error.message };
-}
-
-function mapJobQuoteCoreError(error: QuoteCoreError): CoreErrorMapping<QuoteCoreError['code']> {
-  if (error.code === 'quote.not_found') {
-    return {
-      appCode: error.code,
-      code: 'NOT_FOUND',
-      message: 'Quote not found.',
-    };
-  }
-
-  return {
-    appCode: error.code,
-    code: 'BAD_REQUEST',
-    message: error.message,
-  };
-}
-
-function mapJobCoreError(error: JobCoreError): CoreErrorMapping<JobCoreError['code']> {
-  switch (error.code) {
-    case 'job.not_found':
-      return {
-        appCode: error.code,
-        code: 'NOT_FOUND',
-        message: 'Job not found.',
-      };
-    case 'job.create_from_quote_denied':
-      return {
-        appCode: error.code,
-        code: 'FORBIDDEN',
-        message: error.message,
-      };
-    case 'job.stock_build_denied':
-      return {
-        appCode: error.code,
-        code: 'BAD_REQUEST',
-        message: error.message,
-      };
-    case 'job.cancelled':
-      return {
-        appCode: error.code,
-        code: 'BAD_REQUEST',
-        message: error.message,
-      };
-    case 'job.already_completed':
-      return {
-        appCode: error.code,
-        code: 'BAD_REQUEST',
-        message: error.message,
-      };
-    case 'job.completed_on_in_future':
-      return {
-        appCode: error.code,
-        code: 'BAD_REQUEST',
-        message: error.message,
-      };
-    case 'job.department_timing_locked':
-    case 'job.department_timing_already_completed':
-    case 'job.department_timing_already_started':
-    case 'job.department_timing_not_started':
-    case 'job.department_timing_invalid':
-      return {
-        appCode: error.code,
-        code: 'BAD_REQUEST',
-        message: error.message,
-      };
-    case 'job.bay_not_found':
-      return {
-        appCode: error.code,
-        code: 'NOT_FOUND',
-        message: 'Job bay not found.',
-      };
-    case 'job.bay_in_use':
-      return {
-        appCode: error.code,
-        code: 'CONFLICT',
-        message: error.message,
-      };
-    case 'job.bay_operator_not_found':
-      return {
-        appCode: error.code,
-        code: 'NOT_FOUND',
-        message: 'Bay operator not found.',
-      };
-    case 'job.bay_operator_role_denied':
-      return {
-        appCode: error.code,
-        code: 'BAD_REQUEST',
-        message: error.message,
-      };
-    case 'job.bay_operator_assignment_denied':
-      return {
-        appCode: error.code,
-        code: 'FORBIDDEN',
-        message: error.message,
-      };
-    case 'job.bay_already_assigned':
-      return {
-        appCode: error.code,
-        code: 'CONFLICT',
-        message: error.message,
-      };
-    case 'job.bay_operator_assignment_not_found':
-      return {
-        appCode: error.code,
-        code: 'NOT_FOUND',
-        message: 'Bay has no current operator assignment.',
-      };
-    case 'job.slot_booking_denied':
-      return {
-        appCode: error.code,
-        code: 'FORBIDDEN',
-        message: error.message,
-      };
-    case 'job.slot_not_found':
-      return {
-        appCode: error.code,
-        code: 'NOT_FOUND',
-        message: 'Job slot not found.',
-      };
-    // A request the product never offers: only a Stock Build shows the remove-the-unit option.
-    case 'job.unit_removal_denied':
-      return {
-        appCode: error.code,
-        code: 'BAD_REQUEST',
-        message: error.message,
-      };
-    default:
-      return assertNever(error);
-  }
-}

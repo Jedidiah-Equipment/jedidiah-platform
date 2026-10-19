@@ -78,17 +78,18 @@ import {
 } from '../../../equipment/trpc/inventory-cost-projection.js';
 import { mapCoreErrors } from '../../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../../trpc/init.js';
-import { assertedActorErrorFamily, stockMovementErrorFamily } from '../inventory/inventory-error-families.js';
+import {
+  assertedActorErrorFamily,
+  jobErrorFamily,
+  purchaseOrderErrorFamily,
+  stockMovementErrorFamily,
+  supplierInvoiceErrorFamily,
+} from '../equipment-error-families.js';
 import {
   assertCanReadInventoryCost,
   assertCanWriteInventoryCost,
   projectMovement,
 } from '../inventory/stock-movement-transport.js';
-import {
-  purchaseOrderErrorFamily,
-  purchaseOrderJobErrorFamily,
-  supplierInvoiceErrorFamily,
-} from './purchase-order-error-families.js';
 
 export const purchaseOrdersRouter = router({
   arrivals: authorizedProcedure('equipment_purchase_order:read')
@@ -500,7 +501,7 @@ async function mapSupplierInvoiceErrors<T>(action: () => Promise<T>): Promise<T>
 
 /** Editing an order reaches Jobs, since a draft carries Job links. */
 async function mapPurchaseOrderErrors<T>(action: () => Promise<T>): Promise<T> {
-  return mapCoreErrors(action, purchaseOrderErrorFamily, purchaseOrderJobErrorFamily);
+  return mapCoreErrors(action, purchaseOrderErrorFamily, jobErrorFamily);
 }
 
 /**

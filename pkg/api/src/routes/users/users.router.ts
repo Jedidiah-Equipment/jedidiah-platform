@@ -3,8 +3,9 @@ import { AuthId, NullableThumbnailDataUrl, UserListInput } from '@pkg/schema';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { getApiConfig } from '@/env.js';
+import { mapCoreErrors } from '@/trpc/errors.js';
 import { authorizedProcedure, router } from '@/trpc/init.js';
-import { mapUserErrors } from './user-error-mapping.js';
+import { userErrorFamily } from '../shared-error-families.js';
 
 const config = getApiConfig();
 
@@ -34,31 +35,35 @@ export const usersRouter = router({
   setDevice: authorizedProcedure('user:set-role')
     .input(UserDeviceInput)
     .mutation(({ ctx, input }) =>
-      mapUserErrors(() =>
-        setUserIsDevice({
-          actorUserId: ctx.session.user.id,
-          db: ctx.db,
-          isDevice: input.isDevice,
-          userId: input.userId,
-        }),
+      mapCoreErrors(
+        () =>
+          setUserIsDevice({
+            actorUserId: ctx.session.user.id,
+            db: ctx.db,
+            isDevice: input.isDevice,
+            userId: input.userId,
+          }),
+        userErrorFamily,
       ),
     ),
   updateThumbnail: authorizedProcedure('user:update')
     .input(UserThumbnailInput)
     .mutation(({ ctx, input }) =>
-      mapUserErrors(() =>
-        updateUserThumbnail({
-          actorUserId: ctx.session.user.id,
-          db: ctx.db,
-          thumbnailDataUrl: input.thumbnailDataUrl,
-          userId: input.userId,
-        }),
+      mapCoreErrors(
+        () =>
+          updateUserThumbnail({
+            actorUserId: ctx.session.user.id,
+            db: ctx.db,
+            thumbnailDataUrl: input.thumbnailDataUrl,
+            userId: input.userId,
+          }),
+        userErrorFamily,
       ),
     ),
   sendVerificationEmail: authorizedProcedure('user:update')
     .input(z.object({ userId: AuthId }))
     .mutation(async ({ ctx, input }) => {
-      const targetUser = await mapUserErrors(() => getUserById({ db: ctx.db, userId: input.userId }));
+      const targetUser = await mapCoreErrors(() => getUserById({ db: ctx.db, userId: input.userId }), userErrorFamily);
 
       if (targetUser.emailVerified) {
         throw new TRPCError({ code: 'BAD_REQUEST', message: 'Email is already verified.' });

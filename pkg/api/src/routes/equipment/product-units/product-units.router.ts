@@ -1,18 +1,10 @@
 import {
-  type CustomerCoreError,
   getProductUnit,
-  isCustomerCoreError,
-  isProductUnitCoreError,
-  isProductUnitReassignError,
-  isQuoteCoreError,
   listOnHandProductUnitStock,
   listProductUnitFilterOptions,
   listProductUnits,
   listReassignCandidates,
-  type ProductUnitCoreError,
-  type ProductUnitReassignError,
   previewReassignment,
-  type QuoteCoreError,
   reassignProductUnitToQuote,
   removeProductUnit,
   transferProductUnitOwnership,
@@ -28,8 +20,14 @@ import {
 } from '@pkg/schema/equipment';
 import { z } from 'zod';
 
-import { type CoreErrorMapping, mapKnownCoreError } from '../../../trpc/errors.js';
+import { mapCoreErrors } from '../../../trpc/errors.js';
 import { authorizedProcedure, fullyAuthorizedProcedure, router } from '../../../trpc/init.js';
+import {
+  customerErrorFamily,
+  productUnitErrorFamily,
+  productUnitReassignErrorFamily,
+  quoteErrorFamily,
+} from '../equipment-error-families.js';
 
 export const productUnitsRouter = router({
   list: authorizedProcedure('equipment_product_unit:read')
@@ -59,18 +57,27 @@ export const productUnitsRouter = router({
 
   get: authorizedProcedure('equipment_product_unit:read')
     .input(z.object({ id: UUID }))
-    .query(({ ctx, input }) => mapProductUnitErrors(() => getProductUnit({ db: ctx.db, id: input.id }))),
+    .query(({ ctx, input }) =>
+      mapCoreErrors(() => getProductUnit({ db: ctx.db, id: input.id }), productUnitErrorFamily),
+    ),
 
   update: authorizedProcedure('equipment_product_unit:update')
     .input(ProductUnitUpdateInput)
     .mutation(({ ctx, input }) =>
-      mapProductUnitErrors(() => updateProductUnit({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
+      mapCoreErrors(
+        () => updateProductUnit({ actorUserId: ctx.session.user.id, db: ctx.db, input }),
+        productUnitErrorFamily,
+      ),
     ),
 
   transfer: authorizedProcedure('equipment_product_unit:transfer')
     .input(ProductUnitTransferInput)
     .mutation(({ ctx, input }) =>
-      mapTransferErrors(() => transferProductUnitOwnership({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
+      mapCoreErrors(
+        () => transferProductUnitOwnership({ actorUserId: ctx.session.user.id, db: ctx.db, input }),
+        productUnitErrorFamily,
+        customerErrorFamily,
+      ),
     ),
 
   /**
@@ -79,99 +86,43 @@ export const productUnitsRouter = router({
    */
   reassignCandidates: authorizedProcedure('equipment_product_unit:reassign')
     .input(z.object({ quoteId: UUID }))
-    .query(({ ctx, input }) => mapReassignErrors(() => listReassignCandidates({ db: ctx.db, quoteId: input.quoteId }))),
+    .query(({ ctx, input }) =>
+      mapCoreErrors(
+        () => listReassignCandidates({ db: ctx.db, quoteId: input.quoteId }),
+        productUnitErrorFamily,
+        productUnitReassignErrorFamily,
+        quoteErrorFamily,
+      ),
+    ),
 
   reassignPreview: authorizedProcedure('equipment_product_unit:reassign')
     .input(z.object({ productUnitId: UUID, quoteId: UUID }))
     .query(({ ctx, input }) =>
-      mapReassignErrors(() =>
-        previewReassignment({ db: ctx.db, productUnitId: input.productUnitId, quoteId: input.quoteId }),
+      mapCoreErrors(
+        () => previewReassignment({ db: ctx.db, productUnitId: input.productUnitId, quoteId: input.quoteId }),
+        productUnitErrorFamily,
+        productUnitReassignErrorFamily,
+        quoteErrorFamily,
       ),
     ),
 
   reassign: authorizedProcedure('equipment_product_unit:reassign')
     .input(ProductUnitReassignInput)
     .mutation(({ ctx, input }) =>
-      mapReassignErrors(() => reassignProductUnitToQuote({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
+      mapCoreErrors(
+        () => reassignProductUnitToQuote({ actorUserId: ctx.session.user.id, db: ctx.db, input }),
+        productUnitErrorFamily,
+        productUnitReassignErrorFamily,
+        quoteErrorFamily,
+      ),
     ),
 
   remove: authorizedProcedure('equipment_product_unit:remove')
     .input(z.object({ id: UUID }))
     .mutation(({ ctx, input }) =>
-      mapProductUnitErrors(() => removeProductUnit({ actorUserId: ctx.session.user.id, db: ctx.db, id: input.id })),
+      mapCoreErrors(
+        () => removeProductUnit({ actorUserId: ctx.session.user.id, db: ctx.db, id: input.id }),
+        productUnitErrorFamily,
+      ),
     ),
 });
-
-async function mapProductUnitErrors<T>(action: () => Promise<T>): Promise<T> {
-  return mapKnownCoreError(action, isProductUnitCoreError, mapProductUnitCoreError);
-}
-
-/**
- * Reassignment crosses three records, so all three families can refuse it: the Unit, the Quote it is
- * moving to, and the reassignment rules that only exist between them.
- */
-async function mapReassignErrors<T>(action: () => Promise<T>): Promise<T> {
-  return mapProductUnitErrors(() =>
-    mapKnownCoreError(
-      () => mapKnownCoreError(action, isProductUnitReassignError, mapProductUnitReassignError),
-      isQuoteCoreError,
-      mapReassignQuoteCoreError,
-    ),
-  );
-}
-
-function mapProductUnitReassignError(
-  error: ProductUnitReassignError,
-): CoreErrorMapping<ProductUnitReassignError['code']> {
-  return {
-    appCode: error.code,
-    code: 'CONFLICT',
-    message: error.message,
-  };
-}
-
-function mapReassignQuoteCoreError(error: QuoteCoreError): CoreErrorMapping<QuoteCoreError['code']> {
-  return {
-    appCode: error.code,
-    code: error.code === 'quote.not_found' ? 'NOT_FOUND' : 'BAD_REQUEST',
-    message: error.message,
-  };
-}
-
-// A transfer names its destination Customer, so a Customer invariant can surface here too.
-async function mapTransferErrors<T>(action: () => Promise<T>): Promise<T> {
-  return mapProductUnitErrors(() => mapKnownCoreError(action, isCustomerCoreError, mapTransferCustomerCoreError));
-}
-
-function mapTransferCustomerCoreError(error: CustomerCoreError): CoreErrorMapping<CustomerCoreError['code']> {
-  return {
-    appCode: error.code,
-    code: 'NOT_FOUND',
-    message: 'Customer not found.',
-  };
-}
-
-function mapProductUnitCoreError(error: ProductUnitCoreError): CoreErrorMapping<ProductUnitCoreError['code']> {
-  if (error.code === 'product_unit.not_found') {
-    return {
-      appCode: error.code,
-      code: 'NOT_FOUND',
-      message: 'Product unit not found.',
-    };
-  }
-
-  // Removal refused because the machine is still real: the message names which claim holds it.
-  if (error.code === 'product_unit.in_use') {
-    return {
-      appCode: error.code,
-      code: 'CONFLICT',
-      message: error.message,
-    };
-  }
-
-  return {
-    appCode: error.code,
-    code: 'BAD_REQUEST',
-    message: error.message,
-  };
-}

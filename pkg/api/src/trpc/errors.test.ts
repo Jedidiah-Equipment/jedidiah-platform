@@ -1,5 +1,5 @@
 import { TRPCError } from '@trpc/server';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import {
   createAuthTRPCError,
@@ -7,7 +7,7 @@ import {
   getTRPCAppCode,
   getTRPCPublicMessage,
   getTRPCPublicMetadata,
-  mapKnownCoreError,
+  mapCoreErrors,
   serializeError,
   shouldLogTRPCError,
   UNEXPECTED_ERROR_MESSAGE,
@@ -21,22 +21,20 @@ class ProductNotFoundError extends Error {
   }
 }
 
+const productNotFoundFamily = defineCoreErrorFamily<ProductNotFoundError>({
+  codes: { 'product.not_found': 'NOT_FOUND' },
+  is: (error): error is ProductNotFoundError => error instanceof ProductNotFoundError,
+  messages: { 'product.not_found': 'Product not found.' },
+});
+
 describe('tRPC error helpers', () => {
   it('maps expected core errors with public app codes and preserves cause', async () => {
     const cause = new ProductNotFoundError('product-id');
 
     await expect(
-      mapKnownCoreError(
-        async () => {
-          throw cause;
-        },
-        (error): error is ProductNotFoundError => error instanceof ProductNotFoundError,
-        (error) => ({
-          appCode: error.code,
-          code: 'NOT_FOUND',
-          message: 'Product not found.',
-        }),
-      ),
+      mapCoreErrors(async () => {
+        throw cause;
+      }, productNotFoundFamily),
     ).rejects.toMatchObject({
       appCode: 'product.not_found',
       cause,
@@ -62,13 +60,9 @@ describe('tRPC error helpers', () => {
     const error = new Error('broken');
 
     await expect(
-      mapKnownCoreError(
-        async () => {
-          throw error;
-        },
-        (unknownError): unknownError is ProductNotFoundError => false,
-        vi.fn(),
-      ),
+      mapCoreErrors(async () => {
+        throw error;
+      }, productNotFoundFamily),
     ).rejects.toBe(error);
   });
 

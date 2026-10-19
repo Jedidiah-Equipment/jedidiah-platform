@@ -1,7 +1,9 @@
 import {
+  type ActivityError,
   type BreakdownError,
   type DirectoryError,
   type FleetError,
+  isActivityError,
   isBreakdownError,
   isDirectoryError,
   isFleetError,
@@ -148,4 +150,9 @@ export const serviceErrorFamily = defineCoreErrorFamily<ServiceError>({
 export const reportErrorFamily = defineCoreErrorFamily<ReportError>({
   codes: { 'report.not_found': 'NOT_FOUND' },
   is: isReportError,
+});
+
+export const activityErrorFamily = defineCoreErrorFamily<ActivityError>({
+  codes: { 'activity.forbidden': 'FORBIDDEN' },
+  is: isActivityError,
 });

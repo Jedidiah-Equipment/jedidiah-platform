@@ -2,7 +2,8 @@ import { listEquipmentUsers, listUserDepartmentMemberships, setUserDepartments }
 import { AuthId } from '@pkg/schema';
 import { Department, EquipmentUserListInput } from '@pkg/schema/equipment';
 import { z } from 'zod';
-import { mapUserErrors } from '@/routes/users/user-error-mapping.js';
+import { userErrorFamily } from '@/routes/shared-error-families.js';
+import { mapCoreErrors } from '@/trpc/errors.js';
 import { authorizedProcedure, router } from '@/trpc/init.js';
 
 const UserDepartmentInput = z.object({
@@ -19,13 +20,15 @@ export const userDepartmentsRouter = router({
   set: authorizedProcedure('user:update')
     .input(UserDepartmentInput)
     .mutation(async ({ ctx, input }) => {
-      await mapUserErrors(() =>
-        setUserDepartments({
-          actorUserId: ctx.session.user.id,
-          db: ctx.db,
-          departments: input.departments,
-          userId: input.userId,
-        }),
+      await mapCoreErrors(
+        () =>
+          setUserDepartments({
+            actorUserId: ctx.session.user.id,
+            db: ctx.db,
+            departments: input.departments,
+            userId: input.userId,
+          }),
+        userErrorFamily,
       );
     }),
 });

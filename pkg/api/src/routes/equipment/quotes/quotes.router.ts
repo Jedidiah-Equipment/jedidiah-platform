@@ -6,8 +6,6 @@ import {
   getQuoteCancellationPlan,
   getQuoteProductBayAvailability,
   getQuoteProductOption,
-  isProductUnitCoreError,
-  isQuoteCoreError,
   listAwaitingJobCreationQuotes,
   listCustomers,
   listPriorityQuotes,
@@ -19,8 +17,6 @@ import {
   listStaleSentQuotes,
   listUpcomingDeliveryQuotes,
   ProductNotFoundError,
-  type ProductUnitCoreError,
-  type QuoteCoreError,
   summarizeQuotePipeline,
   summarizeQuotesByStatus,
   summarizeQuoteWeeklyFlow,
@@ -44,9 +40,9 @@ import {
 } from '@pkg/schema/equipment';
 import { z } from 'zod';
 import { log } from '@/logger.js';
-import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../../trpc/errors.js';
+import { mapCoreErrors } from '../../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../../trpc/init.js';
-import { mapCustomerErrors } from '../customers/customer-error-mapping.js';
+import { customerErrorFamily, productUnitErrorFamily, quoteErrorFamily } from '../equipment-error-families.js';
 
 export const quotesRouter = router({
   list: authorizedProcedure('equipment_quote:read')
@@ -69,12 +65,14 @@ export const quotesRouter = router({
 
   get: authorizedProcedure('equipment_quote:read')
     .input(z.object({ id: UUID }))
-    .query(({ ctx, input }) => mapQuoteErrors(() => getQuote({ db: ctx.db, id: input.id }))),
+    .query(({ ctx, input }) => mapCoreErrors(() => getQuote({ db: ctx.db, id: input.id }), quoteErrorFamily)),
 
   /** What the cancel dialog is about to touch: the live Job, and the machine that Job is building. */
   cancellationPlan: authorizedProcedure('equipment_quote:read')
     .input(z.object({ id: UUID }))
-    .query(({ ctx, input }) => mapQuoteErrors(() => getQuoteCancellationPlan({ db: ctx.db, id: input.id }))),
+    .query(({ ctx, input }) =>
+      mapCoreErrors(() => getQuoteCancellationPlan({ db: ctx.db, id: input.id }), quoteErrorFamily),
+    ),
 
   /**
    * Catalog Parts for a Work Item's "Add inventory part" dialog. Gated on quote editing because
@@ -125,12 +123,19 @@ export const quotesRouter = router({
 
   productBayAvailability: authorizedProcedure('equipment_quote:read')
     .input(QuoteProductBayAvailabilityInput)
-    .query(({ ctx, input }) => mapQuoteErrors(() => getQuoteProductBayAvailability({ db: ctx.db, input }))),
+    .query(({ ctx, input }) =>
+      mapCoreErrors(() => getQuoteProductBayAvailability({ db: ctx.db, input }), quoteErrorFamily),
+    ),
 
   create: authorizedProcedure('equipment_quote:create')
     .input(QuoteCreateInput)
     .mutation(({ ctx, input }) =>
-      mapQuoteMutationErrors(() => createQuote({ actorUserId: ctx.session.user.id, db: ctx.db, input })),
+      mapCoreErrors(
+        () => createQuote({ actorUserId: ctx.session.user.id, db: ctx.db, input }),
+        quoteErrorFamily,
+        productUnitErrorFamily,
+        customerErrorFamily,
+      ),
     ),
 
   /**
@@ -141,108 +146,50 @@ export const quotesRouter = router({
   cancel: authorizedProcedure(['equipment_quote:update', 'equipment_quote:cancel'])
     .input(QuoteCancelInput)
     .mutation(({ ctx, input }) =>
-      mapQuoteMutationErrors(() =>
-        cancelQuote({
-          actorUserId: ctx.session.user.id,
-          db: ctx.db,
-          mayCancelLockedQuote: hasPermission(ctx.access, 'equipment_quote:cancel'),
-          ...input,
-        }),
+      mapCoreErrors(
+        () =>
+          cancelQuote({
+            actorUserId: ctx.session.user.id,
+            db: ctx.db,
+            mayCancelLockedQuote: hasPermission(ctx.access, 'equipment_quote:cancel'),
+            ...input,
+          }),
+        quoteErrorFamily,
+        productUnitErrorFamily,
+        customerErrorFamily,
       ),
     ),
 
   update: authorizedProcedure('equipment_quote:update')
     .input(QuoteUpdateInput)
     .mutation(({ ctx, input }) =>
-      mapQuoteMutationErrors(() =>
-        updateQuote({
-          actorUserId: ctx.session.user.id,
-          db: ctx.db,
-          input,
-        }),
+      mapCoreErrors(
+        () =>
+          updateQuote({
+            actorUserId: ctx.session.user.id,
+            db: ctx.db,
+            input,
+          }),
+        quoteErrorFamily,
+        productUnitErrorFamily,
+        customerErrorFamily,
       ),
     ),
 
   generateDocument: authorizedProcedure('equipment_quote:update')
     .input(QuoteDocumentGenerationInput)
     .mutation(({ ctx, input }) =>
-      mapQuoteErrors(() =>
-        generateQuoteDocument({
-          actorUserId: ctx.session.user.id,
-          brochureRenderer: renderBrochurePdf,
-          db: ctx.db,
-          input,
-          pdfRenderer: renderQuoteDocumentPdf,
-          storage: ctx.storage,
-        }),
+      mapCoreErrors(
+        () =>
+          generateQuoteDocument({
+            actorUserId: ctx.session.user.id,
+            brochureRenderer: renderBrochurePdf,
+            db: ctx.db,
+            input,
+            pdfRenderer: renderQuoteDocumentPdf,
+            storage: ctx.storage,
+          }),
+        quoteErrorFamily,
       ),
     ),
 });
-
-async function mapQuoteErrors<T>(action: () => Promise<T>): Promise<T> {
-  return mapKnownCoreError(action, isQuoteCoreError, mapQuoteCoreError);
-}
-
-async function mapQuoteMutationErrors<T>(action: () => Promise<T>): Promise<T> {
-  return mapCustomerErrors(() =>
-    mapQuoteErrors(() => mapKnownCoreError(action, isProductUnitCoreError, mapProductUnitCoreError)),
-  );
-}
-
-function mapProductUnitCoreError(error: ProductUnitCoreError): CoreErrorMapping<ProductUnitCoreError['code']> {
-  if (error.code === 'product_unit.not_found') {
-    return { appCode: error.code, code: 'NOT_FOUND', message: 'Product unit not found.' };
-  }
-
-  return { appCode: error.code, code: 'BAD_REQUEST', message: error.message };
-}
-
-function mapQuoteCoreError(error: QuoteCoreError): CoreErrorMapping<QuoteCoreError['code']> {
-  switch (error.code) {
-    case 'quote.not_found':
-      return {
-        appCode: error.code,
-        code: 'NOT_FOUND',
-        message: 'Quote not found.',
-      };
-    case 'quote.discount_invalid':
-      return {
-        appCode: error.code,
-        code: 'BAD_REQUEST',
-        message: 'Quote discount is invalid.',
-      };
-    case 'quote.invalid_reference':
-      return {
-        appCode: error.code,
-        code: 'BAD_REQUEST',
-        message: 'Quote includes an invalid Customer, Product, Product Unit, or salesperson.',
-      };
-    case 'quote.allocation_conflict':
-      return {
-        appCode: error.code,
-        code: 'CONFLICT',
-        message: error.message,
-      };
-    case 'quote.cancel_denied':
-      return {
-        appCode: error.code,
-        code: 'FORBIDDEN',
-        message: error.message,
-      };
-    case 'quote.offering_invariant':
-    case 'quote.already_cancelled':
-    case 'quote.cancel_not_an_update':
-    case 'quote.custom_selected_assemblies':
-    case 'quote.delivery_unconfirmed':
-    case 'quote.locked':
-    case 'quote.document_generation_not_allowed':
-    case 'quote.product_bay_availability_not_applicable':
-      return {
-        appCode: error.code,
-        code: 'BAD_REQUEST',
-        message: error.message,
-      };
-    default:
-      return assertNever(error);
-  }
-}

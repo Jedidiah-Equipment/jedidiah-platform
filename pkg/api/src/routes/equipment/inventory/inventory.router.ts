@@ -100,16 +100,17 @@ import {
 } from '../../../equipment/trpc/inventory-cost-projection.js';
 import { mapCoreErrors } from '../../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../../trpc/init.js';
-import { partBomErrorFamily, partCoreErrorFamily } from '../parts/part-error-families.js';
 import {
   assertedActorErrorFamily,
   buildErrorFamily,
   checkoutErrorFamily,
   jobCloseOutErrorFamily,
+  jobErrorFamily,
+  partBomErrorFamily,
+  partCoreErrorFamily,
   stockMovementErrorFamily,
-  stockMovementJobErrorFamily,
   stocktakeErrorFamily,
-} from './inventory-error-families.js';
+} from '../equipment-error-families.js';
 import { assertCanWriteInventoryCost, projectMovement } from './stock-movement-transport.js';
 
 export const inventoryRouter = router({
@@ -485,7 +486,7 @@ async function mapJobStockErrors<T>(action: () => Promise<T>): Promise<T> {
   return mapCoreErrors(
     action,
     stockMovementErrorFamily,
-    stockMovementJobErrorFamily,
+    jobErrorFamily,
     jobCloseOutErrorFamily,
     assertedActorErrorFamily,
   );
@@ -496,7 +497,7 @@ async function mapCheckoutErrors<T>(action: () => Promise<T>): Promise<T> {
   return mapCoreErrors(
     action,
     stockMovementErrorFamily,
-    stockMovementJobErrorFamily,
+    jobErrorFamily,
     jobCloseOutErrorFamily,
     checkoutErrorFamily,
     assertedActorErrorFamily,

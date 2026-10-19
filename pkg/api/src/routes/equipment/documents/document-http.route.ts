@@ -4,10 +4,6 @@ import type { StorageAdapter } from '@pkg/core';
 import {
   createJobPurchaseOrder,
   createProductDocument,
-  isDocumentCoreError,
-  isJobCoreError,
-  isProductCoreError,
-  isQuoteCoreError,
   readJobDocument,
   readProductDocument,
   readPurchaseOrderDocument,
@@ -31,8 +27,6 @@ import {
   PurchaseOrderDocumentInput,
   QuoteDocumentInput,
 } from '@pkg/schema/equipment';
-import { TRPCError } from '@trpc/server';
-import { getHTTPStatusCodeFromError } from '@trpc/server/http';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
 
@@ -41,7 +35,6 @@ import { log } from '@/logger.js';
 import {
   createContentDisposition,
   mapCoreErrorToRoute,
-  RouteHttpError,
   requireAnyPermission,
   requirePermission,
   requireRouteAuth,
@@ -50,8 +43,14 @@ import {
   streamObjectBody,
 } from '@/routes/http-route-helpers.js';
 import { serializeError } from '@/trpc/errors.js';
-import { creditNoteErrorFamily, purchaseOrderErrorFamily } from '../purchase-orders/purchase-order-error-families.js';
-import { mapDocumentCoreError } from './documents.router.js';
+import {
+  creditNoteErrorFamily,
+  documentErrorFamily,
+  jobErrorFamily,
+  productErrorFamily,
+  purchaseOrderErrorFamily,
+  quoteErrorFamily,
+} from '../equipment-error-families.js';
 
 const JobDocumentUploadInput = JobDocumentInput.pick({ jobId: true });
 const PurchaseOrderParams = z.object({ purchaseOrderId: PurchaseOrderActionInput.shape.id });
@@ -99,20 +98,18 @@ export async function registerDocumentHttpRoutes(
       }
 
       const bytes = await file.toBuffer();
-      const document = await mapHttpDocumentErrors(() =>
-        createProductDocument({
-          actorUserId: auth.session.user.id,
-          db,
-          input: {
-            bytes,
-            contentType: file.mimetype,
-            filename: file.filename,
-            metadata: { type: readMultipartTextField(file.fields.type) },
-            productId: params.productId,
-          },
-          storage,
-        }),
-      );
+      const document = await createProductDocument({
+        actorUserId: auth.session.user.id,
+        db,
+        input: {
+          bytes,
+          contentType: file.mimetype,
+          filename: file.filename,
+          metadata: { type: readMultipartTextField(file.fields.type) },
+          productId: params.productId,
+        },
+        storage,
+      });
 
       reply.status(201).send(document);
     } catch (error) {
@@ -132,14 +129,12 @@ export async function registerDocumentHttpRoutes(
         'document.forbidden',
       );
       const params = ProductDocumentInput.parse(request.params);
-      const result = await mapHttpDocumentErrors(() =>
-        readProductDocument({
-          db,
-          documentId: params.documentId,
-          productId: params.productId,
-          storage,
-        }),
-      );
+      const result = await readProductDocument({
+        db,
+        documentId: params.documentId,
+        productId: params.productId,
+        storage,
+      });
 
       reply.header('Content-Type', result.document.contentType);
       reply.header('Content-Length', result.document.byteSize);
@@ -162,14 +157,12 @@ export async function registerDocumentHttpRoutes(
         'document.forbidden',
       );
       const params = DocumentListByProductInput.parse(request.params);
-      const preview = await mapHttpDocumentErrors(() =>
-        renderProductBrochurePreview({
-          db,
-          pdfRenderer: renderBrochurePdf,
-          productId: params.productId,
-          storage,
-        }),
-      );
+      const preview = await renderProductBrochurePreview({
+        db,
+        pdfRenderer: renderBrochurePdf,
+        productId: params.productId,
+        storage,
+      });
 
       reply.header('Content-Type', 'application/pdf');
       reply.header('Content-Length', preview.bytes.byteLength);
@@ -200,16 +193,14 @@ export async function registerDocumentHttpRoutes(
       }
 
       const bytes = await file.toBuffer();
-      const document = await mapHttpDocumentErrors(() =>
-        createJobPurchaseOrder({
-          actorUserId: auth.session.user.id,
-          bytes,
-          db,
-          filename: file.filename,
-          jobId: params.jobId,
-          storage,
-        }),
-      );
+      const document = await createJobPurchaseOrder({
+        actorUserId: auth.session.user.id,
+        bytes,
+        db,
+        filename: file.filename,
+        jobId: params.jobId,
+        storage,
+      });
 
       reply.status(201).send(document);
     } catch (error) {
@@ -229,14 +220,12 @@ export async function registerDocumentHttpRoutes(
         'document.forbidden',
       );
       const params = JobDocumentInput.parse(request.params);
-      const result = await mapHttpDocumentErrors(() =>
-        readJobDocument({
-          db,
-          documentId: params.documentId,
-          jobId: params.jobId,
-          storage,
-        }),
-      );
+      const result = await readJobDocument({
+        db,
+        documentId: params.documentId,
+        jobId: params.jobId,
+        storage,
+      });
 
       if (result.document.ownerType === 'purchase_order') {
         requirePermission(
@@ -268,14 +257,12 @@ export async function registerDocumentHttpRoutes(
         'document.forbidden',
       );
       const params = QuoteDocumentInput.parse(request.params);
-      const result = await mapHttpDocumentErrors(() =>
-        readQuoteDocument({
-          db,
-          documentId: params.documentId,
-          quoteId: params.quoteId,
-          storage,
-        }),
-      );
+      const result = await readQuoteDocument({
+        db,
+        documentId: params.documentId,
+        quoteId: params.quoteId,
+        storage,
+      });
 
       reply.header('Content-Type', result.document.contentType);
       reply.header('Content-Length', result.document.byteSize);
@@ -304,9 +291,11 @@ export async function registerDocumentHttpRoutes(
         'document.forbidden',
       );
       const params = PurchaseOrderParams.parse(request.params);
-      const preview = await mapHttpDocumentErrors(() =>
-        renderPurchaseOrderPreview({ db, id: params.purchaseOrderId, pdfRenderer: renderPurchaseOrderPdf }),
-      );
+      const preview = await renderPurchaseOrderPreview({
+        db,
+        id: params.purchaseOrderId,
+        pdfRenderer: renderPurchaseOrderPdf,
+      });
 
       reply.header('Content-Type', 'application/pdf');
       reply.header('Content-Length', preview.bytes.byteLength);
@@ -347,16 +336,14 @@ export async function registerDocumentHttpRoutes(
         purchaseOrderId: params.purchaseOrderId,
         stockMovementIds: readMultipartJsonField(file.fields.stockMovementIds),
       });
-      const document = await mapHttpDocumentErrors(() =>
-        uploadCreditNote({
-          actorUserId: auth.session.user.id,
-          bytes,
-          db,
-          filename: file.filename,
-          input,
-          storage,
-        }),
-      );
+      const document = await uploadCreditNote({
+        actorUserId: auth.session.user.id,
+        bytes,
+        db,
+        filename: file.filename,
+        input,
+        storage,
+      });
 
       reply.status(201).send(document);
     } catch (error) {
@@ -392,26 +379,24 @@ export async function registerDocumentHttpRoutes(
       }
 
       const bytes = await file.toBuffer();
-      const document = await mapHttpDocumentErrors(() =>
-        uploadSupplierInvoice({
-          actorUserId: auth.session.user.id,
-          bytes,
-          db,
-          extract: extractInvoice,
-          filename: file.filename,
-          input: { purchaseOrderId: params.purchaseOrderId },
-          // The desk is told only that the invoice could not be read, which is all it can act on.
-          // Why it could not be read is an operator's question, and belongs in the log — serialized,
-          // because Pino renders a bare Error under a key it does not know as `{}`, which would log
-          // the filename and nothing about the failure.
-          onExtractionError: (error) =>
-            log.ai.error(
-              { error: serializeError(error), filename: file.filename, purchaseOrderId: params.purchaseOrderId },
-              'Supplier invoice extraction failed',
-            ),
-          storage,
-        }),
-      );
+      const document = await uploadSupplierInvoice({
+        actorUserId: auth.session.user.id,
+        bytes,
+        db,
+        extract: extractInvoice,
+        filename: file.filename,
+        input: { purchaseOrderId: params.purchaseOrderId },
+        // The desk is told only that the invoice could not be read, which is all it can act on.
+        // Why it could not be read is an operator's question, and belongs in the log — serialized,
+        // because Pino renders a bare Error under a key it does not know as `{}`, which would log
+        // the filename and nothing about the failure.
+        onExtractionError: (error) =>
+          log.ai.error(
+            { error: serializeError(error), filename: file.filename, purchaseOrderId: params.purchaseOrderId },
+            'Supplier invoice extraction failed',
+          ),
+        storage,
+      });
 
       reply.status(201).send(document);
     } catch (error) {
@@ -437,14 +422,12 @@ export async function registerDocumentHttpRoutes(
         'document.forbidden',
       );
       const params = PurchaseOrderDocumentInput.parse(request.params);
-      const result = await mapHttpDocumentErrors(() =>
-        readPurchaseOrderDocument({
-          db,
-          documentId: params.documentId,
-          purchaseOrderId: params.purchaseOrderId,
-          storage,
-        }),
-      );
+      const result = await readPurchaseOrderDocument({
+        db,
+        documentId: params.documentId,
+        purchaseOrderId: params.purchaseOrderId,
+        storage,
+      });
 
       reply.header('Content-Type', result.document.contentType);
       reply.header('Content-Length', result.document.byteSize);
@@ -477,69 +460,16 @@ function readMultipartJsonField(field: unknown): unknown {
   }
 }
 
-// Maps a core error raised while serving documents into a {@link RouteHttpError} with a public message
-// and status; non-document/owner errors propagate for the shared sender to handle (or surface as a 500).
-async function mapHttpDocumentErrors<T>(action: () => Promise<T>): Promise<T> {
-  try {
-    return await action();
-  } catch (error) {
-    if (isDocumentCoreError(error)) {
-      const mapped = mapDocumentCoreError(error);
-      throw new RouteHttpError({
-        appCode: mapped.appCode,
-        message: mapped.message,
-        statusCode: getHTTPStatusCodeFromError(new TRPCError({ code: mapped.code })),
-      });
-    }
-
-    if (isProductCoreError(error)) {
-      if (error.code === 'product.brochure_incomplete') {
-        throw new RouteHttpError({
-          appCode: error.code,
-          message: 'This brochure is incomplete, so a preview is not available yet.',
-          statusCode: 409,
-        });
-      }
-
-      throw mapOwnerNotFound(error, { notFoundCode: 'product.not_found', label: 'Product', otherStatus: 400 });
-    }
-
-    if (isJobCoreError(error)) {
-      // A cancelled Job is a terminal-state conflict, mapped to 400 like the tRPC boundary (and the
-      // QuoteLockedError precedent) so the same appCode carries the same status on every surface.
-      if (error.code === 'job.cancelled') {
-        throw new RouteHttpError({ appCode: error.code, message: error.message, statusCode: 400 });
-      }
-
-      throw mapOwnerNotFound(error, { notFoundCode: 'job.not_found', label: 'Job', otherStatus: 403 });
-    }
-
-    if (isQuoteCoreError(error)) {
-      throw mapOwnerNotFound(error, { notFoundCode: 'quote.not_found', label: 'Quote', otherStatus: 400 });
-    }
-
-    // The Purchase Order families the tRPC routers use, so a refusal carries the same status on both.
-    const mapped = mapCoreErrorToRoute(error, purchaseOrderErrorFamily, creditNoteErrorFamily);
-    if (mapped !== error) throw mapped;
-
-    throw error;
-  }
-}
-
-// Owner reads share one shape: the owner's not-found code becomes a 404 with a public label, and every
-// other owner error keeps its message at the owner's fallback status.
-function mapOwnerNotFound(
-  error: { code: string; message: string },
-  { label, notFoundCode, otherStatus }: { label: string; notFoundCode: string; otherStatus: number },
-): RouteHttpError {
-  const notFound = error.code === notFoundCode;
-
-  return new RouteHttpError({
-    appCode: error.code,
-    message: notFound ? `${label} not found.` : error.message,
-    statusCode: notFound ? 404 : otherStatus,
-  });
-}
+// The families every document route can raise: the document's own rules, its owner's, and the Purchase
+// Order refusals the order routes reach, mapped like the tRPC routers map them.
+const documentErrorFamilies = [
+  documentErrorFamily,
+  jobErrorFamily,
+  productErrorFamily,
+  quoteErrorFamily,
+  purchaseOrderErrorFamily,
+  creditNoteErrorFamily,
+];
 
 const documentHttpErrorMessages = {
   fallbackMessage: 'Document request failed.',
@@ -547,9 +477,12 @@ const documentHttpErrorMessages = {
 };
 
 function sendDocumentHttpError(reply: FastifyReply, error: unknown): void {
-  sendHttpError(reply, error, documentHttpErrorMessages);
+  sendHttpError(reply, mapCoreErrorToRoute(error, ...documentErrorFamilies), documentHttpErrorMessages);
 }
 
 function sendDocumentUploadError(reply: FastifyReply, error: unknown, ownerType: DocumentOwnerType): void {
-  sendUploadHttpError(reply, error, { ...documentHttpErrorMessages, policy: documentPolicies[ownerType] });
+  sendUploadHttpError(reply, mapCoreErrorToRoute(error, ...documentErrorFamilies), {
+    ...documentHttpErrorMessages,
+    policy: documentPolicies[ownerType],
+  });
 }

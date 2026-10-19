@@ -2,9 +2,7 @@ import {
   createProductRange,
   createProductRangeVariant,
   getProductRange,
-  isProductRangeCoreError,
   listProductRanges,
-  type ProductRangeCoreError,
   removeProductRange,
   removeProductRangeVariant,
   reorderProductRanges,
@@ -24,8 +22,9 @@ import {
 } from '@pkg/schema/equipment';
 import { z } from 'zod';
 import type { TranslationMarker } from '../../../equipment/catalog-translations/translation-scheduler.js';
-import { type CoreErrorMapping, mapKnownCoreError } from '../../../trpc/errors.js';
+import { mapCoreErrors } from '../../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../../trpc/init.js';
+import { productRangeErrorFamily } from '../equipment-error-families.js';
 
 export function createProductRangesRouter(catalogTranslationScheduler: TranslationMarker) {
   return router({
@@ -33,12 +32,14 @@ export function createProductRangesRouter(catalogTranslationScheduler: Translati
 
     get: authorizedProcedure('equipment_product_range:read')
       .input(z.object({ id: UUID }))
-      .query(({ ctx, input }) => mapProductRangeErrors(() => getProductRange({ db: ctx.db, id: input.id }))),
+      .query(({ ctx, input }) =>
+        mapCoreErrors(() => getProductRange({ db: ctx.db, id: input.id }), productRangeErrorFamily),
+      ),
 
     create: authorizedProcedure('equipment_product_range:create')
       .input(ProductRangeCreateInput)
       .mutation(async ({ ctx, input }) => {
-        const range = await mapProductRangeErrors(() => createProductRange({ db: ctx.db, input }));
+        const range = await mapCoreErrors(() => createProductRange({ db: ctx.db, input }), productRangeErrorFamily);
         catalogTranslationScheduler.mark(catalogTranslationKey('range', range.id));
         return range;
       }),
@@ -46,23 +47,30 @@ export function createProductRangesRouter(catalogTranslationScheduler: Translati
     update: authorizedProcedure('equipment_product_range:update')
       .input(ProductRangeUpdateInput)
       .mutation(async ({ ctx, input }) => {
-        const range = await mapProductRangeErrors(() => updateProductRange({ db: ctx.db, input }));
+        const range = await mapCoreErrors(() => updateProductRange({ db: ctx.db, input }), productRangeErrorFamily);
         catalogTranslationScheduler.mark(catalogTranslationKey('range', range.id));
         return range;
       }),
 
     remove: authorizedProcedure('equipment_product_range:update')
       .input(z.object({ id: UUID }))
-      .mutation(({ ctx, input }) => mapProductRangeErrors(() => removeProductRange({ db: ctx.db, id: input.id }))),
+      .mutation(({ ctx, input }) =>
+        mapCoreErrors(() => removeProductRange({ db: ctx.db, id: input.id }), productRangeErrorFamily),
+      ),
 
     reorder: authorizedProcedure('equipment_product_range:update')
       .input(ProductRangeReorderInput)
-      .mutation(({ ctx, input }) => mapProductRangeErrors(() => reorderProductRanges({ db: ctx.db, input }))),
+      .mutation(({ ctx, input }) =>
+        mapCoreErrors(() => reorderProductRanges({ db: ctx.db, input }), productRangeErrorFamily),
+      ),
 
     createVariant: authorizedProcedure('equipment_product_range:update')
       .input(ProductRangeVariantCreateInput)
       .mutation(async ({ ctx, input }) => {
-        const variant = await mapProductRangeErrors(() => createProductRangeVariant({ db: ctx.db, input }));
+        const variant = await mapCoreErrors(
+          () => createProductRangeVariant({ db: ctx.db, input }),
+          productRangeErrorFamily,
+        );
         catalogTranslationScheduler.mark(catalogTranslationKey('variant', variant.id));
         return variant;
       }),
@@ -70,7 +78,10 @@ export function createProductRangesRouter(catalogTranslationScheduler: Translati
     updateVariant: authorizedProcedure('equipment_product_range:update')
       .input(ProductRangeVariantUpdateInput)
       .mutation(async ({ ctx, input }) => {
-        const variant = await mapProductRangeErrors(() => updateProductRangeVariant({ db: ctx.db, input }));
+        const variant = await mapCoreErrors(
+          () => updateProductRangeVariant({ db: ctx.db, input }),
+          productRangeErrorFamily,
+        );
         catalogTranslationScheduler.mark(catalogTranslationKey('variant', variant.id));
         return variant;
       }),
@@ -78,54 +89,16 @@ export function createProductRangesRouter(catalogTranslationScheduler: Translati
     removeVariant: authorizedProcedure('equipment_product_range:update')
       .input(z.object({ id: UUID, rangeId: UUID }))
       .mutation(({ ctx, input }) =>
-        mapProductRangeErrors(() => removeProductRangeVariant({ db: ctx.db, id: input.id, rangeId: input.rangeId })),
+        mapCoreErrors(
+          () => removeProductRangeVariant({ db: ctx.db, id: input.id, rangeId: input.rangeId }),
+          productRangeErrorFamily,
+        ),
       ),
 
     reorderVariants: authorizedProcedure('equipment_product_range:update')
       .input(ProductRangeVariantReorderInput)
-      .mutation(({ ctx, input }) => mapProductRangeErrors(() => reorderProductRangeVariants({ db: ctx.db, input }))),
+      .mutation(({ ctx, input }) =>
+        mapCoreErrors(() => reorderProductRangeVariants({ db: ctx.db, input }), productRangeErrorFamily),
+      ),
   });
 }
-
-async function mapProductRangeErrors<T>(action: () => Promise<T>): Promise<T> {
-  return mapKnownCoreError(action, isProductRangeCoreError, mapProductRangeCoreError);
-}
-
-function mapProductRangeCoreError(error: ProductRangeCoreError): CoreErrorMapping<ProductRangeCoreError['code']> {
-  return productRangeErrorMappings[error.code];
-}
-
-const productRangeErrorMappings = {
-  'product_range.duplicate_name': {
-    appCode: 'product_range.duplicate_name',
-    code: 'CONFLICT',
-    message: 'A Product Range with this name already exists.',
-  },
-  'product_range.not_found': {
-    appCode: 'product_range.not_found',
-    code: 'NOT_FOUND',
-    message: 'Product Range not found.',
-  },
-  'product_range.has_products': {
-    appCode: 'product_range.has_products',
-    code: 'CONFLICT',
-    message: 'Product Range has active linked products and cannot be removed.',
-  },
-  'product_range.variant_duplicate_name': {
-    appCode: 'product_range.variant_duplicate_name',
-    code: 'CONFLICT',
-    message: 'A Variant with this name already exists for this Product Range.',
-  },
-  'product_range.variant_has_products': {
-    appCode: 'product_range.variant_has_products',
-    code: 'CONFLICT',
-    message: 'Product Range Variant has active linked products and cannot be removed.',
-  },
-  'product_range.variant_not_found': {
-    appCode: 'product_range.variant_not_found',
-    code: 'NOT_FOUND',
-    message: 'Product Range Variant not found.',
-  },
-} satisfies {
-  [TCode in ProductRangeCoreError['code']]: CoreErrorMapping<TCode>;
-};

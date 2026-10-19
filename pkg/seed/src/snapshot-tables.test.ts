@@ -1,6 +1,9 @@
+import { existsSync, readFileSync } from 'node:fs';
 import { getTableColumns } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 
+import { deserializeSnapshotRows } from './snapshot-json.js';
+import { snapshotDirectory } from './snapshot-paths.js';
 import {
   collectStorageFiles,
   prepareSnapshotRow,
@@ -282,14 +285,14 @@ describe('snapshot table registry', () => {
     expect(prepareSnapshotRow(jobConfig, migrated, 0)).toEqual(migrated);
   });
 
-  it('reads a pre-Activity-View user row as its Equipment mark', () => {
-    const seen = '2026-08-18T11:28:56.498Z';
-    expect(prepareSnapshotRow(configFor('user'), { id: 'u', lastActivitySeen: seen }, 0)).toMatchObject({
-      lastActivitySeen: { equipment: seen },
-    });
-    expect(
-      prepareSnapshotRow(configFor('user'), { id: 'u', lastActivitySeen: { contracting: seen } }, 0),
-    ).toMatchObject({ lastActivitySeen: { contracting: seen } });
+  // Sources read before the per-business Activity View stored one Equipment instant; the seed no longer migrates
+  // that shape, so a snapshot still holding it must be re-read, not seeded.
+  it('holds every snapshot user’s Activity View as a per-business map', (context) => {
+    const userSnapshot = new URL('user.json', snapshotDirectory);
+    if (!existsSync(userSnapshot)) context.skip('no snapshot at pkg/seed/snapshot; run pnpm seed:read to check one');
+    const rows = deserializeSnapshotRows(configFor('user'), readFileSync(userSnapshot, 'utf8'));
+    const stringShaped = rows.filter((row) => typeof row.lastActivitySeen === 'string').map((row) => row.id);
+    expect(stringShaped, 'users whose snapshot source predates the per-business Activity View').toEqual([]);
   });
 
   it('recovers a stint override from a pre-migration row', () => {

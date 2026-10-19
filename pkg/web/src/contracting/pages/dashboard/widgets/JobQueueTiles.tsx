@@ -2,11 +2,9 @@ import { formatNumber } from '@pkg/domain';
 import type { JobQueue } from '@pkg/schema/contracting';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-
-import { DASHBOARD_REFETCH_INTERVAL_MS } from '@/contracting/pages/dashboard/dashboard-refresh.js';
+import { DashboardTile, dashboardTileLinkClassName } from '@/components/common/dashboard/DashboardTile.js';
+import { DASHBOARD_REFETCH_INTERVAL_MS } from '@/contracting/lib/dashboard-refresh.js';
 import { useTRPC } from '@/lib/trpc.js';
-
-import { DashboardTile, dashboardTileLinkClassName } from './DashboardTile.js';
 
 function useQueueCount(queue: JobQueue) {
   const trpc = useTRPC();
@@ -14,8 +12,8 @@ function useQueueCount(queue: JobQueue) {
     ...trpc.contractingJobs.jobs.queues.queryOptions(),
     refetchInterval: DASHBOARD_REFETCH_INTERVAL_MS,
   });
-  const count = query.data ? formatNumber(query.data.counts[queue]) : undefined;
-  return { count, error: query.error, errorMessage: 'Unable to load Job counts.' };
+  const value = query.data ? formatNumber(query.data.counts[queue]) : undefined;
+  return { value, error: query.error, errorMessage: 'Unable to load Job counts.' };
 }
 
 function JobsStageTile({ stage, sublabel }: { stage: 'looks-finished' | 'awaiting-pricing'; sublabel: string }) {

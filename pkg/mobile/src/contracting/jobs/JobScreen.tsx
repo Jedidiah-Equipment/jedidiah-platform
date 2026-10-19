@@ -89,7 +89,7 @@ export default function JobScreen() {
       {tab === 'activity' ? (
         // Activity has its own server-side reach, so the thread shows even when the field Job gate hides the Job.
         <ContractingActivityFeed
-          jobId={jobId}
+          thread={{ kind: 'job', id: jobId }}
           listHeader={
             job ? (
               <AddNoteButton thread={{ kind: 'job', id: job.id, code: job.jobNumber }} verdict={job.actions.addNote} />

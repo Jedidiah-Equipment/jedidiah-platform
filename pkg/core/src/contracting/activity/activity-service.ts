@@ -1,13 +1,11 @@
 import { createGlobalSearchCondition, type Db, user } from '@pkg/db';
 import {
-  contractingBreakdownNotes,
   contractingBreakdowns,
   contractingCategories,
   contractingCustomers,
   contractingFarms,
   contractingHourReadings,
   contractingImplements,
-  contractingJobNotes,
   contractingJobs,
   contractingMachineAssignments,
   contractingMachines,
@@ -32,7 +30,7 @@ import {
   type ActivityMachineRef,
 } from '@pkg/schema/contracting';
 import { and, eq, inArray, isNotNull, ne, or, type SQL, type SQLWrapper, sql } from 'drizzle-orm';
-import { alias, type PgColumn } from 'drizzle-orm/pg-core';
+import { alias, type PgColumn, type PgTable } from 'drizzle-orm/pg-core';
 import { getActivityView, setActivityView } from '../../users/activity-view-service.js';
 import {
   breakdownReadableBy,
@@ -42,6 +40,7 @@ import {
 } from '../breakdowns/breakdown-load.js';
 import { readableBy, readerFor } from '../jobs/job-readers.js';
 import { jobNumberSql } from '../jobs/job-sql.js';
+import { type NoteThreadTable, noteThreadStore } from '../notes/note-thread.js';
 import { ActivityError } from './activity-errors.js';
 
 /**
@@ -50,7 +49,17 @@ import { ActivityError } from './activity-errors.js';
  * the limit; nothing counts the union and nothing offsets into it.
  */
 
-type ActivityKey = { id: string; type: ActivityItemType; occurredAt: Date; cursorAt: string };
+/** One page row: which row, which type, the exact stamp, and the records the item names, read with the key. */
+type ActivityKey = {
+  id: string;
+  type: ActivityItemType;
+  occurredAt: Date;
+  cursorAt: string;
+  jobId: string | null;
+  breakdownId: string | null;
+  machineId: string | null;
+  actorId: string | null;
+};
 
 type Branch = {
   type: ActivityItemType;
@@ -58,6 +67,26 @@ type Branch = {
   select: (where: (row: BranchRow) => SQL | undefined) => { getSQL(): SQL };
 };
 type BranchRow = { id: PgColumn; stamp: PgColumn };
+/** What a branch's row names, as columns or scalar subselects; a record the type never has is left out. */
+type KeyRefs = {
+  jobId?: SQLWrapper | undefined;
+  breakdownId?: SQLWrapper | undefined;
+  machineId?: SQLWrapper | undefined;
+  actorId?: SQLWrapper | undefined;
+};
+
+/**
+ * A record kind items are stamped off and reached through: its table, what this caller reaches, the thread asked
+ * about, how a search names it, and the records its items name.
+ */
+type Host = {
+  table: PgTable;
+  id: PgColumn;
+  reach: SQL | undefined;
+  scope: SQL | undefined;
+  matches: (id: SQLWrapper, search: string) => SQL;
+  refs: Pick<KeyRefs, 'jobId' | 'breakdownId'>;
+};
 
 const searchJob = alias(contractingJobs, 'activity_search_job');
 const searchFarm = alias(contractingFarms, 'activity_search_farm');
@@ -68,54 +97,45 @@ const searchImplement = alias(contractingImplements, 'activity_search_implement'
 const searchMechanic = alias(user, 'activity_search_mechanic');
 const searchUser = alias(user, 'activity_search_user');
 
-const nothing = sql`false`;
+/** Every matcher is built behind a non-empty search, the only input the shared condition has no answer for. */
+function searching(search: string, expressions: readonly SQL[]): SQL {
+  const condition = createGlobalSearchCondition(search, expressions);
+  if (!condition) throw new Error('Activity search matchers take a non-empty search');
+  return condition;
+}
 
 /** A person named on the item by id, matched by name. */
-const userMatches = (userId: SQLWrapper, search: string) => sql`exists (
+const userMatches = (userId: SQLWrapper, search: string): SQL => sql`exists (
   select 1 from ${user} ${searchUser}
   where ${searchUser.id} = ${userId}
-    and ${createGlobalSearchCondition(search, [sql`${searchUser.name}`]) ?? nothing}
+    and ${searching(search, [sql`${searchUser.name}`])}
 )`;
 
 /** A Job matched by its Job Number, Farm or Customer. */
-const jobMatches = (jobId: SQLWrapper, search: string) => sql`exists (
+const jobMatches = (jobId: SQLWrapper, search: string): SQL => sql`exists (
   select 1 from ${contractingJobs} ${searchJob}
   inner join ${contractingFarms} ${searchFarm} on ${searchFarm.id} = ${searchJob.farmId}
   inner join ${contractingCustomers} ${searchCustomer} on ${searchCustomer.id} = ${searchJob.customerId}
   where ${searchJob.id} = ${jobId}
-    and ${
-      createGlobalSearchCondition(search, [
-        jobNumberSql(searchJob.code),
-        sql`${searchFarm.name}`,
-        sql`${searchCustomer.name}`,
-      ]) ?? nothing
-    }
+    and ${searching(search, [jobNumberSql(searchJob.code), sql`${searchFarm.name}`, sql`${searchCustomer.name}`])}
 )`;
 
 /** A Machine matched by its code. */
-const machineMatches = (machineId: SQLWrapper, search: string) => sql`exists (
+const machineMatches = (machineId: SQLWrapper, search: string): SQL => sql`exists (
   select 1 from ${contractingMachines} ${searchMachine}
   where ${searchMachine.id} = ${machineId}
-    and ${createGlobalSearchCondition(search, [sql`${searchMachine.code}`]) ?? nothing}
+    and ${searching(search, [sql`${searchMachine.code}`])}
 )`;
 
 /** A Breakdown matched by its subject's code, its Mechanic, or its Job. */
-const breakdownMatches = (breakdownId: SQLWrapper, search: string) => sql`exists (
+const breakdownMatches = (breakdownId: SQLWrapper, search: string): SQL => sql`exists (
   select 1 from ${contractingBreakdowns} ${searchBreakdown}
   left join ${contractingMachines} ${searchMachine} on ${searchMachine.id} = ${searchBreakdown.machineId}
   left join ${contractingImplements} ${searchImplement} on ${searchImplement.id} = ${searchBreakdown.implementId}
   left join ${user} ${searchMechanic} on ${searchMechanic.id} = ${searchBreakdown.primaryMechanicUserId}
   where ${searchBreakdown.id} = ${breakdownId}
-    and ${
-      or(
-        createGlobalSearchCondition(search, [
-          sql`${searchMachine.code}`,
-          sql`${searchImplement.code}`,
-          sql`${searchMechanic.name}`,
-        ]),
-        jobMatches(searchBreakdown.jobId, search),
-      ) ?? nothing
-    }
+    and (${searching(search, [sql`${searchMachine.code}`, sql`${searchImplement.code}`, sql`${searchMechanic.name}`])}
+      or ${jobMatches(searchBreakdown.jobId, search)})
 )`;
 
 /** The Machine whose arrival started a Job: the one a `job-started` item names. */
@@ -128,28 +148,27 @@ const firstArrivalMachine = (jobId: SQLWrapper) => sql`(
   limit 1
 )`;
 
-const textMatches = (column: SQLWrapper, search: string) =>
-  createGlobalSearchCondition(search, [sql`${column}`]) ?? nothing;
+const textMatches = (column: SQLWrapper, search: string): SQL => searching(search, [sql`${column}`]);
 
-/** Notes and readings reach through their Job: the Job is readable, and (scoped) is the Job asked about. */
-const throughJob = (jobId: SQLWrapper, reach: SQL | undefined, scope: SQL | undefined) => sql`exists (
-  select 1 from ${contractingJobs}
-  where ${contractingJobs.id} = ${jobId}
-    and ${and(reach, scope) ?? sql`true`}
+/** A row reaches through its host record: the record is readable, and (scoped) is the one asked about. */
+const through = (host: Host, fk: SQLWrapper) => sql`exists (
+  select 1 from ${host.table}
+  where ${host.id} = ${fk}
+    and ${and(host.reach, host.scope) ?? sql`true`}
 )`;
 
-/** Breakdown Notes reach through their Breakdown in the same way. */
-const throughBreakdown = (breakdownId: SQLWrapper, reach: SQL | undefined, scope: SQL | undefined) => sql`exists (
-  select 1 from ${contractingBreakdowns}
-  where ${contractingBreakdowns.id} = ${breakdownId}
-    and ${and(reach, scope) ?? sql`true`}
-)`;
-
-function keySelect(db: Db, type: ActivityItemType, row: BranchRow) {
+/** Each branch projects the same columns, so the union's nulls are typed where a type names no such record. */
+function keySelect(db: Db, type: ActivityItemType, row: BranchRow, refs: KeyRefs) {
+  const uuid = (ref: SQLWrapper | undefined) =>
+    ref ? sql<string | null>`${ref}::uuid` : sql<string | null>`null::uuid`;
   return db.select({
     id: sql<string>`${row.id}`.as('id'),
     occurredAt: sql<Date>`${row.stamp}`.as('occurred_at'),
     type: sql<ActivityItemType>`${sql.raw(`'${type}'`)}::text`.as('type'),
+    jobId: uuid(refs.jobId).as('job_id'),
+    breakdownId: uuid(refs.breakdownId).as('breakdown_id'),
+    machineId: uuid(refs.machineId).as('machine_id'),
+    actorId: (refs.actorId ? sql<string | null>`${refs.actorId}::text` : sql<string | null>`null::text`).as('actor_id'),
   });
 }
 
@@ -166,59 +185,74 @@ function branches(db: Db, actor: JobActor, input: ActivityListInput): Branch[] {
 
   // `breakdownId` asks about one Breakdown, so the Job-side branches drop out; `jobId` keeps both sides on that Job.
   const jobSide = jobReach !== null && !input.breakdownId;
-  const jobScope = input.jobId ? eq(contractingJobs.id, input.jobId) : undefined;
-  const breakdownScope = and(
-    input.jobId ? eq(contractingBreakdowns.jobId, input.jobId) : undefined,
-    input.breakdownId ? eq(contractingBreakdowns.id, input.breakdownId) : undefined,
-  );
+  const job: Host = {
+    table: contractingJobs,
+    id: contractingJobs.id,
+    reach: jobReach ?? undefined,
+    scope: input.jobId ? eq(contractingJobs.id, input.jobId) : undefined,
+    matches: jobMatches,
+    refs: { jobId: contractingJobs.id },
+  };
+  const breakdown: Host = {
+    table: contractingBreakdowns,
+    id: contractingBreakdowns.id,
+    reach: breakdownReach?.where,
+    scope: and(
+      input.jobId ? eq(contractingBreakdowns.jobId, input.jobId) : undefined,
+      input.breakdownId ? eq(contractingBreakdowns.id, input.breakdownId) : undefined,
+    ),
+    matches: breakdownMatches,
+    refs: { jobId: contractingBreakdowns.jobId, breakdownId: contractingBreakdowns.id },
+  };
 
-  const jobBranch = (
+  /** A stamp on the host itself: the item is the host row at the instant `stamp` holds, done by `by`. */
+  const stampBranch = (
+    host: Host,
     type: ActivityItemType,
     stamp: PgColumn,
-    actorId: PgColumn,
-    extra: SQL | undefined,
-    matches: (search: string) => SQL | undefined,
+    by: PgColumn,
+    {
+      extra,
+      matches,
+      machineId,
+    }: { extra?: SQL | undefined; matches?: (search: string) => SQL; machineId?: SQLWrapper } = {},
   ): Branch => ({
     type,
     select: (where) => {
-      const row = { id: contractingJobs.id, stamp };
-      return keySelect(db, type, row)
-        .from(contractingJobs)
+      const row = { id: host.id, stamp };
+      return keySelect(db, type, row, { ...host.refs, machineId, actorId: by })
+        .from(host.table)
         .where(
           and(
             isNotNull(stamp),
             extra,
-            jobReach ?? undefined,
-            jobScope,
-            search
-              ? or(jobMatches(contractingJobs.id, search), userMatches(actorId, search), matches(search))
-              : undefined,
+            host.reach,
+            host.scope,
+            search ? or(host.matches(host.id, search), userMatches(by, search), matches?.(search)) : undefined,
             where(row),
           ),
         );
     },
   });
 
-  const breakdownBranch = (
-    type: ActivityItemType,
-    stamp: PgColumn,
-    actorId: PgColumn,
-    extra: SQL | undefined,
-    matches: (search: string) => SQL | undefined,
-  ): Branch => ({
+  /** A Note Thread entry, joined to its host for the host's reach, scope and the records the entry names. */
+  const noteBranch = (host: Host, type: 'job-note' | 'breakdown-note', notes: NoteThreadTable): Branch => ({
     type,
     select: (where) => {
-      const row = { id: contractingBreakdowns.id, stamp };
-      return keySelect(db, type, row)
-        .from(contractingBreakdowns)
+      const row = { id: notes.table.id, stamp: notes.table.createdAt };
+      return keySelect(db, type, row, { ...host.refs, actorId: notes.table.authorUserId })
+        .from(notes.table)
+        .innerJoin(host.table, eq(host.id, notes.threadColumn))
         .where(
           and(
-            isNotNull(stamp),
-            extra,
-            breakdownReach?.where,
-            breakdownScope,
+            host.reach,
+            host.scope,
             search
-              ? or(breakdownMatches(contractingBreakdowns.id, search), userMatches(actorId, search), matches(search))
+              ? or(
+                  textMatches(notes.table.text, search),
+                  userMatches(notes.table.authorUserId, search),
+                  host.matches(notes.threadColumn, search),
+                )
               : undefined,
             where(row),
           ),
@@ -230,12 +264,16 @@ function branches(db: Db, actor: JobActor, input: ActivityListInput): Branch[] {
     type,
     select: (where) => {
       const row = { id: contractingHourReadings.id, stamp: contractingHourReadings.createdAt };
-      return keySelect(db, type, row)
+      return keySelect(db, type, row, {
+        jobId: contractingMachineAssignments.jobId,
+        machineId: contractingHourReadings.machineId,
+        actorId: contractingHourReadings.capturedByUserId,
+      })
         .from(contractingHourReadings)
         .innerJoin(contractingMachineAssignments, eq(stintColumn, contractingHourReadings.id))
         .where(
           and(
-            throughJob(contractingMachineAssignments.jobId, jobReach ?? undefined, jobScope),
+            through(job, contractingMachineAssignments.jobId),
             search
               ? or(
                   jobMatches(contractingMachineAssignments.jobId, search),
@@ -249,101 +287,36 @@ function branches(db: Db, actor: JobActor, input: ActivityListInput): Branch[] {
     },
   });
 
+  const breakdowns = contractingBreakdowns;
+  const jobs = contractingJobs;
   const all: (Branch | false)[] = [
-    jobSide && {
-      type: 'job-note',
-      select: (where) => {
-        const row = { id: contractingJobNotes.id, stamp: contractingJobNotes.createdAt };
-        return keySelect(db, 'job-note', row)
-          .from(contractingJobNotes)
-          .where(
-            and(
-              throughJob(contractingJobNotes.jobId, jobReach ?? undefined, jobScope),
-              search
-                ? or(
-                    textMatches(contractingJobNotes.text, search),
-                    userMatches(contractingJobNotes.authorUserId, search),
-                    jobMatches(contractingJobNotes.jobId, search),
-                  )
-                : undefined,
-              where(row),
-            ),
-          );
-      },
-    },
-    breakdownReach !== null && {
-      type: 'breakdown-note',
-      select: (where) => {
-        const row = { id: contractingBreakdownNotes.id, stamp: contractingBreakdownNotes.createdAt };
-        return keySelect(db, 'breakdown-note', row)
-          .from(contractingBreakdownNotes)
-          .where(
-            and(
-              throughBreakdown(contractingBreakdownNotes.breakdownId, breakdownReach.where, breakdownScope),
-              search
-                ? or(
-                    textMatches(contractingBreakdownNotes.text, search),
-                    userMatches(contractingBreakdownNotes.authorUserId, search),
-                    breakdownMatches(contractingBreakdownNotes.breakdownId, search),
-                  )
-                : undefined,
-              where(row),
-            ),
-          );
-      },
-    },
+    jobSide && noteBranch(job, 'job-note', noteThreadStore.job.notes),
+    breakdownReach !== null && noteBranch(breakdown, 'breakdown-note', noteThreadStore.breakdown.notes),
     breakdownReach !== null &&
-      breakdownBranch(
-        'breakdown-reported',
-        contractingBreakdowns.reportedAt,
-        contractingBreakdowns.reportedByUserId,
-        undefined,
-        (term) => textMatches(contractingBreakdowns.description, term),
-      ),
+      stampBranch(breakdown, 'breakdown-reported', breakdowns.reportedAt, breakdowns.reportedByUserId, {
+        matches: (term) => textMatches(breakdowns.description, term),
+      }),
     breakdownReach !== null &&
-      breakdownBranch(
-        'mechanic-assigned',
-        contractingBreakdowns.mechanicAssignedAt,
-        contractingBreakdowns.mechanicAssignedByUserId,
-        undefined,
-        () => undefined,
-      ),
+      stampBranch(breakdown, 'mechanic-assigned', breakdowns.mechanicAssignedAt, breakdowns.mechanicAssignedByUserId),
     // Solving straight from Not fixed stamps the start and the fix at one instant: that reads as one Fixed item.
     breakdownReach !== null &&
-      breakdownBranch(
-        'breakdown-started',
-        contractingBreakdowns.startedAt,
-        contractingBreakdowns.startedByUserId,
-        or(
-          sql`${contractingBreakdowns.solvedAt} is null`,
-          ne(contractingBreakdowns.startedAt, contractingBreakdowns.solvedAt),
-        ),
-        () => undefined,
-      ),
+      stampBranch(breakdown, 'breakdown-started', breakdowns.startedAt, breakdowns.startedByUserId, {
+        extra: or(sql`${breakdowns.solvedAt} is null`, ne(breakdowns.startedAt, breakdowns.solvedAt)),
+      }),
     breakdownReach !== null &&
-      breakdownBranch(
-        'breakdown-solved',
-        contractingBreakdowns.solvedAt,
-        contractingBreakdowns.solvedByUserId,
-        undefined,
-        (term) => textMatches(contractingBreakdowns.closeOutNote, term),
-      ),
+      stampBranch(breakdown, 'breakdown-solved', breakdowns.solvedAt, breakdowns.solvedByUserId, {
+        matches: (term) => textMatches(breakdowns.closeOutNote, term),
+      }),
     jobSide &&
-      jobBranch('job-started', contractingJobs.activatedAt, contractingJobs.activatedByUserId, undefined, (term) =>
-        machineMatches(firstArrivalMachine(contractingJobs.id), term),
-      ),
+      stampBranch(job, 'job-started', jobs.activatedAt, jobs.activatedByUserId, {
+        machineId: firstArrivalMachine(jobs.id),
+        matches: (term) => machineMatches(firstArrivalMachine(jobs.id), term),
+      }),
+    jobSide && stampBranch(job, 'job-completed', jobs.completedAt, jobs.completedByUserId),
     jobSide &&
-      jobBranch(
-        'job-completed',
-        contractingJobs.completedAt,
-        contractingJobs.completedByUserId,
-        undefined,
-        () => undefined,
-      ),
-    jobSide &&
-      jobBranch('job-cancelled', contractingJobs.cancelledAt, contractingJobs.cancelledByUserId, undefined, (term) =>
-        textMatches(contractingJobs.cancellationReason, term),
-      ),
+      stampBranch(job, 'job-cancelled', jobs.cancelledAt, jobs.cancelledByUserId, {
+        matches: (term) => textMatches(jobs.cancellationReason, term),
+      }),
     jobSide && readingBranch('machine-arrived', contractingMachineAssignments.arrivalReadingId),
     jobSide && readingBranch('machine-left', contractingMachineAssignments.departureReadingId),
   ];
@@ -373,69 +346,54 @@ export function activityPageQuery(db: Db, actor: JobActor, input: ActivityListIn
   // milliseconds a Date can hold.
   return sql`
     select activity_keys.id, activity_keys.type,
-      to_char(activity_keys.occurred_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as cursor_at
+      to_char(activity_keys.occurred_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as cursor_at,
+      activity_keys.job_id, activity_keys.breakdown_id, activity_keys.machine_id, activity_keys.actor_id
     from (${union}) as activity_keys
     order by activity_keys.occurred_at desc, activity_keys.id desc
     limit ${input.limit}
   `;
 }
 
+type ActivityKeyRow = {
+  id: string;
+  type: ActivityItemType;
+  cursor_at: string;
+  job_id: string | null;
+  breakdown_id: string | null;
+  machine_id: string | null;
+  actor_id: string | null;
+};
+
 /** One page of the stream as keys: which row, which type, and the exact stamp the next page continues below. */
 async function findActivityKeys(db: Db, actor: JobActor, input: ActivityListInput): Promise<ActivityKey[]> {
   const query = activityPageQuery(db, actor, input);
   if (!query) return [];
-  const rows = await db.execute<{ id: string; type: ActivityItemType; cursor_at: string }>(query);
+  const rows = await db.execute<ActivityKeyRow>(query);
   return [...rows].map((row) => ({
     id: row.id,
     type: row.type,
     occurredAt: new Date(row.cursor_at),
     cursorAt: row.cursor_at,
+    jobId: row.job_id,
+    breakdownId: row.breakdown_id,
+    machineId: row.machine_id,
+    actorId: row.actor_id,
   }));
 }
 
-/** The page's items, hydrated per type in one query each, in the order the keys fixed. */
+/** The page's items: one lookup per record kind the keys name, then each key read in the order the keys fixed. */
 async function hydrateActivityKeys(db: Db, keys: ActivityKey[]): Promise<ActivityItem[]> {
   const idsOf = (...types: ActivityItemType[]) => keys.filter((key) => types.includes(key.type)).map((key) => key.id);
-  const [jobNotes, breakdownNotes, readings, jobRows] = await Promise.all([
-    findJobNotes(db, idsOf('job-note')),
-    findBreakdownNotes(db, idsOf('breakdown-note')),
+  const named = (ref: 'jobId' | 'breakdownId' | 'machineId' | 'actorId') => keys.flatMap((key) => key[ref] ?? []);
+  const [jobRefs, machineRefs, actors, breakdowns, jobNotes, breakdownNotes, readings, jobRows] = await Promise.all([
+    findJobRefs(db, named('jobId')),
+    findMachineRefs(db, named('machineId')),
+    findActors(db, named('actorId')),
+    findBreakdowns(db, named('breakdownId')),
+    findNotes(db, noteThreadStore.job.notes, idsOf('job-note')),
+    findNotes(db, noteThreadStore.breakdown.notes, idsOf('breakdown-note')),
     findReadings(db, idsOf('machine-arrived', 'machine-left')),
     findJobRows(db, idsOf('job-started', 'job-completed', 'job-cancelled')),
-  ]);
-  const breakdownIds = [
-    ...idsOf('breakdown-reported', 'mechanic-assigned', 'breakdown-started', 'breakdown-solved'),
-    ...breakdownNotes.map((note) => note.breakdownId),
-  ];
-  const [breakdowns, firstArrivals] = await Promise.all([
-    findBreakdowns(db, breakdownIds),
-    findFirstArrivals(db, idsOf('job-started')),
-  ]);
-  const jobIds = [
-    ...jobNotes.map((note) => note.jobId),
-    ...readings.map((reading) => reading.jobId),
-    ...jobRows.map((job) => job.id),
-    ...breakdowns.flatMap((row) => (row.breakdown.jobId ? [row.breakdown.jobId] : [])),
-  ];
-  const machineIds = [
-    ...readings.map((reading) => reading.machineId),
-    ...firstArrivals.map((arrival) => arrival.machineId),
-  ];
-  const actorIds = [
-    ...jobNotes.map((note) => note.authorUserId),
-    ...breakdownNotes.map((note) => note.authorUserId),
-    ...readings.map((reading) => reading.capturedByUserId),
-    ...jobRows.flatMap((job) => [job.activatedByUserId, job.completedByUserId, job.cancelledByUserId]),
-    ...breakdowns.flatMap((row) => [
-      row.breakdown.reportedByUserId,
-      row.breakdown.mechanicAssignedByUserId,
-      row.breakdown.startedByUserId,
-      row.breakdown.solvedByUserId,
-    ]),
-  ].filter((id): id is string => id !== null);
-  const [jobRefs, machineRefs, actors] = await Promise.all([
-    findJobRefs(db, jobIds),
-    findMachineRefs(db, machineIds),
-    findActors(db, actorIds),
   ]);
 
   const byId = <T extends { id: string }>(rows: readonly T[]) => new Map(rows.map((row) => [row.id, row]));
@@ -444,7 +402,6 @@ async function hydrateActivityKeys(db: Db, keys: ActivityKey[]): Promise<Activit
   const readingById = byId(readings);
   const jobRowById = byId(jobRows);
   const breakdownById = new Map(breakdowns.map((row) => [row.breakdown.id, row]));
-  const firstArrivalByJob = new Map(firstArrivals.map((arrival) => [arrival.jobId, arrival]));
   const jobRefById = byId(jobRefs);
   const machineRefById = byId(machineRefs);
   const actorById = byId(actors);
@@ -453,104 +410,78 @@ async function hydrateActivityKeys(db: Db, keys: ActivityKey[]): Promise<Activit
     if (value === undefined) throw new Error(`Activity ${what} vanished between paging and hydration`);
     return value;
   };
-  const actor = (id: string | null) => found(id === null ? undefined : actorById.get(id), `actor ${id}`);
-  const job = (id: string) => found(jobRefById.get(id), `Job ${id}`);
-  const machine = (id: string) => found(machineRefById.get(id), `Machine ${id}`);
-  const breakdownRef = (row: LoadedBreakdown) => ({
-    breakdown: {
-      id: row.breakdown.id,
-      urgency: row.breakdown.urgency,
-      status: row.breakdown.status,
-      subject: breakdownSubjectOf(row),
-      jobId: row.breakdown.jobId,
-    },
-    job: row.breakdown.jobId ? job(row.breakdown.jobId) : null,
-  });
+  const actor = (key: ActivityKey) => found(key.actorId === null ? undefined : actorById.get(key.actorId), 'actor');
+  const job = (id: string | null) => found(id === null ? undefined : jobRefById.get(id), `Job ${id}`);
+  const machine = (key: ActivityKey) =>
+    found(key.machineId === null ? undefined : machineRefById.get(key.machineId), 'Machine');
+  /** The loaded Breakdown and the refs every Breakdown item carries. */
+  const breakdown = (key: ActivityKey) => {
+    const row = found(key.breakdownId === null ? undefined : breakdownById.get(key.breakdownId), 'Breakdown');
+    const refs = {
+      breakdown: {
+        id: row.breakdown.id,
+        urgency: row.breakdown.urgency,
+        status: row.breakdown.status,
+        subject: breakdownSubjectOf(row),
+        jobId: row.breakdown.jobId,
+      },
+      job: key.jobId === null ? null : job(key.jobId),
+    };
+    return { row, refs };
+  };
+  const reading = (key: ActivityKey) => {
+    const row = found(readingById.get(key.id), `Hour Reading ${key.id}`);
+    return {
+      job: job(key.jobId),
+      machine: machine(key),
+      hours: row.value,
+      readAt: row.capturedAt.toISOString(),
+      photoBacked: row.method === 'photo',
+    };
+  };
 
   const toItem = (key: ActivityKey): ActivityItem => {
-    const at = { id: key.id, occurredAt: key.occurredAt.toISOString() };
+    const base = { type: key.type, id: key.id, occurredAt: key.occurredAt.toISOString(), actor: actor(key) };
     switch (key.type) {
-      case 'job-note': {
-        const note = found(jobNoteById.get(key.id), `Job Note ${key.id}`);
+      case 'job-note':
         return ActivityItem.parse({
-          type: key.type,
-          ...at,
-          actor: actor(note.authorUserId),
-          job: job(note.jobId),
-          text: note.text,
+          ...base,
+          job: job(key.jobId),
+          text: found(jobNoteById.get(key.id), `Job Note ${key.id}`).text,
         });
-      }
-      case 'breakdown-note': {
-        const note = found(breakdownNoteById.get(key.id), `Breakdown Note ${key.id}`);
-        const row = found(breakdownById.get(note.breakdownId), `Breakdown ${note.breakdownId}`);
+      case 'breakdown-note':
         return ActivityItem.parse({
-          type: key.type,
-          ...at,
-          actor: actor(note.authorUserId),
-          ...breakdownRef(row),
-          text: note.text,
+          ...base,
+          ...breakdown(key).refs,
+          text: found(breakdownNoteById.get(key.id), `Breakdown Note ${key.id}`).text,
         });
+      case 'breakdown-reported': {
+        const { row, refs } = breakdown(key);
+        return ActivityItem.parse({ ...base, ...refs, firstLine: breakdownFirstLine(row.breakdown.description) });
       }
-      case 'breakdown-reported':
-      case 'mechanic-assigned':
+      case 'mechanic-assigned': {
+        const { row, refs } = breakdown(key);
+        return ActivityItem.parse({ ...base, ...refs, mechanicName: row.mechanicName });
+      }
       case 'breakdown-started':
+        return ActivityItem.parse({ ...base, ...breakdown(key).refs });
       case 'breakdown-solved': {
-        const row = found(breakdownById.get(key.id), `Breakdown ${key.id}`);
-        const shared = { type: key.type, ...at, ...breakdownRef(row) };
-        if (key.type === 'breakdown-reported')
-          return ActivityItem.parse({
-            ...shared,
-            actor: actor(row.breakdown.reportedByUserId),
-            firstLine: breakdownFirstLine(row.breakdown.description),
-          });
-        if (key.type === 'mechanic-assigned')
-          return ActivityItem.parse({
-            ...shared,
-            actor: actor(row.breakdown.mechanicAssignedByUserId),
-            mechanicName: row.mechanicName,
-          });
-        if (key.type === 'breakdown-started')
-          return ActivityItem.parse({ ...shared, actor: actor(row.breakdown.startedByUserId) });
-        return ActivityItem.parse({
-          ...shared,
-          actor: actor(row.breakdown.solvedByUserId),
-          closeOutNote: row.breakdown.closeOutNote,
-        });
+        const { row, refs } = breakdown(key);
+        return ActivityItem.parse({ ...base, ...refs, closeOutNote: row.breakdown.closeOutNote });
       }
       case 'job-started':
+        return ActivityItem.parse({ ...base, job: job(key.jobId), machine: machine(key) });
       case 'job-completed':
-      case 'job-cancelled': {
-        const row = found(jobRowById.get(key.id), `Job ${key.id}`);
-        const shared = { type: key.type, ...at, job: job(row.id) };
-        if (key.type === 'job-started') {
-          const arrival = found(firstArrivalByJob.get(row.id), `first arrival on Job ${row.id}`);
-          return ActivityItem.parse({
-            ...shared,
-            actor: actor(row.activatedByUserId),
-            machine: machine(arrival.machineId),
-          });
-        }
-        if (key.type === 'job-completed') return ActivityItem.parse({ ...shared, actor: actor(row.completedByUserId) });
+        return ActivityItem.parse({ ...base, job: job(key.jobId) });
+      case 'job-cancelled':
         return ActivityItem.parse({
-          ...shared,
-          actor: actor(row.cancelledByUserId),
-          reason: row.cancellationReason ?? '',
+          ...base,
+          job: job(key.jobId),
+          reason: found(jobRowById.get(key.id), `Job ${key.id}`).cancellationReason ?? '',
         });
-      }
       case 'machine-arrived':
-      case 'machine-left': {
-        const reading = found(readingById.get(key.id), `Hour Reading ${key.id}`);
-        return ActivityItem.parse({
-          type: key.type,
-          ...at,
-          actor: actor(reading.capturedByUserId),
-          job: job(reading.jobId),
-          machine: machine(reading.machineId),
-          hours: reading.value,
-          readAt: reading.capturedAt.toISOString(),
-          photoBacked: reading.method === 'photo',
-        });
-      }
+      case 'machine-left':
+        return ActivityItem.parse({ ...base, ...reading(key) });
     }
   };
   return keys.map(toItem);
@@ -558,15 +489,9 @@ async function hydrateActivityKeys(db: Db, keys: ActivityKey[]): Promise<Activit
 
 const unique = (ids: readonly string[]) => [...new Set(ids)];
 
-function findJobNotes(db: Db, ids: string[]) {
+function findNotes(db: Db, { table }: NoteThreadTable, ids: string[]) {
   return ids.length
-    ? db.select().from(contractingJobNotes).where(inArray(contractingJobNotes.id, ids))
-    : Promise.resolve([]);
-}
-
-function findBreakdownNotes(db: Db, ids: string[]) {
-  return ids.length
-    ? db.select().from(contractingBreakdownNotes).where(inArray(contractingBreakdownNotes.id, ids))
+    ? db.select({ id: table.id, text: table.text }).from(table).where(inArray(table.id, ids))
     : Promise.resolve([]);
 }
 
@@ -575,51 +500,28 @@ function findReadings(db: Db, ids: string[]) {
     ? db
         .select({
           id: contractingHourReadings.id,
-          machineId: contractingHourReadings.machineId,
           value: contractingHourReadings.value,
           capturedAt: contractingHourReadings.capturedAt,
-          capturedByUserId: contractingHourReadings.capturedByUserId,
           method: contractingHourReadings.method,
-          jobId: contractingMachineAssignments.jobId,
         })
         .from(contractingHourReadings)
-        .innerJoin(
-          contractingMachineAssignments,
-          or(
-            eq(contractingMachineAssignments.arrivalReadingId, contractingHourReadings.id),
-            eq(contractingMachineAssignments.departureReadingId, contractingHourReadings.id),
-          ),
-        )
         .where(inArray(contractingHourReadings.id, ids))
     : Promise.resolve([]);
 }
 
 function findJobRows(db: Db, ids: string[]) {
-  return ids.length ? db.select().from(contractingJobs).where(inArray(contractingJobs.id, ids)) : Promise.resolve([]);
+  return ids.length
+    ? db
+        .select({ id: contractingJobs.id, cancellationReason: contractingJobs.cancellationReason })
+        .from(contractingJobs)
+        .where(inArray(contractingJobs.id, ids))
+    : Promise.resolve([]);
 }
 
 function findBreakdowns(db: Db, ids: string[]) {
   return ids.length
     ? selectBreakdowns(db).where(inArray(contractingBreakdowns.id, unique(ids)))
     : Promise.resolve([] as LoadedBreakdown[]);
-}
-
-/** The Machine whose arrival started each Job: its earliest accepted arrival. */
-function findFirstArrivals(db: Db, jobIds: string[]) {
-  return jobIds.length
-    ? db
-        .selectDistinctOn([contractingMachineAssignments.jobId], {
-          jobId: contractingMachineAssignments.jobId,
-          machineId: contractingMachineAssignments.machineId,
-        })
-        .from(contractingMachineAssignments)
-        .innerJoin(
-          contractingHourReadings,
-          eq(contractingHourReadings.id, contractingMachineAssignments.arrivalReadingId),
-        )
-        .where(inArray(contractingMachineAssignments.jobId, jobIds))
-        .orderBy(contractingMachineAssignments.jobId, contractingHourReadings.createdAt, contractingHourReadings.id)
-    : Promise.resolve([]);
 }
 
 async function findJobRefs(db: Db, ids: string[]): Promise<ActivityJobRef[]> {
@@ -690,7 +592,7 @@ export function getContractingActivityView({ db, actor }: { db: Db; actor: JobAc
 }
 
 /** Acknowledges the feed through `seenAt`, clamped to the newest item this caller can see. */
-export async function markContractingActivitySeen({
+export function markContractingActivitySeen({
   db,
   actor,
   seenAt,
@@ -699,12 +601,12 @@ export async function markContractingActivitySeen({
   actor: JobActor;
   seenAt: DateIso;
 }): Promise<DateIso> {
-  const latest = await listActivity({ db, actor, input: ActivityListInput.parse({ limit: 1 }) });
   return setActivityView({
     db,
     userId: actor.userId,
     business: 'contracting',
     seenAt,
-    latestActivityAt: latest.items[0]?.occurredAt ?? null,
+    latestActivityAt: async () =>
+      (await listActivity({ db, actor, input: ActivityListInput.parse({ limit: 1 }) })).items[0]?.occurredAt ?? null,
   });
 }

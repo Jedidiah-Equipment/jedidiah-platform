@@ -1,5 +1,4 @@
 import {
-  addNote,
   cancelJob,
   clearStintRate,
   completeJob,
@@ -29,7 +28,6 @@ import {
   stampInvoice,
   summarizeJobQueues,
 } from '@pkg/core/contracting';
-import { noteAdded } from '@pkg/domain/contracting';
 import {
   AssignmentIdInput,
   AssignmentPatchInput,
@@ -64,6 +62,7 @@ import { mapCoreErrors } from '../../../trpc/errors.js';
 import { authorizedProcedure, businessProcedure, router } from '../../../trpc/init.js';
 import { jobErrorFamily } from '../contracting-error-families.js';
 import type { ContractingPushScheduler } from '../contracting-push-scheduler.js';
+import { addThreadNote } from '../notes/notes.router.js';
 
 const readPermissions = ['contracting_job:read', 'contracting_job:read-own', 'contracting_job:read-priced'] as const;
 
@@ -112,18 +111,11 @@ export const createContractingJobsRouter = (push: ContractingPushScheduler) =>
           mapCoreErrors(() => cancelJob({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
         ),
     }),
-    // The Job Action `addNote` is the gate, judged under the Job's lock in core: it is open to every Job reader.
     notes: router({
+      // Delegates to contractingNotes.add; delete after the next mobile release.
       add: businessProcedure('contracting')
         .input(JobNoteCreateInput)
-        .mutation(async ({ ctx, input }) => {
-          const note = await mapCoreErrors(
-            () => addNote({ db: ctx.db, actor: ctx.access, thread: 'job', input }),
-            jobErrorFamily,
-          );
-          push.schedule(noteAdded('job', note.id));
-          return note;
-        }),
+        .mutation(({ ctx, input }) => addThreadNote(ctx, push, { thread: 'job', id: input.jobId, text: input.text })),
     }),
     assignments: router({
       add: authorizedProcedure(['contracting_job:assign', 'contracting_assignment:update-own'])

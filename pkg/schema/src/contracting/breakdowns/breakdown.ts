@@ -15,7 +15,6 @@ import {
 } from './breakdown-enums.js';
 
 export const BreakdownDescription = z.string().trim().min(1, 'Describe the problem').max(4000);
-export const BreakdownNoteText = NoteText;
 export const CloseOutNote = z.string().trim().min(1, 'A close-out note is required').max(4000);
 export const Latitude = z.number().min(-90).max(90);
 export const Longitude = z.number().min(-180).max(180);
@@ -89,7 +88,7 @@ export type BreakdownAssignMechanicInput = z.infer<typeof BreakdownAssignMechani
 export const BreakdownStartInput = z.object({ id: UUID }).strict();
 export const BreakdownSolveInput = z.object({ id: UUID, closeOutNote: CloseOutNote }).strict();
 export type BreakdownSolveInput = z.infer<typeof BreakdownSolveInput>;
-export const BreakdownNoteCreateInput = z.object({ breakdownId: UUID, text: BreakdownNoteText }).strict();
+export const BreakdownNoteCreateInput = z.object({ breakdownId: UUID, text: NoteText }).strict();
 export type BreakdownNoteCreateInput = z.infer<typeof BreakdownNoteCreateInput>;
 export const BreakdownIdInput = z.object({ id: UUID }).strict();
 export const BreakdownPhotoRemoveInput = z.object({ id: UUID, photoId: UUID }).strict();
@@ -143,7 +142,7 @@ export const BreakdownNote = z.object({
   breakdownId: UUID,
   authorUserId: AuthId,
   authorName: z.string(),
-  text: BreakdownNoteText,
+  text: NoteText,
   createdAt: DateIso,
 });
 export type BreakdownNote = z.infer<typeof BreakdownNote>;

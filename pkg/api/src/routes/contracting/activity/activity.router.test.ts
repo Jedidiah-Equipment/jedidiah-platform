@@ -66,7 +66,7 @@ test('a Job Note lands in the Activity of everyone who reaches its Job, and invo
   context,
 }) => {
   const sipho = context.createCaller(sessionAs('sipho', 'foreman'));
-  const note = await sipho.contractingJobs.notes.add({ jobId: context.jobId, text: 'Gate code is 4471' });
+  const note = await sipho.contractingNotes.add({ thread: 'job', id: context.jobId, text: 'Gate code is 4471' });
   expect(note).toMatchObject({ authorName: 'sipho', text: 'Gate code is 4471' });
 
   for (const [id, role] of [
@@ -83,8 +83,8 @@ test('a Job Note lands in the Activity of everyone who reaches its Job, and invo
   const karen = context.createCaller(sessionAs('karen', 'contracting-invoicing'));
   const refusal = await karen.contractingActivity.list({}).catch((error: unknown) => error);
   expect(refusal).toMatchObject({ code: 'FORBIDDEN' });
-  expect(getTRPCAppCode(refusal as never)).toBe('activity.forbidden');
-  await expect(karen.contractingJobs.notes.add({ jobId: context.jobId, text: 'Paid?' })).rejects.toMatchObject({
+  expect(getTRPCAppCode(refusal as never)).toBe('auth.forbidden');
+  await expect(karen.contractingNotes.add({ thread: 'job', id: context.jobId, text: 'Paid?' })).rejects.toMatchObject({
     code: 'FORBIDDEN',
   });
 });
@@ -96,7 +96,7 @@ test('marking Contracting Activity seen leaves the Equipment mark alone', async 
     .set({ lastActivitySeen: { equipment: equipmentSeen } })
     .where(eq(user.id, 'sipho'));
   const sipho = context.createCaller(sessionAs('sipho', 'foreman'));
-  const note = await sipho.contractingJobs.notes.add({ jobId: context.jobId, text: 'Diesel bowser is empty' });
+  const note = await sipho.contractingNotes.add({ thread: 'job', id: context.jobId, text: 'Diesel bowser is empty' });
 
   // Acknowledging a future instant clamps to the newest item the feed holds.
   const seen = await sipho.contractingActivity.setLastSeen({ seenAt: DateIso.parse('2099-01-01T00:00:00.000Z') });
@@ -111,7 +111,7 @@ test('note mutations schedule their committed notes and rejected notes schedule 
   const events: ContractingPushEvent[] = [];
   const contracting = { push: { schedule: (event: ContractingPushEvent) => events.push(event) } };
   const sipho = context.createCaller(sessionAs('sipho', 'foreman'), { contracting });
-  const note = await sipho.contractingJobs.notes.add({ jobId: context.jobId, text: 'Gate is locked' });
+  const note = await sipho.contractingNotes.add({ thread: 'job', id: context.jobId, text: 'Gate is locked' });
   expect(events).toEqual([{ kind: 'note.added', thread: 'job', noteId: note.id }]);
   const category = await createCategory({
     db: context.db,
@@ -144,18 +144,23 @@ test('note mutations schedule their committed notes and rejected notes schedule 
       jobId: null,
     },
   });
-  const reply = await sipho.contractingBreakdowns.notes.add({ breakdownId: breakdown.id, text: 'Still leaking' });
+  const reply = await sipho.contractingNotes.add({ thread: 'breakdown', id: breakdown.id, text: 'Still leaking' });
+  // The per-kind procedures delegate to the same call until the next mobile release.
+  const viaJob = await sipho.contractingJobs.notes.add({ jobId: context.jobId, text: 'Gate is open' });
+  const viaBreakdown = await sipho.contractingBreakdowns.notes.add({ breakdownId: breakdown.id, text: 'Fixed' });
   expect(events).toEqual([
     { kind: 'note.added', thread: 'job', noteId: note.id },
     { kind: 'note.added', thread: 'breakdown', noteId: reply.id },
+    { kind: 'note.added', thread: 'job', noteId: viaJob.id },
+    { kind: 'note.added', thread: 'breakdown', noteId: viaBreakdown.id },
   ]);
   events.length = 0;
   const karen = context.createCaller(sessionAs('karen', 'contracting-invoicing'), { contracting });
-  await expect(karen.contractingJobs.notes.add({ jobId: context.jobId, text: 'Refused' })).rejects.toMatchObject({
-    code: 'FORBIDDEN',
-  });
+  await expect(karen.contractingNotes.add({ thread: 'job', id: context.jobId, text: 'Refused' })).rejects.toMatchObject(
+    { code: 'FORBIDDEN' },
+  );
   await expect(
-    karen.contractingBreakdowns.notes.add({ breakdownId: breakdown.id, text: 'Refused' }),
+    karen.contractingNotes.add({ thread: 'breakdown', id: breakdown.id, text: 'Refused' }),
   ).rejects.toMatchObject({ code: 'FORBIDDEN' });
   expect(events).toEqual([]);
 });

@@ -32,7 +32,7 @@ test('a Job note deep link opens the authorized Activity feed even when the phon
   await act(async () => {
     renderer = create(<JobScreen />);
   });
-  expect(renderer.root.findByType('ActivityFeed' as never).props.jobId).toBe('j1');
+  expect(renderer.root.findByType('ActivityFeed' as never).props.thread).toEqual({ kind: 'job', id: 'j1' });
   expect(renderer.root.findByType('Toolbar' as never).props.parentLabel).toBe('Activity');
   expect(renderer.root.findAllByType('ScrollView' as never)).toHaveLength(0);
   await act(async () => renderer.unmount());

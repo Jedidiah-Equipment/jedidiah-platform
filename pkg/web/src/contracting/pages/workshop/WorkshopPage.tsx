@@ -1,4 +1,4 @@
-import { formatNumber } from '@pkg/domain';
+import { countPhrase } from '@pkg/domain';
 import type { BreakdownListInput } from '@pkg/schema/contracting';
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
@@ -122,7 +122,7 @@ export function WorkshopPage() {
         onRowClick={(breakdown) => void navigate({ to: '/contracting/workshop/$id', params: { id: breakdown.id } })}
         table={table}
         total={total}
-        totalLabel={(value) => `${formatNumber(value)} ${value === 1 ? 'Breakdown' : 'Breakdowns'}`}
+        totalLabel={(value) => countPhrase(value, 'Breakdown', 'Breakdowns')}
       />
       <ReportProblemDialog open={reporting} onOpenChange={setReporting} />
     </PageLayout>

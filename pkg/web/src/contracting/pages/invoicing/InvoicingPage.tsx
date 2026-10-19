@@ -1,10 +1,10 @@
-import { formatCurrency, formatDate, formatNumber } from '@pkg/domain';
+import { countPhrase, formatCurrency, formatDate } from '@pkg/domain';
 import { jobQueueLabels, jobQueueOf } from '@pkg/domain/contracting';
 import { type JobListInput, type JobQueueCounts, type JobSummary, jobQueues } from '@pkg/schema/contracting';
 import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import type { ColumnFiltersState } from '@tanstack/react-table';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
@@ -38,6 +38,11 @@ const useInvoicingTableStore = createPersistedDataTableStore({
   persistName: 'contracting-invoicing-table',
 });
 
+/** Writes the Dashboard's stage into the saved filters, once; the persisted filters own it from then on. */
+export function focusInvoicingOn(stage: InvoicingStage) {
+  useInvoicingTableStore.getState().setColumnFilters((current) => focusOnInvoicingStage(current, stage));
+}
+
 const noCounts = Object.fromEntries(jobQueues.map((queue) => [queue, 0])) as JobQueueCounts;
 
 const invoicingSortOptions: SortOptions<JobListInput> = {
@@ -47,14 +52,7 @@ const invoicingSortOptions: SortOptions<JobListInput> = {
 
 const stageFilterOptions = invoicingStages.map((queue) => ({ value: queue, label: jobQueueLabels[queue] }));
 
-export function InvoicingPage({
-  stage,
-  onStageApplied,
-}: {
-  /** The stage the Dashboard opens the list on, once; the persisted filters own it from then on. */
-  stage?: InvoicingStage | undefined;
-  onStageApplied?: () => void;
-} = {}) {
+export function InvoicingPage() {
   const trpc = useTRPC();
   const navigate = useNavigate();
   const canStamp = useCan('contracting_invoice:update').can;
@@ -75,12 +73,6 @@ export function InvoicingPage({
     sortOptions: invoicingSortOptions,
     getListInputExtras,
   });
-  const { setColumnFilters } = tableController;
-  useEffect(() => {
-    if (!stage) return;
-    setColumnFilters((current) => focusOnInvoicingStage(current, stage));
-    onStageApplied?.();
-  }, [onStageApplied, setColumnFilters, stage]);
   const jobsQuery = useInfiniteQuery(
     trpc.contractingJobs.jobs.list.infiniteQueryOptions(tableController.listInput, {
       ...cursorInfiniteQueryOptions,
@@ -213,7 +205,7 @@ export function InvoicingPage({
         onRowClick={(job) => void navigate({ to: '/contracting/jobs/$code', params: { code: job.jobNumber } })}
         table={table}
         total={total}
-        totalLabel={(value) => `${formatNumber(value)} ${value === 1 ? 'Job' : 'Jobs'}`}
+        totalLabel={(value) => countPhrase(value, 'Job', 'Jobs')}
       />
       <JobCardPreviewSheet job={previewing} variant="customer" onClose={() => setPreviewing(null)} />
       {stamping ? (

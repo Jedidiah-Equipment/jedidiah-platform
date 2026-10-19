@@ -1,7 +1,7 @@
 import type { AssignmentState } from '@pkg/schema/contracting';
+import { countPhrase } from '../formatting/count-phrase.js';
 import { toPlantDateOnly } from '../formatting/date.js';
 import { formatHours } from '../formatting/number.js';
-import { countPhrase } from './count-phrase.js';
 
 /** The gap is longer than the Gap Flag threshold in Settings, so it raises a Gap Flag until it is resolved. */
 export const isOverGapWindow = (gapHours: number, threshold: number) => gapHours > threshold;

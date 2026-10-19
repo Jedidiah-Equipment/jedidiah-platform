@@ -2,12 +2,7 @@ import { formatCurrency, formatDate } from '@pkg/domain';
 import type { StaleSentQuote } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
-import {
-  DashboardList,
-  DashboardListItem,
-  DashboardListScrollArea,
-} from '@/components/common/dashboard/DashboardList.js';
-import { DashboardWidgetEmpty, DashboardWidgetError } from '@/components/common/dashboard/DashboardWidgetCard.js';
+import { DashboardListBlock } from '@/components/common/dashboard/DashboardListBlock.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -19,42 +14,17 @@ export const StaleSentQuotesWidget: React.FC = () => {
   const trpc = useTRPC();
   const jobAccess = useCan('equipment_job:read');
   const staleSentQuery = useQuery(trpc.quotes.staleSent.queryOptions());
-  const staleQuotes = staleSentQuery.data?.items ?? [];
-
-  if (staleSentQuery.error) {
-    return (
-      <DashboardListScrollArea>
-        <DashboardWidgetError error={staleSentQuery.error} fallbackMessage="Unable to load stale sent quotes." />
-      </DashboardListScrollArea>
-    );
-  }
-
-  if (staleSentQuery.isPending) {
-    return (
-      <DashboardListScrollArea>
-        <StaleSentQuotesWidgetSkeleton />
-      </DashboardListScrollArea>
-    );
-  }
-
-  if (staleQuotes.length === 0) {
-    return (
-      <DashboardListScrollArea>
-        <DashboardWidgetEmpty>No sent quotes awaiting a response.</DashboardWidgetEmpty>
-      </DashboardListScrollArea>
-    );
-  }
 
   return (
-    <DashboardListScrollArea>
-      <DashboardList className="pr-3">
-        {staleQuotes.map((quote) => (
-          <DashboardListItem key={quote.id}>
-            <StaleSentQuoteRow canOpenJobs={jobAccess.can} quote={quote} />
-          </DashboardListItem>
-        ))}
-      </DashboardList>
-    </DashboardListScrollArea>
+    <DashboardListBlock
+      rows={staleSentQuery.data?.items}
+      error={staleSentQuery.error}
+      errorMessage="Unable to load stale sent quotes."
+      empty="No sent quotes awaiting a response."
+      skeleton={<StaleSentQuotesWidgetSkeleton />}
+      rowKey={(quote) => quote.id}
+      renderRow={(quote) => <StaleSentQuoteRow canOpenJobs={jobAccess.can} quote={quote} />}
+    />
   );
 };
 

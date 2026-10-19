@@ -1,4 +1,4 @@
-import { activityFilterLabels, fieldJobAccessMode, fieldReaderSeesJob } from '@pkg/domain/contracting';
+import { activityFilterLabels, fieldReaderOpensJob } from '@pkg/domain/contracting';
 import { type ActivityFilter, activityFilters } from '@pkg/schema/contracting';
 import type { ReactNode } from 'react';
 import { useMemo, useState } from 'react';
@@ -7,7 +7,7 @@ import { useActivityViewMark } from '@/components/activity/use-activity-view';
 import type { ListControlOption } from '@/components/ListControls';
 import { useSessionAccessSummary } from '@/lib/auth-session';
 import { useDebouncedSearch } from '@/lib/use-debounced-search';
-import { ActivityEntry } from './ActivityEntry';
+import { ActivityEntry, type ActivityThreadRef } from './ActivityEntry';
 import { useActivityFeed, useContractingActivityViewClient } from './use-activity';
 
 const FILTER_OPTIONS: readonly ListControlOption<ActivityFilter>[] = activityFilters.map((value) => ({
@@ -17,14 +17,12 @@ const FILTER_OPTIONS: readonly ListControlOption<ActivityFilter>[] = activityFil
 
 /** The Contracting feed: every reachable item on the Activity tab, or one Job's or one Breakdown's thread. */
 export function ContractingActivityFeed({
-  jobId,
-  breakdownId,
+  thread,
   listHeader,
   showControls = true,
   trackGlobalView = false,
 }: {
-  jobId?: string;
-  breakdownId?: string;
+  thread?: ActivityThreadRef;
   listHeader?: ReactNode;
   showControls?: boolean;
   trackGlobalView?: boolean;
@@ -32,30 +30,27 @@ export function ContractingActivityFeed({
   const [filter, setFilter] = useState<ActivityFilter>('all');
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedSearch(search);
-  const activity = useActivityFeed({ filter, search: debouncedSearch, jobId, breakdownId });
+  const activity = useActivityFeed({ filter, search: debouncedSearch, thread });
   const items = useMemo(() => activity.data?.pages.flatMap((page) => page.items) ?? [], [activity.data?.pages]);
   const onViewedLatest = useActivityViewMark(useContractingActivityViewClient(), {
     track: trackGlobalView,
     filter,
     search: debouncedSearch,
-    scoped: jobId !== undefined || breakdownId !== undefined,
+    scoped: thread !== undefined,
   });
   const unfiltered = filter === 'all' && !debouncedSearch;
   const access = useSessionAccessSummary();
   const scope = useMemo(
     () => ({
-      jobId,
-      breakdownId,
+      thread,
       // The phone's Job screen reads through the field Job gate, which the workshop does not pass.
-      canOpenJob: (job: { foremanUserId: string | null }) =>
-        access !== null &&
-        access !== undefined &&
-        fieldJobAccessMode(access) !== null &&
-        fieldReaderSeesJob(access, job),
+      canOpenJob: (job: { foremanUserId: string | null }) => fieldReaderOpensJob(access, job),
     }),
-    [access, jobId, breakdownId],
+    [access, thread],
   );
-  const subject = breakdownId ? 'this Breakdown' : jobId ? 'this Job' : 'your Jobs and Breakdowns';
+  const subject = { breakdown: 'this Breakdown', job: 'this Job', none: 'your Jobs and Breakdowns' }[
+    thread?.kind ?? 'none'
+  ];
 
   return (
     <ActivityTimeline
@@ -81,7 +76,7 @@ export function ContractingActivityFeed({
       onViewedLatest={onViewedLatest}
       query={activity}
       renderItem={(item, last) => <ActivityEntry item={item} last={last} scope={scope} />}
-      underSecondaryToolbar={jobId !== undefined || breakdownId !== undefined}
+      underSecondaryToolbar={thread !== undefined}
     />
   );
 }

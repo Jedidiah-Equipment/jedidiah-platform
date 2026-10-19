@@ -1,9 +1,9 @@
+import { formatNumber } from '@pkg/domain';
 import type { BuyListReason } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import type React from 'react';
-import { DashboardWidgetError } from '@/components/common/dashboard/DashboardWidgetCard.js';
-import { StatCard, StatCardSkeleton } from '@/components/common/StatCard.js';
+import { DashboardTile } from '@/components/common/dashboard/DashboardTile.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 /**
@@ -20,21 +20,22 @@ const BuyListReasonWidget: React.FC<{
   // Each tile is one facet of BUY_LIST_REASONS; the label there is what the buy list's badge says.
   const trpc = useTRPC();
   const buyListQuery = useQuery(trpc.inventory.buyList.queryOptions());
-
-  if (buyListQuery.error) {
-    return <DashboardWidgetError error={buyListQuery.error} fallbackMessage="Unable to load the buy list." />;
-  }
-
-  if (buyListQuery.isPending) {
-    return <StatCardSkeleton />;
-  }
-
-  const count = buyListQuery.data.items.filter((item) => item.reasons.includes(reason)).length;
+  const count = buyListQuery.data?.items.filter((item) => item.reasons.includes(reason)).length;
 
   return (
-    <Link className="flex flex-1 hover:underline" to="/equipment/inventory/buy-list">
-      <StatCard sublabel={count === 0 ? emptyLabel : count === 1 ? singular : `${count} ${plural}`} value={count} />
-    </Link>
+    <DashboardTile
+      value={count === undefined ? undefined : formatNumber(count)}
+      error={buyListQuery.error}
+      errorMessage="Unable to load the buy list."
+      sublabel={
+        count === undefined ? undefined : count === 0 ? emptyLabel : count === 1 ? singular : `${count} ${plural}`
+      }
+      link={(body) => (
+        <Link className="flex flex-1 hover:underline" to="/equipment/inventory/buy-list">
+          {body}
+        </Link>
+      )}
+    />
   );
 };
 

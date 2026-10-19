@@ -28,10 +28,11 @@ export async function getActivityView({
 }
 
 /**
- * Advances one business's mark through the newest item the caller says it displayed, clamped to
- * `latestActivityAt`: a caller may acknowledge an older response, never a future instant that hides later entries.
+ * Advances one business's mark through the newest item the caller says it displayed, clamped to the newest item
+ * that business's feed holds for them (`latestActivityAt`, read only now): a caller may acknowledge an older
+ * response, never a future instant that hides later entries. An empty feed leaves the mark where it is.
  */
-export function setActivityView({
+export async function setActivityView({
   db,
   userId,
   business,
@@ -42,10 +43,11 @@ export function setActivityView({
   userId: AuthId;
   business: Business;
   seenAt: DateIso;
-  latestActivityAt: DateIso | null;
+  latestActivityAt: () => Promise<DateIso | null>;
 }): Promise<DateIso> {
-  if (latestActivityAt === null) return getActivityView({ db, userId, business });
-  const validated = Date.parse(seenAt) <= Date.parse(latestActivityAt) ? seenAt : latestActivityAt;
+  const latest = await latestActivityAt();
+  if (latest === null) return getActivityView({ db, userId, business });
+  const validated = Date.parse(seenAt) <= Date.parse(latest) ? seenAt : latest;
   const read = (account: typeof user.$inferSelect) => ({
     map: ActivityViewMap.parse(account.lastActivitySeen),
     createdAt: DateIso.parse(account.createdAt),

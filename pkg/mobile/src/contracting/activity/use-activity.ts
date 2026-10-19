@@ -9,6 +9,7 @@ import {
 } from '@/components/activity/use-activity-view';
 import { useSessionAccessSummary } from '@/lib/auth-session';
 import { useTRPC } from '@/lib/trpc';
+import type { ActivityThreadRef } from './ActivityEntry';
 
 const ACTIVITY_PAGE_SIZE = 20;
 
@@ -21,25 +22,24 @@ export function useCanSeeActivity() {
 export function useActivityFeed({
   filter,
   search,
-  jobId,
-  breakdownId,
+  thread,
 }: {
   filter: ActivityFilter;
   search: string;
-  jobId?: string;
-  breakdownId?: string;
+  thread?: ActivityThreadRef;
 }) {
   const trpc = useTRPC();
   const enabled = useCanSeeActivity();
+  // The list names the thread by the record's own id field; the screen's route param is the id untyped.
+  const scope =
+    thread === undefined
+      ? {}
+      : thread.kind === 'job'
+        ? { jobId: thread.id as UUID }
+        : { breakdownId: thread.id as UUID };
   return useInfiniteQuery(
     trpc.contractingActivity.list.infiniteQueryOptions(
-      {
-        filter,
-        search: search || undefined,
-        jobId: jobId as UUID | undefined,
-        breakdownId: breakdownId as UUID | undefined,
-        limit: ACTIVITY_PAGE_SIZE,
-      },
+      { filter, search: search || undefined, ...scope, limit: ACTIVITY_PAGE_SIZE },
       {
         enabled,
         getNextPageParam: (page) => page.nextCursor,

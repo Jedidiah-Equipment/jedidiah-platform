@@ -1,3 +1,4 @@
+import { activityEntryRecord } from '@pkg/domain/contracting';
 import type { ActivityItem } from '@pkg/schema/contracting';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { describe, expect, test, vi } from 'vitest';
@@ -57,7 +58,7 @@ describe('ActivityEntry', () => {
   test('a note is a bubble from a person, with a link to its Job', async () => {
     const renderer = await render(note);
     expect(renderer.root.findByType('Avatar' as never).props.name).toBe('Sipho');
-    expect(texts(renderer)).toEqual(expect.arrayContaining(['Gate code is 4471', 'CJOB-00037 · Rietvlei']));
+    expect(texts(renderer)).toEqual(expect.arrayContaining(['Gate code is 4471', activityEntryRecord(note)?.label]));
     await act(async () => renderer.root.findByProps({ accessibilityRole: 'link' }).props.onPress());
     expect(push).toHaveBeenCalledWith({
       pathname: '/contracting/jobs/[jobId]',
@@ -66,14 +67,14 @@ describe('ActivityEntry', () => {
   });
 
   test('inside its own Job’s thread a note links nowhere', async () => {
-    const renderer = await render(note, { jobId: job.id });
+    const renderer = await render(note, { thread: { kind: 'job', id: job.id } });
     expect(renderer.root.findAllByProps({ accessibilityRole: 'link' })).toEqual([]);
   });
 
   test('names a Job this phone does not open without linking to it', async () => {
     const renderer = await render(note, { canOpenJob: () => false });
     expect(renderer.root.findAllByProps({ accessibilityRole: 'link' })).toEqual([]);
-    expect(texts(renderer)).toContain('CJOB-00037 · Rietvlei');
+    expect(texts(renderer)).toContain(activityEntryRecord(note)?.label);
     const event = await render(cancelled, { canOpenJob: () => false });
     expect(event.root.findAllByProps({ accessibilityRole: 'button' })).toEqual([]);
   });

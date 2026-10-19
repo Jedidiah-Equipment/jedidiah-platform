@@ -1,5 +1,10 @@
-import { type ActivityNoteItem, isActivityNote, presentActivityEvent } from '@pkg/domain/contracting';
-import type { ActivityItem, ActivityItemType, ActivityJobRef } from '@pkg/schema/contracting';
+import {
+  type ActivityNoteItem,
+  activityEntryRecord,
+  isActivityNote,
+  presentActivityEvent,
+} from '@pkg/domain/contracting';
+import type { ActivityItem, ActivityItemType, ActivityJobRef, NoteThreadKind } from '@pkg/schema/contracting';
 import {
   IconArrowBarToDown,
   IconArrowBarUp,
@@ -16,11 +21,14 @@ import type { Href } from 'expo-router';
 import { ActivityEventEntry, ActivityNoteEntry, ActivityNoteFooter } from '@/components/activity/ActivityEntries';
 import { Text } from '@/components/ui/text';
 
+/** The record whose thread the feed shows, when it shows one. */
+export type ActivityThreadRef = { kind: NoteThreadKind; id: string };
+
 /**
  * The thread an entry sits in (a link back to that same Job or Breakdown would go nowhere), and whether this person's
  * phone opens a Job: the workshop reads every Job's Activity but has no Job screen.
  */
-export type ActivityScope = { jobId?: string; breakdownId?: string; canOpenJob: (job: ActivityJobRef) => boolean };
+export type ActivityScope = { thread?: ActivityThreadRef; canOpenJob: (job: ActivityJobRef) => boolean };
 
 /** One Contracting feed entry: a note as a bubble from its author, every other item as one sentence. */
 export function ActivityEntry({ item, last, scope }: { item: ActivityItem; last: boolean; scope: ActivityScope }) {
@@ -53,30 +61,26 @@ export function ActivityEntry({ item, last, scope }: { item: ActivityItem; last:
   );
 }
 
-/**
- * What an entry points at: its Breakdown when it has one, else its Job. Null inside that same thread; `href` null for
- * a Job this phone does not open, so the entry still names it without a dead link.
- */
+/** The record's screen, by kind; `href` null for a Job this phone does not open, so the entry still names it. */
 function entryTarget(item: ActivityItem, scope: ActivityScope): { href: Href | null; label: string } | null {
+  const record = activityEntryRecord(item, scope.thread);
+  if (!record) return null;
   // A note opens on its thread, where the reply goes; an event opens on the record's Details.
   const tab = isActivityNote(item) ? { tab: 'activity' } : {};
-  if ('breakdown' in item) {
-    if (scope.breakdownId === item.breakdown.id) return null;
-    return {
-      href: {
-        pathname: '/contracting/workshop/[breakdownId]',
-        params: { breakdownId: item.breakdown.id, ...tab },
-      } as Href,
-      label: item.job ? `${item.breakdown.subject.code} · ${item.job.jobNumber}` : item.breakdown.subject.code,
-    };
+  switch (record.kind) {
+    case 'breakdown':
+      return {
+        href: { pathname: '/contracting/workshop/[breakdownId]', params: { breakdownId: record.id, ...tab } } as Href,
+        label: record.label,
+      };
+    case 'job':
+      return {
+        href: scope.canOpenJob(record.job)
+          ? ({ pathname: '/contracting/jobs/[jobId]', params: { jobId: record.id, ...tab } } as Href)
+          : null,
+        label: record.label,
+      };
   }
-  if (scope.jobId === item.job.id) return null;
-  return {
-    href: scope.canOpenJob(item.job)
-      ? ({ pathname: '/contracting/jobs/[jobId]', params: { jobId: item.job.id, ...tab } } as Href)
-      : null,
-    label: `${item.job.jobNumber} · ${item.job.farmName}`,
-  };
 }
 
 const EVENT_ICONS = {

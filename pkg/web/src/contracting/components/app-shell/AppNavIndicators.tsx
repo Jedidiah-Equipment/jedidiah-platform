@@ -1,4 +1,4 @@
-import { formatNumber } from '@pkg/domain';
+import { countPhrase, formatNumber } from '@pkg/domain';
 import { canSeeActivity } from '@pkg/domain/contracting';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
@@ -6,7 +6,7 @@ import type React from 'react';
 import { useActivityUnread } from '@/components/activity/use-activity-view.js';
 import { NavWarningDot } from '@/components/app-shell/NavWarningDot.js';
 import { useContractingActivityViewClient } from '@/contracting/components/activity/activity-view-client.js';
-import { DASHBOARD_REFETCH_INTERVAL_MS } from '@/contracting/pages/dashboard/dashboard-refresh.js';
+import { DASHBOARD_REFETCH_INTERVAL_MS } from '@/contracting/lib/dashboard-refresh.js';
 import { useAccess, useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 
@@ -21,9 +21,7 @@ export const ReadingExceptionsNavIndicator: React.FC = () => {
   const count = exceptionsQuery.data?.length ?? 0;
 
   return count > 0 ? (
-    <NavWarningDot
-      label={`${formatNumber(count)} ${count === 1 ? 'reading exception needs' : 'reading exceptions need'} review`}
-    />
+    <NavWarningDot label={`${countPhrase(count, 'reading exception needs', 'reading exceptions need')} review`} />
   ) : null;
 };
 

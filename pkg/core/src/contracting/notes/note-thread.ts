@@ -7,14 +7,9 @@ import {
 } from '@pkg/db/contracting';
 import { formatJobNumber, type NoteThreadRecord } from '@pkg/domain/contracting';
 import type { AuthId, UserAccessSummary } from '@pkg/schema';
-import {
-  BreakdownNote,
-  BreakdownNoteCreateInput,
-  JobNote,
-  JobNoteCreateInput,
-  type NoteThreadKind,
-} from '@pkg/schema/contracting';
+import { BreakdownNote, JobNote, type NoteThreadKind } from '@pkg/schema/contracting';
 import { eq } from 'drizzle-orm';
+import type { PgColumn } from 'drizzle-orm/pg-core';
 import { selectBreakdowns, toBreakdownSummary } from '../breakdowns/breakdown-load.js';
 import { lockBreakdownFor } from '../breakdowns/breakdown-service.js';
 import { lockJobFor } from '../jobs/job-lock.js';
@@ -23,9 +18,14 @@ type NoteRow = { id: string; threadId: string; authorUserId: AuthId; text: strin
 
 export type NoteRecord = { job: JobNote; breakdown: BreakdownNote };
 
+/** A kind's note table and the column that names the thread a row belongs to; the Activity feed reads it too. */
+export type NoteThreadTable = {
+  table: typeof contractingJobNotes | typeof contractingBreakdownNotes;
+  threadColumn: PgColumn;
+};
+
 export type NoteThreadStore<K extends NoteThreadKind> = {
-  /** Parses the kind's own create input to the thread it names and the text to append. */
-  parseInput: (raw: unknown) => { id: string; text: string };
+  notes: NoteThreadTable;
   /** Locks the record and judges its `addNote` Action for this actor; throws the record's own refusal. */
   lock: (tx: DatabaseTransaction, id: string, actor: UserAccessSummary) => Promise<{ id: string }>;
   insert: (
@@ -42,25 +42,27 @@ export type NoteThreadStore<K extends NoteThreadKind> = {
   toRecord: (row: NoteRow, authorName: string) => NoteRecord[K];
 };
 
+/** The authors read is the same walk of `notes` for every kind, so a kind declares its table and gets it. */
+function withAuthors<K extends NoteThreadKind>(store: Omit<NoteThreadStore<K>, 'authorsOf'>): NoteThreadStore<K> {
+  const { table, threadColumn } = store.notes;
+  return {
+    ...store,
+    authorsOf: async (db, threadId) => {
+      const rows = await db.selectDistinct({ id: table.authorUserId }).from(table).where(eq(threadColumn, threadId));
+      return rows.map(({ id }) => id);
+    },
+  };
+}
+
 /** Each Note Thread kind's tables and record gate; a new kind is a compile error until it has a row here. */
 export const noteThreadStore: { [K in NoteThreadKind]: NoteThreadStore<K> } = {
-  job: {
-    parseInput: (raw) => {
-      const { jobId, text } = JobNoteCreateInput.parse(raw);
-      return { id: jobId, text };
-    },
+  job: withAuthors<'job'>({
+    notes: { table: contractingJobNotes, threadColumn: contractingJobNotes.jobId },
     lock: (tx, id, actor) => lockJobFor(tx, id, 'addNote', actor),
     insert: async (tx, { threadId, authorUserId, text }) => {
       const [note] = await tx.insert(contractingJobNotes).values({ jobId: threadId, authorUserId, text }).returning();
       if (!note) throw new Error('Job Note insert returned no row');
       return { ...note, threadId: note.jobId };
-    },
-    authorsOf: async (db, jobId) => {
-      const rows = await db
-        .selectDistinct({ id: contractingJobNotes.authorUserId })
-        .from(contractingJobNotes)
-        .where(eq(contractingJobNotes.jobId, jobId));
-      return rows.map(({ id }) => id);
     },
     loadForPush: async (db, noteId) => {
       const [row] = await db
@@ -82,12 +84,9 @@ export const noteThreadStore: { [K in NoteThreadKind]: NoteThreadStore<K> } = {
         text: row.text,
         createdAt: row.createdAt,
       }),
-  },
-  breakdown: {
-    parseInput: (raw) => {
-      const { breakdownId, text } = BreakdownNoteCreateInput.parse(raw);
-      return { id: breakdownId, text };
-    },
+  }),
+  breakdown: withAuthors<'breakdown'>({
+    notes: { table: contractingBreakdownNotes, threadColumn: contractingBreakdownNotes.breakdownId },
     lock: (tx, id, actor) => lockBreakdownFor(tx, id, 'addNote', actor),
     insert: async (tx, { threadId, authorUserId, text }) => {
       const [note] = await tx
@@ -96,13 +95,6 @@ export const noteThreadStore: { [K in NoteThreadKind]: NoteThreadStore<K> } = {
         .returning();
       if (!note) throw new Error('Breakdown Note insert returned no row');
       return { ...note, threadId: note.breakdownId };
-    },
-    authorsOf: async (db, breakdownId) => {
-      const rows = await db
-        .selectDistinct({ id: contractingBreakdownNotes.authorUserId })
-        .from(contractingBreakdownNotes)
-        .where(eq(contractingBreakdownNotes.breakdownId, breakdownId));
-      return rows.map(({ id }) => id);
     },
     loadForPush: async (db, noteId) => {
       const [row] = await db
@@ -131,5 +123,5 @@ export const noteThreadStore: { [K in NoteThreadKind]: NoteThreadStore<K> } = {
         text: row.text,
         createdAt: row.createdAt,
       }),
-  },
+  }),
 };

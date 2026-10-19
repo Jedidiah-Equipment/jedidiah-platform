@@ -1,6 +1,6 @@
 import { type Db, user } from '@pkg/db';
 import type { UserAccessSummary } from '@pkg/schema';
-import type { NoteThreadKind } from '@pkg/schema/contracting';
+import type { NoteAddInput, NoteThreadKind } from '@pkg/schema/contracting';
 import { eq } from 'drizzle-orm';
 import { type NoteRecord, noteThreadStore } from './note-thread.js';
 
@@ -12,15 +12,14 @@ export async function addNote<K extends NoteThreadKind>({
   db,
   actor,
   thread,
-  input: raw,
+  input: { id, text },
 }: {
   db: Db;
   actor: UserAccessSummary;
   thread: K;
-  input: unknown;
+  input: Pick<NoteAddInput, 'id' | 'text'>;
 }): Promise<NoteRecord[K]> {
   const store = noteThreadStore[thread];
-  const { id, text } = store.parseInput(raw);
   return db.transaction(async (tx) => {
     const record = await store.lock(tx, id, actor);
     const row = await store.insert(tx, { threadId: record.id, authorUserId: actor.userId, text });

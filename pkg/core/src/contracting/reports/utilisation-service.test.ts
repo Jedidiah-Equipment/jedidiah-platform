@@ -3,6 +3,7 @@ import type { DateOnlyIso } from '@pkg/schema';
 import { eq } from 'drizzle-orm';
 import { expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
+import { createCategory } from '../fleet/category-service.js';
 import { resolveGap } from '../jobs/assignment-service.js';
 import { createJob } from '../jobs/job-service.js';
 import { captureReading } from '../readings/reading-service.js';
@@ -96,7 +97,7 @@ test('derives day counts and hours by kind from the captured ledger, pro-rated a
       travelHours: 0,
       unaccountedHours: 0,
       unresolvedHours: 0,
-      retiredAt: expect.any(String),
+      retiredDate: '2026-06-10',
     }),
   ]);
   // Day-weighted, never a mean of percentages: 3 active days of 40 fleet days.
@@ -179,4 +180,16 @@ test('the trend runs twelve months to the window month for its subject and carri
       today,
     }),
   ).rejects.toMatchObject({ code: 'report.not_found' });
+});
+
+test('a Category with no Machines yet names its trend and shows twelve empty months', async ({ context: { db } }) => {
+  const tippers = await createCategory({ db, actorUserId: adminId, input: { name: 'Tippers', kind: 'machine' } });
+  const trend = await getUtilisationTrend({
+    db,
+    input: { window: june, subject: { kind: 'category', id: tippers.id } },
+    today,
+  });
+  expect(trend.label).toBe('Tippers');
+  expect(trend.months).toHaveLength(12);
+  expect(trend.months.every((month) => month.fleetDays === 0 && month.utilisationPercent === null)).toBe(true);
 });

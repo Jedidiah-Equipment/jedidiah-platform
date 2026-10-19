@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { z } from 'zod';
 import { MachinesPage } from '@/contracting/pages/fleet/MachinesPage.js';
 import { serviceFilterValues } from '@/contracting/pages/fleet/types.js';
@@ -11,12 +11,15 @@ export const Route = createFileRoute('/_authed/contracting/fleet/')({
   staticData: { pageLabel: 'Machines' },
 });
 
+/**
+ * The Machines table is browser-owned, so nothing outside it can be written ahead of the mount the way the saved
+ * filters can; the value rides the first render and the address is cleared once the table has it.
+ */
 function MachinesRoute() {
   const { service } = Route.useSearch();
   const navigate = Route.useNavigate();
-  const [opened] = useState(service);
   useEffect(() => {
     if (service) void navigate({ search: {}, replace: true });
   }, [navigate, service]);
-  return <MachinesPage service={opened} />;
+  return <MachinesPage service={service} />;
 }

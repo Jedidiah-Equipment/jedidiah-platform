@@ -20,7 +20,6 @@ const threads: Record<
   NoteThreadKind,
   {
     open: (fixtures: Fixtures) => Promise<string>;
-    input: (id: string, text: string) => unknown;
     threadKey: string;
     outsider: UserAccessSummary;
     refused: string;
@@ -42,7 +41,6 @@ const threads: Record<
       });
       return job.id;
     },
-    input: (jobId, text) => ({ jobId, text }),
     threadKey: 'jobId',
     // Invoicing reads only Completed-onward Jobs.
     outsider: invoicing,
@@ -63,7 +61,6 @@ const threads: Record<
       });
       return breakdown.id;
     },
-    input: (breakdownId, text) => ({ breakdownId, text }),
     threadKey: 'breakdownId',
     // Reporting lets a Foreman note only a Breakdown that is theirs.
     outsider: accessForRole('foreman', 'thabo'),
@@ -82,7 +79,7 @@ describe.each(noteThreadKinds)('a %s Note Thread', (kind) => {
       db: context.db,
       actor: foreman,
       thread: kind,
-      input: thread.input(id, '  Gate code  '),
+      input: { id, text: '  Gate code  ' },
     });
 
     expect(note).toMatchObject({
@@ -97,13 +94,13 @@ describe.each(noteThreadKinds)('a %s Note Thread', (kind) => {
     const id = await thread.open(context);
 
     await expect(
-      addNote({ db: context.db, actor: thread.outsider, thread: kind, input: thread.input(id, 'Hello') }),
+      addNote({ db: context.db, actor: thread.outsider, thread: kind, input: { id, text: 'Hello' } }),
     ).rejects.toMatchObject({ code: thread.refused });
   });
 
   test('refuses a missing record with its record’s not-found', async ({ context: { db } }) => {
     await expect(
-      addNote({ db, actor: admin, thread: kind, input: thread.input(MISSING, 'Hello') }),
+      addNote({ db, actor: admin, thread: kind, input: { id: MISSING, text: 'Hello' } }),
     ).rejects.toMatchObject({ code: thread.notFound });
   });
 });

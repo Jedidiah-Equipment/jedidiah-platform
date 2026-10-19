@@ -14,6 +14,7 @@ import { SwitchField } from '../fields/SwitchField.js';
 import { TextareaField } from '../fields/TextareaField.js';
 import { TextField } from '../fields/TextField.js';
 import { ThumbnailField } from '../fields/ThumbnailField.js';
+import { SaveButton } from '../SaveButton.js';
 import { fieldContext, formContext } from './form-context.js';
 
 export const { useAppForm, useTypedAppFormContext, withFieldGroup, withForm } = createFormHook({
@@ -34,7 +35,7 @@ export const { useAppForm, useTypedAppFormContext, withFieldGroup, withForm } = 
     TextField,
     ThumbnailField,
   },
-  formComponents: {},
+  formComponents: { SaveButton },
   fieldContext,
   formContext,
 });

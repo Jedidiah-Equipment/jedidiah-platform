@@ -5,12 +5,7 @@ import type { UpcomingDeliveryQuote } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useMemo } from 'react';
-import {
-  DashboardList,
-  DashboardListItem,
-  DashboardListScrollArea,
-} from '@/components/common/dashboard/DashboardList.js';
-import { DashboardWidgetEmpty, DashboardWidgetError } from '@/components/common/dashboard/DashboardWidgetCard.js';
+import { DashboardListBlock, dashboardRowClassName } from '@/components/common/dashboard/DashboardListBlock.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { useCan } from '@/hooks/use-access.js';
@@ -31,57 +26,29 @@ export const UpcomingDeliveriesWidget: React.FC = () => {
     () => (baysQuery.data ? getJobProjectedFinishDates(listEnabledBays(baysQuery.data.items)) : new Map()),
     [baysQuery.data],
   );
-
-  if (deliveriesQuery.error) {
-    return (
-      <DashboardListScrollArea>
-        <DashboardWidgetError error={deliveriesQuery.error} fallbackMessage="Unable to load upcoming deliveries." />
-      </DashboardListScrollArea>
-    );
-  }
-
-  if (jobAccess.can && baysQuery.error) {
-    return (
-      <DashboardListScrollArea>
-        <DashboardWidgetError error={baysQuery.error} fallbackMessage="Unable to load delivery risk." />
-      </DashboardListScrollArea>
-    );
-  }
-
-  if (deliveriesQuery.isPending || (jobAccess.can && baysQuery.isPending)) {
-    return (
-      <DashboardListScrollArea>
-        <UpcomingDeliveriesWidgetSkeleton />
-      </DashboardListScrollArea>
-    );
-  }
-
+  // The deliveries list waits for the Bays too, or the At risk badges would appear a beat after the rows.
+  const loading = deliveriesQuery.isPending || (jobAccess.can && baysQuery.isPending);
   const result = deliveriesQuery.data;
-  const deliveries = result.items;
-
-  if (deliveries.length === 0) {
-    return (
-      <DashboardListScrollArea>
-        <DashboardWidgetEmpty>No upcoming deliveries.</DashboardWidgetEmpty>
-      </DashboardListScrollArea>
-    );
-  }
 
   return (
-    <DashboardListScrollArea>
-      <DashboardList className="pr-3">
-        {deliveries.map((quote) => (
-          <DashboardListItem key={quote.id}>
-            <UpcomingDeliveryRow
-              finishDatesByJobId={finishDatesByJobId}
-              canOpenJobs={jobAccess.can}
-              quote={quote}
-              today={result.today}
-            />
-          </DashboardListItem>
-        ))}
-      </DashboardList>
-    </DashboardListScrollArea>
+    <DashboardListBlock
+      rows={loading ? undefined : result?.items}
+      error={deliveriesQuery.error ?? (jobAccess.can ? baysQuery.error : null)}
+      errorMessage={deliveriesQuery.error ? 'Unable to load upcoming deliveries.' : 'Unable to load delivery risk.'}
+      empty="No upcoming deliveries."
+      skeleton={<UpcomingDeliveriesWidgetSkeleton />}
+      rowKey={(quote) => quote.id}
+      renderRow={(quote) =>
+        result ? (
+          <UpcomingDeliveryRow
+            finishDatesByJobId={finishDatesByJobId}
+            canOpenJobs={jobAccess.can}
+            quote={quote}
+            today={result.today}
+          />
+        ) : null
+      }
+    />
   );
 };
 
@@ -107,7 +74,7 @@ export function UpcomingDeliveryRow({
       : false;
 
   return (
-    <div className="grid min-w-0 grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1 text-sm">
+    <div className={dashboardRowClassName}>
       <DashboardQuoteIdentity canOpenJob={canOpenJobs} quote={quote} />
       <span className="flex flex-col items-end gap-1 text-right">
         <span className="font-medium tabular-nums">{formatDate(quote.plannedDeliveryDate, 'day')}</span>

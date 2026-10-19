@@ -1,20 +1,18 @@
-import { formatHours } from '@pkg/domain';
-import {
-  countPhrase,
-  hoursToServiceLabel,
-  machinesDueForService,
-  serviceDueStatusColorClassNames,
-} from '@pkg/domain/contracting';
+import { countPhrase, formatHours } from '@pkg/domain';
+import { hoursToServiceLabel, machinesDueForService, serviceDueStatusColorClassNames } from '@pkg/domain/contracting';
 import type { Machine } from '@pkg/schema/contracting';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
+import {
+  DashboardListBlock,
+  dashboardRowClassName,
+  dashboardRowLinkClassName,
+} from '@/components/common/dashboard/DashboardListBlock.js';
 import { PrimaryLink } from '@/components/common/PrimaryLink.js';
 import { CategoryLabel } from '@/contracting/components/CategoryIcon.js';
-import { DASHBOARD_REFETCH_INTERVAL_MS } from '@/contracting/pages/dashboard/dashboard-refresh.js';
+import { DASHBOARD_REFETCH_INTERVAL_MS } from '@/contracting/lib/dashboard-refresh.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
-
-import { DashboardListBlock, dashboardRowClassName, dashboardRowLinkClassName } from './DashboardListBlock.js';
 
 export function ServiceDueWidget() {
   const trpc = useTRPC();

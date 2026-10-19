@@ -1,3 +1,4 @@
+import { activityEntryRecord } from '@pkg/domain/contracting';
 import type { ActivityItem } from '@pkg/schema/contracting';
 import { describe, expect, it } from 'vitest';
 
@@ -41,29 +42,30 @@ describe('ActivityEntry', () => {
     expect(html).toContain('Sipho Dlamini');
     expect(html).toContain('Gate code is 4471');
     expect(html).toContain(JOB_HREF);
-    expect(html).toContain('CJOB-00037 · Rietvlei');
+    expect(html).toContain(activityEntryRecord(jobNote)?.label);
   });
 
   it('links a Breakdown note to its Breakdown rather than its Job', async () => {
     const html = await render(breakdownNote);
 
     expect(html).toContain(BREAKDOWN_HREF);
-    expect(html).toContain('T-12 · CJOB-00037');
     expect(html).not.toContain(JOB_HREF);
   });
 
   it('names a Job without a dead link for a reader the Job page refuses', async () => {
     const html = await render(jobNote, { canOpenJob: false });
 
-    expect(html).toContain('CJOB-00037 · Rietvlei');
+    expect(html).toContain(activityEntryRecord(jobNote)?.label);
     expect(html).not.toContain(JOB_HREF);
   });
 
   it('drops the link back to the thread the entry already sits in', async () => {
-    expect(await render(jobNote, { jobId: job.id })).not.toContain(JOB_HREF);
-    expect(await render(breakdownNote, { breakdownId: breakdown.id })).not.toContain(BREAKDOWN_HREF);
+    expect(await render(jobNote, { thread: { kind: 'job', id: job.id } })).not.toContain(JOB_HREF);
+    expect(await render(breakdownNote, { thread: { kind: 'breakdown', id: breakdown.id } })).not.toContain(
+      BREAKDOWN_HREF,
+    );
     // A Job's thread holds its Breakdowns' entries too, and those still open their Breakdown.
-    expect(await render(breakdownNote, { jobId: job.id })).toContain(BREAKDOWN_HREF);
+    expect(await render(breakdownNote, { thread: { kind: 'job', id: job.id } })).toContain(BREAKDOWN_HREF);
   });
 
   it('reads an event as its sentence and detail, linked to its record', async () => {

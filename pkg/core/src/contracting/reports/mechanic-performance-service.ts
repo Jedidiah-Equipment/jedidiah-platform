@@ -37,22 +37,21 @@ export async function getMechanicPerformance({
     listMechanics({ db }),
     // Every count follows the current primary Mechanic, so someone replaced everywhere has nothing to show.
     namedMechanics(db),
-    window.days === 0
-      ? Promise.resolve([])
-      : db
-          .select({
-            mechanicUserId: contractingBreakdowns.primaryMechanicUserId,
-            reportedAt: contractingBreakdowns.reportedAt,
-            solvedAt: contractingBreakdowns.solvedAt,
-          })
-          .from(contractingBreakdowns)
-          .where(
-            and(
-              eq(contractingBreakdowns.status, 'solved'),
-              gte(contractingBreakdowns.solvedAt, range.from),
-              lt(contractingBreakdowns.solvedAt, range.to),
-            ),
-          ),
+    // A window after today resolves with `end < start`, so its instant range is empty and this finds nothing.
+    db
+      .select({
+        mechanicUserId: contractingBreakdowns.primaryMechanicUserId,
+        reportedAt: contractingBreakdowns.reportedAt,
+        solvedAt: contractingBreakdowns.solvedAt,
+      })
+      .from(contractingBreakdowns)
+      .where(
+        and(
+          eq(contractingBreakdowns.status, 'solved'),
+          gte(contractingBreakdowns.solvedAt, range.from),
+          lt(contractingBreakdowns.solvedAt, range.to),
+        ),
+      ),
     db
       .select({ mechanicUserId: contractingBreakdowns.primaryMechanicUserId, count: sql<number>`count(*)::integer` })
       .from(contractingBreakdowns)

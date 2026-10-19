@@ -2,6 +2,8 @@ import type { MechanicPerformanceRow } from '@pkg/schema/contracting';
 import { round1 } from './hours.js';
 
 export const UNASSIGNED_MECHANIC_LABEL = 'Unassigned';
+/** The Foreman line of a Job nobody has been assigned to yet. */
+export const UNASSIGNED_FOREMAN_LABEL = 'Foreman unassigned';
 
 const MILLISECONDS_PER_DAY = 86_400_000;
 

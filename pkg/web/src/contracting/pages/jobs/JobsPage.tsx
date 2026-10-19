@@ -1,16 +1,17 @@
-import { formatCurrency, formatDate, formatNumber, getFirstName } from '@pkg/domain';
+import { countPhrase, formatCurrency, formatDate, formatNumber, getFirstName } from '@pkg/domain';
 import {
   countedAssignmentAttentionLevel,
   jobQueueLabels,
   jobQueueOf,
   judgeJobAction,
   openJobQueues,
+  UNASSIGNED_FOREMAN_LABEL,
 } from '@pkg/domain/contracting';
 import type { JobListInput, JobQueue, JobSummary } from '@pkg/schema/contracting';
 import { CustomerName, FarmName, JobSortBy, jobQueues, WorkTypeName } from '@pkg/schema/contracting';
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { SearchableCombobox, type SearchableComboboxCreate } from '@/components/common/SearchableCombobox.js';
@@ -68,6 +69,12 @@ const useJobsTableStore = createPersistedDataTableStore({
   persistName: 'contracting-jobs-table',
 });
 
+/** Writes the Dashboard's focus into the saved filters, once; the persisted filters own it from then on. */
+export function focusJobsOn({ stage, needsALook }: { stage?: JobQueue | undefined; needsALook?: boolean | undefined }) {
+  if (needsALook) useJobsTableStore.getState().setColumnFilters(focusOnNeedsALook);
+  else if (stage) useJobsTableStore.getState().setColumnFilters((current) => focusOnStage(current, stage));
+}
+
 const jobSortOptions: SortOptions<JobListInput> = {
   allowedSortIds: JobSortBy.options,
   defaultSort: { id: 'jobNumber' },
@@ -76,10 +83,7 @@ const jobSortOptions: SortOptions<JobListInput> = {
 const stageFilterOptions = jobQueues.map((queue) => ({ value: queue, label: jobQueueLabels[queue] }));
 const attentionFilterOptions = [{ value: NEEDS_A_LOOK, label: 'Needs a look' }];
 
-/** Where the Dashboard opens the list, once; the persisted filters own it from then on. */
-export type JobsFocus = { stage?: JobQueue | undefined; needsALook?: boolean | undefined };
-
-export function JobsPage({ focus, onFocusApplied }: { focus?: JobsFocus; onFocusApplied?: () => void } = {}) {
+export function JobsPage() {
   const trpc = useTRPC();
   const navigate = useNavigate();
   const write = useJobWrite();
@@ -97,15 +101,6 @@ export function JobsPage({ focus, onFocusApplied }: { focus?: JobsFocus; onFocus
     sortOptions: jobSortOptions,
     getListInputExtras: jobListFilters,
   });
-  const { setColumnFilters } = tableController;
-  const focusStage = focus?.stage;
-  const focusNeedsALook = focus?.needsALook;
-  useEffect(() => {
-    if (focusNeedsALook) setColumnFilters(focusOnNeedsALook);
-    else if (focusStage) setColumnFilters((current) => focusOnStage(current, focusStage));
-    else return;
-    onFocusApplied?.();
-  }, [focusNeedsALook, focusStage, onFocusApplied, setColumnFilters]);
   const jobsQuery = useInfiniteQuery(
     trpc.contractingJobs.jobs.list.infiniteQueryOptions(tableController.listInput, {
       ...cursorInfiniteQueryOptions,
@@ -178,7 +173,7 @@ export function JobsPage({ focus, onFocusApplied }: { focus?: JobsFocus; onFocus
               </div>
             ) : (
               <div className="mt-1 text-xs text-muted-foreground">
-                {row.original.foremanName ? getFirstName(row.original.foremanName) : 'Foreman unassigned'}
+                {row.original.foremanName ? getFirstName(row.original.foremanName) : UNASSIGNED_FOREMAN_LABEL}
               </div>
             )}
           </div>
@@ -304,7 +299,7 @@ export function JobsPage({ focus, onFocusApplied }: { focus?: JobsFocus; onFocus
           onRowClick={(job) => openJob(job)}
           table={table}
           total={total}
-          totalLabel={(value) => `${formatNumber(value)} ${value === 1 ? 'Job' : 'Jobs'}`}
+          totalLabel={(value) => countPhrase(value, 'Job', 'Jobs')}
         />
       </PageLayout>
       <NewJobDialog flow={flow} canAssign={canAssign} />

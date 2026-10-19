@@ -1,5 +1,11 @@
-import { type ActivityNoteItem, isActivityNote, presentActivityEvent } from '@pkg/domain/contracting';
-import type { ActivityItem, ActivityItemType } from '@pkg/schema/contracting';
+import {
+  type ActivityNoteItem,
+  activityEntryRecord,
+  isActivityNote,
+  presentActivityEvent,
+} from '@pkg/domain/contracting';
+import type { UUID } from '@pkg/schema';
+import type { ActivityItem, ActivityItemType, NoteThreadKind } from '@pkg/schema/contracting';
 import {
   IconArrowBarToDown,
   IconArrowBarUp,
@@ -23,32 +29,31 @@ import {
 import { activityEntryLinkClassName } from '@/components/activity/ActivityEntryShell.js';
 import { cn } from '@/lib/utils.js';
 
+/** The record whose thread the feed shows, when it shows one. */
+export type ActivityThreadRef = { kind: NoteThreadKind; id: UUID };
+
 /**
  * The thread an entry sits in (a link back to that same Job or Breakdown would go nowhere), and whether this reader
  * opens the Job page: the workshop reads Jobs' Activity through its Workshop reach, and a Foreman's Jobs live on the
  * phone.
  */
-export type ActivityScope = { jobId?: string | undefined; breakdownId?: string | undefined; canOpenJob: boolean };
+export type ActivityScope = { thread?: ActivityThreadRef | undefined; canOpenJob: boolean };
 
 type EntryTarget = { label: string; link: Pick<LinkProps, 'params' | 'to'> | null };
 
-/**
- * What an entry points at: its Breakdown when it has one, else its Job. Null inside that same thread; `link` null for a
- * Job this reader does not open, so the entry still names it without a dead link.
- */
+/** The record's page, by kind; `link` null for a Job this reader does not open, so the entry still names it. */
 function entryTarget(item: ActivityItem, scope: ActivityScope): EntryTarget | null {
-  if ('breakdown' in item) {
-    if (scope.breakdownId === item.breakdown.id) return null;
-    return {
-      label: item.job ? `${item.breakdown.subject.code} · ${item.job.jobNumber}` : item.breakdown.subject.code,
-      link: { to: '/contracting/workshop/$id', params: { id: item.breakdown.id } },
-    };
+  const record = activityEntryRecord(item, scope.thread);
+  if (!record) return null;
+  switch (record.kind) {
+    case 'breakdown':
+      return { label: record.label, link: { to: '/contracting/workshop/$id', params: { id: record.id } } };
+    case 'job':
+      return {
+        label: record.label,
+        link: scope.canOpenJob ? { to: '/contracting/jobs/$code', params: { code: record.job.jobNumber } } : null,
+      };
   }
-  if (scope.jobId === item.job.id) return null;
-  return {
-    label: `${item.job.jobNumber} · ${item.job.farmName}`,
-    link: scope.canOpenJob ? { to: '/contracting/jobs/$code', params: { code: item.job.jobNumber } } : null,
-  };
 }
 
 /** One Contracting feed entry: a note as a bubble from its author, every other item as one sentence. */

@@ -11,7 +11,7 @@ describe('purchase order status colours', () => {
   });
 
   // #1778: Approved was teal beside Received's green, and the list read as one colour.
-  it('keeps Approved out of the green family Received owns', () => {
+  it('keeps Approved off the teal that sat next to Received', () => {
     expect([statusBadgeColorClassNames.green, statusBadgeColorClassNames.teal]).not.toContain(
       purchaseOrderStatusColorClassNames.approved,
     );

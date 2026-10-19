@@ -1,4 +1,4 @@
-import { hasPermission } from '@pkg/domain';
+import { opensWebJobs } from '@pkg/domain/contracting';
 import { type Customer, CustomerPatchInput } from '@pkg/schema/contracting';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { QueryContent } from '@/components/common/QueryContent.js';
@@ -27,9 +27,7 @@ export function CustomerEditPage({
 }) {
   const trpc = useTRPC();
   const query = useQuery(trpc.contractingDirectory.customers.get.queryOptions({ id }));
-  const access = useAccess().data;
-  const readsJobs =
-    hasPermission(access, 'contracting_job:read') || hasPermission(access, 'contracting_job:read-priced');
+  const readsJobs = opensWebJobs(useAccess().data);
   const activeTab = tab === 'jobs' && !readsJobs ? 'details' : tab;
   return (
     <PageLayout title={query.data?.name ?? 'Customer'} description="Customer details, Farms and Jobs">
@@ -53,7 +51,7 @@ export function CustomerEditPage({
             </TabsContent>
             {readsJobs ? (
               <TabsContent className="pt-4" value="jobs">
-                <JobsTable customerId={customer.id} />
+                <JobsTable scope={{ kind: 'customer', id: customer.id }} />
               </TabsContent>
             ) : null}
           </Tabs>

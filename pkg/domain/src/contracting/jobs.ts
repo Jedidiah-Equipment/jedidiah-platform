@@ -1,4 +1,4 @@
-import type { UserAccessSummary } from '@pkg/schema';
+import type { AppPermission, UserAccessSummary } from '@pkg/schema';
 import {
   type AssignmentState,
   finishedJobStatuses,
@@ -80,6 +80,15 @@ export const readableJobQueues = (mode: JobReadMode): JobQueue[] =>
 
 /** Foremen read their Jobs without money, so they neither see amounts nor open Job Cards. */
 export const jobReadSeesMoney = (mode: JobReadMode) => mode !== 'own';
+
+/** Who opens the web Jobs list and a Job from it: every Job, or Invoicing's Completed-onward Jobs. */
+export const webJobReadPermissions = [
+  'contracting_job:read',
+  'contracting_job:read-priced',
+] as const satisfies readonly [AppPermission, ...AppPermission[]];
+
+export const opensWebJobs = (access: UserAccessSummary | null | undefined): boolean =>
+  webJobReadPermissions.some((permission) => hasPermission(access, permission));
 
 /** Job Cards carry money, so whoever reads Jobs with money opens them. */
 export function canOpenJobCards(access: UserAccessSummary | null | undefined): boolean {

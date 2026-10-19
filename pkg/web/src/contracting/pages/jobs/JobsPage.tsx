@@ -72,15 +72,25 @@ const useJobsTableStore = createPersistedDataTableStore({
   persistName: 'contracting-jobs-table',
 });
 
-const useMachineJobsTableStore = createPersistedDataTableStore({
-  initialState: { sorting: [{ id: 'jobNumber', desc: true }] },
-  persistName: 'contracting-machine-jobs-table',
-});
+/** A Jobs list narrowed to one record's Jobs, as `JobListInput` filters them. */
+export type JobsScope = { kind: 'machine' | 'customer'; id: string };
 
-const useCustomerJobsTableStore = createPersistedDataTableStore({
-  initialState: { sorting: [{ id: 'jobNumber', desc: true }] },
-  persistName: 'contracting-customer-jobs-table',
-});
+const scopedJobs = {
+  machine: {
+    filter: (machineId: string) => ({ machineId }),
+    store: createPersistedDataTableStore({
+      initialState: { sorting: [{ id: 'jobNumber', desc: true }] },
+      persistName: 'contracting-machine-jobs-table',
+    }),
+  },
+  customer: {
+    filter: (customerId: string) => ({ customerId }),
+    store: createPersistedDataTableStore({
+      initialState: { sorting: [{ id: 'jobNumber', desc: true }] },
+      persistName: 'contracting-customer-jobs-table',
+    }),
+  },
+} satisfies Record<JobsScope['kind'], unknown>;
 
 /** Writes the Dashboard's focus into the saved filters, once; the persisted filters own it from then on. */
 export function focusJobsOn({ stage, needsALook }: { stage?: JobQueue | undefined; needsALook?: boolean | undefined }) {
@@ -116,10 +126,10 @@ export function JobsPage() {
 }
 
 /**
- * The Jobs list. Given a Machine, only the Jobs it has an Assignment on; given a Customer, only theirs. Either one
- * lists every stage the reader sees until a stage is picked.
+ * The Jobs list. Scoped to a Machine, only the Jobs it has an Assignment on; to a Customer, only theirs. A scoped list
+ * shows every stage the reader sees until a stage is picked, and goes without the all-Jobs stage counts.
  */
-export function JobsTable({ machineId, customerId }: { machineId?: string; customerId?: string }) {
+export function JobsTable({ scope }: { scope?: JobsScope }) {
   const trpc = useTRPC();
   const navigate = useNavigate();
   const write = useJobWrite();
@@ -131,22 +141,21 @@ export function JobsTable({ machineId, customerId }: { machineId?: string; custo
     [access],
   );
   const readMode = jobReadMode(access);
-  const scoped = !!(machineId || customerId);
+  const scopeKind = scope?.kind;
+  const scopeId = scope?.id;
   const getListInputExtras = useCallback(
     (columnFilters: ColumnFiltersState) =>
-      machineId || customerId
+      scopeKind && scopeId
         ? {
             ...jobListFilters(columnFilters, readMode ? readableJobQueues(readMode) : openJobQueues),
-            ...(machineId ? { machineId } : {}),
-            ...(customerId ? { customerId } : {}),
+            ...scopedJobs[scopeKind].filter(scopeId),
           }
         : jobListFilters(columnFilters),
-    [customerId, machineId, readMode],
+    [scopeKind, scopeId, readMode],
   );
-  // The stage counts span every Job, so a Machine's or a Customer's Jobs go without them.
-  const queues = useQuery(trpc.contractingJobs.jobs.queues.queryOptions(undefined, { enabled: !scoped }));
+  const queues = useQuery(trpc.contractingJobs.jobs.queues.queryOptions(undefined, { enabled: !scopeKind }));
   const tableController = useServerSideTableController({
-    store: machineId ? useMachineJobsTableStore : customerId ? useCustomerJobsTableStore : useJobsTableStore,
+    store: scopeKind ? scopedJobs[scopeKind].store : useJobsTableStore,
     sortOptions: jobSortOptions,
     getListInputExtras,
   });
@@ -193,9 +202,9 @@ export function JobsTable({ machineId, customerId }: { machineId?: string; custo
       },
       {
         id: 'customer',
-        header: customerId ? 'Farm' : 'Customer · Farm',
+        header: scopeKind === 'customer' ? 'Farm' : 'Customer · Farm',
         cell: ({ row }) =>
-          customerId ? (
+          scopeKind === 'customer' ? (
             <div className="min-w-28 font-medium">{row.original.farmName}</div>
           ) : (
             <div className="min-w-36">
@@ -301,7 +310,7 @@ export function JobsTable({ machineId, customerId }: { machineId?: string; custo
         },
       },
     ],
-    [canAssignForeman, canPrice, customerId, foremen.data, assign.mutate, openJob],
+    [canAssignForeman, canPrice, scopeKind, foremen.data, assign.mutate, openJob],
   );
   const table = useDataTable({
     columns,
@@ -321,7 +330,7 @@ export function JobsTable({ machineId, customerId }: { machineId?: string; custo
   return (
     <>
       <ErrorMessage error={queues.error ?? foremen.error} fallbackMessage="Unable to load Jobs." />
-      {scoped ? null : (
+      {scopeKind ? null : (
         <JobStageQuickFilters
           label="Job stages"
           stages={openJobQueues}

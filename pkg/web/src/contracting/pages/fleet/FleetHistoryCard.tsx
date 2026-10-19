@@ -14,7 +14,6 @@ import { ActivityEventTile } from '@/components/activity/ActivityEntries.js';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { ClientDataTable } from '@/components/data-table/ClientDataTable.js';
-import { dateRangeFilterFn } from '@/components/data-table/column-filter-values.js';
 import type { DataTableColumnDef } from '@/components/data-table/features.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
@@ -159,7 +158,6 @@ export function FleetHistoryCard({
         accessorKey: 'at',
         header: 'When',
         enableGlobalFilter: false,
-        filterFn: dateRangeFilterFn(),
         meta: { filterVariant: 'date-range' },
         // A service carries a plant date, not an instant, so it shows no time of day.
         cell: ({ row }) =>

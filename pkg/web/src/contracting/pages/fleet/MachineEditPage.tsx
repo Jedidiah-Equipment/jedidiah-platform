@@ -1,4 +1,4 @@
-import { hasPermission } from '@pkg/domain';
+import { opensWebJobs } from '@pkg/domain/contracting';
 import type { Machine } from '@pkg/schema/contracting';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
@@ -68,9 +68,7 @@ function MachineForm({
   const { invalidateFleet } = useQueryInvalidation();
   const canEdit = useCan('contracting_machine:update').can && !machine.retiredAt;
   const readsServices = useCan('contracting_service:read').can;
-  const access = useAccess().data;
-  const readsJobs =
-    hasPermission(access, 'contracting_job:read') || hasPermission(access, 'contracting_job:read-priced');
+  const readsJobs = opensWebJobs(useAccess().data);
   const activeTab = resolveMachineEditTab(tab, { readsServices, readsJobs });
   const categories = useQuery(trpc.contractingFleet.categories.list.queryOptions({ kind: 'machine' }));
   const options = useQuery(trpc.contractingFleet.machines.options.queryOptions());
@@ -183,7 +181,7 @@ function MachineForm({
         ) : null}
         {readsJobs ? (
           <TabsContent className="pt-4" value="jobs">
-            <JobsTable machineId={machine.id} />
+            <JobsTable scope={{ kind: 'machine', id: machine.id }} />
           </TabsContent>
         ) : null}
       </Tabs>

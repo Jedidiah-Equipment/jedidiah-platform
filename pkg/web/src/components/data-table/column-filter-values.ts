@@ -1,7 +1,6 @@
 import { toPlantDateOnly } from '@pkg/domain';
 import { DateOnlyIso } from '@pkg/schema';
-import type { ColumnFiltersState, FilterFn, RowData } from '@tanstack/react-table';
-import type { DataTableFeatures } from './features.js';
+import type { ColumnFiltersState } from '@tanstack/react-table';
 
 export type DateRangeFilterValue = { end?: string; start?: string };
 
@@ -29,12 +28,6 @@ const toPlantDay = (instant: string) => {
   const date = new Date(instant);
   return Number.isNaN(date.getTime()) ? null : toPlantDateOnly(date);
 };
-
-/** The `filterFn` for a `date-range` column whose table filters in the browser; a server-filtered list reads the range instead. */
-export const dateRangeFilterFn =
-  <TData extends RowData>(): FilterFn<DataTableFeatures, TData> =>
-  (row, columnId, filter) =>
-    isWithinDateRange(row.getValue(columnId), filter);
 
 /** A multi-select filter's non-empty values, from whatever the column holds. */
 export function toMultiSelectFilterValue(value: unknown): string[] {

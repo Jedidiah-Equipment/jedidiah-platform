@@ -31,10 +31,10 @@ import {
 } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
 import {
-  DuplicateSupplierNameError,
-  SupplierHasDraftPurchaseOrdersError,
-  SupplierMergeSelfError,
-  SupplierNotFoundError,
+  duplicateSupplierName,
+  supplierHasDraftPurchaseOrders,
+  supplierMergeSelf,
+  supplierNotFound,
 } from './supplier-errors.js';
 
 type SupplierRow = typeof supplier.$inferSelect;
@@ -129,7 +129,7 @@ export async function getSupplier({ db, id }: { db: Db; id: UUID }): Promise<Sup
   });
 
   if (!row) {
-    throw new SupplierNotFoundError(id);
+    throw supplierNotFound(id);
   }
 
   return mapSupplier(row);
@@ -177,7 +177,7 @@ export async function updateSupplier({
       descriptor: supplierAuditDescriptor,
       id: input.id,
       lockWhere: isNull(supplier.deletedAt),
-      notFound: () => new SupplierNotFoundError(input.id),
+      notFound: () => supplierNotFound(input.id),
       project: (_tx, row) => mapSupplier(row),
       set: () => ({
         address: input.address,
@@ -213,7 +213,7 @@ export async function removeSupplier({
       .for('update');
 
     if (!before) {
-      throw new SupplierNotFoundError(id);
+      throw supplierNotFound(id);
     }
 
     // Approved counts alongside draft: the order has not gone out, so removing its Supplier would
@@ -223,7 +223,7 @@ export async function removeSupplier({
       .from(purchaseOrders)
       .where(and(eq(purchaseOrders.supplierId, id), inArray(purchaseOrders.status, ['draft', 'approved'])))
       .limit(1);
-    if (unsentPurchaseOrder) throw new SupplierHasDraftPurchaseOrdersError(id);
+    if (unsentPurchaseOrder) throw supplierHasDraftPurchaseOrders(id);
 
     const now = new Date();
     await tx.update(supplier).set({ deletedAt: now, updatedAt: now }).where(eq(supplier.id, id));
@@ -259,7 +259,7 @@ export async function mergeSupplier({
   input: SupplierMergeInput;
 }): Promise<Supplier> {
   const { sourceId, targetId } = input;
-  if (sourceId === targetId) throw new SupplierMergeSelfError(sourceId);
+  if (sourceId === targetId) throw supplierMergeSelf(sourceId);
 
   return db.transaction(async (tx) => {
     // Draft saves lock the order before their line Parts, and Part edits start at the Part. Mirror
@@ -280,8 +280,8 @@ export async function mergeSupplier({
       .for('update');
     const source = rows.find((row) => row.id === sourceId);
     const target = rows.find((row) => row.id === targetId);
-    if (!source) throw new SupplierNotFoundError(sourceId);
-    if (!target) throw new SupplierNotFoundError(targetId);
+    if (!source) throw supplierNotFound(sourceId);
+    if (!target) throw supplierNotFound(targetId);
 
     const movedParts = await tx
       .update(parts)
@@ -378,7 +378,7 @@ function mapSupplierUniqueViolation(error: unknown, input: Pick<SupplierCreateIn
   const constraint = getUniqueViolationConstraint(error);
 
   if (constraint !== null) {
-    return new DuplicateSupplierNameError(input.companyName);
+    return duplicateSupplierName(input.companyName);
   }
 
   return error instanceof Error ? error : new Error(String(error));

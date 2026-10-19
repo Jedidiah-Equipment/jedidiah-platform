@@ -4,7 +4,7 @@ import { WORK_ITEM_DEPARTMENTS } from '@pkg/domain/equipment';
 import type { UUID } from '@pkg/schema';
 import type { ProductLaborHour, ProductMaterialLine } from '@pkg/schema/equipment';
 import { asc, eq, inArray } from 'drizzle-orm';
-import { ProductMaterialPartInvalidError } from './product-errors.js';
+import { productMaterialPartInvalid } from './product-errors.js';
 
 export type ProductCostingInputs = {
   laborHours: ProductLaborHour[];
@@ -105,5 +105,5 @@ async function assertPeriodicMaterialParts({
   const periodicPartIds = new Set(rows.filter((row) => row.stockTrackingMode === 'periodic').map((row) => row.id));
   const invalidPartId = partIds.find((partId) => !periodicPartIds.has(partId));
 
-  if (invalidPartId) throw new ProductMaterialPartInvalidError(invalidPartId);
+  if (invalidPartId) throw productMaterialPartInvalid(invalidPartId);
 }

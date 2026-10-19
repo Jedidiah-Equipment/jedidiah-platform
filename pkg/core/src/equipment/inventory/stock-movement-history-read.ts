@@ -7,7 +7,7 @@ import { StockMovementHistoryResult as StockMovementHistoryResultSchema } from '
 import { asc, eq, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 
-import { StockMovementPartNotFoundError } from './stock-movement-errors.js';
+import { stockMovementPartNotFound } from './stock-movement-errors.js';
 
 /** One Part's whole ledger, each row named by what it points back at and valued at the average it moved. */
 export async function getStockMovementHistory({
@@ -92,7 +92,7 @@ async function loadStockPartDetails({ db, partId }: { db: Db; partId: UUID }) {
     .where(eq(parts.id, partId));
 
   if (!part) {
-    throw new StockMovementPartNotFoundError(partId);
+    throw stockMovementPartNotFound(partId);
   }
 
   return part;

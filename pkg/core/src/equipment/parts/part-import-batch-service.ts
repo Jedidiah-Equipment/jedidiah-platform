@@ -12,7 +12,7 @@ import {
 } from '@pkg/schema/equipment';
 import { and, asc, desc, eq, inArray, isNotNull } from 'drizzle-orm';
 
-import { PartImportBatchNotFoundError } from './part-errors.js';
+import { partImportBatchNotFound } from './part-errors.js';
 
 /** A batch as every read shows it: its own facts, and only the importing User's name. */
 const batchColumns = {
@@ -80,7 +80,7 @@ export async function getPartImportBatch({ batchId, db }: { batchId: UUID; db: D
       },
     },
   });
-  if (!row) throw new PartImportBatchNotFoundError(batchId);
+  if (!row) throw partImportBatchNotFound(batchId);
 
   const { members: memberRows, ...batch } = row;
   const members: PartImportBatchMember[] = memberRows.map((member) => ({
@@ -118,7 +118,7 @@ export async function partImportBatchLabelPartIds({
     columns: { id: true },
     where: eq(partImportBatches.id, batchId),
   });
-  if (!batch) throw new PartImportBatchNotFoundError(batchId);
+  if (!batch) throw partImportBatchNotFound(batchId);
 
   const rows = await db
     .selectDistinct({ id: partImportBatchMembers.partId })

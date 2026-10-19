@@ -462,7 +462,7 @@ test('refuses self merges and missing Customers without changing the survivor', 
   const missing = '00000000-0000-4000-8000-000000000001';
   await expect(
     mergeCustomer({ actorUserId: 'actor-user-id', db, input: { sourceId: customer.id, targetId: customer.id } }),
-  ).rejects.toMatchObject({ code: 'customer.merge_self', metadata: { id: customer.id } });
+  ).rejects.toMatchObject({ code: 'customer.merge_self' });
   for (const input of [
     { sourceId: missing, targetId: customer.id },
     { sourceId: customer.id, targetId: missing },

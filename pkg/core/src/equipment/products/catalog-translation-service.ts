@@ -32,9 +32,9 @@ import type {
   TranslatableProductRangeVariantFields,
 } from '@pkg/schema/equipment';
 import { and, asc, eq, sql } from 'drizzle-orm';
-import { ProductRangeNotFoundError } from '../product-ranges/product-range-errors.js';
+import { productRangeNotFound } from '../product-ranges/product-range-errors.js';
 
-import { ProductNotFoundError } from './product-errors.js';
+import { productNotFound } from './product-errors.js';
 
 export type { CatalogTranslationState } from '@pkg/domain/equipment';
 
@@ -144,7 +144,7 @@ export async function getCatalogProductTranslation({
     where: and(eq(products.id, id), notRemoved(products)),
     with: { assemblies: { orderBy: [asc(productAssemblies.displayOrder), asc(productAssemblies.id)] } },
   });
-  if (!row) throw new ProductNotFoundError(id);
+  if (!row) throw productNotFound(id);
   return toCatalogProductTranslation(row);
 }
 
@@ -161,7 +161,7 @@ export async function getCatalogProductRangeTranslation({
       .where(and(eq(productRangeVariants.rangeId, id), notRemoved(productRangeVariants)))
       .orderBy(asc(productRangeVariants.displayOrder), asc(productRangeVariants.id)),
   ]);
-  if (!row) throw new ProductRangeNotFoundError(id);
+  if (!row) throw productRangeNotFound(id);
   return toCatalogProductRangeTranslation(row, variantRows);
 }
 
@@ -180,7 +180,7 @@ export async function patchCatalogProductTranslation({
       .from(products)
       .where(and(eq(products.id, input.id), notRemoved(products)))
       .for('update');
-    if (!productRow) throw new ProductNotFoundError(input.id);
+    if (!productRow) throw productNotFound(input.id);
 
     const productCanonical = translatableProductFields(productRow);
     const productPatch = applyManualTranslationPatches(
@@ -239,7 +239,7 @@ export async function patchCatalogProductRangeTranslation({
       .from(productRanges)
       .where(and(eq(productRanges.id, input.id), notRemoved(productRanges)))
       .for('update');
-    if (!row) throw new ProductRangeNotFoundError(input.id);
+    if (!row) throw productRangeNotFound(input.id);
 
     const keys: CatalogTranslationKey[] = [];
     const rangePatch = applyManualTranslationPatches(

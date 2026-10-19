@@ -13,23 +13,29 @@ import {
   UNEXPECTED_ERROR_MESSAGE,
 } from './errors.js';
 
-class ProductNotFoundError extends Error {
-  readonly code = 'product.not_found';
-
-  constructor(readonly productId: string) {
-    super(`Product ${productId} not found`);
+class ProductError extends Error {
+  constructor(
+    readonly code: 'product.not_found',
+    message: string,
+    readonly productId: string,
+  ) {
+    super(message);
   }
 }
 
-const productNotFoundFamily = defineCoreErrorFamily<ProductNotFoundError>({
+const isProductError = (error: unknown): error is ProductError => error instanceof ProductError;
+const productNotFound = (productId: string) =>
+  new ProductError('product.not_found', `Product ${productId} not found`, productId);
+
+const productNotFoundFamily = defineCoreErrorFamily<ProductError>({
   codes: { 'product.not_found': 'NOT_FOUND' },
-  is: (error): error is ProductNotFoundError => error instanceof ProductNotFoundError,
+  is: isProductError,
   messages: { 'product.not_found': 'Product not found.' },
 });
 
 describe('tRPC error helpers', () => {
   it('maps expected core errors with public app codes and preserves cause', async () => {
-    const cause = new ProductNotFoundError('product-id');
+    const cause = productNotFound('product-id');
 
     await expect(
       mapCoreErrors(async () => {
@@ -44,12 +50,12 @@ describe('tRPC error helpers', () => {
   });
 
   it('publishes only metadata explicitly selected by an error family', () => {
-    const family = defineCoreErrorFamily<ProductNotFoundError>({
+    const family = defineCoreErrorFamily<ProductError>({
       codes: { 'product.not_found': 'NOT_FOUND' },
-      is: (error): error is ProductNotFoundError => error instanceof ProductNotFoundError,
+      is: isProductError,
       metadata: (error) => ({ productId: error.productId }),
     });
-    const mapping = family.match(new ProductNotFoundError('product-id'));
+    const mapping = family.match(productNotFound('product-id'));
     if (!mapping) throw new Error('Expected the family to match');
 
     const error = createAuthTRPCError(mapping);
@@ -57,13 +63,13 @@ describe('tRPC error helpers', () => {
   });
 
   it('words a message from the error when the family gives a function for its code', () => {
-    const family = defineCoreErrorFamily<ProductNotFoundError>({
+    const family = defineCoreErrorFamily<ProductError>({
       codes: { 'product.not_found': 'NOT_FOUND' },
-      is: (error): error is ProductNotFoundError => error instanceof ProductNotFoundError,
+      is: isProductError,
       messages: { 'product.not_found': (error) => `Product ${error.productId} is gone.` },
     });
 
-    expect(family.match(new ProductNotFoundError('product-id'))).toMatchObject({
+    expect(family.match(productNotFound('product-id'))).toMatchObject({
       message: 'Product product-id is gone.',
     });
   });

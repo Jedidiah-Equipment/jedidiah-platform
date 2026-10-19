@@ -16,12 +16,6 @@ import { createTester } from '../../test/create-tester.js';
 import { listJobs } from '../jobs/job-read-service.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import {
-  ProductUnitOwnerUnchangedError,
-  ProductUnitProductNotFoundError,
-  ProductUnitTransferBackdatedError,
-  ProductUnitTransferInFutureError,
-} from './product-unit-errors.js';
-import {
   createProductUnit,
   lockUnitForOwnership,
   removeProductUnit,
@@ -63,7 +57,7 @@ describe('createProductUnit', () => {
           tx,
         }),
       ),
-    ).rejects.toBeInstanceOf(ProductUnitProductNotFoundError);
+    ).rejects.toMatchObject({ code: 'product_unit.product_not_found' });
 
     await expect(context.db.$count(productUnits)).resolves.toBe(unitCountBefore);
     await expect(context.db.$count(productSerialSequences)).resolves.toBe(sequenceCountBefore);
@@ -195,14 +189,14 @@ describe('lockUnitForOwnership', () => {
           occurredOn: '2999-01-01',
           toCustomerId: context.seed.riversideId,
         }),
-      ).rejects.toBeInstanceOf(ProductUnitTransferInFutureError);
+      ).rejects.toMatchObject({ code: 'product_unit.transfer_in_future' });
       await expect(
         ownership.record({
           actorUserId: ACTOR_USER_ID,
           occurredOn: '2026-06-01',
           toCustomerId: null,
         }),
-      ).rejects.toBeInstanceOf(ProductUnitOwnerUnchangedError);
+      ).rejects.toMatchObject({ code: 'product_unit.owner_unchanged' });
 
       await ownership.record({
         actorUserId: ACTOR_USER_ID,
@@ -216,7 +210,7 @@ describe('lockUnitForOwnership', () => {
           occurredOn: '2026-05-31',
           toCustomerId: context.seed.hilltopId,
         }),
-      ).rejects.toBeInstanceOf(ProductUnitTransferBackdatedError);
+      ).rejects.toMatchObject({ code: 'product_unit.transfer_backdated' });
     });
   });
 });
@@ -424,13 +418,13 @@ describe('transferProductUnitOwnership', () => {
   test('reports generic date errors before an unknown destination', async ({ context }) => {
     await expect(
       transfer(context, { occurredOn: '2999-01-01', toCustomerId: MISSING_CUSTOMER_ID }),
-    ).rejects.toBeInstanceOf(ProductUnitTransferInFutureError);
+    ).rejects.toMatchObject({ code: 'product_unit.transfer_in_future' });
 
     await transfer(context, { occurredOn: '2026-06-01', toCustomerId: context.seed.riversideId });
 
     await expect(
       transfer(context, { occurredOn: '2026-05-31', toCustomerId: MISSING_CUSTOMER_ID }),
-    ).rejects.toBeInstanceOf(ProductUnitTransferBackdatedError);
+    ).rejects.toMatchObject({ code: 'product_unit.transfer_backdated' });
   });
 
   test('reports a machine that does not exist as not found', async ({ context }) => {
@@ -539,7 +533,10 @@ describe('removeProductUnit', () => {
   test('refuses a machine whose build is still live, and leaves it whole', async ({ context }) => {
     await expect(
       removeProductUnit({ actorUserId: ACTOR_USER_ID, db: context.db, id: context.seed.unitId }),
-    ).rejects.toMatchObject({ code: 'product_unit.in_use', metadata: { reason: 'live-job' } });
+    ).rejects.toMatchObject({
+      code: 'product_unit.in_use',
+      message: expect.stringMatching(/ is still live, so this unit cannot be removed\.$/),
+    });
 
     await expect(context.db.$count(productUnits, eq(productUnits.id, context.seed.unitId))).resolves.toBe(1);
   });
@@ -564,7 +561,10 @@ describe('removeProductUnit', () => {
 
     await expect(
       removeProductUnit({ actorUserId: ACTOR_USER_ID, db: context.db, id: phantom.unitId }),
-    ).rejects.toMatchObject({ code: 'product_unit.in_use', metadata: { reason: 'built' } });
+    ).rejects.toMatchObject({
+      code: 'product_unit.in_use',
+      message: expect.stringMatching(/^Completed .+ built this unit, so its record stands\.$/),
+    });
   });
 
   // The ordinary finished build: nobody cancelled it, so liveness would answer first and call a
@@ -675,7 +675,10 @@ describe('removeProductUnit', () => {
 
     await expect(
       removeProductUnit({ actorUserId: ACTOR_USER_ID, db: context.db, id: phantom.unitId }),
-    ).rejects.toMatchObject({ code: 'product_unit.in_use', metadata: { reason: 'quoted' } });
+    ).rejects.toMatchObject({
+      code: 'product_unit.in_use',
+      message: 'This unit is named on a Quote that still stands, which would be left pointing at nothing.',
+    });
   });
 
   test('reports a machine that does not exist as not found', async ({ context }) => {

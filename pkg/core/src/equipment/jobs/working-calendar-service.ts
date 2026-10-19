@@ -15,7 +15,7 @@ import {
 } from '@pkg/schema/equipment';
 import { and, asc, eq } from 'drizzle-orm';
 
-import { JobBayNotFoundError } from './job-errors.js';
+import { jobBayNotFound } from './job-errors.js';
 
 export async function toggleOffDay({ db, input }: { db: Db; input: ToggleOffDayInput }): Promise<ToggleOffDayResult> {
   return db.transaction(async (tx) => {
@@ -62,7 +62,7 @@ export async function addBayCalendarException({
     const [bay] = await tx.select().from(jobBays).where(eq(jobBays.id, input.bayId)).for('update');
 
     if (!bay) {
-      throw new JobBayNotFoundError(input.bayId);
+      throw jobBayNotFound(input.bayId);
     }
 
     const [row] = await tx
@@ -107,7 +107,7 @@ export async function removeBayCalendarException({
     const [bay] = await tx.select().from(jobBays).where(eq(jobBays.id, input.bayId)).for('update');
 
     if (!bay) {
-      throw new JobBayNotFoundError(input.bayId);
+      throw jobBayNotFound(input.bayId);
     }
 
     const [row] = await tx

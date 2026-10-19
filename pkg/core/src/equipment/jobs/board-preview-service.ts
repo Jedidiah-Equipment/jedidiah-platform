@@ -13,7 +13,7 @@ import {
   toProjectedBoard,
   withoutCancelledJobSlots,
 } from './board-read.js';
-import { JobBayNotFoundError } from './job-errors.js';
+import { jobBayNotFound } from './job-errors.js';
 import { listWorkingCalendarOffDays } from './working-calendar-service.js';
 
 export async function previewBoard({
@@ -36,7 +36,7 @@ export async function previewBoard({
   const missingBayId = seededBayIds.find((bayId) => !rowIds.has(bayId));
 
   if (missingBayId) {
-    throw new JobBayNotFoundError(missingBayId);
+    throw jobBayNotFound(missingBayId);
   }
 
   // Seeded Bays still need the cross-Bay closure for Jobs on those Bays so the Board can resolve

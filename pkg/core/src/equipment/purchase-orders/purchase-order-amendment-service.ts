@@ -25,13 +25,13 @@ import { aliasedTable, and, asc, eq, isNull, sql } from 'drizzle-orm';
 import { diffAuditUpdate, recordAuditUpdate } from '../../audit/audit-writer.js';
 import type { StorageAdapter } from '../../storage/storage-adapter.js';
 import {
-  PurchaseOrderAmendmentBelowReceivedError,
-  PurchaseOrderAmendmentLastLineError,
-  PurchaseOrderAmendmentLineHasArrivalsError,
-  PurchaseOrderLineExistsError,
-  PurchaseOrderLineNotFoundError,
-  PurchaseOrderLineNotPricedError,
-  PurchaseOrderSubstitutionHasReceiptsError,
+  purchaseOrderAmendmentBelowReceived,
+  purchaseOrderAmendmentLastLine,
+  purchaseOrderAmendmentLineHasArrivals,
+  purchaseOrderLineExists,
+  purchaseOrderLineNotFound,
+  purchaseOrderLineNotPriced,
+  purchaseOrderSubstitutionHasReceipts,
 } from './purchase-order-errors.js';
 import { openPurchaseOrder } from './purchase-order-gate.js';
 import {
@@ -128,7 +128,7 @@ export async function amendPurchaseOrderQuantity({
     // Receipts and Arrivals are facts. An order asking for less than it has already taken in
     // describes nothing.
     if (input.quantity < line.receivedQuantity) {
-      throw new PurchaseOrderAmendmentBelowReceivedError(formatPurchaseOrderLineLabel(line), line.receivedQuantity);
+      throw purchaseOrderAmendmentBelowReceived(formatPurchaseOrderLineLabel(line), line.receivedQuantity);
     }
 
     await tx.update(purchaseOrderLines).set({ quantity: input.quantity }).where(eq(purchaseOrderLines.id, line.id));
@@ -197,7 +197,7 @@ export async function amendPurchaseOrderAddCustomLine({
   storage: StorageAdapter;
 }): Promise<PurchaseOrder> {
   return applyAmendment({ actorUserId, db, id: input.id, pdfRenderer, storage }, async (tx, order) => {
-    if (input.unitPrice === 0) throw new PurchaseOrderLineNotPricedError(input.description);
+    if (input.unitPrice === 0) throw purchaseOrderLineNotPriced(input.description);
     const id = randomUUID();
     const [last] = await tx
       .select({ position: sql<number>`coalesce(max(${purchaseOrderLines.position}), -1)` })
@@ -239,8 +239,8 @@ export async function amendPurchaseOrderRemoveCustomLine({
 }): Promise<PurchaseOrder> {
   return applyAmendment({ actorUserId, db, id: input.id, pdfRenderer, storage }, async (tx, order) => {
     const line = findCustomLine(order, input.lineId);
-    if (line.hasStockMovements) throw new PurchaseOrderAmendmentLineHasArrivalsError(line.description);
-    if (order.lines.length === 1) throw new PurchaseOrderAmendmentLastLineError();
+    if (line.hasStockMovements) throw purchaseOrderAmendmentLineHasArrivals(line.description);
+    if (order.lines.length === 1) throw purchaseOrderAmendmentLastLine();
     await tx.delete(purchaseOrderLines).where(eq(purchaseOrderLines.id, line.id));
     return { ...amendmentLineSubject(line), kind: 'remove-line', note: input.note, oldQuantity: line.quantity };
   });
@@ -418,21 +418,21 @@ async function applyAmendment(
 
 function findLine(purchaseOrder: PurchaseOrder, lineId: UUID): PurchaseOrderLine {
   const line = purchaseOrder.lines.find((candidate) => candidate.id === lineId);
-  if (!line) throw new PurchaseOrderLineNotFoundError(purchaseOrder.id, lineId);
+  if (!line) throw purchaseOrderLineNotFound();
 
   return line;
 }
 
 function findPartLine(purchaseOrder: PurchaseOrder, partId: UUID): PurchaseOrderPartLine {
   const line = findPurchaseOrderPartLine(purchaseOrder.lines, partId);
-  if (!line) throw new PurchaseOrderLineNotFoundError(purchaseOrder.id, partId);
+  if (!line) throw purchaseOrderLineNotFound();
 
   return line;
 }
 
 function findCustomLine(purchaseOrder: PurchaseOrder, lineId: UUID): PurchaseOrderCustomLine {
   const line = findLine(purchaseOrder, lineId);
-  if (line.kind !== 'custom') throw new PurchaseOrderLineNotFoundError(purchaseOrder.id, lineId);
+  if (line.kind !== 'custom') throw purchaseOrderLineNotFound();
 
   return line;
 }
@@ -448,19 +448,19 @@ function amendmentLineSubject(line: PurchaseOrderLine) {
 /** A Part appears once per order, so an add or a substitution has to bring one that is not on it. */
 function assertPartIsNotOnOrder(purchaseOrder: PurchaseOrder, partId: UUID): void {
   const existing = findPurchaseOrderPartLine(purchaseOrder.lines, partId);
-  if (existing) throw new PurchaseOrderLineExistsError(existing.partCode);
+  if (existing) throw purchaseOrderLineExists(existing.partCode);
 }
 
 /**
  * A zero price would stamp a zero onto the ledger as the Part's cost at the next receipt, which is
- * exactly what sending an order asserts has been agreed (see {@link PurchaseOrderLineNotPricedError}).
+ * exactly what sending an order asserts has been agreed (see {@link purchaseOrderLineNotPriced}).
  * An amendment goes out to the Supplier the same way, so it is held to the same assertion.
  */
 async function assertLineIsPriced(tx: DatabaseTransaction, partId: UUID, unitPrice: number): Promise<void> {
   if (unitPrice > 0) return;
   const [part] = await tx.select({ code: parts.code }).from(parts).where(eq(parts.id, partId));
 
-  throw new PurchaseOrderLineNotPricedError(part?.code ?? partId);
+  throw purchaseOrderLineNotPriced(part?.code ?? partId);
 }
 
 /**
@@ -475,5 +475,5 @@ async function assertSubstitutionHasNoReceipts(
   partCode: string,
 ): Promise<void> {
   const hasMovements = await lineHasStockMovements({ db: tx, partId, purchaseOrderId: purchaseOrder.id });
-  if (hasMovements) throw new PurchaseOrderSubstitutionHasReceiptsError(partCode);
+  if (hasMovements) throw purchaseOrderSubstitutionHasReceipts(partCode);
 }

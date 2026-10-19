@@ -69,8 +69,8 @@ export const createCustomerDefinition = {
       });
       return toCreateCustomerResponse(customer);
     } catch (error) {
-      if (error instanceof customersCore.CustomerPossibleMatchError)
-        return toCustomerMatchResponse(error.metadata.matches);
+      if (customersCore.isCustomerError(error) && error.code === 'customer.possible_match')
+        return toCustomerMatchResponse(error.matches ?? []);
       throw error;
     }
   },

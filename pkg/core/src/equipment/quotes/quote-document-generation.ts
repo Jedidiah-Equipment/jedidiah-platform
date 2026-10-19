@@ -34,11 +34,7 @@ import type { StorageAdapter } from '../../storage/storage-adapter.js';
 import { listAssemblies } from '../products/product-assembly-service.js';
 import { generateHistoricalProductBrochureIfComplete } from '../products/product-brochure-document.js';
 import { createQuoteDocument, getQuoteDocuments } from './quote-document.js';
-import {
-  QuoteDocumentGenerationNotAllowedError,
-  QuoteNotFoundError,
-  QuoteOfferingInvariantError,
-} from './quote-errors.js';
+import { QuoteError, quoteNotFound } from './quote-errors.js';
 import { narrowQuoteOffering } from './quote-offering.js';
 import type { QuoteSelectedAssemblyRow } from './quote-selected-assemblies.js';
 import type { QuoteWorkItemRow } from './quote-work-items.js';
@@ -70,7 +66,7 @@ function resolveQuoteDocumentSource(quote: QuoteDocumentGenerationRow): QuoteDoc
   }
 
   if (!quote.product) {
-    throw new QuoteOfferingInvariantError('Product Quote is missing its Product.');
+    throw new QuoteError('quote.offering_invariant', 'Product Quote is missing its Product.');
   }
 
   return { kind: 'product', productId: offering.productId, product: quote.product };
@@ -370,7 +366,7 @@ async function getQuoteDocumentGenerationRow({ db, quoteId }: { db: Db; quoteId:
   });
 
   if (!row) {
-    throw new QuoteNotFoundError(quoteId);
+    throw quoteNotFound(quoteId);
   }
 
   return row satisfies QuoteDocumentGenerationRow;
@@ -382,7 +378,8 @@ function getQuoteDocumentBaseDescription(source: QuoteDocumentSource): string {
 
 function assertQuoteDocumentGenerationAllowed(quote: Pick<QuoteRow, 'status'>): void {
   if (!isQuoteDocumentGenerationAllowed(quote.status)) {
-    throw new QuoteDocumentGenerationNotAllowedError(
+    throw new QuoteError(
+      'quote.document_generation_not_allowed',
       'Quote Documents can only be generated for draft, sent, or accepted Quotes.',
     );
   }

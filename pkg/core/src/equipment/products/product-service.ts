@@ -61,11 +61,7 @@ import {
   recordAuditUpdate,
 } from '../../audit/audit-writer.js';
 import type { StorageAdapter } from '../../storage/storage-adapter.js';
-import {
-  DocumentNotFoundError,
-  DocumentPolicyViolationError,
-  DuplicateDocumentFilenameError,
-} from '../documents/document-errors.js';
+import { documentNotFound, documentPolicyViolation, duplicateDocumentFilename } from '../documents/document-errors.js';
 import {
   collectDocumentErrorText,
   createDocumentRecord,
@@ -86,14 +82,14 @@ import {
 } from './product-assembly-service.js';
 import { listProductCostingInputs, syncProductCostingInputs } from './product-costing-input-service.js';
 import {
-  DuplicateProductBayError,
-  DuplicateProductModelCodeError,
-  DuplicateProductNameError,
-  ProductBayDisabledError,
-  ProductBayNotFoundError,
-  ProductNotFoundError,
-  ProductRangeReferenceNotFoundError,
-  ProductRangeVariantReferenceNotFoundError,
+  duplicateProductBay,
+  duplicateProductModelCode,
+  duplicateProductName,
+  productBayDisabled,
+  productBayNotFound,
+  productNotFound,
+  productRangeReferenceNotFound,
+  productRangeVariantReferenceNotFound,
 } from './product-errors.js';
 
 const PRODUCT_DOCUMENT_FILENAME_UNIQUE_INDEX = 'documents_product_id_filename_ci_unique';
@@ -641,7 +637,7 @@ async function loadProductDetailRow({
   ]);
 
   if (!row) {
-    throw new ProductNotFoundError(id);
+    throw productNotFound(id);
   }
 
   return { productBays, rangeLogo: row.range?.logo ?? null, row };
@@ -710,7 +706,7 @@ function parseProductDocumentMetadata(metadata: unknown): ProductDocumentMetadat
   const result = validateDocumentMetadata({ metadata, ownerType: 'product' });
 
   if (!result.ok) {
-    throw new DocumentPolicyViolationError(result);
+    throw documentPolicyViolation(result);
   }
 
   return ProductDocumentMetadata.parse(metadata);
@@ -731,7 +727,7 @@ export async function readProductDocument({
   const document = await findProductDocumentSummaryRow({ db, documentId, productId });
 
   if (!document) {
-    throw new DocumentNotFoundError(documentId);
+    throw documentNotFound(documentId);
   }
 
   return {
@@ -797,7 +793,7 @@ async function getProductDocumentSummaryRow({
   const row = await findProductDocumentSummaryRow({ db, documentId, productId });
 
   if (!row) {
-    throw new DocumentNotFoundError(documentId);
+    throw documentNotFound(documentId);
   }
 
   return row;
@@ -894,7 +890,7 @@ export async function updateProduct({
         .for('update');
 
       if (!before) {
-        throw new ProductNotFoundError(input.id);
+        throw productNotFound(input.id);
       }
 
       const range = await assertActiveProductRange({ rangeId: input.rangeId, tx });
@@ -981,7 +977,7 @@ export async function updateProduct({
         .returning();
 
       if (!row) {
-        throw new ProductNotFoundError(input.id);
+        throw productNotFound(input.id);
       }
 
       const assemblies = input.assemblies
@@ -1051,7 +1047,7 @@ export async function removeProduct({ db, id, actorUserId }: { db: Db; id: UUID;
       .for('update');
 
     if (!before) {
-      throw new ProductNotFoundError(id);
+      throw productNotFound(id);
     }
 
     const [assemblies, productBaysForProduct, costingInputs] = await Promise.all([
@@ -1205,11 +1201,11 @@ async function assertValidProductBayTargets({
     const bay = rowsById.get(productBay.bayId);
 
     if (!bay) {
-      throw new ProductBayNotFoundError(productBay.bayId);
+      throw productBayNotFound(productBay.bayId);
     }
 
     if (bay.disabledAt && !currentBayIds.has(productBay.bayId)) {
-      throw new ProductBayDisabledError(productBay.bayId);
+      throw productBayDisabled(productBay.bayId);
     }
   }
 }
@@ -1219,7 +1215,7 @@ function assertUniqueProductBayIds(productBaysForProduct: ProductBayInput[]): vo
 
   for (const productBay of productBaysForProduct) {
     if (bayIds.has(productBay.bayId)) {
-      throw new DuplicateProductBayError(productBay.bayId);
+      throw duplicateProductBay(productBay.bayId);
     }
 
     bayIds.add(productBay.bayId);
@@ -1236,7 +1232,7 @@ async function assertProductExists({ db, productId }: { db: Db; productId: UUID 
     .limit(1);
 
   if (!product) {
-    throw new ProductNotFoundError(productId);
+    throw productNotFound(productId);
   }
 }
 
@@ -1254,7 +1250,7 @@ async function assertActiveProductRange({
     .for('update');
 
   if (!range) {
-    throw new ProductRangeReferenceNotFoundError(rangeId);
+    throw productRangeReferenceNotFound(rangeId);
   }
 
   return ProductRangeOptionSchema.parse(range);
@@ -1286,7 +1282,7 @@ async function assertActiveProductRangeVariant({
     .for('update');
 
   if (!variant) {
-    throw new ProductRangeVariantReferenceNotFoundError(rangeId, variantId);
+    throw productRangeVariantReferenceNotFound(rangeId, variantId);
   }
 
   return ProductRangeVariantOptionSchema.parse(variant);
@@ -1365,21 +1361,21 @@ function mapProductConstraintViolation(
   const foreignKey = getForeignKeyViolationConstraint(error);
 
   if (foreignKey?.includes(PRODUCT_RANGE_FOREIGN_KEY) || foreignKey?.includes('range_id')) {
-    return new ProductRangeReferenceNotFoundError(input.rangeId);
+    return productRangeReferenceNotFound(input.rangeId);
   }
 
   if (input.variantId && foreignKey?.includes(PRODUCT_VARIANT_RANGE_FOREIGN_KEY)) {
-    return new ProductRangeVariantReferenceNotFoundError(input.rangeId, input.variantId);
+    return productRangeVariantReferenceNotFound(input.rangeId, input.variantId);
   }
 
   const constraint = getUniqueViolationConstraint(error);
 
   if (constraint?.includes('products_model_code_unique') || constraint?.includes('model_code')) {
-    return new DuplicateProductModelCodeError(input.modelCode);
+    return duplicateProductModelCode(input.modelCode);
   }
 
   if (constraint !== null) {
-    return new DuplicateProductNameError(input.name);
+    return duplicateProductName(input.name);
   }
 
   return error instanceof Error ? error : new Error(String(error));
@@ -1393,9 +1389,8 @@ function mapProductDocumentUniqueViolation(error: unknown, input: { filename: st
   const constraint = getUniqueViolationConstraint(error);
 
   if (constraint?.includes(PRODUCT_DOCUMENT_FILENAME_UNIQUE_INDEX) || isProductDocumentFilenameUniqueDetail(error)) {
-    return new DuplicateDocumentFilenameError({
+    return duplicateDocumentFilename({
       filename: input.filename,
-      ownerId: input.productId,
       ownerType: 'product',
     });
   }

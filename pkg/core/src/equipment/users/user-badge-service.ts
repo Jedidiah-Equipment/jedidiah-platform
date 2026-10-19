@@ -4,8 +4,8 @@ import type { UserBadgePdfModel, UserBadgePdfRenderer } from '@pkg/schema/equipm
 import { UserBadgePdfModel as UserBadgePdfModelSchema } from '@pkg/schema/equipment';
 import { eq } from 'drizzle-orm';
 
-import { UserNotFoundError } from '../../users/user-errors.js';
-import { UserIsDeviceError } from './user-errors.js';
+import { userNotFound } from '../../users/user-errors.js';
+import { userIsDevice } from './user-errors.js';
 
 export type UserBadgePdfResult = {
   bytes: Uint8Array;
@@ -34,8 +34,8 @@ export async function renderUserBadge({
     .from(user)
     .where(eq(user.id, userId))
     .limit(1);
-  if (!row) throw new UserNotFoundError(userId);
-  if (row.isDevice) throw new UserIsDeviceError(userId);
+  if (!row) throw userNotFound(userId);
+  if (row.isDevice) throw userIsDevice(userId);
 
   const badge: UserBadgePdfModel = UserBadgePdfModelSchema.parse(row);
   const filename = `${badge.id}-stores-badge.pdf`;

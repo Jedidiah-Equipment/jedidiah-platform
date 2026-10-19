@@ -11,12 +11,6 @@ import {
 } from '../test/inventory-fixtures.js';
 import { closeOutJob } from './close-out-service.js';
 import { resolveMovementActor } from './movement-actor.js';
-import {
-  AssertedActorDisabledError,
-  AssertedActorNotFoundError,
-  DeviceActorAssertedError,
-  DeviceActorRequiredError,
-} from './movement-actor-errors.js';
 import { postReceipt } from './receipt-service.js';
 import { postReturnToSupplier } from './return-to-supplier-service.js';
 import { getStockMovementHistory } from './stock-movement-history-read.js';
@@ -43,7 +37,7 @@ describe('resolveMovementActor', () => {
   test('refuses a person who does not exist rather than falling back to the device', async ({ context }) => {
     await expect(
       resolveMovementActor({ assertedActorUserId: 'nobody-at-all', db: context.db, sessionUserId: actorUserId }),
-    ).rejects.toBeInstanceOf(AssertedActorNotFoundError);
+    ).rejects.toMatchObject({ code: 'inventory.actor_not_found' });
   });
 
   test('refuses a disabled person, so a revoked badge stops attributing', async ({ context }) => {
@@ -51,7 +45,7 @@ describe('resolveMovementActor', () => {
 
     await expect(
       resolveMovementActor({ assertedActorUserId: personId, db: context.db, sessionUserId: actorUserId }),
-    ).rejects.toBeInstanceOf(AssertedActorDisabledError);
+    ).rejects.toMatchObject({ code: 'inventory.actor_disabled' });
   });
 
   /**
@@ -63,7 +57,7 @@ describe('resolveMovementActor', () => {
 
     await expect(
       resolveMovementActor({ assertedActorUserId: null, db: context.db, sessionUserId: deviceId }),
-    ).rejects.toBeInstanceOf(DeviceActorRequiredError);
+    ).rejects.toMatchObject({ code: 'inventory.actor_required' });
   });
 
   test('lets a device post once it names somebody', async ({ context }) => {
@@ -81,7 +75,7 @@ describe('resolveMovementActor', () => {
 
     await expect(
       resolveMovementActor({ assertedActorUserId: deviceId, db: context.db, sessionUserId: actorUserId }),
-    ).rejects.toBeInstanceOf(DeviceActorAssertedError);
+    ).rejects.toMatchObject({ code: 'inventory.actor_is_device' });
   });
 
   test('refuses a device naming itself, which is the same lie by a shorter route', async ({ context }) => {
@@ -89,7 +83,7 @@ describe('resolveMovementActor', () => {
 
     await expect(
       resolveMovementActor({ assertedActorUserId: deviceId, db: context.db, sessionUserId: deviceId }),
-    ).rejects.toBeInstanceOf(DeviceActorAssertedError);
+    ).rejects.toMatchObject({ code: 'inventory.actor_is_device' });
   });
 });
 
@@ -219,7 +213,7 @@ describe('asserted actor on the tablet’s four scan flows', () => {
         },
         movementType: 'checkout',
       }),
-    ).rejects.toBeInstanceOf(AssertedActorNotFoundError);
+    ).rejects.toMatchObject({ code: 'inventory.actor_not_found' });
 
     const history = await getStockMovementHistory({ db: context.db, partId: context.parts.piece.id });
     expect(history.items.filter((row) => row.movementType === 'checkout')).toEqual([]);

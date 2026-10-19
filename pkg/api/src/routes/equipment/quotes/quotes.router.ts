@@ -6,6 +6,7 @@ import {
   getQuoteCancellationPlan,
   getQuoteProductBayAvailability,
   getQuoteProductOption,
+  isProductError,
   listAwaitingJobCreationQuotes,
   listCustomers,
   listPriorityQuotes,
@@ -16,7 +17,6 @@ import {
   listQuotes,
   listStaleSentQuotes,
   listUpcomingDeliveryQuotes,
-  ProductNotFoundError,
   summarizeQuotePipeline,
   summarizeQuotesByStatus,
   summarizeQuoteWeeklyFlow,
@@ -111,7 +111,7 @@ export const quotesRouter = router({
       try {
         return await getQuoteProductOption({ db: ctx.db, id: input.id });
       } catch (error) {
-        if (error instanceof ProductNotFoundError) {
+        if (isProductError(error) && error.code === 'product.not_found') {
           return null;
         }
 

@@ -13,15 +13,9 @@ import type { UUID } from '@pkg/schema';
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
-import { QuoteLockedError } from '../quotes/quote-errors.js';
 import { cancelQuote, patchQuote } from '../quotes/quote-service.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import { reassignProductUnitToQuote } from './product-unit-reassignment.js';
-import {
-  ProductUnitReassignDeadJobError,
-  ProductUnitReassignDisplacedOwnerError,
-  ProductUnitReassignQuoteIneligibleError,
-} from './product-unit-reassignment-errors.js';
 import { listReassignCandidates, previewReassignment } from './product-unit-reassignment-read.js';
 import { createProductUnit, lockUnitForOwnership } from './product-unit-service.js';
 
@@ -107,7 +101,7 @@ describe('reassignProductUnitToQuote', () => {
     await expect(readJobQuoteId(db, stock.jobId)).resolves.toBe(quoteId);
   });
 
-  // New Transfers reject unchanged Owners via ProductUnitOwnerUnchangedError; Reassignment skips them,
+  // New Transfers reject unchanged Owners with `product_unit.owner_unchanged`; Reassignment skips them,
   // so the Job audit events are what carry a move between two deals of the same Customer.
   test('skips the Transfer row when the Unit already belongs to the receiving Customer', async ({ context }) => {
     const { db, seed } = context;
@@ -160,16 +154,16 @@ describe('reassignProductUnitToQuote refusals', () => {
     const allocationTarget = await createStockBuild(db, seed);
     const cases: [string, UUID][] = [
       [
-        'invoiced',
+        'This Quote has been invoiced, so its machine can no longer change.',
         await createQuote(db, { customerId: seed.palmietId, invoiceNumber: 'INV-1', productId: seed.productId }),
       ],
       [
-        'not-accepted',
+        'Only an accepted Quote can receive a Unit.',
         await createQuote(db, { customerId: seed.palmietId, productId: seed.productId, status: 'sent' }),
       ],
-      ['not-product', await createCustomQuote(db, seed.palmietId)],
+      ['Only a Product Quote can receive a Unit.', await createCustomQuote(db, seed.palmietId)],
       [
-        'allocation-quote',
+        'This Quote already sells a specific machine, so a Unit cannot be reassigned onto it.',
         await createQuote(db, {
           customerId: seed.palmietId,
           productId: seed.productId,
@@ -178,15 +172,15 @@ describe('reassignProductUnitToQuote refusals', () => {
       ],
     ];
 
-    for (const [reason, toQuoteId] of cases) {
+    for (const [message, toQuoteId] of cases) {
       await expect(
         reassignProductUnitToQuote({
           actorUserId: ACTOR_USER_ID,
           db,
           input: { note: null, productUnitId: greg.unitId, toQuoteId },
         }),
-        reason,
-      ).rejects.toMatchObject({ metadata: { reason } });
+        message,
+      ).rejects.toMatchObject({ code: 'product_unit.reassign_quote_ineligible', message });
     }
   });
 
@@ -202,7 +196,7 @@ describe('reassignProductUnitToQuote refusals', () => {
         db,
         input: { note: null, productUnitId: greg.unitId, toQuoteId: palmiet.quoteId },
       }),
-    ).rejects.toBeInstanceOf(ProductUnitReassignDeadJobError);
+    ).rejects.toMatchObject({ code: 'product_unit.reassign_dead_job' });
   });
 
   test('refuses a Unit built as another Product', async ({ context }) => {
@@ -216,7 +210,10 @@ describe('reassignProductUnitToQuote refusals', () => {
         db,
         input: { note: null, productUnitId: other.unitId, toQuoteId: quoteId },
       }),
-    ).rejects.toMatchObject({ metadata: { reason: 'wrong-product' } });
+    ).rejects.toMatchObject({
+      code: 'product_unit.reassign_unit_ineligible',
+      message: 'This Unit was built as a different Product to the one the receiving Quote sells.',
+    });
   });
 
   // The wall is the deal the build Job is leaving, not only the ownership log: handing the machine
@@ -235,7 +232,10 @@ describe('reassignProductUnitToQuote refusals', () => {
         db,
         input: { note: null, productUnitId: greg.unitId, toQuoteId: quoteId },
       }),
-    ).rejects.toMatchObject({ metadata: { reason: 'selling-quote-invoiced' } });
+    ).rejects.toMatchObject({
+      code: 'product_unit.reassign_unit_ineligible',
+      message: 'The Quote that sold this Unit has been invoiced, so the machine can no longer be moved.',
+    });
     await expect(listReassignCandidates({ db, quoteId })).resolves.toEqual([]);
   });
 
@@ -251,7 +251,10 @@ describe('reassignProductUnitToQuote refusals', () => {
         db,
         input: { note: null, productUnitId: greg.unitId, toQuoteId: quoteId },
       }),
-    ).rejects.toMatchObject({ metadata: { reason: 'selling-quote-invoiced' } });
+    ).rejects.toMatchObject({
+      code: 'product_unit.reassign_unit_ineligible',
+      message: 'The Quote that sold this Unit has been invoiced, so the machine can no longer be moved.',
+    });
   });
 
   // A hand-recorded Transfer attributes the machine to a third party outside any deal of ours.
@@ -267,7 +270,10 @@ describe('reassignProductUnitToQuote refusals', () => {
         db,
         input: { note: null, productUnitId: stock.unitId, toQuoteId: quoteId },
       }),
-    ).rejects.toMatchObject({ metadata: { reason: 'owned-outside-deal' } });
+    ).rejects.toMatchObject({
+      code: 'product_unit.reassign_unit_ineligible',
+      message: 'This Unit was transferred by hand, so our records attribute it to a third party rather than to a deal.',
+    });
   });
 
   test('refuses a Unit under a live Rework Job', async ({ context }) => {
@@ -288,7 +294,10 @@ describe('reassignProductUnitToQuote refusals', () => {
         db,
         input: { note: null, productUnitId: stock.unitId, toQuoteId: quoteId },
       }),
-    ).rejects.toMatchObject({ metadata: { reason: 'live-rework' } });
+    ).rejects.toMatchObject({
+      code: 'product_unit.reassign_unit_ineligible',
+      message: 'This Unit has a live Rework Job, so it is undergoing work for its current Owner.',
+    });
   });
 
   test('refuses a Unit with no live build Job to attach', async ({ context }) => {
@@ -303,7 +312,10 @@ describe('reassignProductUnitToQuote refusals', () => {
         db,
         input: { note: null, productUnitId: greg.unitId, toQuoteId: quoteId },
       }),
-    ).rejects.toMatchObject({ metadata: { reason: 'no-live-build-job' } });
+    ).rejects.toMatchObject({
+      code: 'product_unit.reassign_unit_ineligible',
+      message: 'This Unit has no live build Job to attach to the receiving Quote.',
+    });
   });
 
   test('refuses the Unit the receiving Quote is already building', async ({ context }) => {
@@ -316,7 +328,10 @@ describe('reassignProductUnitToQuote refusals', () => {
         db,
         input: { note: null, productUnitId: palmiet.unitId, toQuoteId: palmiet.quoteId },
       }),
-    ).rejects.toMatchObject({ metadata: { reason: 'already-on-quote' } });
+    ).rejects.toMatchObject({
+      code: 'product_unit.reassign_unit_ineligible',
+      message: 'This Unit is already the machine on that Quote.',
+    });
   });
 
   // A hand-recorded Transfer got there first, so returning the machine to Stock would take it off
@@ -333,7 +348,7 @@ describe('reassignProductUnitToQuote refusals', () => {
         db,
         input: { note: null, productUnitId: greg.unitId, toQuoteId: palmiet.quoteId },
       }),
-    ).rejects.toBeInstanceOf(ProductUnitReassignDisplacedOwnerError);
+    ).rejects.toMatchObject({ code: 'product_unit.reassign_displaced_owner' });
     await expect(readJobQuoteId(db, greg.jobId)).resolves.toBe(greg.quoteId);
   });
 
@@ -472,7 +487,7 @@ describe('the vacated deal', () => {
     // Dropping a sold Assembly is a commercial edit, which a Quote that has sourced production refuses.
     await expect(
       patchQuote({ actorUserId: ACTOR_USER_ID, db, input: { id: greg.quoteId, selectedAssemblies: [] } }),
-    ).rejects.toBeInstanceOf(QuoteLockedError);
+    ).rejects.toMatchObject({ code: 'quote.locked' });
   });
 
   // The machine now builds for someone else, so cancelling the deal it left must not reach for it.
@@ -556,9 +571,9 @@ describe('listReassignCandidates', () => {
     const { db, seed } = context;
     const quoteId = await createQuote(db, { customerId: seed.gregId, productId: seed.productId, status: 'draft' });
 
-    await expect(listReassignCandidates({ db, quoteId })).rejects.toBeInstanceOf(
-      ProductUnitReassignQuoteIneligibleError,
-    );
+    await expect(listReassignCandidates({ db, quoteId })).rejects.toMatchObject({
+      code: 'product_unit.reassign_quote_ineligible',
+    });
   });
 });
 

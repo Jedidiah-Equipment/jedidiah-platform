@@ -3,7 +3,7 @@ import { type AuthId, type PushKind, PushKindSchema, type PushPreferences, PushP
 import { eq } from 'drizzle-orm';
 
 import { mutateEntity } from '../audit/mutate-entity.js';
-import { UserNotFoundError } from '../users/user-errors.js';
+import { userNotFound } from '../users/user-errors.js';
 import { userAuditDescriptor } from '../users/user-service.js';
 import { refuseDeviceAccount } from './push-errors.js';
 
@@ -16,7 +16,7 @@ export async function getPushPreferences({ db, userId }: { db: Db; userId: AuthI
     .select({ muted: user.mutedPushKinds, isDevice: user.isDevice })
     .from(user)
     .where(eq(user.id, userId));
-  if (!row) throw new UserNotFoundError(userId);
+  if (!row) throw userNotFound(userId);
   refuseDeviceAccount(row);
   return { muted: knownKinds(row.muted) };
 }
@@ -38,7 +38,7 @@ export function setPushPreferences({
     db,
     descriptor: userAuditDescriptor,
     id: userId,
-    notFound: () => new UserNotFoundError(userId),
+    notFound: () => userNotFound(userId),
     project: (_tx, account) => ({ muted: knownKinds(account.mutedPushKinds) }),
     // The audit diff compares arrays by identity, so an unchanged set must write nothing.
     set: (account) =>

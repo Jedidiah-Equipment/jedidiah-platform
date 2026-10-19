@@ -13,11 +13,7 @@ import { asc, count, eq, inArray, type SQL, sql } from 'drizzle-orm';
 
 import { defineAuditDescriptor, recordAuditCreate, recordAuditEvent } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
-import {
-  DuplicatePartCategoryNameError,
-  PartCategoryMergeSelfError,
-  PartCategoryNotFoundError,
-} from './part-errors.js';
+import { duplicatePartCategoryName, partCategoryMergeSelf, partCategoryNotFound } from './part-errors.js';
 
 type PartCategoryRow = typeof partCategories.$inferSelect;
 
@@ -37,7 +33,7 @@ export async function listManagedPartCategories({ db }: { db: Db }): Promise<Par
 
 export async function getPartCategory({ db, id }: { db: Db | DatabaseTransaction; id: UUID }): Promise<PartCategory> {
   const [row] = await selectPartCategories(db, eq(partCategories.id, id));
-  if (!row) throw new PartCategoryNotFoundError(id);
+  if (!row) throw partCategoryNotFound(id);
 
   return mapPartCategory(row);
 }
@@ -82,7 +78,7 @@ export async function updatePartCategory({
       db,
       descriptor: partCategoryAuditDescriptor,
       id: input.id,
-      notFound: () => new PartCategoryNotFoundError(input.id),
+      notFound: () => partCategoryNotFound(input.id),
       project: (tx, row) => getPartCategory({ db: tx, id: row.id }),
       set: () => ({ markupPercent: input.markupPercent, name: input.name, updatedAt: new Date() }),
       table: partCategories,
@@ -100,7 +96,7 @@ export async function getPartCategoryMergePreview({
   input: PartCategoryMergeInput;
 }): Promise<PartCategoryMergePreview> {
   const { sourceIds, targetId } = input;
-  if (sourceIds.includes(targetId)) throw new PartCategoryMergeSelfError(targetId);
+  if (sourceIds.includes(targetId)) throw partCategoryMergeSelf();
 
   const rows = (await selectPartCategories(db, inArray(partCategories.id, [...sourceIds, targetId]))).map(
     mapPartCategory,
@@ -131,7 +127,7 @@ export async function mergePartCategories({
   const { targetId } = input;
   // A repeated source would write a second `merged` pair claiming zero Parts moved.
   const sourceIds = [...new Set(input.sourceIds)];
-  if (sourceIds.includes(targetId)) throw new PartCategoryMergeSelfError(targetId);
+  if (sourceIds.includes(targetId)) throw partCategoryMergeSelf();
 
   return db.transaction(async (tx) => {
     // Part edits start at the Part row, so take the Part locks before any Part Category lock.
@@ -191,7 +187,7 @@ export async function mergePartCategories({
 
 function findPartCategory<Row extends { id: string }>(rows: readonly Row[], id: UUID): Row {
   const row = rows.find((candidate) => candidate.id === id);
-  if (!row) throw new PartCategoryNotFoundError(id);
+  if (!row) throw partCategoryNotFound(id);
 
   return row;
 }
@@ -226,7 +222,7 @@ function mapPartCategory(row: PartCategoryRow & { partCount: number }): PartCate
 
 function mapPartCategoryUniqueViolation(error: unknown, name: string): Error {
   if (getUniqueViolationConstraint(error)?.includes('part_category_name_ci_unique')) {
-    return new DuplicatePartCategoryNameError(name);
+    return duplicatePartCategoryName(name);
   }
 
   return error instanceof Error ? error : new Error(String(error));

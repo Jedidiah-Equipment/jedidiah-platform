@@ -1,207 +1,77 @@
 import type { PartMergeBlocker } from '@pkg/schema/equipment';
 
-export class DuplicatePartCodeError extends Error {
-  readonly code = 'part.duplicate_code';
-  readonly metadata: { code: string };
+export type PartErrorCode =
+  | 'part.bom_locked'
+  | 'part.bulk_import_conflict'
+  | 'part.category_merge_self'
+  | 'part.category_name_taken'
+  | 'part.category_not_found'
+  | 'part.duplicate_code'
+  | 'part.import_batch_not_found'
+  | 'part.label_selection_empty'
+  | 'part.merge_blocked'
+  | 'part.merge_self'
+  | 'part.not_found'
+  | 'part.supplier_locked_by_purchase_order'
+  | 'part.supplier_not_found'
+  | 'part.unit_of_measure_locked';
 
-  constructor(code: string) {
-    super(`Part code already exists: ${code}`);
-    this.name = 'DuplicatePartCodeError';
-    this.metadata = { code };
-  }
-}
-
-export class PartNotFoundError extends Error {
-  readonly code = 'part.not_found';
-  readonly metadata: { id: string };
-
-  constructor(id: string) {
-    super(`Part not found: ${id}`);
-    this.name = 'PartNotFoundError';
-    this.metadata = { id };
-  }
-}
-
-export class PartSupplierNotFoundError extends Error {
-  readonly code = 'part.supplier_not_found';
-  readonly metadata: { supplierId: string };
-
-  constructor(supplierId: string) {
-    super(`Part supplier not found: ${supplierId}`);
-    this.name = 'PartSupplierNotFoundError';
-    this.metadata = { supplierId };
-  }
-}
-
-export class PartCategoryNotFoundError extends Error {
-  readonly code = 'part.category_not_found';
-  readonly metadata: { categoryId: string };
-
-  constructor(categoryId: string) {
-    super(`Part Category not found: ${categoryId}`);
-    this.name = 'PartCategoryNotFoundError';
-    this.metadata = { categoryId };
-  }
-}
-
-export class DuplicatePartCategoryNameError extends Error {
-  readonly code = 'part.category_name_taken';
-  readonly metadata: { name: string };
-
-  constructor(name: string) {
-    super(`Part Category name already exists: ${name}`);
-    this.name = 'DuplicatePartCategoryNameError';
-    this.metadata = { name };
-  }
-}
-
-export class PartCategoryMergeSelfError extends Error {
-  readonly code = 'part.category_merge_self';
-  readonly metadata: { categoryId: string };
-
-  constructor(categoryId: string) {
-    super('A Part Category cannot be merged into itself.');
-    this.name = 'PartCategoryMergeSelfError';
-    this.metadata = { categoryId };
+export class PartError extends Error {
+  constructor(
+    readonly code: PartErrorCode,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'PartError';
   }
 }
 
 /** How a Part with no Supplier reads to a human. A built Part is made in-house and bought from nobody. */
 export const NO_SUPPLIER_LABEL = 'no supplier (built in-house)';
 
-export class PartBulkImportConflictError extends Error {
-  readonly code = 'part.bulk_import_conflict';
-  /** `supplierName` stays null for a built Part rather than carrying display copy as data. */
-  readonly metadata: { code: string; supplierCode: string; supplierName: string | null };
-
-  constructor({
-    code,
-    supplierCode,
-    supplierName,
-  }: {
-    code: string;
-    supplierCode: string;
-    supplierName: string | null;
-  }) {
-    super(
-      `Part import row conflicts with existing part identity: ${code} ${supplierName ?? NO_SUPPLIER_LABEL} ${supplierCode}`,
-    );
-    this.name = 'PartBulkImportConflictError';
-    this.metadata = { code, supplierCode, supplierName };
-  }
-}
+export const isPartError = (error: unknown): error is PartError => error instanceof PartError;
+export const duplicatePartCode = (code: string) =>
+  new PartError('part.duplicate_code', `Part code already exists: ${code}`);
+export const partNotFound = (id: string) => new PartError('part.not_found', `Part not found: ${id}`);
+export const partSupplierNotFound = (supplierId: string) =>
+  new PartError('part.supplier_not_found', `Part supplier not found: ${supplierId}`);
+export const partCategoryNotFound = (categoryId: string) =>
+  new PartError('part.category_not_found', `Part Category not found: ${categoryId}`);
+export const duplicatePartCategoryName = (name: string) =>
+  new PartError('part.category_name_taken', `Part Category name already exists: ${name}`);
+export const partCategoryMergeSelf = () =>
+  new PartError('part.category_merge_self', 'A Part Category cannot be merged into itself.');
+export const partBulkImportConflict = (row: { code: string; supplierCode: string; supplierName: string | null }) =>
+  new PartError(
+    'part.bulk_import_conflict',
+    `Part import row conflicts with existing part identity: ${row.code} ${row.supplierName ?? NO_SUPPLIER_LABEL} ${row.supplierCode}`,
+  );
 
 /**
  * Supplier XOR BOM cuts both ways: turning a built Part back into a bought one while it still has
  * components would leave a Part holding both, which the DB check cannot see across tables.
  */
-export class PartBomLockedError extends Error {
-  readonly code = 'part.bom_locked';
-  readonly metadata: { id: string };
-
-  constructor(id: string) {
-    super('Clear the Bill of Materials before making this a bought Part.');
-    this.name = 'PartBomLockedError';
-    this.metadata = { id };
-  }
-}
-
-export class PartUnitOfMeasureLockedError extends Error {
-  readonly code = 'part.unit_of_measure_locked';
-  readonly metadata: { id: string };
-
-  constructor(id: string) {
-    super(`Part Unit of Measure cannot change after its stock ledger starts: ${id}`);
-    this.name = 'PartUnitOfMeasureLockedError';
-    this.metadata = { id };
-  }
-}
-
-export class PartSupplierLockedByPurchaseOrderError extends Error {
-  readonly code = 'part.supplier_locked_by_purchase_order';
-  readonly metadata: { id: string };
-
-  constructor(id: string) {
-    super(`Part supplier cannot change after the Part is used on a Purchase Order: ${id}`);
-    this.name = 'PartSupplierLockedByPurchaseOrderError';
-    this.metadata = { id };
-  }
-}
-
-export class PartMergeSelfError extends Error {
-  readonly code = 'part.merge_self';
-  readonly metadata: { id: string };
-
-  constructor(id: string) {
-    super('A Part cannot be merged into itself.');
-    this.name = 'PartMergeSelfError';
-    this.metadata = { id };
-  }
-}
+export const partBomLocked = () =>
+  new PartError('part.bom_locked', 'Clear the Bill of Materials before making this a bought Part.');
+export const partUnitOfMeasureLocked = (id: string) =>
+  new PartError(
+    'part.unit_of_measure_locked',
+    `Part Unit of Measure cannot change after its stock ledger starts: ${id}`,
+  );
+export const partSupplierLockedByPurchaseOrder = (id: string) =>
+  new PartError(
+    'part.supplier_locked_by_purchase_order',
+    `Part supplier cannot change after the Part is used on a Purchase Order: ${id}`,
+  );
+export const partMergeSelf = () => new PartError('part.merge_self', 'A Part cannot be merged into itself.');
 
 /** Every reason the pair cannot merge yet, so the user sees the whole list rather than the first. */
-export class PartMergeBlockedError extends Error {
-  readonly code = 'part.merge_blocked';
-  readonly metadata: { blockers: PartMergeBlocker[] };
-
-  constructor(blockers: PartMergeBlocker[]) {
-    super(`These Parts cannot be merged yet: ${blockers.map((blocker) => blocker.kind).join(', ')}`);
-    this.name = 'PartMergeBlockedError';
-    this.metadata = { blockers };
-  }
-}
-
-export class PartLabelSelectionEmptyError extends Error {
-  readonly code = 'part.label_selection_empty';
-
-  constructor() {
-    super('No Parts match the label selection');
-    this.name = 'PartLabelSelectionEmptyError';
-  }
-}
-
-export class PartImportBatchNotFoundError extends Error {
-  readonly code = 'part.import_batch_not_found';
-  readonly metadata: { batchId: string };
-
-  constructor(batchId: string) {
-    super(`Part import batch not found: ${batchId}`);
-    this.name = 'PartImportBatchNotFoundError';
-    this.metadata = { batchId };
-  }
-}
-
-export type PartCoreError =
-  | PartBulkImportConflictError
-  | DuplicatePartCategoryNameError
-  | DuplicatePartCodeError
-  | PartCategoryMergeSelfError
-  | PartCategoryNotFoundError
-  | PartImportBatchNotFoundError
-  | PartLabelSelectionEmptyError
-  | PartMergeBlockedError
-  | PartMergeSelfError
-  | PartNotFoundError
-  | PartSupplierLockedByPurchaseOrderError
-  | PartSupplierNotFoundError
-  | PartBomLockedError
-  | PartUnitOfMeasureLockedError;
-
-export function isPartCoreError(error: unknown): error is PartCoreError {
-  return (
-    error instanceof PartBulkImportConflictError ||
-    error instanceof DuplicatePartCategoryNameError ||
-    error instanceof DuplicatePartCodeError ||
-    error instanceof PartCategoryMergeSelfError ||
-    error instanceof PartCategoryNotFoundError ||
-    error instanceof PartImportBatchNotFoundError ||
-    error instanceof PartLabelSelectionEmptyError ||
-    error instanceof PartMergeBlockedError ||
-    error instanceof PartMergeSelfError ||
-    error instanceof PartNotFoundError ||
-    error instanceof PartBomLockedError ||
-    error instanceof PartSupplierLockedByPurchaseOrderError ||
-    error instanceof PartSupplierNotFoundError ||
-    error instanceof PartUnitOfMeasureLockedError
+export const partMergeBlocked = (blockers: PartMergeBlocker[]) =>
+  new PartError(
+    'part.merge_blocked',
+    `These Parts cannot be merged yet: ${blockers.map((blocker) => blocker.kind).join(', ')}`,
   );
-}
+export const partLabelSelectionEmpty = () =>
+  new PartError('part.label_selection_empty', 'No Parts match the label selection');
+export const partImportBatchNotFound = (batchId: string) =>
+  new PartError('part.import_batch_not_found', `Part import batch not found: ${batchId}`);

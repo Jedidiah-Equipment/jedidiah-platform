@@ -1,7 +1,6 @@
 import { describe, expect } from 'vitest';
 
 import { actorUserId, adjustmentInput, test } from '../test/inventory-fixtures.js';
-import { ScannedPartNotFoundError } from './stock-movement-errors.js';
 import { getPartStockByCode, postAdjustment } from './stock-movement-service.js';
 
 describe('getPartStockByCode', () => {
@@ -45,15 +44,17 @@ describe('getPartStockByCode', () => {
   });
 
   test('matches the code exactly, so a partial scan never resolves to the wrong Part', async ({ context }) => {
-    await expect(getPartStockByCode({ code: 'PIEC', db: context.db })).rejects.toBeInstanceOf(ScannedPartNotFoundError);
-    await expect(getPartStockByCode({ code: 'piece', db: context.db })).rejects.toBeInstanceOf(
-      ScannedPartNotFoundError,
-    );
+    await expect(getPartStockByCode({ code: 'PIEC', db: context.db })).rejects.toMatchObject({
+      code: 'inventory.part_code_not_found',
+    });
+    await expect(getPartStockByCode({ code: 'piece', db: context.db })).rejects.toMatchObject({
+      code: 'inventory.part_code_not_found',
+    });
   });
 
   test('reports an unknown label rather than returning an empty row', async ({ context }) => {
-    await expect(getPartStockByCode({ code: 'NOT-A-PART', db: context.db })).rejects.toBeInstanceOf(
-      ScannedPartNotFoundError,
-    );
+    await expect(getPartStockByCode({ code: 'NOT-A-PART', db: context.db })).rejects.toMatchObject({
+      code: 'inventory.part_code_not_found',
+    });
   });
 });

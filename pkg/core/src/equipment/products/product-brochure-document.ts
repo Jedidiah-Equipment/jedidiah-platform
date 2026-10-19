@@ -21,7 +21,7 @@ import {
   readStoredObjectBytes,
   sanitizeDocumentStorageKeySuffix,
 } from '../documents/document-service.js';
-import { ProductBrochureIncompleteError } from './product-errors.js';
+import { productBrochureIncomplete } from './product-errors.js';
 import { getHistoricalProductBrochureSource, getProductBrochureSource } from './product-service.js';
 
 export type BrochurePreviewResult = {
@@ -31,7 +31,7 @@ export type BrochurePreviewResult = {
 
 /**
  * Renders the on-the-fly Brochure preview PDF for a Product WITHOUT persisting it. Gated on the shared
- * completeness predicate: an incomplete brochure throws {@link ProductBrochureIncompleteError} rather
+ * completeness predicate: an incomplete brochure throws `product.brochure_incomplete` rather
  * than producing a partial document. The PDF renderer is injected so @pkg/core never imports react-pdf.
  * Always renders the canonical locale: previews back internal document flows, not the public site.
  */
@@ -51,7 +51,7 @@ export async function renderProductBrochurePreview({
   const completeness = evaluateProductBrochureCompleteness(product);
 
   if (!completeness.complete) {
-    throw new ProductBrochureIncompleteError(productId, completeness.missingFields);
+    throw productBrochureIncomplete(productId);
   }
 
   return renderBrochureForProduct({ images, locale: CANONICAL_LOCALE, pdfRenderer, product, rangeLogo, storage });

@@ -7,7 +7,6 @@ import { describe, expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import { exportProductAssemblies, listAssemblyNames } from './product-assembly-service.js';
-import { AssemblyKindChangedError } from './product-errors.js';
 import { createProduct, getProduct, removeProduct, updateProduct } from './product-service.js';
 
 const actorUserId = 'test-user-id';
@@ -433,7 +432,7 @@ describe('assembly kind immutability', () => {
           },
         ]),
       }),
-    ).rejects.toThrow(AssemblyKindChangedError);
+    ).rejects.toMatchObject({ code: 'product.assembly.kind_changed' });
   });
 
   test('rejects resubmitting an existing optional assembly as standard', async ({ context }) => {
@@ -452,7 +451,7 @@ describe('assembly kind immutability', () => {
           { id: yak?.id, isPubliclyVisible: false, kind: 'standard', name: 'Yak', parts: [] },
         ]),
       }),
-    ).rejects.toThrow(AssemblyKindChangedError);
+    ).rejects.toMatchObject({ code: 'product.assembly.kind_changed' });
   });
 
   test('allows resubmitting an existing assembly under its own kind', async ({ context }) => {

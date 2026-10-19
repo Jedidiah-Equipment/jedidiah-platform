@@ -1,74 +1,38 @@
 import type { AuthId, UUID } from '@pkg/schema';
 
-export class CheckoutRecipientIneligibleError extends Error {
-  readonly code = 'inventory.recipient_ineligible';
-  readonly metadata: { recipientUserId: AuthId };
+export type CheckoutErrorCode =
+  | 'inventory.invalid_source_checkout'
+  | 'inventory.quote_not_found'
+  | 'inventory.quote_not_open'
+  | 'inventory.quote_not_parts_sale'
+  | 'inventory.recipient_ineligible';
 
-  constructor(recipientUserId: AuthId) {
-    super(`Recipient is unknown, disabled, a device, or not an Equipment user: ${recipientUserId}`);
-    this.name = 'CheckoutRecipientIneligibleError';
-    this.metadata = { recipientUserId };
+export class CheckoutError extends Error {
+  constructor(
+    readonly code: CheckoutErrorCode,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'CheckoutError';
   }
 }
 
-export class InvalidSourceCheckoutError extends Error {
-  readonly code = 'inventory.invalid_source_checkout';
-  readonly metadata: { sourceCheckoutId: UUID };
-
-  constructor(sourceCheckoutId: UUID) {
-    super(`Movement is not a Checkout without a Job: ${sourceCheckoutId}`);
-    this.name = 'InvalidSourceCheckoutError';
-    this.metadata = { sourceCheckoutId };
-  }
-}
-
-export class CheckoutQuoteNotFoundError extends Error {
-  readonly code = 'inventory.quote_not_found';
-  readonly metadata: { quoteId: UUID };
-
-  constructor(quoteId: UUID) {
-    super(`Quote not found: ${quoteId}`);
-    this.name = 'CheckoutQuoteNotFoundError';
-    this.metadata = { quoteId };
-  }
-}
+export const isCheckoutError = (error: unknown): error is CheckoutError => error instanceof CheckoutError;
+export const checkoutRecipientIneligible = (recipientUserId: AuthId) =>
+  new CheckoutError(
+    'inventory.recipient_ineligible',
+    `Recipient is unknown, disabled, a device, or not an Equipment user: ${recipientUserId}`,
+  );
+export const invalidSourceCheckout = (sourceCheckoutId: UUID) =>
+  new CheckoutError(
+    'inventory.invalid_source_checkout',
+    `Movement is not a Checkout without a Job: ${sourceCheckoutId}`,
+  );
+export const checkoutQuoteNotFound = (quoteId: UUID) =>
+  new CheckoutError('inventory.quote_not_found', `Quote not found: ${quoteId}`);
 
 /** Every other Quote sources a Job, and its stock goes to the Job. */
-export class CheckoutQuoteNotPartsSaleError extends Error {
-  readonly code = 'inventory.quote_not_parts_sale';
-  readonly metadata: { quoteId: UUID };
-
-  constructor(quoteId: UUID) {
-    super(`Quote is not a Parts Sale: ${quoteId}`);
-    this.name = 'CheckoutQuoteNotPartsSaleError';
-    this.metadata = { quoteId };
-  }
-}
-
-export class CheckoutQuoteNotOpenError extends Error {
-  readonly code = 'inventory.quote_not_open';
-  readonly metadata: { quoteId: UUID };
-
-  constructor(quoteId: UUID) {
-    super(`Parts Sale is rejected or cancelled: ${quoteId}`);
-    this.name = 'CheckoutQuoteNotOpenError';
-    this.metadata = { quoteId };
-  }
-}
-
-export type CheckoutCoreError =
-  | CheckoutQuoteNotFoundError
-  | CheckoutQuoteNotOpenError
-  | CheckoutQuoteNotPartsSaleError
-  | CheckoutRecipientIneligibleError
-  | InvalidSourceCheckoutError;
-
-export function isCheckoutCoreError(error: unknown): error is CheckoutCoreError {
-  return (
-    error instanceof CheckoutQuoteNotFoundError ||
-    error instanceof CheckoutQuoteNotOpenError ||
-    error instanceof CheckoutQuoteNotPartsSaleError ||
-    error instanceof CheckoutRecipientIneligibleError ||
-    error instanceof InvalidSourceCheckoutError
-  );
-}
+export const checkoutQuoteNotPartsSale = (quoteId: UUID) =>
+  new CheckoutError('inventory.quote_not_parts_sale', `Quote is not a Parts Sale: ${quoteId}`);
+export const checkoutQuoteNotOpen = (quoteId: UUID) =>
+  new CheckoutError('inventory.quote_not_open', `Parts Sale is rejected or cancelled: ${quoteId}`);

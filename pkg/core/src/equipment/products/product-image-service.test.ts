@@ -4,11 +4,9 @@ import { PRODUCT_IMAGE_MAX_BYTES } from '@pkg/schema/equipment';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 
-import { FileNotFoundError, FilePolicyViolationError } from '../../files/file-errors.js';
 import { InMemoryStorageAdapter } from '../../storage/in-memory-storage-adapter.js';
 import { createTester } from '../../test/create-tester.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
-import { ProductNotFoundError } from './product-errors.js';
 import { readProductImage, replaceProductImage } from './product-image-service.js';
 
 const ACTOR_USER_ID = 'test-user-id';
@@ -164,7 +162,7 @@ describe('replaceProductImage', () => {
         input: { bytes: pdfBytes(), productId: context.product.id, slot: 'primary' },
         storage,
       }),
-    ).rejects.toBeInstanceOf(FilePolicyViolationError);
+    ).rejects.toMatchObject({ code: 'file.content_type_not_allowed' });
     expect(storage.objects.size).toBe(0);
   });
 
@@ -192,7 +190,7 @@ describe('replaceProductImage', () => {
         input: { bytes: pngBytes(), productId: UNKNOWN_ID, slot: 'primary' },
         storage,
       }),
-    ).rejects.toBeInstanceOf(ProductNotFoundError);
+    ).rejects.toMatchObject({ code: 'product.not_found' });
     expect(storage.objects.size).toBe(0);
   });
 
@@ -210,7 +208,7 @@ describe('replaceProductImage', () => {
         input: { bytes: pngBytes(), productId: context.product.id, slot: 'primary' },
         storage,
       }),
-    ).rejects.toBeInstanceOf(ProductNotFoundError);
+    ).rejects.toMatchObject({ code: 'product.not_found' });
     expect(storage.objects.size).toBe(0);
   });
 });
@@ -241,7 +239,7 @@ describe('readProductImage', () => {
 
     await expect(
       readProductImage({ db: context.db, productId: context.product.id, slot: 'primary', storage }),
-    ).rejects.toBeInstanceOf(FileNotFoundError);
+    ).rejects.toMatchObject({ code: 'file.not_found' });
   });
 
   test('throws when the product does not exist', async ({ context }) => {
@@ -249,7 +247,7 @@ describe('readProductImage', () => {
 
     await expect(
       readProductImage({ db: context.db, productId: UNKNOWN_ID, slot: 'primary', storage }),
-    ).rejects.toBeInstanceOf(ProductNotFoundError);
+    ).rejects.toMatchObject({ code: 'product.not_found' });
   });
 
   test('throws when the product is soft-removed', async ({ context }) => {
@@ -261,6 +259,6 @@ describe('readProductImage', () => {
 
     await expect(
       readProductImage({ db: context.db, productId: context.product.id, slot: 'primary', storage }),
-    ).rejects.toBeInstanceOf(ProductNotFoundError);
+    ).rejects.toMatchObject({ code: 'product.not_found' });
   });
 });

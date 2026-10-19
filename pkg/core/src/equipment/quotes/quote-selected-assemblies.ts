@@ -4,7 +4,7 @@ import type { UUID } from '@pkg/schema';
 import { QuoteSelectedAssembly, type QuoteSelectedAssemblyInput } from '@pkg/schema/equipment';
 import { asc, eq, inArray } from 'drizzle-orm';
 
-import { QuoteInvalidReferenceError } from './quote-errors.js';
+import { QuoteError } from './quote-errors.js';
 
 export type QuoteSelectedAssemblyRow = typeof quoteSelectedAssemblies.$inferSelect;
 
@@ -145,7 +145,7 @@ function getKeptSelectedAssemblyRows({
     const row = currentById.get(id);
 
     if (!row || row.quoteId !== quoteId) {
-      throw new QuoteInvalidReferenceError('Selected quote assembly was not found on this quote.');
+      throw new QuoteError('quote.invalid_reference', 'Selected quote assembly was not found on this quote.');
     }
 
     return row;
@@ -177,7 +177,8 @@ async function buildNewSelectedAssemblyRows({
     const row = rowsById.get(id);
 
     if (!row || row.productId !== productId || row.kind !== 'optional' || row.price === null) {
-      throw new QuoteInvalidReferenceError(
+      throw new QuoteError(
+        'quote.invalid_reference',
         'Selected quote assembly must be an optional assembly on the quote product.',
       );
     }
@@ -203,7 +204,7 @@ function assertUniqueCatalogSelections(rows: QuoteSelectedAssemblyRow[]): void {
     }
 
     if (seen.has(row.productAssemblyId)) {
-      throw new QuoteInvalidReferenceError('Catalog optional assembly can only be selected once per quote.');
+      throw new QuoteError('quote.invalid_reference', 'Catalog optional assembly can only be selected once per quote.');
     }
 
     seen.add(row.productAssemblyId);
@@ -215,7 +216,7 @@ function assertUniqueIds(ids: readonly UUID[], message: string): void {
 
   for (const id of ids) {
     if (seen.has(id)) {
-      throw new QuoteInvalidReferenceError(message);
+      throw new QuoteError('quote.invalid_reference', message);
     }
 
     seen.add(id);

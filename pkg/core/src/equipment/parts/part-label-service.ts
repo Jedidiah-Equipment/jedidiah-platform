@@ -9,7 +9,7 @@ import {
 } from '@pkg/schema/equipment';
 import { asc, eq, inArray, type SQL } from 'drizzle-orm';
 
-import { PartLabelSelectionEmptyError, PartNotFoundError } from './part-errors.js';
+import { partLabelSelectionEmpty, partNotFound } from './part-errors.js';
 import { partImportBatchLabelPartIds } from './part-import-batch-service.js';
 
 export type PartLabelPdfResult = {
@@ -30,7 +30,7 @@ export async function renderPartLabel({
   const label = labels[0];
 
   if (!label) {
-    throw new PartNotFoundError(id);
+    throw partNotFound(id);
   }
 
   const filename = `${label.code}-label.pdf`;
@@ -49,7 +49,7 @@ export async function renderPartLabelBatch({
   const labels = await listLabelModels({ db, selection });
 
   if (labels.length === 0) {
-    throw new PartLabelSelectionEmptyError();
+    throw partLabelSelectionEmpty();
   }
 
   const filename = 'part-labels.pdf';

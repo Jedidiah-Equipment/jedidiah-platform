@@ -14,11 +14,11 @@ import { recordAuditEvent } from '../../audit/audit-writer.js';
 import { jobAuditDescriptor } from './job-audit.js';
 import { getAssignableBayOperatorForUpdate } from './job-bay-service.js';
 import {
-  JobDepartmentTimingAlreadyCompletedError,
-  JobDepartmentTimingAlreadyStartedError,
-  JobDepartmentTimingInvalidError,
-  JobDepartmentTimingLockedError,
-  JobDepartmentTimingNotStartedError,
+  JobError,
+  jobDepartmentTimingAlreadyCompleted,
+  jobDepartmentTimingAlreadyStarted,
+  jobDepartmentTimingLocked,
+  jobDepartmentTimingNotStarted,
 } from './job-errors.js';
 import type { JobRow } from './job-mappers.js';
 import { lockMutableJob } from './job-mutation-guards.js';
@@ -44,7 +44,7 @@ export async function startDepartmentTiming({
     const existing = await findTiming(tx, input.id, input.department);
 
     if (existing) {
-      throw new JobDepartmentTimingAlreadyStartedError(input.id, input.department);
+      throw jobDepartmentTimingAlreadyStarted();
     }
 
     const startedAt = new Date();
@@ -86,16 +86,16 @@ export async function completeDepartmentTiming({
 
     if (!existing) {
       if (job.completedOn !== null) {
-        throw new JobDepartmentTimingLockedError(input.id);
+        throw jobDepartmentTimingLocked();
       }
 
-      throw new JobDepartmentTimingNotStartedError(input.id, input.department);
+      throw jobDepartmentTimingNotStarted();
     }
 
     // The correction path owns re-stamping. Without this, a replayed request or a second manager on a
     // stale sheet silently rewrites both the recorded duration and who is credited for it.
     if (existing.completedAt !== null) {
-      throw new JobDepartmentTimingAlreadyCompletedError(input.id, input.department);
+      throw jobDepartmentTimingAlreadyCompleted();
     }
 
     const before = await readTimingState(tx, existing);
@@ -140,11 +140,11 @@ export async function updateDepartmentTiming({
 
     if (input.startedAt === null) {
       if (input.completedAt !== null) {
-        throw new JobDepartmentTimingInvalidError('A done time needs a start time.');
+        throw new JobError('job.department_timing_invalid', 'A done time needs a start time.');
       }
 
       if (input.crewUserIds.length > 0) {
-        throw new JobDepartmentTimingInvalidError('Crew can only be recorded against a done time.');
+        throw new JobError('job.department_timing_invalid', 'Crew can only be recorded against a done time.');
       }
 
       if (existing) {
@@ -166,18 +166,18 @@ export async function updateDepartmentTiming({
     const completedAt = input.completedAt === null ? null : new Date(input.completedAt);
 
     if (completedAt && completedAt < startedAt) {
-      throw new JobDepartmentTimingInvalidError('The done time cannot be before the start time.');
+      throw new JobError('job.department_timing_invalid', 'The done time cannot be before the start time.');
     }
 
     assertNotInFuture(startedAt);
     if (completedAt) assertNotInFuture(completedAt);
 
     if (completedAt === null && input.crewUserIds.length > 0) {
-      throw new JobDepartmentTimingInvalidError('Crew can only be recorded against a done time.');
+      throw new JobError('job.department_timing_invalid', 'Crew can only be recorded against a done time.');
     }
 
     if (completedAt !== null && input.crewUserIds.length === 0) {
-      throw new JobDepartmentTimingInvalidError('Name at least one crew member.');
+      throw new JobError('job.department_timing_invalid', 'Name at least one crew member.');
     }
 
     // Only newly-named crew are role-checked. Someone already on this record was a Bay Operator when
@@ -227,7 +227,7 @@ async function lockStampableJob(tx: DatabaseTransaction, id: UUID): Promise<JobR
   const job = await lockMutableJob(tx, id);
 
   if (job.completedOn !== null) {
-    throw new JobDepartmentTimingLockedError(id);
+    throw jobDepartmentTimingLocked();
   }
 
   return job;
@@ -241,7 +241,7 @@ async function lockStampableJob(tx: DatabaseTransaction, id: UUID): Promise<JobR
  */
 function assertNotInFuture(stamp: Date): void {
   if (toPlantDateOnly(stamp) > getPlantDateNow()) {
-    throw new JobDepartmentTimingInvalidError('A timing stamp cannot be in the future.');
+    throw new JobError('job.department_timing_invalid', 'A timing stamp cannot be in the future.');
   }
 }
 

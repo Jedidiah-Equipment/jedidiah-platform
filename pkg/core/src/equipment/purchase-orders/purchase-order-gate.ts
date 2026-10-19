@@ -4,7 +4,7 @@ import { derivePurchaseOrderActions, purchaseOrderActionFacts } from '@pkg/domai
 import type { UUID } from '@pkg/schema';
 import type { PurchaseOrderActionName, PurchaseOrderActions } from '@pkg/schema/equipment';
 import { eq } from 'drizzle-orm';
-import { PurchaseOrderActionRefusedError, PurchaseOrderNotFoundError } from './purchase-order-errors.js';
+import { purchaseOrderActionRefused, purchaseOrderNotFound } from './purchase-order-errors.js';
 import { loadLineIntake, type PurchaseOrderLineIntake } from './purchase-order-line-intake.js';
 
 type PurchaseOrderRow = typeof purchaseOrders.$inferSelect;
@@ -27,7 +27,7 @@ export async function openPurchaseOrder(
   action: PurchaseOrderActionName,
 ): Promise<OpenedPurchaseOrder> {
   const [row] = await tx.select().from(purchaseOrders).where(eq(purchaseOrders.id, id)).for('update');
-  if (!row) throw new PurchaseOrderNotFoundError(id);
+  if (!row) throw purchaseOrderNotFound();
   return judgePurchaseOrder(tx, row, action);
 }
 
@@ -46,6 +46,6 @@ export async function judgePurchaseOrder(
   ]);
   const actions = derivePurchaseOrderActions(purchaseOrderActionFacts({ row, lines, intake }));
   const verdict = actions[action];
-  if (!verdict.allowed) throw new PurchaseOrderActionRefusedError(action, verdict.reason, row.id);
+  if (!verdict.allowed) throw purchaseOrderActionRefused(action, verdict.reason, row.id);
   return { actions, intake, row };
 }

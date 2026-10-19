@@ -6,13 +6,8 @@ import type { PartBomResult, SavePartBomInput } from '@pkg/schema/equipment';
 import { isWholeUnitQuantity, PartBomResult as PartBomResultSchema, unitClassFor } from '@pkg/schema/equipment';
 import { asc, eq, inArray, sql } from 'drizzle-orm';
 import { recordAuditUpdate } from '../../audit/audit-writer.js';
-import {
-  PartBomComponentNotFoundError,
-  PartBomCycleError,
-  PartBomQuantityError,
-  PartNotBuiltError,
-} from './part-bom-errors.js';
-import { PartNotFoundError } from './part-errors.js';
+import { partBomComponentNotFound, partBomCycle, partBomQuantity, partNotBuilt } from './part-bom-errors.js';
+import { partNotFound } from './part-errors.js';
 import { partAuditDescriptor } from './part-service.js';
 
 type PartBomDb = DatabaseTransaction | Db;
@@ -62,8 +57,8 @@ export async function savePartBom({
     // Selected whole rather than by column: the audit event needs the same row the lock was taken
     // on, so re-reading it after the write would be a second query for a row that cannot have moved.
     const [part] = await tx.select().from(parts).where(eq(parts.id, input.partId)).for('update');
-    if (!part) throw new PartNotFoundError(input.partId);
-    if (!part.isInternallyFabricated) throw new PartNotBuiltError(input.partId);
+    if (!part) throw partNotFound(input.partId);
+    if (!part.isInternallyFabricated) throw partNotBuilt();
 
     await assertComponentLines({ db: tx, lines: input.lines });
     await assertNoCycle({ db: tx, input });
@@ -128,9 +123,9 @@ async function assertComponentLines({
 
   for (const line of lines) {
     const component = byId.get(line.componentPartId);
-    if (!component) throw new PartBomComponentNotFoundError(line.componentPartId);
+    if (!component) throw partBomComponentNotFound();
     if (!isWholeUnitQuantity(line.quantity, unitClassFor(component.unitOfMeasure))) {
-      throw new PartBomQuantityError(line.componentPartId);
+      throw partBomQuantity();
     }
   }
 }
@@ -158,5 +153,5 @@ async function assertNoCycle({ db, input }: { db: DatabaseTransaction; input: Sa
     componentPartIds: input.lines.map((line) => line.componentPartId),
     parentPartId: input.partId,
   });
-  if (cycle) throw new PartBomCycleError(cycle);
+  if (cycle) throw partBomCycle();
 }

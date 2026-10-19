@@ -13,9 +13,9 @@ import {
 import { and, desc, eq } from 'drizzle-orm';
 
 import {
-  PurchaseOrderArrivalBelowZeroError,
-  PurchaseOrderLineNotCustomError,
-  PurchaseOrderLineNotFoundError,
+  purchaseOrderArrivalBelowZero,
+  purchaseOrderLineNotCustom,
+  purchaseOrderLineNotFound,
 } from './purchase-order-errors.js';
 import { openPurchaseOrder } from './purchase-order-gate.js';
 
@@ -45,13 +45,13 @@ export async function postArrival({
       })
       .from(purchaseOrderLines)
       .where(and(eq(purchaseOrderLines.id, input.lineId), eq(purchaseOrderLines.purchaseOrderId, row.id)));
-    if (!line) throw new PurchaseOrderLineNotFoundError(row.id, input.lineId);
-    if (line.partId !== null) throw new PurchaseOrderLineNotCustomError(line.id);
+    if (!line) throw purchaseOrderLineNotFound();
+    if (line.partId !== null) throw purchaseOrderLineNotCustom();
     if (!line.customDescription) throw new Error('Custom Line has no description');
 
     const arrivedQuantity = intake.get(line.id) ?? 0;
     if (arrivedQuantity + input.quantity < -0.000001) {
-      throw new PurchaseOrderArrivalBelowZeroError(line.customDescription, arrivedQuantity);
+      throw purchaseOrderArrivalBelowZero(line.customDescription, arrivedQuantity);
     }
 
     const [arrival] = await tx

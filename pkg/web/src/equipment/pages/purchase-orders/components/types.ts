@@ -58,7 +58,7 @@ export const PurchaseOrderDraftFormValues = PurchaseOrderCreateFormValues.extend
 /**
  * The decimals a draft line's quantity is keyed and kept in: three where `PurchaseOrderQuantity`
  * allows them, none where the server counts whole units — the same `unitClassFor` verdict it raises
- * `PurchaseOrderInvalidQuantityError` on. A Part that has not resolved yet declares no precision at
+ * `purchase_order.invalid_quantity` on. A Part that has not resolved yet declares no precision at
  * all; the Parts query is still in flight, and rounding on that guess would round a measured
  * quantity away.
  */

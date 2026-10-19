@@ -62,11 +62,11 @@ import {
 import { resolveMovementActor } from './movement-actor.js';
 import { sumBy, sumNullableBy } from './row-grouping.js';
 import {
-  StocktakePartOutOfScopeError,
-  StocktakeSessionAlreadyOpenError,
-  StocktakeSessionClosedError,
-  StocktakeSessionNotFoundError,
-  StocktakeUncountedBucketError,
+  stocktakePartOutOfScope,
+  stocktakeSessionAlreadyOpen,
+  stocktakeSessionClosed,
+  stocktakeSessionNotFound,
+  stocktakeUncountedBucket,
 } from './stocktake-errors.js';
 import { assertDeltaMatchesUnitClass, assertLengthMatchesUnitClass } from './unit-class-rules.js';
 
@@ -100,7 +100,7 @@ export async function openStocktakeSession({
       .values({ openedByUserId: openerUserId, scope: input.scope })
       .returning({ id: stocktakeSessions.id })
       .catch((error: unknown) => {
-        if (isUniqueViolation(error)) throw new StocktakeSessionAlreadyOpenError(input.scope);
+        if (isUniqueViolation(error)) throw stocktakeSessionAlreadyOpen(input.scope);
         throw error;
       });
     if (!row) throw new Error('Stocktake session insert did not return a row');
@@ -131,7 +131,7 @@ export async function closeStocktakeSession({
     });
     const session = await lockSession(tx, input.sessionId);
 
-    if (session.closedAt !== null) throw new StocktakeSessionClosedError(input.sessionId);
+    if (session.closedAt !== null) throw stocktakeSessionClosed();
 
     await tx
       .update(stocktakeSessions)
@@ -170,7 +170,7 @@ export async function postStockCount({
 }): Promise<StockCountResult> {
   return db.transaction(async (tx) => {
     const session = await lockSession(tx, input.sessionId);
-    if (session.closedAt !== null) throw new StocktakeSessionClosedError(input.sessionId);
+    if (session.closedAt !== null) throw stocktakeSessionClosed();
 
     const part = await loadStockPart({ db: tx, lockForMovement: true, partId: input.partId });
     const counterUserId = await resolveMovementActor({
@@ -181,7 +181,7 @@ export async function postStockCount({
     const unitClass = unitClassFor(part.unitOfMeasure);
 
     if (part.stockTrackingMode !== STOCKTAKE_SCOPE_TRACKING_MODE[session.scope]) {
-      throw new StocktakePartOutOfScopeError(input.partId, session.scope);
+      throw stocktakePartOutOfScope(session.scope);
     }
 
     for (const bucket of input.buckets) {
@@ -201,7 +201,7 @@ export async function postStockCount({
     // a receipt that landed between the screen loading and the count posting into a silent
     // write-off of stock nobody looked at: the counter never saw that bucket, so they never counted
     // it, and zeroing it on their behalf destroys the arrival. Refusing sends them back to the rack.
-    if (unnamed.length > 0) throw new StocktakeUncountedBucketError(input.partId, unnamed);
+    if (unnamed.length > 0) throw stocktakeUncountedBucket(unnamed);
 
     const buckets: StockCountBucketVariance[] = input.buckets.map((bucket) => {
       const expected = onHandByLength.get(bucket.lengthMm) ?? 0;
@@ -680,14 +680,14 @@ async function lockSession(db: DatabaseTransaction, sessionId: UUID) {
     .where(eq(stocktakeSessions.id, sessionId))
     .limit(1)
     .for('update');
-  if (!session) throw new StocktakeSessionNotFoundError(sessionId);
+  if (!session) throw stocktakeSessionNotFound();
 
   return session;
 }
 
 async function loadSession({ db, sessionId }: { db: DatabaseTransaction | Db; sessionId: UUID }) {
   const [row] = await sessionQuery(db).where(eq(stocktakeSessions.id, sessionId)).limit(1);
-  if (!row) throw new StocktakeSessionNotFoundError(sessionId);
+  if (!row) throw stocktakeSessionNotFound();
 
   return StocktakeSessionSchema.parse(row);
 }

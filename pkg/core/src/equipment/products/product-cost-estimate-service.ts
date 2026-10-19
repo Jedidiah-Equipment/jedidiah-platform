@@ -17,7 +17,7 @@ import { sumBy } from '../inventory/row-grouping.js';
 import { getLaborRateCard } from '../labor-rates/labor-rate-service.js';
 import { listAssemblies } from './product-assembly-service.js';
 import { listProductCostingInputs } from './product-costing-input-service.js';
-import { ProductNotFoundError } from './product-errors.js';
+import { productNotFound } from './product-errors.js';
 
 type CostedPartFacts = {
   averageUnitCost: number | null;
@@ -209,7 +209,7 @@ async function loadProductHeader(
     .from(products)
     .where(includeRemovedProduct ? eq(products.id, productId) : and(eq(products.id, productId), notRemoved(products)));
   const [product] = await (lockProductRevision ? query.for('share').limit(1) : query.limit(1));
-  if (!product) throw new ProductNotFoundError(productId);
+  if (!product) throw productNotFound(productId);
 
   return { ...product, currencyCode: 'ZAR' as const };
 }

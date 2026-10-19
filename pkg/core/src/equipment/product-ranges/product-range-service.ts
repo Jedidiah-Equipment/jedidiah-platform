@@ -20,11 +20,7 @@ import {
 } from '@pkg/schema/equipment';
 import { and, asc, count, eq, type SQL, sql } from 'drizzle-orm';
 
-import {
-  DuplicateProductRangeNameError,
-  ProductRangeHasProductsError,
-  ProductRangeNotFoundError,
-} from './product-range-errors.js';
+import { duplicateProductRangeName, productRangeHasProducts, productRangeNotFound } from './product-range-errors.js';
 
 type ProductRangeRow = typeof productRanges.$inferSelect;
 type ProductRangeVariantRow = typeof productRangeVariants.$inferSelect;
@@ -177,7 +173,7 @@ export async function reorderProductRanges({
 
     const unknownId = orderedIds.find((id) => !existingIds.has(id));
     if (unknownId) {
-      throw new ProductRangeNotFoundError(unknownId);
+      throw productRangeNotFound(unknownId);
     }
 
     const sameSize = orderedIds.length === existingIds.size;
@@ -215,7 +211,7 @@ export async function updateProductRange({
       .returning();
 
     if (!row) {
-      throw new ProductRangeNotFoundError(input.id);
+      throw productRangeNotFound(input.id);
     }
 
     return getProductRange({ db, id: row.id });
@@ -236,7 +232,7 @@ export async function getProductRange({ db, id }: { db: Db; id: UUID }): Promise
   });
 
   if (!row) {
-    throw new ProductRangeNotFoundError(id);
+    throw productRangeNotFound(id);
   }
 
   return mapProductRange(row);
@@ -251,7 +247,7 @@ export async function removeProductRange({ db, id }: { db: Db; id: UUID }): Prom
       .for('update');
 
     if (!before) {
-      throw new ProductRangeNotFoundError(id);
+      throw productRangeNotFound(id);
     }
 
     const [{ value: activeProductCount } = { value: 0 }] = await tx
@@ -260,7 +256,7 @@ export async function removeProductRange({ db, id }: { db: Db; id: UUID }): Prom
       .where(and(eq(products.rangeId, id), notRemoved(products)));
 
     if (activeProductCount > 0) {
-      throw new ProductRangeHasProductsError(id);
+      throw productRangeHasProducts(id);
     }
 
     const now = new Date();
@@ -284,7 +280,7 @@ function mapProductRangeUniqueViolation(error: unknown, input: Pick<ProductRange
   const constraint = getUniqueViolationConstraint(error);
 
   if (constraint !== null) {
-    return new DuplicateProductRangeNameError(input.name);
+    return duplicateProductRangeName(input.name);
   }
 
   return error instanceof Error ? error : new Error(String(error));

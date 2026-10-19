@@ -1,58 +1,24 @@
-export class DuplicateSupplierNameError extends Error {
-  readonly code = 'supplier.duplicate_name';
-  readonly metadata: { companyName: string };
+export type SupplierErrorCode =
+  | 'supplier.duplicate_name'
+  | 'supplier.has_draft_purchase_orders'
+  | 'supplier.merge_self'
+  | 'supplier.not_found';
 
-  constructor(companyName: string) {
-    super(`Supplier name already exists: ${companyName}`);
-    this.name = 'DuplicateSupplierNameError';
-    this.metadata = { companyName };
+export class SupplierError extends Error {
+  constructor(
+    readonly code: SupplierErrorCode,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'SupplierError';
   }
 }
 
-export class SupplierNotFoundError extends Error {
-  readonly code = 'supplier.not_found';
-  readonly metadata: { id: string };
-
-  constructor(id: string) {
-    super(`Supplier not found: ${id}`);
-    this.name = 'SupplierNotFoundError';
-    this.metadata = { id };
-  }
-}
-
-export class SupplierHasDraftPurchaseOrdersError extends Error {
-  readonly code = 'supplier.has_draft_purchase_orders';
-  readonly metadata: { id: string };
-
-  constructor(id: string) {
-    super(`Supplier has unsent Purchase Orders: ${id}`);
-    this.name = 'SupplierHasDraftPurchaseOrdersError';
-    this.metadata = { id };
-  }
-}
-
-export class SupplierMergeSelfError extends Error {
-  readonly code = 'supplier.merge_self';
-  readonly metadata: { id: string };
-
-  constructor(id: string) {
-    super(`Supplier cannot be merged into itself: ${id}`);
-    this.name = 'SupplierMergeSelfError';
-    this.metadata = { id };
-  }
-}
-
-export type SupplierCoreError =
-  | DuplicateSupplierNameError
-  | SupplierHasDraftPurchaseOrdersError
-  | SupplierMergeSelfError
-  | SupplierNotFoundError;
-
-export function isSupplierCoreError(error: unknown): error is SupplierCoreError {
-  return (
-    error instanceof DuplicateSupplierNameError ||
-    error instanceof SupplierHasDraftPurchaseOrdersError ||
-    error instanceof SupplierMergeSelfError ||
-    error instanceof SupplierNotFoundError
-  );
-}
+export const isSupplierError = (error: unknown): error is SupplierError => error instanceof SupplierError;
+export const duplicateSupplierName = (companyName: string) =>
+  new SupplierError('supplier.duplicate_name', `Supplier name already exists: ${companyName}`);
+export const supplierNotFound = (id: string) => new SupplierError('supplier.not_found', `Supplier not found: ${id}`);
+export const supplierHasDraftPurchaseOrders = (id: string) =>
+  new SupplierError('supplier.has_draft_purchase_orders', `Supplier has unsent Purchase Orders: ${id}`);
+export const supplierMergeSelf = (id: string) =>
+  new SupplierError('supplier.merge_self', `Supplier cannot be merged into itself: ${id}`);

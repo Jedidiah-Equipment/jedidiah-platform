@@ -6,7 +6,7 @@ import { JobStockJob as JobStockJobSchema } from '@pkg/schema/equipment';
 import { eq, sql } from 'drizzle-orm';
 
 import { jobDisplayNameOf, jobDisplaySelection } from '../jobs/job-display.js';
-import { JobNotFoundError } from '../jobs/job-errors.js';
+import { jobNotFound } from '../jobs/job-errors.js';
 import { getJobCloseOutAt } from './close-out-service.js';
 
 /**
@@ -29,7 +29,7 @@ export async function loadJobStockJob({ db, jobId }: { db: Db; jobId: UUID }): P
     .leftJoin(quotes, eq(quotes.id, jobs.quoteId))
     .where(eq(jobs.id, jobId))
     .limit(1);
-  if (!job) throw new JobNotFoundError(jobId);
+  if (!job) throw jobNotFound(jobId);
 
   return JobStockJobSchema.parse({
     cancelledAt: job.cancelledAt,

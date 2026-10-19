@@ -11,7 +11,7 @@ import {
 } from '@pkg/schema/equipment';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 
-import { CheckoutQuoteNotFoundError, CheckoutQuoteNotPartsSaleError } from './checkout-errors.js';
+import { checkoutQuoteNotFound, checkoutQuoteNotPartsSale } from './checkout-errors.js';
 import { drawnCostedValueExpression, uncostedDrawnQuantityExpression } from './job-stock-facts.js';
 import { toLedgerQuantity } from './ledger.js';
 import { inventoryQuoteSelection } from './quote-options-read.js';
@@ -65,8 +65,8 @@ export async function loadInventoryQuote(db: Db, quoteId: UUID): Promise<Invento
     .innerJoin(customers, eq(customers.id, quotes.customerId))
     .where(eq(quotes.id, quoteId))
     .limit(1);
-  if (!quote) throw new CheckoutQuoteNotFoundError(quoteId);
-  if (!quote.isPartsSale) throw new CheckoutQuoteNotPartsSaleError(quoteId);
+  if (!quote) throw checkoutQuoteNotFound(quoteId);
+  if (!quote.isPartsSale) throw checkoutQuoteNotPartsSale(quoteId);
 
   return InventoryQuoteOptionSchema.parse({ ...quote, code: formatQuoteCode(quote.code) });
 }

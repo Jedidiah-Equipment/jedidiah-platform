@@ -39,11 +39,11 @@ import {
 } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
 import {
-  CustomerInUseError,
-  CustomerMergeBusyError,
-  CustomerMergeSelfError,
-  CustomerNotFoundError,
-  CustomerPossibleMatchError,
+  customerInUse,
+  customerMergeBusy,
+  customerMergeSelf,
+  customerNotFound,
+  customerPossibleMatch,
 } from './customer-errors.js';
 
 type CustomerRow = typeof customers.$inferSelect;
@@ -147,7 +147,7 @@ export async function getCustomer({ db, id }: { db: Db; id: UUID }): Promise<Cus
   });
 
   if (!row) {
-    throw new CustomerNotFoundError(id);
+    throw customerNotFound(id);
   }
 
   return mapCustomer(row);
@@ -191,7 +191,7 @@ export async function updateCustomer({
     db,
     descriptor: customerAuditDescriptor,
     id: input.id,
-    notFound: () => new CustomerNotFoundError(input.id),
+    notFound: () => customerNotFound(input.id),
     project: (_tx, row) => mapCustomer(row),
     set: () => ({
       address: input.address,
@@ -221,7 +221,7 @@ export async function removeCustomer({
     const [before] = await tx.select().from(customers).where(eq(customers.id, id)).for('update');
 
     if (!before) {
-      throw new CustomerNotFoundError(id);
+      throw customerNotFound(id);
     }
 
     // All Customer references use restrictive foreign keys. Keeping that constraint as the final
@@ -230,7 +230,7 @@ export async function removeCustomer({
       await tx.delete(customers).where(eq(customers.id, id));
     } catch (error) {
       if (getForeignKeyViolationConstraint(error)) {
-        throw new CustomerInUseError(id);
+        throw customerInUse(id);
       }
 
       throw error;
@@ -259,7 +259,7 @@ export async function patchCustomer({
     db,
     descriptor: customerAuditDescriptor,
     id: input.id,
-    notFound: () => new CustomerNotFoundError(input.id),
+    notFound: () => customerNotFound(input.id),
     project: (_tx, row) => mapCustomer(row),
     // `undefined` keeps the current value; an explicit `null` clears a nullable field.
     set: (before) => ({
@@ -317,7 +317,7 @@ export async function mergeCustomer({
   input: CustomerMergeInput;
 }): Promise<Customer> {
   const { sourceId, targetId } = input;
-  if (sourceId === targetId) throw new CustomerMergeSelfError(sourceId);
+  if (sourceId === targetId) throw customerMergeSelf(sourceId);
 
   return retryCustomerMerge(sourceId, () =>
     db.transaction(async (tx) => {
@@ -333,8 +333,8 @@ export async function mergeCustomer({
         .for('update', { noWait: true });
       const source = rows.find((row) => row.id === sourceId);
       const target = rows.find((row) => row.id === targetId);
-      if (!source) throw new CustomerNotFoundError(sourceId);
-      if (!target) throw new CustomerNotFoundError(targetId);
+      if (!source) throw customerNotFound(sourceId);
+      if (!target) throw customerNotFound(targetId);
 
       // A reference can commit between the first scan and the Customer locks. Recheck under those
       // locks so every row our writes can encounter is held without waiting on a concurrent writer.
@@ -384,7 +384,7 @@ export async function mergeCustomer({
       try {
         await tx.delete(customers).where(eq(customers.id, sourceId));
       } catch (error) {
-        if (getForeignKeyViolationConstraint(error)) throw new CustomerInUseError(sourceId);
+        if (getForeignKeyViolationConstraint(error)) throw customerInUse(sourceId);
         throw error;
       }
       const counts = {
@@ -468,7 +468,7 @@ async function retryCustomerMerge(sourceId: UUID, merge: () => Promise<Customer>
       return await merge();
     } catch (error) {
       if (!isMergeLockUnavailable(error)) throw error;
-      if (Date.now() >= deadline) throw new CustomerMergeBusyError(sourceId);
+      if (Date.now() >= deadline) throw customerMergeBusy(sourceId);
       // Jitter lets two crossing merges stop colliding on the same rows without holding DB locks.
       await new Promise<void>((resolve) => setTimeout(resolve, 50 + Math.random() * 100));
     }
@@ -523,5 +523,5 @@ export async function assertCustomerCreationAllowed({
   );
   if (allowPossibleMatch) return;
   const matches = await findPossibleCustomerMatches({ db, companyName });
-  if (matches.length) throw new CustomerPossibleMatchError(matches);
+  if (matches.length) throw customerPossibleMatch(matches);
 }

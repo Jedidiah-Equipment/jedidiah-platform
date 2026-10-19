@@ -19,7 +19,7 @@ import {
 import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 
 import type { StorageAdapter } from '../../storage/storage-adapter.js';
-import { CreditNoteAlreadySettledError, CreditNoteReturnNotFoundError } from './credit-note-errors.js';
+import { creditNoteAlreadySettled, creditNoteReturnNotFound } from './credit-note-errors.js';
 import { filePurchaseOrderDocument } from './purchase-order-document-filing.js';
 import { openPurchaseOrder } from './purchase-order-gate.js';
 import { getPurchaseOrder, newestPurchaseOrderDocumentFirst } from './purchase-order-service.js';
@@ -263,12 +263,12 @@ async function assertReturnsAreSettleable(tx: DatabaseTransaction, input: Credit
     .for('update');
   const found = new Set(returns.map((row) => row.id));
   const missing = input.stockMovementIds.find((id) => !found.has(id));
-  if (missing) throw new CreditNoteReturnNotFoundError(missing);
+  if (missing) throw creditNoteReturnNotFound();
 
   const [settled] = await tx
     .select({ stockMovementId: creditNoteSettlements.stockMovementId })
     .from(creditNoteSettlements)
     .where(inArray(creditNoteSettlements.stockMovementId, [...input.stockMovementIds]))
     .limit(1);
-  if (settled) throw new CreditNoteAlreadySettledError(settled.stockMovementId);
+  if (settled) throw creditNoteAlreadySettled();
 }

@@ -27,7 +27,6 @@ import {
   seedSentPurchaseOrder,
   test,
 } from '../test/inventory-fixtures.js';
-import { PartMergeBlockedError, PartMergeSelfError, PartNotFoundError } from './part-errors.js';
 import { getPartMergePreview, mergePart } from './part-merge-service.js';
 
 type SeededPart = typeof parts.$inferSelect;
@@ -350,10 +349,10 @@ describe('mergePart', () => {
   test('refuses a merge into itself or with a missing Part', async ({ context }) => {
     const survivor = context.parts.piece;
 
-    await expect(merge(context.db, survivor.id, survivor.id)).rejects.toBeInstanceOf(PartMergeSelfError);
-    await expect(merge(context.db, '00000000-0000-4000-8000-000000000999', survivor.id)).rejects.toBeInstanceOf(
-      PartNotFoundError,
-    );
+    await expect(merge(context.db, survivor.id, survivor.id)).rejects.toMatchObject({ code: 'part.merge_self' });
+    await expect(merge(context.db, '00000000-0000-4000-8000-000000000999', survivor.id)).rejects.toMatchObject({
+      code: 'part.not_found',
+    });
   });
 
   test('refuses Parts whose quantities mean different things, and moves nothing', async ({ context }) => {
@@ -408,7 +407,7 @@ describe('mergePart', () => {
     await seedSentPurchaseOrder(context.db, otherSupplier.id, [{ partId: otherDuplicate.id, quantity: 1 }]);
 
     const sameOrder = await merge(context.db, duplicate.id, survivor.id).catch((error: unknown) => error);
-    expect(sameOrder).toBeInstanceOf(PartMergeBlockedError);
+    expect(sameOrder).toMatchObject({ code: 'part.merge_blocked' });
     expect(sameOrder).toMatchObject({
       metadata: { blockers: [{ kind: 'same-purchase-order', purchaseOrderCodes: [expect.stringMatching(/^PO-/)] }] },
     });

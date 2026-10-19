@@ -1,9 +1,9 @@
 import type { UUID } from '@pkg/schema';
 import type { JobStockMovementType, PartStockActions, PartStockActionVerdict } from '@pkg/schema/equipment';
-import { PartNotBuiltError } from '../parts/part-bom-errors.js';
-import { PurchaseOrderPartNotPurchasableError } from '../purchase-orders/purchase-order-errors.js';
-import { BuildLinearPartError, BuildPeriodicPartError } from './build-errors.js';
-import { FabricatedPartCostError, PeriodicStockMovementError } from './stock-movement-errors.js';
+import { partNotBuilt } from '../parts/part-bom-errors.js';
+import { purchaseOrderPartNotPurchasable } from '../purchase-orders/purchase-order-errors.js';
+import { buildLinearPart, buildPeriodicPart } from './build-errors.js';
+import { fabricatedPartCost, periodicStockMovement } from './stock-movement-errors.js';
 
 export type PartStockActionContext = {
   /**
@@ -35,19 +35,17 @@ export function assertPartStockAction(
 
   switch (verdict.reason) {
     case 'built-part':
-      throw new PurchaseOrderPartNotPurchasableError(partId);
+      throw purchaseOrderPartNotPurchasable();
     case 'cost-derived':
-      throw new FabricatedPartCostError();
+      throw fabricatedPartCost();
     case 'linear':
-      throw new BuildLinearPartError(partId);
+      throw buildLinearPart();
     case 'not-built':
-      throw new PartNotBuiltError(partId);
+      throw partNotBuilt();
     case 'periodic': {
       const movement = PERIODIC_JOB_MOVEMENT[action];
 
-      throw movement === undefined
-        ? new BuildPeriodicPartError(partId)
-        : new PeriodicStockMovementError(movement, partId);
+      throw movement === undefined ? buildPeriodicPart() : periodicStockMovement(movement, partId);
     }
   }
 }

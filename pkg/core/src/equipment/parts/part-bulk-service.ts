@@ -14,12 +14,11 @@ import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { diffAuditUpdate, recordAuditCreate, recordAuditUpdate } from '../../audit/audit-writer.js';
 import { supplierAuditDescriptor } from '../suppliers/supplier-service.js';
 import {
+  isPartError,
   NO_SUPPLIER_LABEL,
-  PartBulkImportConflictError,
-  PartNotFoundError,
-  PartSupplierLockedByPurchaseOrderError,
-  PartSupplierNotFoundError,
-  PartUnitOfMeasureLockedError,
+  partBulkImportConflict,
+  partNotFound,
+  partSupplierNotFound,
 } from './part-errors.js';
 import { assertSupplierMutable, assertUnitOfMeasureMutable, partAuditDescriptor } from './part-service.js';
 
@@ -177,7 +176,7 @@ export async function bulkImportParts({
         }
 
         const [lockedPart] = await tx.select().from(parts).where(eq(parts.id, existingPart.id)).for('update');
-        if (!lockedPart) throw new PartNotFoundError(existingPart.id);
+        if (!lockedPart) throw partNotFound(existingPart.id);
 
         if (lockedPart.averageUtilizationPercent !== null && unitClassFor(partInput.unitOfMeasure) !== 'discrete') {
           errors.push(
@@ -219,7 +218,7 @@ export async function bulkImportParts({
         const [updated] = await tx.update(parts).set(partInput).where(eq(parts.id, existingPart.id)).returning();
 
         if (!updated) {
-          throw new PartNotFoundError(existingPart.id);
+          throw partNotFound(existingPart.id);
         }
 
         await recordAuditUpdate({ db: tx, descriptor: partAuditDescriptor, actorUserId, after: updated, changes });
@@ -301,11 +300,11 @@ async function recordImportBatch({
 }
 
 function formatBulkImportLockError(error: unknown, lineNumber: number): string | undefined {
-  if (error instanceof PartUnitOfMeasureLockedError) {
+  if (isPartError(error) && error.code === 'part.unit_of_measure_locked') {
     return `Line ${lineNumber}: Unit of Measure is locked because this Part has stock history.`;
   }
 
-  if (error instanceof PartSupplierLockedByPurchaseOrderError) {
+  if (isPartError(error) && error.code === 'part.supplier_locked_by_purchase_order') {
     // Supplier identity conflicts skip earlier today; keep this paired with the assertion so a
     // future bulk-update path cannot accidentally turn its expected lock into a transaction abort.
     return `Line ${lineNumber}: Supplier is locked because this Part appears on a Purchase Order.`;
@@ -572,7 +571,7 @@ async function getImportSupplierById({
     .for('share');
 
   if (!row) {
-    throw new PartSupplierNotFoundError(supplierId);
+    throw partSupplierNotFound(supplierId);
   }
 
   return row;
@@ -602,7 +601,7 @@ async function createImportSupplier({
 }
 
 function mapPartUniqueViolationForBulkImport(error: unknown, input: PartBulkImportInput): Error {
-  if (error instanceof PartBulkImportConflictError) {
+  if (isPartError(error) && error.code === 'part.bulk_import_conflict') {
     return error;
   }
 
@@ -613,7 +612,7 @@ function mapPartUniqueViolationForBulkImport(error: unknown, input: PartBulkImpo
       : undefined;
 
   if (constraint !== null && conflictingRow) {
-    return new PartBulkImportConflictError({
+    return partBulkImportConflict({
       code: conflictingRow.code,
       supplierCode: conflictingRow.supplierCode,
       supplierName: conflictingRow.supplierName,

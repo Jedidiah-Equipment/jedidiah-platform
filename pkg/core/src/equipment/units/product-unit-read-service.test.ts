@@ -15,7 +15,6 @@ import { describe, expect } from 'vitest';
 
 import { createTester } from '../../test/create-tester.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
-import { ProductUnitNotFoundError } from './product-unit-errors.js';
 import { getProductUnit, listProductUnits } from './product-unit-read-service.js';
 import { createProductUnit, lockUnitForOwnership, updateProductUnit } from './product-unit-service.js';
 
@@ -312,9 +311,9 @@ describe('getProductUnit', () => {
   });
 
   test('rejects a machine that does not exist', async ({ context }) => {
-    await expect(getProductUnit({ db: context.db, id: '00000000-0000-4000-8000-00000000ffff' })).rejects.toBeInstanceOf(
-      ProductUnitNotFoundError,
-    );
+    await expect(getProductUnit({ db: context.db, id: '00000000-0000-4000-8000-00000000ffff' })).rejects.toMatchObject({
+      code: 'product_unit.not_found',
+    });
   });
 });
 

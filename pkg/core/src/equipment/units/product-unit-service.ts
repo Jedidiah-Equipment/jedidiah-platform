@@ -31,16 +31,16 @@ import {
   recordAuditEvent,
 } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
-import { CustomerNotFoundError } from '../customers/customer-errors.js';
+import { customerNotFound } from '../customers/customer-errors.js';
 import { jobAuditDescriptor } from '../jobs/job-audit.js';
 import { quoteAuditDescriptor } from '../quotes/quote-audit.js';
 import {
-  ProductUnitInUseError,
-  ProductUnitNotFoundError,
-  ProductUnitOwnerUnchangedError,
-  ProductUnitProductNotFoundError,
-  ProductUnitTransferBackdatedError,
-  ProductUnitTransferInFutureError,
+  productUnitInUse,
+  productUnitNotFound,
+  productUnitOwnerUnchanged,
+  productUnitProductNotFound,
+  productUnitTransferBackdated,
+  productUnitTransferInFuture,
 } from './product-unit-errors.js';
 import { getProductUnit } from './product-unit-read-service.js';
 
@@ -89,7 +89,7 @@ export async function createProductUnit({
     .limit(1);
 
   if (!product) {
-    throw new ProductUnitProductNotFoundError(productId);
+    throw productUnitProductNotFound();
   }
 
   const serial = await createProductSerial({ modelCode: product.modelCode, plantToday, productId, tx });
@@ -259,7 +259,6 @@ export async function lockUnitForOwnership(
         latest: ownership.latest,
         occurredOn: input.occurredOn,
         plantToday,
-        productUnitId: ownership.unit.id,
         toCustomerId: input.toCustomerId,
       });
 
@@ -295,26 +294,24 @@ function assertOwnershipTransferAllowed({
   latest,
   occurredOn,
   plantToday,
-  productUnitId,
   toCustomerId,
 }: {
   currentOwnerId: string | null;
   latest: OwnershipTransferRow | null;
   occurredOn: string;
   plantToday: DateOnlyIso;
-  productUnitId: string;
   toCustomerId: string | null;
 }): void {
   if (occurredOn > plantToday) {
-    throw new ProductUnitTransferInFutureError(occurredOn, plantToday);
+    throw productUnitTransferInFuture();
   }
 
   if (toCustomerId === currentOwnerId) {
-    throw new ProductUnitOwnerUnchangedError(productUnitId, currentOwnerId);
+    throw productUnitOwnerUnchanged(currentOwnerId);
   }
 
   if (latest && occurredOn < latest.occurredOn) {
-    throw new ProductUnitTransferBackdatedError(occurredOn, latest.occurredOn);
+    throw productUnitTransferBackdated(latest.occurredOn);
   }
 }
 
@@ -428,7 +425,7 @@ export async function updateProductUnit({
     db,
     descriptor: productUnitAuditDescriptor,
     id: input.id,
-    notFound: () => new ProductUnitNotFoundError(input.id),
+    notFound: () => productUnitNotFound(input.id),
     project: async (tx, row) => ({ unit: await getProductUnit({ db: tx, id: row.id }) }),
     set: () => ({ updatedAt: new Date(), vinNumber: input.vinNumber }),
     table: productUnits,
@@ -480,7 +477,7 @@ export async function removeProductUnitWithin({
   const ownership = await lockUnitForOwnership(tx, id);
 
   if (!ownership) {
-    throw new ProductUnitNotFoundError(id);
+    throw productUnitNotFound(id);
   }
 
   const unitQuotes = await tx
@@ -490,7 +487,7 @@ export async function removeProductUnitWithin({
 
   for (const quote of unitQuotes) {
     if (quote.status !== 'cancelled') {
-      throw new ProductUnitInUseError(id, 'quoted');
+      throw productUnitInUse('quoted');
     }
   }
 
@@ -508,12 +505,12 @@ export async function removeProductUnitWithin({
   // open Job: one finished build is enough to say the machine exists, even while a Rework Job is live.
   const completedJob = unitJobs.find((job) => job.completedOn !== null);
   if (completedJob) {
-    throw new ProductUnitInUseError(id, 'built', formatJobCode(completedJob.code));
+    throw productUnitInUse('built', formatJobCode(completedJob.code));
   }
 
   const liveJob = unitJobs.find((job) => !isJobCancelled(job));
   if (liveJob) {
-    throw new ProductUnitInUseError(id, 'live-job', formatJobCode(liveJob.code));
+    throw productUnitInUse('live-job', formatJobCode(liveJob.code));
   }
 
   // Re-read for the whole row the audit event snapshots; the ownership handle carries only identity.
@@ -557,7 +554,7 @@ export async function removeProductUnitWithin({
     await tx.delete(productUnits).where(eq(productUnits.id, id));
   } catch (error) {
     if (getForeignKeyViolationConstraint(error)) {
-      throw new ProductUnitInUseError(id, 'referenced');
+      throw productUnitInUse('referenced');
     }
 
     throw error;
@@ -588,7 +585,7 @@ export async function transferProductUnitOwnership({
     const ownership = await lockUnitForOwnership(tx, input.id);
 
     if (!ownership) {
-      throw new ProductUnitNotFoundError(input.id);
+      throw productUnitNotFound(input.id);
     }
 
     // Preserve the manual API's historical error precedence. `record()` repeats these checks because
@@ -598,7 +595,6 @@ export async function transferProductUnitOwnership({
       latest: ownership.latest,
       occurredOn: input.occurredOn,
       plantToday: getPlantDateNow(),
-      productUnitId: ownership.unit.id,
       toCustomerId: input.toCustomerId,
     });
 
@@ -609,7 +605,7 @@ export async function transferProductUnitOwnership({
         .where(eq(customers.id, input.toCustomerId));
 
       if (!toCustomer) {
-        throw new CustomerNotFoundError(input.toCustomerId);
+        throw customerNotFound(input.toCustomerId);
       }
     }
 

@@ -2,7 +2,7 @@ import type { DatabaseTransaction, Db, StoredFile } from '@pkg/db';
 import { type FilePolicy, validateFile } from '@pkg/domain';
 
 import type { StorageAdapter } from '../storage/storage-adapter.js';
-import { FilePolicyViolationError } from './file-errors.js';
+import { filePolicyViolation } from './file-errors.js';
 
 const CONTENT_TYPE_EXTENSIONS: Record<string, string> = {
   'image/jpeg': 'jpg',
@@ -43,7 +43,7 @@ export async function replaceFile({
   const validation = validateFile(bytes, policy);
 
   if (!validation.ok) {
-    throw new FilePolicyViolationError(validation);
+    throw filePolicyViolation(validation);
   }
 
   const storageKey = binding.buildStorageKey({ contentType: validation.contentType });

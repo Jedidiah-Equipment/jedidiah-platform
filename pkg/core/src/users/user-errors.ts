@@ -1,14 +1,14 @@
-export class UserNotFoundError extends Error {
-  readonly code = 'user.not_found';
-  readonly metadata: { id: string };
+export type UserErrorCode = 'user.not_found';
 
-  constructor(id: string) {
-    super(`User not found: ${id}`);
-    this.name = 'UserNotFoundError';
-    this.metadata = { id };
+export class UserError extends Error {
+  constructor(
+    readonly code: UserErrorCode,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'UserError';
   }
 }
 
-export function isUserNotFoundError(error: unknown): error is UserNotFoundError {
-  return error instanceof UserNotFoundError;
-}
+export const isUserError = (error: unknown): error is UserError => error instanceof UserError;
+export const userNotFound = (id: string) => new UserError('user.not_found', `User not found: ${id}`);

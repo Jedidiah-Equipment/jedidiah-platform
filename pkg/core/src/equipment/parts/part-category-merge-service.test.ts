@@ -132,14 +132,14 @@ describe('mergePartCategories', () => {
         db: context.db,
         input: { sourceIds: [BOLT_NUT_ID, UNKNOWN_ID], targetId: TARGET_ID },
       }),
-    ).rejects.toMatchObject({ code: 'part.category_not_found', metadata: { categoryId: UNKNOWN_ID } });
+    ).rejects.toMatchObject({ code: 'part.category_not_found' });
     await expect(
       mergePartCategories({
         actorUserId: ACTOR_ID,
         db: context.db,
         input: { sourceIds: [BOLT_NUT_ID], targetId: UNKNOWN_ID },
       }),
-    ).rejects.toMatchObject({ code: 'part.category_not_found', metadata: { categoryId: UNKNOWN_ID } });
+    ).rejects.toMatchObject({ code: 'part.category_not_found' });
 
     await expect(context.db.$count(parts, eq(parts.categoryId, BOLT_NUT_ID))).resolves.toBe(2);
     await expect(context.db.$count(partCategories)).resolves.toBe(5);

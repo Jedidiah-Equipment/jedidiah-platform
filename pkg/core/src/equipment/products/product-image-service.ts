@@ -7,7 +7,7 @@ import type { AuthId, UUID } from '@pkg/schema';
 import type { Product, ProductImageSlot } from '@pkg/schema/equipment';
 import { and, eq } from 'drizzle-orm';
 import { recordAuditEvent } from '../../audit/audit-writer.js';
-import { FileNotFoundError } from '../../files/file-errors.js';
+import { FileError } from '../../files/file-errors.js';
 import { fileExtensionFor, replaceFile } from '../../files/stored-file-service.js';
 import { type ImageCacheOptions, readOptimizedImage } from '../../media/image-cache.js';
 import {
@@ -16,7 +16,7 @@ import {
   type StoredObject,
   storedObjectFromBytes,
 } from '../../storage/storage-adapter.js';
-import { ProductNotFoundError } from './product-errors.js';
+import { productNotFound } from './product-errors.js';
 import { getProduct, productAuditDescriptor } from './product-service.js';
 
 export type ReplaceProductImageInput = {
@@ -56,7 +56,7 @@ export async function replaceProductImage({
           .for('update');
 
         if (!before) {
-          throw new ProductNotFoundError(input.productId);
+          throw productNotFound(input.productId);
         }
 
         const priorRef = before.images[input.slot];
@@ -144,16 +144,13 @@ export async function readProductImageReference({
     .limit(1);
 
   if (!row) {
-    throw new ProductNotFoundError(productId);
+    throw productNotFound(productId);
   }
 
   const ref = row.images[slot];
 
   if (!ref) {
-    throw new FileNotFoundError(`Product image not found for slot ${slot} on product ${productId}`, {
-      productId,
-      slot,
-    });
+    throw new FileError('file.not_found', `Product image not found for slot ${slot} on product ${productId}`);
   }
 
   return ref;

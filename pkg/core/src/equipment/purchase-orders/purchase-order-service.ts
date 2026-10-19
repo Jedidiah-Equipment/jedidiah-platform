@@ -54,7 +54,7 @@ import {
 } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
 import type { StorageAdapter } from '../../storage/storage-adapter.js';
-import { DocumentNotFoundError } from '../documents/document-errors.js';
+import { documentNotFound } from '../documents/document-errors.js';
 import type { ReadDocumentResult } from '../documents/document-service.js';
 import {
   createDocumentRecord,
@@ -62,17 +62,17 @@ import {
   mapDocumentSummary,
   sanitizeDocumentStorageKeySuffix,
 } from '../documents/document-service.js';
-import { assertPartStockAction } from '../inventory/part-stock-action-errors.js';
-import { JobNotFoundError } from '../jobs/job-errors.js';
+import { assertPartStockAction } from '../inventory/part-stock-action.js';
+import { jobNotFound } from '../jobs/job-errors.js';
 import {
-  PurchaseOrderInvalidQuantityError,
-  PurchaseOrderLineIdConflictError,
-  PurchaseOrderLineNotPricedError,
-  PurchaseOrderNotFoundError,
-  PurchaseOrderPartNotFoundError,
-  PurchaseOrderPartNotPurchasableError,
-  PurchaseOrderPartSupplierMismatchError,
-  PurchaseOrderSupplierNotFoundError,
+  purchaseOrderInvalidQuantity,
+  purchaseOrderLineIdConflict,
+  purchaseOrderLineNotPriced,
+  purchaseOrderNotFound,
+  purchaseOrderPartNotFound,
+  purchaseOrderPartNotPurchasable,
+  purchaseOrderPartSupplierMismatch,
+  purchaseOrderSupplierNotFound,
 } from './purchase-order-errors.js';
 import { judgePurchaseOrder, openPurchaseOrder } from './purchase-order-gate.js';
 import { loadLineIntake, type PurchaseOrderLineIntake } from './purchase-order-line-intake.js';
@@ -171,7 +171,7 @@ export async function createPurchaseOrderWithin({
 
 export async function getPurchaseOrder({ db, id }: { db: PurchaseOrderDb; id: UUID }): Promise<PurchaseOrder> {
   const aggregate = await loadPurchaseOrderAggregate({ db, id });
-  if (!aggregate) throw new PurchaseOrderNotFoundError(id);
+  if (!aggregate) throw purchaseOrderNotFound();
 
   const [documentIds, intake, receiptBuckets] = await Promise.all([
     loadLatestDocumentIds({ db, purchaseOrderIds: [id] }),
@@ -533,7 +533,7 @@ export async function savePurchaseOrderDraftWithin({
       ]);
     } catch (error) {
       if (getUniqueViolationConstraint(error)?.includes('purchase_order_line_pkey')) {
-        throw new PurchaseOrderLineIdConflictError();
+        throw purchaseOrderLineIdConflict();
       }
       throw error;
     }
@@ -616,7 +616,7 @@ export async function markPurchaseOrderSent({
         .set({ sentAt, status: 'sent', updatedAt: sentAt })
         .where(eq(purchaseOrders.id, id))
         .returning();
-      if (!after) throw new PurchaseOrderNotFoundError(id);
+      if (!after) throw purchaseOrderNotFound();
       const changes = diffAuditUpdate(purchaseOrderAuditDescriptor, before, after);
       if (changes) {
         await recordAuditUpdate({ actorUserId, after, changes, db: tx, descriptor: purchaseOrderAuditDescriptor });
@@ -657,7 +657,7 @@ export async function approvePurchaseOrder({
     db,
     descriptor: purchaseOrderAuditDescriptor,
     id,
-    notFound: () => new PurchaseOrderNotFoundError(id),
+    notFound: () => purchaseOrderNotFound(),
     project: (tx, row) => getPurchaseOrder({ db: tx, id: row.id }),
     set: () => {
       const approvedAt = new Date();
@@ -690,7 +690,7 @@ export async function revertPurchaseOrderToDraft({
     db,
     descriptor: purchaseOrderAuditDescriptor,
     id,
-    notFound: () => new PurchaseOrderNotFoundError(id),
+    notFound: () => purchaseOrderNotFound(),
     project: (tx, row) => getPurchaseOrder({ db: tx, id: row.id }),
     set: () => ({ approvedAt: null, status: 'draft' as const, updatedAt: new Date() }),
     table: purchaseOrders,
@@ -715,7 +715,7 @@ export async function cancelPurchaseOrder({
     db,
     descriptor: purchaseOrderAuditDescriptor,
     id,
-    notFound: () => new PurchaseOrderNotFoundError(id),
+    notFound: () => purchaseOrderNotFound(),
     project: (tx, row) => getPurchaseOrder({ db: tx, id: row.id }),
     set: () => ({ status: 'cancelled' as const, updatedAt: new Date() }),
     table: purchaseOrders,
@@ -747,7 +747,7 @@ export async function closePurchaseOrderShort({
     db,
     descriptor: purchaseOrderAuditDescriptor,
     id,
-    notFound: () => new PurchaseOrderNotFoundError(id),
+    notFound: () => purchaseOrderNotFound(),
     project: (tx, row) => getPurchaseOrder({ db: tx, id: row.id }),
     set: () => ({ closedShortAt: new Date(), updatedAt: new Date() }),
     table: purchaseOrders,
@@ -776,7 +776,7 @@ export async function readPurchaseOrderDocument({
     .leftJoin(user, eq(documents.uploaderUserId, user.id))
     .where(and(eq(documents.id, documentId), eq(documents.purchaseOrderId, purchaseOrderId)))
     .limit(1);
-  if (!row) throw new DocumentNotFoundError(documentId);
+  if (!row) throw documentNotFound(documentId);
   return { document: mapDocumentSummary(row), object: await storage.get(row.storageKey) };
 }
 
@@ -913,7 +913,7 @@ function mapPurchaseOrderLine({
  */
 function assertLinesArePriced(purchaseOrder: PurchaseOrder): void {
   const unpriced = purchaseOrder.lines.find((line) => line.unitPrice === 0);
-  if (unpriced) throw new PurchaseOrderLineNotPricedError(formatPurchaseOrderLineLabel(unpriced));
+  if (unpriced) throw purchaseOrderLineNotPriced(formatPurchaseOrderLineLabel(unpriced));
 }
 
 async function assertSupplierExists({ db, supplierId }: { db: PurchaseOrderDb; supplierId: UUID }): Promise<void> {
@@ -924,7 +924,7 @@ async function assertSupplierExists({ db, supplierId }: { db: PurchaseOrderDb; s
     .limit(1)
     // Pair with removeSupplier's row lock so a supplier cannot be retired between validation and insertion.
     .for('share');
-  if (!row) throw new PurchaseOrderSupplierNotFoundError(supplierId);
+  if (!row) throw purchaseOrderSupplierNotFound();
 }
 
 /**
@@ -966,15 +966,15 @@ export async function assertLinePartsMatchSupplier({
 
   for (const line of lines) {
     const part = byId.get(line.partId);
-    if (!part) throw new PurchaseOrderPartNotFoundError(line.partId);
+    if (!part) throw purchaseOrderPartNotFound();
     assertPartStockAction(derivePartStockActions(part).purchase, { action: 'purchase', partId: line.partId });
     // The verdict reads the fabricated flag; `parts_supplier_or_bom` is what makes that the same
     // question as having a Supplier. Asked directly too, so a Part with neither still reads as
     // unbuyable rather than as belonging to some other Supplier.
-    if (part.supplierId === null) throw new PurchaseOrderPartNotPurchasableError(line.partId);
-    if (judgeSupplier && part.supplierId !== supplierId) throw new PurchaseOrderPartSupplierMismatchError(line.partId);
+    if (part.supplierId === null) throw purchaseOrderPartNotPurchasable();
+    if (judgeSupplier && part.supplierId !== supplierId) throw purchaseOrderPartSupplierMismatch();
     if (!isWholeUnitQuantity(line.quantity, unitClassFor(part.unitOfMeasure))) {
-      throw new PurchaseOrderInvalidQuantityError(line.partId);
+      throw purchaseOrderInvalidQuantity();
     }
   }
 }
@@ -989,7 +989,7 @@ async function assertJobsExist({ db, jobIds }: { db: DatabaseTransaction; jobIds
   if (rows.length !== jobIds.length) {
     const found = new Set(rows.map((row) => row.id));
     const missing = jobIds.find((id) => !found.has(id));
-    if (missing) throw new JobNotFoundError(missing);
+    if (missing) throw jobNotFound(missing);
   }
 }
 

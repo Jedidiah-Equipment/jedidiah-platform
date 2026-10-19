@@ -5,11 +5,7 @@ import type { AuthId, UUID } from '@pkg/schema';
 import type { JobDocument } from '@pkg/schema/equipment';
 import { and, eq } from 'drizzle-orm';
 import type { StorageAdapter } from '../../storage/storage-adapter.js';
-import {
-  DocumentDeleteNotAllowedError,
-  DocumentNotFoundError,
-  DuplicateDocumentFilenameError,
-} from '../documents/document-errors.js';
+import { documentDeleteNotAllowed, documentNotFound, duplicateDocumentFilename } from '../documents/document-errors.js';
 import {
   collectDocumentErrorText,
   createDocumentRecord,
@@ -56,7 +52,7 @@ export async function createJobPurchaseOrder({
     const document = (await getJobDocuments({ db: tx, jobId })).find((item) => item.id === row.id);
 
     if (document?.ownerType !== 'job') {
-      throw new DocumentNotFoundError(row.id);
+      throw documentNotFound(row.id);
     }
 
     return document;
@@ -83,11 +79,11 @@ export async function deleteJobPurchaseOrder({
       .limit(1);
 
     if (!document) {
-      throw new DocumentNotFoundError(documentId);
+      throw documentNotFound(documentId);
     }
 
     if (!('type' in document.metadata) || document.metadata.type !== 'purchase_order') {
-      throw new DocumentDeleteNotAllowedError(documentId);
+      throw documentDeleteNotAllowed();
     }
 
     await deleteDocumentRecord({ actorUserId, db: tx, document });
@@ -98,9 +94,8 @@ function mapJobDocumentUniqueViolation(error: unknown, input: { filename: string
   const constraint = getUniqueViolationConstraint(error);
 
   if (constraint?.includes(JOB_DOCUMENT_FILENAME_UNIQUE_INDEX) || isJobDocumentFilenameUniqueDetail(error)) {
-    return new DuplicateDocumentFilenameError({
+    return duplicateDocumentFilename({
       filename: input.filename,
-      ownerId: input.jobId,
       ownerType: 'job',
     });
   }

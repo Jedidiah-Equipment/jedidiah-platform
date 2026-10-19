@@ -51,12 +51,12 @@ import { jobAuditDescriptor } from './job-audit.js';
 import { jobBayAuditDescriptor } from './job-bay-service.js';
 import { createsProductUnit, hasProductWork, resolveJobBlueprint } from './job-blueprint.js';
 import {
-  JobAlreadyCompletedError,
-  JobCompletedOnInFutureError,
-  JobCreateFromQuoteDeniedError,
-  JobNotFoundError,
-  JobSlotNotFoundError,
-  JobUnitRemovalDeniedError,
+  JobError,
+  jobAlreadyCompleted,
+  jobCompletedOnInFuture,
+  jobNotFound,
+  jobSlotNotFound,
+  jobUnitRemovalDenied,
 } from './job-errors.js';
 import { type JobProductUnitRow, type JobRow, mapJob } from './job-mappers.js';
 import { assertJobIsMutable, lockMutableJob } from './job-mutation-guards.js';
@@ -288,13 +288,13 @@ export async function cancelJob({
     const job = await lockMutableJob(tx, input.id);
 
     if (job.completedOn !== null) {
-      throw new JobAlreadyCompletedError(job.id);
+      throw jobAlreadyCompleted();
     }
 
     // Refused before anything is written, so a request the product should never have sent leaves the
     // Job live rather than cancelled-but-not-as-asked.
     if (input.removeUnit && job.quoteId !== null) {
-      throw new JobUnitRemovalDeniedError(job.id);
+      throw jobUnitRemovalDenied();
     }
 
     const now = new Date();
@@ -307,7 +307,7 @@ export async function cancelJob({
       .returning();
 
     if (!cancelled) {
-      throw new JobNotFoundError(job.id);
+      throw jobNotFound(job.id);
     }
 
     // The cancelled row rather than the row before it, so the reason the Job was abandoned is what the
@@ -355,7 +355,7 @@ export async function updateJob({
   const plantToday = getPlantDateNow();
 
   if (input.completedOn != null && input.completedOn > plantToday) {
-    throw new JobCompletedOnInFutureError(input.completedOn, plantToday);
+    throw jobCompletedOnInFuture();
   }
 
   return applyJobFieldPatch({
@@ -389,7 +389,7 @@ async function applyJobFieldPatch({
     db,
     descriptor: jobAuditDescriptor,
     id,
-    notFound: () => new JobNotFoundError(id),
+    notFound: () => jobNotFound(id),
     project: async (tx, row) => ({
       job: mapJob(row, await loadJobProductUnit({ productUnitId: row.productUnitId, tx })),
     }),
@@ -437,7 +437,7 @@ async function assertTargetSlotJobIsMutable(tx: DatabaseTransaction, slotId: UUI
   const [slot] = await tx.select({ jobId: jobSlots.jobId }).from(jobSlots).where(eq(jobSlots.id, slotId));
 
   if (!slot) {
-    throw new JobSlotNotFoundError(slotId);
+    throw jobSlotNotFound(slotId);
   }
 
   if (!slot.jobId) {
@@ -458,7 +458,7 @@ async function assertMoveParticipantsAreMutable(
     .where(eq(jobSlots.id, slotId));
 
   if (!slot) {
-    throw new JobSlotNotFoundError(slotId);
+    throw jobSlotNotFound(slotId);
   }
 
   const movingLeft = direction === 'left';
@@ -482,7 +482,7 @@ async function assertMoveParticipantsAreMutable(
 
   for (const jobId of jobIds) {
     const job = jobsById.get(jobId);
-    if (!job) throw new JobNotFoundError(jobId);
+    if (!job) throw jobNotFound(jobId);
     assertJobIsMutable(job);
   }
 }
@@ -611,7 +611,8 @@ async function snapshotJobCfo({
     kind === 'rework' ? buildReworkCfo({ buildSpec, catalogAssemblies }) : buildCfo({ buildSpec, catalogAssemblies });
 
   if (!result.ok) {
-    throw new JobCreateFromQuoteDeniedError(
+    throw new JobError(
+      'job.create_from_quote_denied',
       `Selected optional assembly is stale: ${result.staleAssemblyNames.join(', ')}.`,
     );
   }

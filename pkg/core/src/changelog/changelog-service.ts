@@ -2,7 +2,7 @@ import { changelogView, type Db } from '@pkg/db';
 import type { AppEnv, Business, Changelog } from '@pkg/schema';
 import { and, eq, lt } from 'drizzle-orm';
 
-import { UnknownChangelogReleaseError } from './changelog-errors.js';
+import { unknownChangelogRelease } from './changelog-errors.js';
 import { selectUnseenChangelogs } from './changelog-visibility.js';
 
 /**
@@ -65,7 +65,7 @@ export async function markChangelogSeen({
   const isReleased = changelogs.some(
     (changelog) => changelog.business === business && new Date(changelog.releasedAt).getTime() === releasedAt.getTime(),
   );
-  if (!isReleased) throw new UnknownChangelogReleaseError(releasedAt.toISOString());
+  if (!isReleased) throw unknownChangelogRelease(releasedAt.toISOString());
 
   await db
     .insert(changelogView)

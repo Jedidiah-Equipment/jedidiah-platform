@@ -6,7 +6,7 @@ import type { StockMovement } from '@pkg/schema/equipment';
 import { StockMovement as StockMovementSchema } from '@pkg/schema/equipment';
 import { and, asc, eq, inArray, isNull, ne, type SQL, sql } from 'drizzle-orm';
 
-import { FabricatedPartCostError, StockMovementPartNotFoundError } from './stock-movement-errors.js';
+import { fabricatedPartCost, stockMovementPartNotFound } from './stock-movement-errors.js';
 
 export type LedgerDb = Db | DatabaseTransaction;
 
@@ -50,7 +50,7 @@ export async function loadStockPart({
   const query = db.select(stockPartSelection).from(parts).where(eq(parts.id, partId)).limit(1);
   // Every writer takes the same Part lock so cost replay and the appended stamp form one ledger order.
   const [part] = lockForMovement ? await query.for('update') : await query;
-  if (!part) throw new StockMovementPartNotFoundError(partId);
+  if (!part) throw stockMovementPartNotFound(partId);
 
   return part;
 }
@@ -210,6 +210,6 @@ export async function scalar(query: PromiseLike<Array<{ value: number }>>): Prom
  */
 export function assertBuiltPartCostIsDerived(isInternallyFabricated: boolean, unitCost: number | null): void {
   if (isInternallyFabricated && unitCost !== null && unitCost !== 0) {
-    throw new FabricatedPartCostError();
+    throw fabricatedPartCost();
   }
 }

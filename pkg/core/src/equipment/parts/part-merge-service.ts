@@ -38,7 +38,7 @@ import { type AnyColumn, and, asc, countDistinct, eq, inArray, isNull, ne, or, s
 
 import { diffAuditUpdate, recordAuditEvent, recordAuditUpdate } from '../../audit/audit-writer.js';
 import { scaleUnitCost } from '../inventory/ledger.js';
-import { PartMergeBlockedError, PartMergeSelfError, PartNotFoundError } from './part-errors.js';
+import { partMergeBlocked, partMergeSelf, partNotFound } from './part-errors.js';
 import { getPart, partAuditDescriptor } from './part-service.js';
 
 type PartRow = typeof parts.$inferSelect;
@@ -59,7 +59,7 @@ const SUMMED_TABLES = [
 ] as const;
 
 export async function getPartMergePreview({ db, input }: { db: Db; input: PartMergeInput }): Promise<PartMergePreview> {
-  if (input.sourceId === input.targetId) throw new PartMergeSelfError(input.sourceId);
+  if (input.sourceId === input.targetId) throw partMergeSelf();
 
   const pair = await loadPair(db, input);
   const [blockers, plan, ledger] = await Promise.all([
@@ -97,7 +97,7 @@ export async function mergePart({
   input: PartMergeInput;
 }): Promise<Part> {
   const { sourceId, targetId } = input;
-  if (sourceId === targetId) throw new PartMergeSelfError(sourceId);
+  if (sourceId === targetId) throw partMergeSelf();
 
   return db.transaction(async (tx) => {
     // Draft saves and receipts lock the order before its line Parts, so take the order locks first.
@@ -125,7 +125,7 @@ export async function mergePart({
     const pair = findPair(rows, input);
 
     const blockers = await findBlockers(tx, pair);
-    if (blockers.length > 0) throw new PartMergeBlockedError(blockers);
+    if (blockers.length > 0) throw partMergeBlocked(blockers);
 
     const [{ moved }, ledger] = await Promise.all([loadMergePlan(tx, pair), loadLedgerFacts(tx, pair)]);
 
@@ -206,8 +206,8 @@ async function loadPair(db: Db | DatabaseTransaction, input: PartMergeInput): Pr
 function findPair(rows: readonly PartRow[], { sourceId, targetId }: PartMergeInput): Pair {
   const source = rows.find((row) => row.id === sourceId);
   const target = rows.find((row) => row.id === targetId);
-  if (!source) throw new PartNotFoundError(sourceId);
-  if (!target) throw new PartNotFoundError(targetId);
+  if (!source) throw partNotFound(sourceId);
+  if (!target) throw partNotFound(targetId);
 
   return { source, target };
 }

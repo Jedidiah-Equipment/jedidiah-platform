@@ -15,11 +15,7 @@ import {
 } from '@pkg/schema/equipment';
 import { and, eq, sql } from 'drizzle-orm';
 import type { StorageAdapter } from '../../storage/storage-adapter.js';
-import {
-  DocumentNotFoundError,
-  DocumentPolicyViolationError,
-  DuplicateDocumentFilenameError,
-} from '../documents/document-errors.js';
+import { documentNotFound, documentPolicyViolation, duplicateDocumentFilename } from '../documents/document-errors.js';
 import {
   collectDocumentErrorText,
   createDocumentRecord,
@@ -29,7 +25,7 @@ import {
   type ReadDocumentResult,
   sanitizeDocumentStorageKeySuffix,
 } from '../documents/document-service.js';
-import { QuoteNotFoundError } from './quote-errors.js';
+import { quoteNotFound } from './quote-errors.js';
 
 const QUOTE_DOCUMENT_FILENAME_UNIQUE_INDEX = 'documents_quote_id_filename_ci_unique';
 
@@ -107,7 +103,7 @@ function parseQuoteDocumentMetadata(metadata: unknown): QuoteDocumentMetadata {
   const result = validateDocumentMetadata({ metadata, ownerType: 'quote' });
 
   if (!result.ok) {
-    throw new DocumentPolicyViolationError(result);
+    throw documentPolicyViolation(result);
   }
 
   return QuoteDocumentMetadata.parse(metadata);
@@ -155,7 +151,7 @@ async function getQuoteDocumentSummaryRow({
     .limit(1);
 
   if (!row) {
-    throw new DocumentNotFoundError(documentId);
+    throw documentNotFound(documentId);
   }
 
   return row;
@@ -171,7 +167,7 @@ async function assertQuoteExists({ db, quoteId }: { db: Db; quoteId: UUID }): Pr
     .limit(1);
 
   if (!quote) {
-    throw new QuoteNotFoundError(quoteId);
+    throw quoteNotFound(quoteId);
   }
 }
 
@@ -183,9 +179,8 @@ function mapQuoteDocumentUniqueViolation(error: unknown, input: { filename: stri
   const constraint = getUniqueViolationConstraint(error);
 
   if (constraint?.includes(QUOTE_DOCUMENT_FILENAME_UNIQUE_INDEX) || isQuoteDocumentFilenameUniqueDetail(error)) {
-    return new DuplicateDocumentFilenameError({
+    return duplicateDocumentFilename({
       filename: input.filename,
-      ownerId: input.quoteId,
       ownerType: 'quote',
     });
   }

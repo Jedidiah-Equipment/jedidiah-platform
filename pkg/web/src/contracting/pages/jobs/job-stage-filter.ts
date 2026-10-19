@@ -11,10 +11,13 @@ export function pickedStages(columnFilters: ColumnFiltersState): JobQueue[] {
   return jobQueues.filter((queue) => picked.includes(queue));
 }
 
-/** What the Jobs list asks the server for: the picked stages, or every open stage when none is picked. */
-export function listedStages(columnFilters: ColumnFiltersState): JobQueue[] {
+/** What the Jobs list asks the server for: the picked stages, or `unpicked` (every open stage) when none is picked. */
+export function listedStages(
+  columnFilters: ColumnFiltersState,
+  unpicked: readonly JobQueue[] = openJobQueues,
+): JobQueue[] {
   const picked = pickedStages(columnFilters);
-  return picked.length ? picked : [...openJobQueues];
+  return picked.length ? picked : [...unpicked];
 }
 
 /** Exactly these stages are picked. */
@@ -41,8 +44,8 @@ export const NEEDS_A_LOOK = 'needs-a-look';
 const needsALookPicked = (columnFilters: ColumnFiltersState) =>
   columnFilters.some((filter) => filter.id === ATTENTION_COLUMN_ID && filter.value === NEEDS_A_LOOK);
 
-export const jobListFilters = (columnFilters: ColumnFiltersState) => ({
-  queues: listedStages(columnFilters),
+export const jobListFilters = (columnFilters: ColumnFiltersState, unpicked?: readonly JobQueue[]) => ({
+  queues: listedStages(columnFilters, unpicked),
   ...(needsALookPicked(columnFilters) ? { needsALook: true } : {}),
 });
 

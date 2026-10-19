@@ -158,6 +158,7 @@ export function FleetHistoryCard({
         accessorKey: 'at',
         header: 'When',
         enableGlobalFilter: false,
+        meta: { filterVariant: 'date-range' },
         // A service carries a plant date, not an instant, so it shows no time of day.
         cell: ({ row }) =>
           row.original.kind === 'service' ? (

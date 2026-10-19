@@ -1,27 +1,60 @@
+import { opensWebJobs } from '@pkg/domain/contracting';
 import { type Customer, CustomerPatchInput } from '@pkg/schema/contracting';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { QueryContent } from '@/components/common/QueryContent.js';
 import { AutosaveFormCard } from '@/components/form/AutosaveFormCard.js';
 import { useAutosaveForm } from '@/components/form/index.js';
+import { DetailAsideGrid } from '@/components/page-layout/DetailAsideGrid.js';
 import { EditFormFullWidth } from '@/components/page-layout/EditFormLayout.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
-import { useCan } from '@/hooks/use-access.js';
+import { JobsTable } from '@/contracting/pages/jobs/JobsPage.js';
+import { useAccess, useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { CustomerEditTab } from './customer-edit-tabs.js';
 import { Farms } from './Farms.js';
 import { CustomerFormValues } from './types.js';
 
-export function CustomerEditPage({ id }: { id: string }) {
+export function CustomerEditPage({
+  id,
+  tab,
+  onTabChange,
+}: {
+  id: string;
+  tab: CustomerEditTab;
+  onTabChange: (tab: CustomerEditTab) => void;
+}) {
   const trpc = useTRPC();
   const query = useQuery(trpc.contractingDirectory.customers.get.queryOptions({ id }));
+  const readsJobs = opensWebJobs(useAccess().data);
+  const activeTab = tab === 'jobs' && !readsJobs ? 'details' : tab;
   return (
-    <PageLayout title={query.data?.name ?? 'Customer'} description="Customer details and Farms" size="md">
+    <PageLayout title={query.data?.name ?? 'Customer'} description="Customer details, Farms and Jobs">
       <QueryContent query={query} errorMessage="Unable to load customer.">
         {(customer) => (
-          <>
-            <CustomerForm key={id} customer={customer} />
-            <Farms customerId={customer.id} />
-          </>
+          <Tabs
+            className="w-full"
+            onValueChange={(value) => onTabChange(CustomerEditTab.parse(value))}
+            size="sm"
+            value={activeTab}
+          >
+            <TabsList variant="default">
+              <TabsTrigger value="details">Details</TabsTrigger>
+              {readsJobs ? <TabsTrigger value="jobs">Jobs</TabsTrigger> : null}
+            </TabsList>
+            <TabsContent className="pt-4" value="details" keepMounted>
+              <DetailAsideGrid>
+                <CustomerForm key={id} customer={customer} />
+                <Farms customerId={customer.id} />
+              </DetailAsideGrid>
+            </TabsContent>
+            {readsJobs ? (
+              <TabsContent className="pt-4" value="jobs">
+                <JobsTable scope={{ kind: 'customer', id: customer.id }} />
+              </TabsContent>
+            ) : null}
+          </Tabs>
         )}
       </QueryContent>
     </PageLayout>

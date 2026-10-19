@@ -1,3 +1,4 @@
+import { toPlantDateOnly } from '@pkg/domain';
 import { DateOnlyIso } from '@pkg/schema';
 import type { ColumnFiltersState } from '@tanstack/react-table';
 
@@ -12,6 +13,21 @@ export function toDateRangeFilterValue(value: unknown): DateRangeFilterValue {
     ...(typeof range.start === 'string' && range.start ? { start: range.start } : {}),
   };
 }
+
+/** Whether a plant date, or an instant on its South African calendar day, falls inside a date-range filter's ends. */
+export function isWithinDateRange(value: unknown, filter: unknown): boolean {
+  const { start, end } = toDateRangeFilterValue(filter);
+  if (!start && !end) return true;
+  if (typeof value !== 'string') return false;
+  const plantDate = DateOnlyIso.safeParse(value).success ? value : toPlantDay(value);
+  if (!plantDate) return false;
+  return (!start || plantDate >= start) && (!end || plantDate <= end);
+}
+
+const toPlantDay = (instant: string) => {
+  const date = new Date(instant);
+  return Number.isNaN(date.getTime()) ? null : toPlantDateOnly(date);
+};
 
 /** A multi-select filter's non-empty values, from whatever the column holds. */
 export function toMultiSelectFilterValue(value: unknown): string[] {

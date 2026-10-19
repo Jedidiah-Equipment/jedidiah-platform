@@ -25,6 +25,8 @@ import {
   tableFeatures,
   useTable,
 } from '@tanstack/react-table';
+import { useMemo } from 'react';
+import { isWithinDateRange } from './column-filter-values.js';
 
 /**
  * The single feature set behind every table in the app.
@@ -77,5 +79,28 @@ export type DataTableRowInstance<TData extends RowData> = Row<DataTableFeatures,
 type DataTableOptions<TData extends RowData> = Omit<TableOptions<DataTableFeatures, TData>, 'features'>;
 
 export function useDataTable<TData extends RowData>(options: DataTableOptions<TData>): DataTableInstance<TData> {
-  return useTable<DataTableFeatures, TData>({ ...options, features: dataTableFeatures });
+  const { columns: givenColumns, manualFiltering } = options;
+  const columns = useMemo(
+    () => (manualFiltering ? givenColumns : withDateRangeFilters(givenColumns)),
+    [givenColumns, manualFiltering],
+  );
+  return useTable<DataTableFeatures, TData>({ ...options, columns, features: dataTableFeatures });
+}
+
+const dateRangeFilter = (row: { getValue: (columnId: string) => unknown }, columnId: string, filter: unknown) =>
+  isWithinDateRange(row.getValue(columnId), filter);
+
+/**
+ * A `date-range` column holds `{ start, end }`, which no built-in filter understands, so a table filtering in the
+ * browser matches it by calendar day unless the column names its own `filterFn`. A server-filtered list reads the range.
+ */
+function withDateRangeFilters<TData extends RowData>(
+  columns: readonly DataTableColumnDef<TData>[],
+): DataTableColumnDef<TData>[] {
+  return columns.map((column) => {
+    if ('columns' in column && column.columns) return { ...column, columns: withDateRangeFilters(column.columns) };
+    return column.meta?.filterVariant === 'date-range' && !column.filterFn
+      ? { ...column, filterFn: dateRangeFilter }
+      : column;
+  });
 }

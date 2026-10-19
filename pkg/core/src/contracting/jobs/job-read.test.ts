@@ -3,8 +3,10 @@ import { JobListInput } from '@pkg/schema/contracting';
 import { eq } from 'drizzle-orm';
 import { expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
+import { createCustomer } from '../customers/customer-service.js';
+import { createFarm } from '../customers/farm-service.js';
 import { getContractingSettings, updateContractingSettings } from '../settings/settings-service.js';
-import { admin, adminId, foreman, foremanId, leftStint, seedJobFixtures } from '../test/job-fixtures.js';
+import { admin, adminId, foreman, foremanId, leftStint, plannedStint, seedJobFixtures } from '../test/job-fixtures.js';
 import { listJobs, summarizeJobQueues } from './job-queues.js';
 import { getJob } from './job-read.js';
 import { createJob } from './job-service.js';
@@ -110,4 +112,65 @@ test('lists only the Jobs needing a look when asked: an open Gap Flag or a readi
     input: { ...(await getContractingSettings({ db })), gapFlagThresholdHours: 12 },
   });
   expect(await listed(admin)).toEqual([unconfirmed.id]);
+});
+
+test('lists only the Jobs a Machine has an Assignment on when asked, in any state and any queue', async ({
+  context,
+}) => {
+  const { db, excavator, tipper } = context;
+  const job = async () =>
+    createJob({
+      db,
+      actor: admin,
+      input: {
+        customerId: context.customer.id,
+        farmId: context.farm.id,
+        workTypeId: context.workType.id,
+        description: null,
+        foremanUserId: foremanId,
+      },
+    });
+  const planned = await job();
+  await plannedStint(db, admin, { jobId: planned.id, machineId: excavator.id, implementId: null });
+  const left = await job();
+  await leftStint(db, left.id, excavator.id, 100, 110);
+  const otherMachine = await job();
+  await leftStint(db, otherMachine.id, tipper.id, 50, 60);
+  await job();
+
+  const listed = async (machineId: string, actor: typeof admin = admin) =>
+    (
+      await listJobs({
+        db,
+        actor,
+        input: JobListInput.parse({ queues: ['upcoming', 'active', 'looks-finished'], machineId }),
+      })
+    ).items.map((item) => item.id);
+  expect(new Set(await listed(excavator.id))).toEqual(new Set([planned.id, left.id]));
+  expect(await listed(tipper.id)).toEqual([otherMachine.id]);
+
+  await db.update(contractingJobs).set({ foremanUserId: null }).where(eq(contractingJobs.id, planned.id));
+  // Still reader-scoped: the Foreman's own Jobs only.
+  expect(await listed(excavator.id, foreman)).toEqual([left.id]);
+});
+
+test("lists only one Customer's Jobs when asked", async ({ context }) => {
+  const { db } = context;
+  const other = await createCustomer({ db, actorUserId: adminId, input: { name: 'Botha' } });
+  const otherFarm = await createFarm({ db, actorUserId: adminId, input: { customerId: other.id, name: 'Kleinplaas' } });
+  const job = async (customerId: string, farmId: string) =>
+    createJob({
+      db,
+      actor: admin,
+      input: { customerId, farmId, workTypeId: context.workType.id, description: null, foremanUserId: foremanId },
+    });
+  const theirs = await job(context.customer.id, context.farm.id);
+  const others = await job(other.id, otherFarm.id);
+
+  const listed = async (customerId: string) =>
+    (await listJobs({ db, actor: admin, input: JobListInput.parse({ queues: ['upcoming'], customerId }) })).items.map(
+      (item) => item.id,
+    );
+  expect(await listed(context.customer.id)).toEqual([theirs.id]);
+  expect(await listed(other.id)).toEqual([others.id]);
 });

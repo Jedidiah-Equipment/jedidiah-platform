@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isPickedExactly, readDateOnlyRangeFilter, togglePick } from './column-filter-values.js';
+import { isPickedExactly, isWithinDateRange, readDateOnlyRangeFilter, togglePick } from './column-filter-values.js';
 
 const status = (value: unknown) => [{ id: 'status', value }];
 
@@ -19,6 +19,25 @@ describe('readDateOnlyRangeFilter', () => {
       reportedFrom: '2026-10-01',
     });
     expect(readDateOnlyRangeFilter([], 'reportedAt', ['reportedFrom', 'reportedTo'])).toEqual({});
+  });
+});
+
+describe('isWithinDateRange', () => {
+  it('keeps plant dates and instants on the South African calendar days between the ends, both inclusive', () => {
+    const october = { start: '2026-10-01', end: '2026-10-31' };
+    expect(isWithinDateRange('2026-10-01', october)).toBe(true);
+    expect(isWithinDateRange('2026-10-31', october)).toBe(true);
+    expect(isWithinDateRange('2026-11-01', october)).toBe(false);
+    // 23:30 UTC on 30 September is already 1 October in Johannesburg.
+    expect(isWithinDateRange('2026-09-30T23:30:00.000Z', october)).toBe(true);
+    expect(isWithinDateRange('2026-10-31T22:30:00.000Z', october)).toBe(false);
+  });
+
+  it('keeps everything without ends, and leaves an open end open', () => {
+    expect(isWithinDateRange('2020-01-01', undefined)).toBe(true);
+    expect(isWithinDateRange('2020-01-01', { end: '2026-10-01' })).toBe(true);
+    expect(isWithinDateRange('2020-01-01', { start: '2026-10-01' })).toBe(false);
+    expect(isWithinDateRange(null, { start: '2026-10-01' })).toBe(false);
   });
 });
 

@@ -100,6 +100,8 @@ export async function listJobs({
     }),
     readableBy(reader),
     input.needsALook ? jobSql.needsALook : undefined,
+    input.machineId ? jobSql.hasMachine(input.machineId) : undefined,
+    input.customerId ? eq(contractingJobs.customerId, input.customerId) : undefined,
     createGlobalSearchCondition(input.search, [
       jobSql.jobNumberText,
       sql`${contractingCustomers.name}`,

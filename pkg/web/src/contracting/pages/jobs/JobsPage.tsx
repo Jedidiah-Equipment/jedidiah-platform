@@ -3,14 +3,17 @@ import {
   countedAssignmentAttentionLevel,
   jobQueueLabels,
   jobQueueOf,
+  jobReadMode,
   judgeJobAction,
   openJobQueues,
+  readableJobQueues,
   UNASSIGNED_FOREMAN_LABEL,
 } from '@pkg/domain/contracting';
 import type { JobListInput, JobQueue, JobSummary } from '@pkg/schema/contracting';
 import { CustomerName, FarmName, JobSortBy, jobQueues, WorkTypeName } from '@pkg/schema/contracting';
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
+import type { ColumnFiltersState } from '@tanstack/react-table';
 import { useCallback, useMemo, useState } from 'react';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
@@ -69,6 +72,26 @@ const useJobsTableStore = createPersistedDataTableStore({
   persistName: 'contracting-jobs-table',
 });
 
+/** A Jobs list narrowed to one record's Jobs, as `JobListInput` filters them. */
+export type JobsScope = { kind: 'machine' | 'customer'; id: string };
+
+const scopedJobs = {
+  machine: {
+    filter: (machineId: string) => ({ machineId }),
+    store: createPersistedDataTableStore({
+      initialState: { sorting: [{ id: 'jobNumber', desc: true }] },
+      persistName: 'contracting-machine-jobs-table',
+    }),
+  },
+  customer: {
+    filter: (customerId: string) => ({ customerId }),
+    store: createPersistedDataTableStore({
+      initialState: { sorting: [{ id: 'jobNumber', desc: true }] },
+      persistName: 'contracting-customer-jobs-table',
+    }),
+  },
+} satisfies Record<JobsScope['kind'], unknown>;
+
 /** Writes the Dashboard's focus into the saved filters, once; the persisted filters own it from then on. */
 export function focusJobsOn({ stage, needsALook }: { stage?: JobQueue | undefined; needsALook?: boolean | undefined }) {
   if (needsALook) useJobsTableStore.getState().setColumnFilters(focusOnNeedsALook);
@@ -84,10 +107,32 @@ const stageFilterOptions = jobQueues.map((queue) => ({ value: queue, label: jobQ
 const attentionFilterOptions = [{ value: NEEDS_A_LOOK, label: 'Needs a look' }];
 
 export function JobsPage() {
+  const canCreate = useCan('contracting_job:create').can;
+  const canAssign = useCan('contracting_job:assign').can;
+  const flow = useNewJobFlow();
+  return (
+    <>
+      <PageLayout
+        title="Jobs"
+        description="Plan work, track Machines, and move Jobs through each stage."
+        size="full"
+        actions={canCreate ? <Button onClick={flow.open}>New job</Button> : undefined}
+      >
+        <JobsTable />
+      </PageLayout>
+      <NewJobDialog flow={flow} canAssign={canAssign} />
+    </>
+  );
+}
+
+/**
+ * The Jobs list. Scoped to a Machine, only the Jobs it has an Assignment on; to a Customer, only theirs. A scoped list
+ * shows every stage the reader sees until a stage is picked, and goes without the all-Jobs stage counts.
+ */
+export function JobsTable({ scope }: { scope?: JobsScope }) {
   const trpc = useTRPC();
   const navigate = useNavigate();
   const write = useJobWrite();
-  const canCreate = useCan('contracting_job:create').can;
   const canAssign = useCan('contracting_job:assign').can;
   const canPrice = useCan('contracting_job:price').can;
   const access = useAccess().data;
@@ -95,11 +140,24 @@ export function JobsPage() {
     (job: JobSummary) => !!access && judgeJobAction('assignForeman', job, access).allowed,
     [access],
   );
-  const queues = useQuery(trpc.contractingJobs.jobs.queues.queryOptions());
+  const readMode = jobReadMode(access);
+  const scopeKind = scope?.kind;
+  const scopeId = scope?.id;
+  const getListInputExtras = useCallback(
+    (columnFilters: ColumnFiltersState) =>
+      scopeKind && scopeId
+        ? {
+            ...jobListFilters(columnFilters, readMode ? readableJobQueues(readMode) : openJobQueues),
+            ...scopedJobs[scopeKind].filter(scopeId),
+          }
+        : jobListFilters(columnFilters),
+    [scopeKind, scopeId, readMode],
+  );
+  const queues = useQuery(trpc.contractingJobs.jobs.queues.queryOptions(undefined, { enabled: !scopeKind }));
   const tableController = useServerSideTableController({
-    store: useJobsTableStore,
+    store: scopeKind ? scopedJobs[scopeKind].store : useJobsTableStore,
     sortOptions: jobSortOptions,
-    getListInputExtras: jobListFilters,
+    getListInputExtras,
   });
   const jobsQuery = useInfiniteQuery(
     trpc.contractingJobs.jobs.list.infiniteQueryOptions(tableController.listInput, {
@@ -110,7 +168,6 @@ export function JobsPage() {
   const { items: jobs, total } = useCombinedCursorQueryPages(jobsQuery.data?.pages);
   const foremen = useQuery(trpc.contractingJobs.options.foremen.queryOptions(undefined, { enabled: canAssign }));
   const assign = useMutation(trpc.contractingJobs.jobs.patch.mutationOptions(write.card('Unable to assign Foreman.')));
-  const flow = useNewJobFlow();
   const openJob = useCallback(
     (job: JobSummary, hash?: string) =>
       void navigate({ to: '/contracting/jobs/$code', params: { code: job.jobNumber }, ...(hash ? { hash } : {}) }),
@@ -145,39 +202,43 @@ export function JobsPage() {
       },
       {
         id: 'customer',
-        header: 'Customer · Farm',
-        cell: ({ row }) => (
-          <div className="min-w-36">
-            <div className="font-medium">{row.original.customerName}</div>
-            <div className="mt-1 text-xs text-muted-foreground">{row.original.farmName}</div>
-          </div>
-        ),
+        header: scopeKind === 'customer' ? 'Farm' : 'Customer · Farm',
+        cell: ({ row }) =>
+          scopeKind === 'customer' ? (
+            <div className="min-w-28 font-medium">{row.original.farmName}</div>
+          ) : (
+            <div className="min-w-36">
+              <div className="font-medium">{row.original.customerName}</div>
+              <div className="mt-1 text-xs text-muted-foreground">{row.original.farmName}</div>
+            </div>
+          ),
       },
       {
-        id: 'work-and-foreman',
-        header: 'Work · Foreman',
-        cell: ({ row }) => (
-          <div className="min-w-36">
-            <div className="font-medium">{row.original.workTypeName}</div>
-            {row.original.status === 'upcoming' &&
-            row.original.foremanUserId === null &&
-            canAssignForeman(row.original) ? (
-              <div className="w-48">
-                <SearchableCombobox
-                  inputId={`foreman-${row.original.id}`}
-                  options={(foremen.data ?? []).map((person) => ({ value: person.id, label: person.name }))}
-                  placeholder="Assign foreman…"
-                  value=""
-                  onValueChange={(foremanUserId) => assign.mutate({ id: row.original.id, foremanUserId })}
-                />
-              </div>
-            ) : (
-              <div className="mt-1 text-xs text-muted-foreground">
-                {row.original.foremanName ? getFirstName(row.original.foremanName) : UNASSIGNED_FOREMAN_LABEL}
-              </div>
-            )}
-          </div>
-        ),
+        id: 'work',
+        header: 'Work',
+        cell: ({ row }) => <div className="min-w-28 font-medium">{row.original.workTypeName}</div>,
+      },
+      {
+        id: 'foreman',
+        header: 'Foreman',
+        cell: ({ row }) =>
+          row.original.status === 'upcoming' &&
+          row.original.foremanUserId === null &&
+          canAssignForeman(row.original) ? (
+            <div className="w-48">
+              <SearchableCombobox
+                inputId={`foreman-${row.original.id}`}
+                options={(foremen.data ?? []).map((person) => ({ value: person.id, label: person.name }))}
+                placeholder="Assign foreman…"
+                value=""
+                onValueChange={(foremanUserId) => assign.mutate({ id: row.original.id, foremanUserId })}
+              />
+            </div>
+          ) : (
+            <div className="min-w-24">
+              {row.original.foremanName ? getFirstName(row.original.foremanName) : UNASSIGNED_FOREMAN_LABEL}
+            </div>
+          ),
       },
       {
         id: 'machines',
@@ -249,7 +310,7 @@ export function JobsPage() {
         },
       },
     ],
-    [canAssignForeman, canPrice, foremen.data, assign.mutate, openJob],
+    [canAssignForeman, canPrice, scopeKind, foremen.data, assign.mutate, openJob],
   );
   const table = useDataTable({
     columns,
@@ -268,13 +329,8 @@ export function JobsPage() {
   });
   return (
     <>
-      <PageLayout
-        title="Jobs"
-        description="Plan work, track Machines, and move Jobs through each stage."
-        size="full"
-        actions={canCreate ? <Button onClick={flow.open}>New job</Button> : undefined}
-      >
-        <ErrorMessage error={queues.error ?? foremen.error} fallbackMessage="Unable to load Jobs." />
+      <ErrorMessage error={queues.error ?? foremen.error} fallbackMessage="Unable to load Jobs." />
+      {scopeKind ? null : (
         <JobStageQuickFilters
           label="Job stages"
           stages={openJobQueues}
@@ -283,26 +339,25 @@ export function JobsPage() {
           columnFilters={tableController.columnFilters}
           onColumnFiltersChange={tableController.setColumnFilters}
         />
-        <DataTable
-          emptyMessage="No Jobs found."
-          errorMessage={getApiQueryErrorMessage(jobsQuery.error, 'Unable to load Jobs.')}
-          getRowAriaLabel={(job) => `Open ${job.jobNumber}`}
-          globalFilterPlaceholder="Search Jobs…"
-          isLoading={jobsQuery.isPending}
-          paginationMode="cursor"
-          loadMore={{
-            hasNextPage: jobsQuery.hasNextPage,
-            isFetchingNextPage: jobsQuery.isFetchingNextPage,
-            loadedCount: jobs.length,
-            onLoadMore: () => void jobsQuery.fetchNextPage(),
-          }}
-          onRowClick={(job) => openJob(job)}
-          table={table}
-          total={total}
-          totalLabel={(value) => countPhrase(value, 'Job', 'Jobs')}
-        />
-      </PageLayout>
-      <NewJobDialog flow={flow} canAssign={canAssign} />
+      )}
+      <DataTable
+        emptyMessage="No Jobs found."
+        errorMessage={getApiQueryErrorMessage(jobsQuery.error, 'Unable to load Jobs.')}
+        getRowAriaLabel={(job) => `Open ${job.jobNumber}`}
+        globalFilterPlaceholder="Search Jobs…"
+        isLoading={jobsQuery.isPending}
+        paginationMode="cursor"
+        loadMore={{
+          hasNextPage: jobsQuery.hasNextPage,
+          isFetchingNextPage: jobsQuery.isFetchingNextPage,
+          loadedCount: jobs.length,
+          onLoadMore: () => void jobsQuery.fetchNextPage(),
+        }}
+        onRowClick={(job) => openJob(job)}
+        table={table}
+        total={total}
+        totalLabel={(value) => countPhrase(value, 'Job', 'Jobs')}
+      />
     </>
   );
 }

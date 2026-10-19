@@ -171,6 +171,25 @@ export function toFileDateStamp(date: Date): string {
   return formatDateDfns(date, 'yyyy-MM-dd');
 }
 
+const zonedDatePartsFormats = new Map<string, Intl.DateTimeFormat>();
+
+/** Building an `Intl.DateTimeFormat` costs far more than formatting with one, so each time zone builds it once. */
+function zonedDatePartsFormat(timeZone: string): Intl.DateTimeFormat {
+  let format = zonedDatePartsFormats.get(timeZone);
+  if (!format) {
+    format = new Intl.DateTimeFormat('en-US', {
+      day: '2-digit',
+      hourCycle: 'h23',
+      month: '2-digit',
+      timeZone,
+      weekday: 'short',
+      year: 'numeric',
+    });
+    zonedDatePartsFormats.set(timeZone, format);
+  }
+  return format;
+}
+
 export function getZonedDateParts(
   date: Date,
   timeZone: string,
@@ -180,14 +199,7 @@ export function getZonedDateParts(
   weekday: number;
   year: number;
 } {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    day: '2-digit',
-    hourCycle: 'h23',
-    month: '2-digit',
-    timeZone,
-    weekday: 'short',
-    year: 'numeric',
-  }).formatToParts(date);
+  const parts = zonedDatePartsFormat(timeZone).formatToParts(date);
 
   return {
     day: Number(getDateTimePart(parts, 'day')),

@@ -82,6 +82,14 @@ export const needsALook = sql<boolean>`(
   or ${readingsNeedingALookAt('warning')} > 0
 )`;
 
+/** The Machine has an Assignment on the Job, in any state. */
+export const hasMachine = (machineId: string) => sql<boolean>`exists (
+  select 1
+  from contracting.machine_assignment summary_assignment
+  where summary_assignment.job_id = ${contractingJobs.id}
+    and summary_assignment.machine_id = ${machineId}
+)`;
+
 /** Parameter-free, so the queue counts can group by it. */
 export const looksFinished = sql<boolean>`(
   ${contractingJobs.status} = 'active'

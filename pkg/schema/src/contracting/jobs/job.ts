@@ -76,6 +76,10 @@ export const JobListInput = createSearchedSortedCursorQueryInput({
     invoicedTo: DateOnlyIso.optional(),
     /** Keep only Jobs whose Machine Assignment attention needs a look: an open Gap Flag, or a warning or critical reading. */
     needsALook: z.boolean().optional(),
+    /** Keep only Jobs this Machine has an Assignment on, in any state: planned, on site, or left. */
+    machineId: UUID.optional(),
+    /** Keep only this Customer's Jobs. */
+    customerId: UUID.optional(),
   },
   sortBy: JobSortBy.default('jobNumber'),
 });

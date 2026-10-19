@@ -265,7 +265,7 @@ const attempts: Record<
         description: 'Leaking',
       },
     }),
-  addNote: (caller, { job }) => caller.contractingJobs.notes.add({ jobId: job.id, text: 'Gate code is 4471' }),
+  addNote: (caller, { job }) => caller.contractingNotes.add({ thread: 'job', id: job.id, text: 'Gate code is 4471' }),
 };
 
 /** The Job Action a write was refused under, if a Job Action refused it. */

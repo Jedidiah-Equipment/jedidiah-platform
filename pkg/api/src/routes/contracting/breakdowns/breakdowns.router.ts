@@ -1,5 +1,4 @@
 import {
-  addNote,
   assignMechanic,
   getBreakdown,
   getBreakdownReportContext,
@@ -13,7 +12,6 @@ import {
   startBreakdown,
   summarizeBreakdownQueue,
 } from '@pkg/core/contracting';
-import { noteAdded } from '@pkg/domain/contracting';
 import {
   BreakdownAssignMechanicInput,
   BreakdownDetail,
@@ -34,9 +32,10 @@ import {
   Mechanic,
 } from '@pkg/schema/contracting';
 import { mapCoreErrors } from '../../../trpc/errors.js';
-import { authorizedProcedure, router } from '../../../trpc/init.js';
+import { authorizedProcedure, businessProcedure, router } from '../../../trpc/init.js';
 import { breakdownErrorFamily } from '../contracting-error-families.js';
 import type { ContractingPushScheduler } from '../contracting-push-scheduler.js';
+import { addThreadNote } from '../notes/notes.router.js';
 
 const readers = ['contracting_breakdown:read', 'contracting_breakdown:report'] as const;
 const writers = ['contracting_breakdown:update', 'contracting_breakdown:report'] as const;
@@ -95,17 +94,13 @@ export const createContractingBreakdownsRouter = (push: ContractingPushScheduler
         ),
       ),
     notes: router({
-      add: authorizedProcedure(writers)
+      // Delegates to contractingNotes.add; delete after the next mobile release.
+      add: businessProcedure('contracting')
         .input(BreakdownNoteCreateInput)
         .output(BreakdownNote)
-        .mutation(async ({ ctx, input }) => {
-          const note = await mapCoreErrors(
-            () => addNote({ db: ctx.db, actor: ctx.access, thread: 'breakdown', input }),
-            breakdownErrorFamily,
-          );
-          push.schedule(noteAdded('breakdown', note.id));
-          return note;
-        }),
+        .mutation(({ ctx, input }) =>
+          addThreadNote(ctx, push, { thread: 'breakdown', id: input.breakdownId, text: input.text }),
+        ),
     }),
     options: router({
       jobs: authorizedProcedure(writers)

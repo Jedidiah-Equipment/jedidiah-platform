@@ -229,13 +229,13 @@ test('the report and each transition are audited; notes append without an audit 
     db,
     actor: workshop,
     thread: 'breakdown',
-    input: { breakdownId: breakdown.id, text: 'Which hose?' },
+    input: { id: breakdown.id, text: 'Which hose?' },
   });
   await addNote({
     db,
     actor: foreman,
     thread: 'breakdown',
-    input: { breakdownId: breakdown.id, text: 'The boom ram one' },
+    input: { id: breakdown.id, text: 'The boom ram one' },
   });
   await solveBreakdown({ db, actor: workshop, input: { id: breakdown.id, closeOutNote: 'Replaced' } });
   const events = await db

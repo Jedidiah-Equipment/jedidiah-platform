@@ -1,5 +1,5 @@
 import { getFirstName } from '@pkg/domain';
-import { breakdownSubjectKindLabels, fieldJobAccessMode, presentAction } from '@pkg/domain/contracting';
+import { breakdownSubjectKindLabels, fieldReaderOpensJob, presentAction } from '@pkg/domain/contracting';
 import { BreakdownDescription, type BreakdownDetail } from '@pkg/schema/contracting';
 import { IconMapPin, IconPencil } from '@tabler/icons-react-native';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
@@ -41,7 +41,7 @@ export default function BreakdownScreen() {
       {breakdown ? <RecordTabBar value={tab} onChange={setTab} /> : null}
       {breakdown && tab === 'activity' ? (
         <ContractingActivityFeed
-          breakdownId={breakdown.id}
+          thread={{ kind: 'breakdown', id: breakdown.id }}
           listHeader={
             <AddNoteButton
               thread={{ kind: 'breakdown', id: breakdown.id, code: breakdown.subject.code }}
@@ -88,10 +88,8 @@ function BreakdownSections({ breakdown }: { breakdown: BreakdownDetail }) {
 }
 
 function HeaderCard({ breakdown }: { breakdown: BreakdownDetail }) {
-  const access = useSessionAccessSummary();
-  const jobMode = fieldJobAccessMode(access);
   // A Foreman opens only Jobs he is Foreman of; this Breakdown may be his report on someone else's.
-  const canOpenJob = jobMode === 'all' || (jobMode === 'own' && breakdown.jobForemanUserId === access?.userId);
+  const canOpenJob = fieldReaderOpensJob(useSessionAccessSummary(), { foremanUserId: breakdown.jobForemanUserId });
   const { subject } = breakdown;
   return (
     <Card>

@@ -4,10 +4,10 @@ import { DateIso } from '../../common/date.js';
 import { SearchText } from '../../common/text.js';
 import { NullableThumbnailDataUrl } from '../../common/thumbnail.js';
 import { UUID } from '../../common/uuid.js';
-import { BreakdownNoteText, BreakdownSubject, CloseOutNote } from '../breakdowns/breakdown.js';
+import { BreakdownSubject, CloseOutNote } from '../breakdowns/breakdown.js';
 import { breakdownStatuses, breakdownUrgencies } from '../breakdowns/breakdown-enums.js';
 import { CategoryColour, CategoryIconKey } from '../fleet/fleet.js';
-import { JobNoteText } from '../jobs/job-note.js';
+import { NoteText } from '../notes/note.js';
 
 export const activityFilters = ['all', 'notes', 'breakdowns', 'jobs', 'hours'] as const;
 export const ActivityFilter = z.enum(activityFilters);
@@ -51,13 +51,13 @@ export const JobNoteActivityItem = z.object({
   type: z.literal('job-note'),
   ...base,
   job: ActivityJobRef,
-  text: JobNoteText,
+  text: NoteText,
 });
 export const BreakdownNoteActivityItem = z.object({
   type: z.literal('breakdown-note'),
   ...base,
   ...onBreakdown,
-  text: BreakdownNoteText,
+  text: NoteText,
 });
 export const BreakdownReportedActivityItem = z.object({
   type: z.literal('breakdown-reported'),

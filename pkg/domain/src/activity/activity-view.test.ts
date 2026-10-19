@@ -1,6 +1,6 @@
 import { DateIso } from '@pkg/schema';
 import { describe, expect, test } from 'vitest';
-import { activityViewFor, advanceActivityView, advancesActivityView } from './activity-view.js';
+import { activityViewFor, advanceActivityView, advancesActivityView, hasUnreadActivity } from './activity-view.js';
 
 const iso = (value: string) => DateIso.parse(value);
 const createdAt = iso('2026-10-01T08:00:00.000Z');
@@ -29,5 +29,32 @@ describe('which view of the feed advances the Activity View', () => {
     { view: 'one record’s own thread', filter: 'all', search: '', scoped: true, advances: false },
   ])('$view → $advances', ({ filter, search, scoped, advances }) => {
     expect(advancesActivityView({ filter, search, scoped })).toBe(advances);
+  });
+});
+
+describe('hasUnreadActivity', () => {
+  const lastActivitySeen = DateIso.parse('2026-08-18T08:00:00.000Z');
+
+  test('reports a newer activity entry as unread', () => {
+    expect(
+      hasUnreadActivity({
+        lastActivitySeen,
+        latestActivityAt: DateIso.parse('2026-08-18T08:00:00.001Z'),
+      }),
+    ).toBe(true);
+  });
+
+  test('does not report an equal or older entry as unread', () => {
+    expect(hasUnreadActivity({ lastActivitySeen, latestActivityAt: lastActivitySeen })).toBe(false);
+    expect(
+      hasUnreadActivity({
+        lastActivitySeen,
+        latestActivityAt: DateIso.parse('2026-08-18T07:59:59.999Z'),
+      }),
+    ).toBe(false);
+  });
+
+  test('does not report an empty feed as unread', () => {
+    expect(hasUnreadActivity({ lastActivitySeen, latestActivityAt: null })).toBe(false);
   });
 });

@@ -41,7 +41,7 @@ export function ActivityCard({
         ) : null}
       </CardHeader>
       <CardContent>
-        <ActivityFeed {...(thread.kind === 'job' ? { jobId: thread.id } : { breakdownId: thread.id })} />
+        <ActivityFeed thread={thread} />
       </CardContent>
     </Card>
   );

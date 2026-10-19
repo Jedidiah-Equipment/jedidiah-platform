@@ -65,15 +65,14 @@ export function getLastActivitySeen({ db, userId }: { db: Db; userId: AuthId }) 
 }
 
 /** Advances the signed-in user's Equipment Activity View only through the newest feed entry they actually received. */
-export async function setLastActivitySeen({ db, seenAt, userId }: { db: Db; seenAt: DateIso; userId: AuthId }) {
-  const latest = await listJobActivity({ db, input: JobActivityListInput.parse({ limit: 1 }) });
-
+export function setLastActivitySeen({ db, seenAt, userId }: { db: Db; seenAt: DateIso; userId: AuthId }) {
   return setActivityView({
     db,
     userId,
     business: 'equipment',
     seenAt,
-    latestActivityAt: latest.items[0]?.occurredAt ?? null,
+    latestActivityAt: async () =>
+      (await listJobActivity({ db, input: JobActivityListInput.parse({ limit: 1 }) })).items[0]?.occurredAt ?? null,
   });
 }
 

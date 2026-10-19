@@ -104,7 +104,7 @@ describe('Contracting push fan-out', () => {
         });
         return job.id;
       },
-      input: (jobId: string, text: string) => ({ jobId, text }),
+      input: (id: string, text: string) => ({ id, text }),
       title: 'Note · CJOB-00001',
       path: (id: string) => `/contracting/jobs/${id}?tab=activity`,
       alwaysReached: ['jed', 'mo', 'sam'],
@@ -125,7 +125,7 @@ describe('Contracting push fan-out', () => {
         });
         return breakdown.id;
       },
-      input: (breakdownId: string, text: string) => ({ breakdownId, text }),
+      input: (id: string, text: string) => ({ id, text }),
       title: 'Note · CAT320-1',
       path: (id: string) => `/contracting/workshop/${id}?tab=activity`,
       alwaysReached: ['wendy-1', 'wendy-2'],
@@ -209,7 +209,7 @@ describe('Contracting push fan-out', () => {
       db,
       actor: accessForRole('workshop-manager', 'wendy'),
       thread: 'breakdown',
-      input: { breakdownId: breakdown.id, text: 'Checking' },
+      input: { id: breakdown.id, text: 'Checking' },
     });
     expect(recipients(await buildContractingPush({ db, event: noteAdded('breakdown', reply.id) }))).toEqual([
       'ExponentPushToken[jed]',
@@ -242,19 +242,19 @@ describe('Contracting push fan-out', () => {
         jobId: job.id,
       },
     });
-    await addNote({ db, actor: foreman, thread: 'job', input: { jobId: job.id, text: 'Gate code' } });
-    await addNote({ db, actor: foreman, thread: 'breakdown', input: { breakdownId: breakdown.id, text: 'Checking' } });
+    await addNote({ db, actor: foreman, thread: 'job', input: { id: job.id, text: 'Gate code' } });
+    await addNote({ db, actor: foreman, thread: 'breakdown', input: { id: breakdown.id, text: 'Checking' } });
     const jobNote = await addNote({
       db,
       actor: admin,
       thread: 'job',
-      input: { jobId: job.id, text: 'Management update' },
+      input: { id: job.id, text: 'Management update' },
     });
     const breakdownNote = await addNote({
       db,
       actor: admin,
       thread: 'breakdown',
-      input: { breakdownId: breakdown.id, text: 'Workshop update' },
+      input: { id: breakdown.id, text: 'Workshop update' },
     });
     const jobEvent = noteAdded('job', jobNote.id);
     const breakdownEvent = noteAdded('breakdown', breakdownNote.id);

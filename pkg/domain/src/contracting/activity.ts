@@ -1,5 +1,11 @@
-import type { AppPermission, UserAccessSummary } from '@pkg/schema';
-import type { ActivityFilter, ActivityItem, ActivityItemType, ActivityJobRef } from '@pkg/schema/contracting';
+import type { AppPermission, UserAccessSummary, UUID } from '@pkg/schema';
+import type {
+  ActivityFilter,
+  ActivityItem,
+  ActivityItemType,
+  ActivityJobRef,
+  NoteThreadKind,
+} from '@pkg/schema/contracting';
 import type { ActivityEventPresentation } from '../activity/presentation.js';
 import { hasPermission } from '../auth/authorization.js';
 import { formatDate } from '../formatting/date.js';
@@ -49,6 +55,32 @@ export type ActivityEventItem = Exclude<ActivityItem, ActivityNoteItem>;
 
 export const isActivityNote = (item: ActivityItem): item is ActivityNoteItem =>
   item.type === 'job-note' || item.type === 'breakdown-note';
+
+/** The record an entry points at, named the way its footer or link reads it. */
+export type ActivityEntryRecord =
+  | { kind: 'breakdown'; id: UUID; label: string; job: ActivityJobRef | null }
+  | { kind: 'job'; id: UUID; label: string; job: ActivityJobRef };
+
+/**
+ * What an entry points at: its Breakdown when it has one, else its Job. Null inside that same thread, where a link
+ * back would go nowhere; a Job's thread holds its Breakdowns' entries too, and those still point at their Breakdown.
+ */
+export function activityEntryRecord(
+  item: ActivityItem,
+  thread?: { kind: NoteThreadKind; id: string },
+): ActivityEntryRecord | null {
+  if ('breakdown' in item) {
+    if (thread?.kind === 'breakdown' && thread.id === item.breakdown.id) return null;
+    return {
+      kind: 'breakdown',
+      id: item.breakdown.id,
+      label: item.job ? `${item.breakdown.subject.code} · ${item.job.jobNumber}` : item.breakdown.subject.code,
+      job: item.job,
+    };
+  }
+  if (thread?.kind === 'job' && thread.id === item.job.id) return null;
+  return { kind: 'job', id: item.job.id, label: `${item.job.jobNumber} · ${item.job.farmName}`, job: item.job };
+}
 
 const at = (job: ActivityJobRef | null) => (job ? ` at ${job.jobNumber}` : '');
 

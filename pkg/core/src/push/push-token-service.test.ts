@@ -85,7 +85,15 @@ describe('push tokens', () => {
     await registerPushToken({ db, userId: 'ben', sessionId: 'ben', input: { token: tokenB, platform: 'android' } });
     const tokenC = 'ExponentPushToken[phone-c]';
     await registerPushToken({ db, userId: 'ben', sessionId: 'ben', input: { token: tokenC, platform: 'android' } });
-    const message = (to: string): PushMessage => ({ to, title: 't', body: 'b', data: {} });
+    const message = (to: string): PushMessage => ({
+      to,
+      title: 't',
+      body: 'b',
+      data: { business: 'contracting', kind: 'machine', id: 'm1', path: '/contracting/machines/m1' },
+      channelId: 'workshop',
+      priority: 'high',
+      sound: 'default',
+    });
 
     const delivery = await deliverPush({
       db,

@@ -2,13 +2,13 @@ import type { DateOnlyIso } from '@pkg/schema';
 import { describe, expect, test } from 'vitest';
 import { resolveReportWindow } from './report-window.js';
 import {
-  activeDaysIn,
   allocateHours,
-  fleetDaysIn,
+  dayCounts,
   type HourSegment,
   hourSegments,
   type LedgerReading,
   type LedgerStint,
+  sumDayCounts,
   utilisationPercent,
 } from './utilisation.js';
 
@@ -154,50 +154,87 @@ describe('hourSegments and allocateHours', () => {
 });
 
 const always = { createdDate: date('2020-01-01'), retiredDate: null };
+const october = resolveReportWindow({ kind: 'month', year: 2026, period: 10 }, today);
 
-describe('activeDaysIn and fleetDaysIn', () => {
+describe('dayCounts', () => {
   test('counts distinct window days inclusive of arrival and departure, and an open stint through today', () => {
+    const spans = (...pairs: [string, string | null][]) =>
+      pairs.map(([arrival, departure]) => ({
+        arrivalDate: date(arrival),
+        departureDate: departure === null ? null : date(departure),
+      }));
+    expect(dayCounts({ ...always, spans: spans(['2026-06-28', '2026-07-03']) }, june, today).activeDays).toBe(3);
     expect(
-      activeDaysIn([{ arrivalDate: date('2026-06-28'), departureDate: date('2026-07-03') }], june, today, always),
-    ).toBe(3);
-    expect(
-      activeDaysIn(
-        [
-          { arrivalDate: date('2026-06-01'), departureDate: date('2026-06-05') },
-          { arrivalDate: date('2026-06-05'), departureDate: date('2026-06-06') },
-        ],
-        june,
-        today,
-        always,
-      ),
-    ).toBe(6);
-    const october = resolveReportWindow({ kind: 'month', year: 2026, period: 10 }, today);
-    expect(activeDaysIn([{ arrivalDate: date('2026-10-10'), departureDate: null }], october, today, always)).toBe(3);
-    expect(activeDaysIn([], june, today, always)).toBe(0);
+      dayCounts({ ...always, spans: spans(['2026-06-01', '2026-06-05'], ['2026-06-05', '2026-06-06']) }, june, today),
+    ).toEqual({ activeDays: 6, fleetDays: 30, utilisationPercent: 20 });
+    expect(dayCounts({ ...always, spans: spans(['2026-10-10', null]) }, october, today).activeDays).toBe(3);
+    expect(dayCounts({ ...always, spans: [] }, june, today)).toEqual({
+      activeDays: 0,
+      fleetDays: 30,
+      utilisationPercent: 0,
+    });
   });
 
   test('never counts an active day outside the Machine’s fleet days', () => {
-    const october = resolveReportWindow({ kind: 'month', year: 2026, period: 10 }, today);
     // Retired on 5 Oct while still on site since 1 Oct: 5 fleet days, so at most 5 active days, never 240%.
     const retired = { createdDate: date('2020-01-01'), retiredDate: date('2026-10-05') };
     const onSite = [{ arrivalDate: date('2026-10-01'), departureDate: null }];
-    expect(activeDaysIn(onSite, october, today, retired)).toBe(5);
-    expect(fleetDaysIn(retired, october)).toBe(5);
+    expect(dayCounts({ ...retired, spans: onSite }, october, today)).toEqual({
+      activeDays: 5,
+      fleetDays: 5,
+      utilisationPercent: 100,
+    });
     // A Read At back-dated before the Machine joined counts only from its creation date.
     const joined = { createdDate: date('2026-06-10'), retiredDate: null };
     const early = [{ arrivalDate: date('2026-06-05'), departureDate: date('2026-06-12') }];
-    expect(activeDaysIn(early, june, today, joined)).toBe(3);
+    expect(dayCounts({ ...joined, spans: early }, june, today).activeDays).toBe(3);
   });
 
-  test('counts window days from creation through retirement or the window end', () => {
-    expect(fleetDaysIn({ createdDate: date('2026-06-15'), retiredDate: null }, june)).toBe(16);
-    expect(fleetDaysIn({ createdDate: date('2026-01-01'), retiredDate: date('2026-06-10') }, june)).toBe(10);
-    expect(fleetDaysIn({ createdDate: date('2026-07-01'), retiredDate: null }, june)).toBe(0);
-    expect(fleetDaysIn({ createdDate: date('2026-01-01'), retiredDate: date('2026-05-31') }, june)).toBe(0);
+  test('counts fleet days from creation through retirement or the window end', () => {
+    const fleetDays = (createdDate: string, retiredDate: string | null) =>
+      dayCounts(
+        { createdDate: date(createdDate), retiredDate: retiredDate === null ? null : date(retiredDate), spans: [] },
+        june,
+        today,
+      ).fleetDays;
+    expect(fleetDays('2026-06-15', null)).toBe(16);
+    expect(fleetDays('2026-01-01', '2026-06-10')).toBe(10);
+    expect(fleetDays('2026-07-01', null)).toBe(0);
+    expect(fleetDays('2026-01-01', '2026-05-31')).toBe(0);
+  });
+
+  test('a window after today holds no days and no hours, without a guard', () => {
+    const november = resolveReportWindow({ kind: 'month', year: 2026, period: 11 }, today);
+    const onSite = [{ arrivalDate: date('2026-10-01'), departureDate: null }];
+    expect(dayCounts({ ...always, spans: onSite }, november, today)).toEqual({
+      activeDays: 0,
+      fleetDays: 0,
+      utilisationPercent: null,
+    });
+    const a = reading('arrival', 0, '2026-10-01T08:00:00+02:00');
+    const spot = reading('spot', 10, '2026-10-02T08:00:00+02:00');
+    expect(allocateHours(hourSegments([a, spot], [stint(a, null)], threshold), november)).toEqual({
+      workHours: 0,
+      travelHours: 0,
+      unaccountedHours: 0,
+      unresolvedHours: 0,
+    });
   });
 
   test('utilisation is one decimal of active over fleet days, and null without fleet days', () => {
     expect(utilisationPercent(10, 30)).toBe(33.3);
     expect(utilisationPercent(0, 0)).toBeNull();
+  });
+});
+
+describe('sumDayCounts', () => {
+  test('sums days and takes the percentage of the sums, never a mean of percentages', () => {
+    expect(
+      sumDayCounts([
+        { activeDays: 3, fleetDays: 30, utilisationPercent: 10 },
+        { activeDays: 0, fleetDays: 10, utilisationPercent: 0 },
+      ]),
+    ).toEqual({ activeDays: 3, fleetDays: 40, utilisationPercent: 7.5 });
+    expect(sumDayCounts([])).toEqual({ activeDays: 0, fleetDays: 0, utilisationPercent: null });
   });
 });

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { DateIso, DateOnlyIso } from '../../common/date.js';
+import { DateOnlyIso } from '../../common/date.js';
 import { UUID } from '../../common/uuid.js';
 import { CategoryColour, CategoryIconKey } from '../fleet/fleet.js';
 import { UtilisationTargetPercent } from '../settings/settings.js';
@@ -14,17 +14,19 @@ export const HourKindTotals = z.object({
 });
 export type HourKindTotals = z.infer<typeof HourKindTotals>;
 
-const DayCounts = z.object({
+/** Active days over fleet days for one window; the percentage is null without fleet days. */
+export const DayCounts = z.object({
   activeDays: z.int().nonnegative(),
   fleetDays: z.int().nonnegative(),
   utilisationPercent: z.number().nullable(),
 });
+export type DayCounts = z.infer<typeof DayCounts>;
 
 export const MachineUtilisation = DayCounts.extend({
   machineId: UUID,
   code: z.string(),
   categoryId: UUID,
-  retiredAt: DateIso.nullable(),
+  retiredDate: DateOnlyIso.nullable(),
 }).extend(HourKindTotals.shape);
 export type MachineUtilisation = z.infer<typeof MachineUtilisation>;
 

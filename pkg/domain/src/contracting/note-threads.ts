@@ -1,10 +1,11 @@
 import type { AppRole, AuthId, PushKind, UserAccessSummary } from '@pkg/schema';
 import type { JobStatus, NoteThreadKind } from '@pkg/schema/contracting';
 import { getBusinessRole } from '../auth/authorization.js';
+import { pushAlert } from '../push/push-content.js';
+import { canReceivePush } from '../push/push-kinds.js';
 import { breakdownFirstLine, canReadBreakdown, isBreakdownMine } from './breakdowns.js';
 import { canReadJob } from './jobs.js';
 import type { ContractingPushContent, ContractingPushEvent } from './notifications.js';
-import { alertFor } from './push-alert.js';
 
 /** What each thread kind's reach rule reads off its record. */
 export type NoteThreadRecord = {
@@ -43,8 +44,9 @@ export const noteThreads: { [K in NoteThreadKind]: NoteThread<K> } = {
 };
 
 /**
- * Whether a new entry reaches this person: they can still read the record, and they hold an always-reaches role,
- * are named by the record, or have noted the thread before. The author is excluded upstream, in dispatch.
+ * Whether a new entry reaches this person: their role can receive the thread's Push Kind, they can still read the
+ * record, and they hold an always-reaches role, are named by the record, or have noted the thread before. The author
+ * is excluded upstream, in dispatch.
  */
 export function noteReaches<K extends NoteThreadKind>(
   kind: K,
@@ -53,6 +55,7 @@ export function noteReaches<K extends NoteThreadKind>(
   authorIds: readonly AuthId[],
 ): boolean {
   const thread = noteThreads[kind];
+  if (!canReceivePush(thread.pushKind, access)) return false;
   if (!thread.canRead(access, record)) return false;
   const role = getBusinessRole(access, 'contracting');
   return (
@@ -83,6 +86,6 @@ export function notePushMessage(note: {
     title: `Note · ${note.code}`,
     body: `${note.authorName}: ${preview}`,
     data: { business: 'contracting', kind: note.kind, id: note.id, path: thread.path(note.id) },
-    ...alertFor(thread.pushKind),
+    ...pushAlert(thread.pushKind),
   };
 }

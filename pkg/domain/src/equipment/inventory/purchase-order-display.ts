@@ -22,7 +22,7 @@ export const purchaseOrderStatusLabels: Record<PurchaseOrderDerivedStatus, strin
  * never a call to action, so none of these reach for the brand colour.
  */
 export const purchaseOrderStatusColorClassNames: Record<PurchaseOrderDerivedStatus, BadgeColorClassNames> = {
-  // Out with the supplier, like a Sent Quote: blue, well clear of the green Received owns (#1778).
+  // Signed off with nothing landed yet: blue, well clear of the green Received owns.
   approved: statusBadgeColorClassNames.blue,
   cancelled: statusBadgeColorClassNames.red,
   // Ended deliberately with stock still outstanding — settled, so it reads as neutral as Draft.

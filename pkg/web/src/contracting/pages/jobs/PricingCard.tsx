@@ -1,5 +1,5 @@
 import { formatCurrency, formatDate } from '@pkg/domain';
-import { pricingGateReasons } from '@pkg/domain/contracting';
+import { type JobSheet, pricingGateReasons } from '@pkg/domain/contracting';
 import type { JobDetail } from '@pkg/schema/contracting';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useLocation } from '@tanstack/react-router';
@@ -34,7 +34,6 @@ import {
 } from './PricingCells.js';
 import { adjustmentRows, machinePricingRows } from './pricing.js';
 import { PricingContext, usePricingMutations } from './pricing-context.js';
-import type { JobSheet } from './types.js';
 import { useJobWrite } from './use-job-write.js';
 
 export function PricingCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }) {
@@ -64,7 +63,7 @@ export function PricingCard({ job, sheet }: { job: JobDetail; sheet: JobSheet })
     getRowId: adjustmentRowId,
   });
   const pricing = { job, editable, rates: rates.data ?? [], mutations };
-  if (!sheet.seesMoney) return null;
+  if (!sheet.showsMoney) return null;
   return (
     <section id="pricing" ref={section} aria-label="Pricing" className="scroll-mt-4">
       <Card>

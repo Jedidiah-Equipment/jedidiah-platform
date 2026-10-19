@@ -1,8 +1,8 @@
+import type { JobSheet } from '@pkg/domain/contracting';
 import type { JobDetail } from '@pkg/schema/contracting';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { AddChargeLineButton } from './ChargeLineEditing.js';
 import { ChargeLinesTable } from './ChargeLinesTable.js';
-import type { JobSheet } from './types.js';
 
 export function ChargeLinesCard({
   job,

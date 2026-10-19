@@ -1,12 +1,12 @@
 import { formatNumber } from '@pkg/domain';
 import {
   assignmentNeedsALookLevel,
-  assignmentStateDisplayOrder,
   assignmentStateLabels,
   breakdownStatusColorClassNames,
   breakdownStatusLabels,
   breakdownsByStint,
-  groupStints,
+  type JobSheet,
+  type JobSheetStint,
 } from '@pkg/domain/contracting';
 import { type BreakdownSummary, breakdownStatuses, type JobDetail } from '@pkg/schema/contracting';
 import { useQuery } from '@tanstack/react-query';
@@ -28,10 +28,9 @@ import { MachineStintCard } from './MachineStintCard.js';
 import { PlanMachineDialog } from './PlanMachineDialog.js';
 import { ReadingDialog } from './ReadingDialog.js';
 import { ReportBreakdownDialog } from './ReportBreakdownDialog.js';
-import type { JobSheet, MachineDialog } from './types.js';
+import type { MachineDialog } from './types.js';
 
 type MachineFilter = 'all' | 'planned' | 'on-site' | 'attention' | 'left' | 'repeat';
-type NumberedStint = { stint: JobDetail['assignments'][number]; stintNumber: number };
 const filters: { value: MachineFilter; label: string }[] = [
   { value: 'all', label: 'All' },
   { value: 'planned', label: assignmentStateLabels.planned },
@@ -41,15 +40,15 @@ const filters: { value: MachineFilter; label: string }[] = [
   { value: 'repeat', label: 'Repeat stint' },
 ];
 
-function matches(filter: MachineFilter, { stint, stintNumber }: NumberedStint) {
+function matches(filter: MachineFilter, { stint, number }: JobSheetStint) {
   if (filter === 'all') return true;
   if (filter === 'attention') return assignmentNeedsALookLevel(stint) !== null;
-  if (filter === 'repeat') return stintNumber > 1;
+  if (filter === 'repeat') return number > 1;
   return stint.state === filter;
 }
 
 /** All, plus each filter that narrows the list without emptying it. */
-const offeredFilters = (stints: readonly NumberedStint[]) =>
+const offeredFilters = (stints: readonly JobSheetStint[]) =>
   filters.filter(({ value }) => {
     if (value === 'all') return true;
     const count = stints.filter((stint) => matches(value, stint)).length;
@@ -108,19 +107,7 @@ export function MachinesCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }
   const stint =
     dialog && dialog.kind !== 'plan' ? (job.assignments.find((entry) => entry.id === dialog.stintId) ?? null) : null;
   const reading = dialog?.kind === 'reading' ? (stint?.[dialog.role] ?? null) : null;
-  const stints = useMemo(() => {
-    const { machines, planned } = groupStints(job.assignments);
-    const numbers = new Map<string, number>();
-    return [...machines.flatMap((machine) => machine.stints), ...planned]
-      .map((stint) => {
-        const stintNumber = (numbers.get(stint.machineId) ?? 0) + 1;
-        numbers.set(stint.machineId, stintNumber);
-        return { stint, stintNumber };
-      })
-      .sort(
-        (left, right) => assignmentStateDisplayOrder[left.stint.state] - assignmentStateDisplayOrder[right.stint.state],
-      );
-  }, [job.assignments]);
+  const { stints } = sheet;
   const offered = offeredFilters(stints);
   const active = offered.some(({ value }) => value === filter) ? filter : 'all';
   const visible = stints.filter((stint) => matches(active, stint));
@@ -157,12 +144,11 @@ export function MachinesCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }
               </div>
               {visible.length ? (
                 <div className="grid grid-cols-1 items-stretch gap-3 md:grid-cols-2">
-                  {visible.map(({ stint, stintNumber }) => (
+                  {visible.map((entry) => (
                     <MachineStintCard
-                      breakdowns={placed.byStint.get(stint.id) ?? []}
-                      key={stint.id}
-                      stint={stint}
-                      stintNumber={stintNumber}
+                      breakdowns={placed.byStint.get(entry.stint.id) ?? []}
+                      key={entry.stint.id}
+                      entry={entry}
                       sheet={sheet}
                       gapFlagThresholdHours={job.gapFlagThresholdHours}
                       onOpen={setDialog}

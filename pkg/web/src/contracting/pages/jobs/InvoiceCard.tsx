@@ -1,11 +1,11 @@
 import { formatCurrency, formatDate, getFirstName } from '@pkg/domain';
+import type { JobSheet } from '@pkg/domain/contracting';
 import type { JobDetail } from '@pkg/schema/contracting';
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { StampInvoiceDialog } from '../invoicing/StampInvoiceDialog.js';
-import type { JobSheet } from './types.js';
 
 export function InvoiceCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }) {
   const [stamping, setStamping] = useState(false);

@@ -64,7 +64,7 @@ export function defineCoreErrorFamily<TCoreError extends Error & { code: AppCode
    * Public message per code, or a function of the error when the words depend on what failed.
    * Omitted codes surface the core error's own message.
    */
-  messages?: Readonly<Partial<Record<TCoreError['code'], string | ((error: TCoreError) => string)>>>;
+  messages?: { readonly [TCode in TCoreError['code']]?: string | ((error: TCoreError & { code: TCode }) => string) };
   /** Explicitly selected, public-safe context for a caller that can act on the failed item. */
   metadata?: (error: TCoreError) => unknown;
 }): CoreErrorFamily {

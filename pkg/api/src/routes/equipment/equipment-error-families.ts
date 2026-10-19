@@ -6,7 +6,6 @@ import {
   type CustomerCoreError,
   CustomerPossibleMatchError,
   type DocumentCoreError,
-  DuplicateDocumentFilenameError,
   type FeedbackCoreError,
   isAssertedActorError,
   isBuildError,
@@ -46,6 +45,7 @@ import {
   type StocktakeError,
   type SupplierCoreError,
   type SupplierInvoiceCoreError,
+  UserIsDeviceError,
 } from '@pkg/core/equipment';
 import type { DocumentOwnerType } from '@pkg/schema/equipment';
 
@@ -206,9 +206,7 @@ export const documentErrorFamily = defineCoreErrorFamily<DocumentCoreError>({
   is: isDocumentCoreError,
   messages: {
     'document.duplicate_filename': (error) =>
-      error instanceof DuplicateDocumentFilenameError
-        ? `A document with this filename already exists for this ${DOCUMENT_OWNER_NOUNS[error.metadata.ownerType]}.`
-        : error.message,
+      `A document with this filename already exists for this ${DOCUMENT_OWNER_NOUNS[error.metadata.ownerType]}.`,
     'document.not_found': 'Document not found.',
   },
 });
@@ -282,11 +280,6 @@ export const customerErrorFamily = defineCoreErrorFamily<CustomerCoreError>({
   metadata: (error) => (error instanceof CustomerPossibleMatchError ? error.metadata : undefined),
 });
 
-/**
- * The Part boundary's two families. A build reaches for Parts and their BOMs too, and the inventory
- * boundary must surface those failures with the same codes and the same words — one table, both routers.
- */
-
 export const partBomErrorFamily = defineCoreErrorFamily<PartBomError>({
   codes: {
     'part.bom_component_not_found': 'NOT_FOUND',
@@ -331,7 +324,6 @@ export const partCoreErrorFamily = defineCoreErrorFamily<PartCoreError>({
   },
 });
 
-/** Every Purchase Order failure already carries a public message; only the shape differs. */
 export const purchaseOrderErrorFamily = defineCoreErrorFamily<PurchaseOrderCoreError>({
   codes: {
     'purchase_order.arrival_below_zero': 'BAD_REQUEST',
@@ -379,7 +371,7 @@ export const creditNoteErrorFamily = defineCoreErrorFamily<CreditNoteCoreError>(
 
 /**
  * The invoice panel fails on the flag being acted on, never on the extraction. An unreadable
- * invoice is a state the panel reports, not an error a procedure raises (spec §5).
+ * invoice is a state the panel reports, not an error a procedure raises.
  */
 export const supplierInvoiceErrorFamily = defineCoreErrorFamily<SupplierInvoiceCoreError>({
   codes: {
@@ -390,12 +382,6 @@ export const supplierInvoiceErrorFamily = defineCoreErrorFamily<SupplierInvoiceC
   },
   is: isSupplierInvoiceCoreError,
 });
-
-/**
- * The inventory boundary's error families. Each procedure names only the families it can actually
- * raise — a stock read cannot fail as a build, and a build has no Job to cancel — so the list at a
- * call site doubles as documentation of what that endpoint touches.
- */
 
 /** The ledger's own rules, shared by every router that writes a movement. */
 export const stockMovementErrorFamily = defineCoreErrorFamily<StockMovementCoreError>({
@@ -491,4 +477,11 @@ export const stocktakeErrorFamily = defineCoreErrorFamily<StocktakeError>({
     'inventory.stocktake_uncounted_bucket': 'BAD_REQUEST',
   },
   is: isStocktakeError,
+});
+
+/** A shared device cannot sign for stock, so it has no Badge Card to print. */
+export const userDeviceErrorFamily = defineCoreErrorFamily<UserIsDeviceError>({
+  codes: { 'user.is_device': 'BAD_REQUEST' },
+  is: (error): error is UserIsDeviceError => error instanceof UserIsDeviceError,
+  messages: { 'user.is_device': 'A shared device has no badge card.' },
 });

@@ -56,6 +56,18 @@ describe('tRPC error helpers', () => {
     expect(getTRPCPublicMetadata(error)).toEqual({ productId: 'product-id' });
   });
 
+  it('words a message from the error when the family gives a function for its code', () => {
+    const family = defineCoreErrorFamily<ProductNotFoundError>({
+      codes: { 'product.not_found': 'NOT_FOUND' },
+      is: (error): error is ProductNotFoundError => error instanceof ProductNotFoundError,
+      messages: { 'product.not_found': (error) => `Product ${error.productId} is gone.` },
+    });
+
+    expect(family.match(new ProductNotFoundError('product-id'))).toMatchObject({
+      message: 'Product product-id is gone.',
+    });
+  });
+
   it('leaves unknown errors untouched', async () => {
     const error = new Error('broken');
 

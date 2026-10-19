@@ -1,4 +1,4 @@
-import { isUserCoreError, renderUserBadge } from '@pkg/core/equipment';
+import { renderUserBadge } from '@pkg/core/equipment';
 import type { Db } from '@pkg/db';
 import { renderUserBadgesPdf } from '@pkg/pdf/equipment';
 import { AuthId } from '@pkg/schema';
@@ -8,11 +8,13 @@ import { z } from 'zod';
 
 import {
   createContentDisposition,
-  RouteHttpError,
+  mapCoreErrorToRoute,
   requirePermission,
   requireRouteAuth,
   sendHttpError,
 } from '@/routes/http-route-helpers.js';
+import { userErrorFamily } from '@/routes/shared-error-families.js';
+import { userDeviceErrorFamily } from '../equipment-error-families.js';
 
 const UserBadgeParams = z.object({ userId: AuthId });
 
@@ -40,7 +42,7 @@ export async function registerUserBadgeHttpRoutes(
         'user.badge_forbidden',
       );
       const { userId } = UserBadgeParams.parse(request.params);
-      const result = await mapUserBadgeErrors(() => renderUserBadge({ db, pdfRenderer, userId }));
+      const result = await renderUserBadge({ db, pdfRenderer, userId });
 
       reply.header('Content-Type', 'application/pdf');
       reply.header('Content-Length', result.bytes.byteLength);
@@ -52,28 +54,8 @@ export async function registerUserBadgeHttpRoutes(
   });
 }
 
-async function mapUserBadgeErrors<T>(action: () => Promise<T>): Promise<T> {
-  try {
-    return await action();
-  } catch (error) {
-    if (isUserCoreError(error)) {
-      if (error.code === 'user.not_found') {
-        throw new RouteHttpError({ appCode: error.code, message: 'User not found.', statusCode: 404 });
-      }
-      if (error.code === 'user.is_device') {
-        throw new RouteHttpError({
-          appCode: error.code,
-          message: 'A shared device has no badge card.',
-          statusCode: 400,
-        });
-      }
-    }
-    throw error;
-  }
-}
-
 function sendUserBadgeHttpError(reply: FastifyReply, error: unknown): void {
-  sendHttpError(reply, error, {
+  sendHttpError(reply, mapCoreErrorToRoute(error, userErrorFamily, userDeviceErrorFamily), {
     fallbackMessage: 'Stores badge request failed.',
     invalidRequestMessage: 'Invalid stores badge request.',
   });

@@ -24,13 +24,18 @@ describe('noteReaches', () => {
   });
 
   test('reaches a reader who has noted the thread before, and only them', () => {
-    expect(noteReaches('job', as('contracting-invoicing'), job, [])).toBe(false);
-    expect(noteReaches('job', as('contracting-invoicing'), job, ['me'])).toBe(true);
+    expect(noteReaches('job', as('workshop-manager'), job, [])).toBe(false);
+    expect(noteReaches('job', as('workshop-manager'), job, ['me'])).toBe(true);
     expect(noteReaches('breakdown', as('contracting-manager'), breakdown, ['me'])).toBe(true);
   });
 
+  test('never reaches a role the Push Kind cannot reach, even a prior author who can read the record', () => {
+    // Contracting Invoicing reads a completed Job but receives no Push Kind: the registry, not the thread, decides.
+    expect(noteReaches('job', as('contracting-invoicing'), job, ['me'])).toBe(false);
+    expect(noteReaches('job', as('contracting-invoicing'), job, [])).toBe(false);
+  });
+
   test('never reaches someone who can no longer read the record', () => {
-    expect(noteReaches('job', as('contracting-invoicing'), { ...job, status: 'active' }, ['me'])).toBe(false);
     expect(noteReaches('job', as('foreman'), job, ['me'])).toBe(false);
     expect(noteReaches('breakdown', as('foreman'), breakdown, ['me'])).toBe(false);
   });

@@ -41,7 +41,7 @@ const columns: DataTableColumnDef<MachineUtilisation>[] = [
         >
           {row.original.code}
         </Link>
-        {row.original.retiredAt ? <Badge variant="outline">Retired</Badge> : null}
+        {row.original.retiredDate ? <Badge variant="outline">Retired</Badge> : null}
       </span>
     ),
   },

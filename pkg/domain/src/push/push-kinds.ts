@@ -62,12 +62,18 @@ export const PUSH_KINDS: Record<PushKind, PushKindDefinition> = {
   },
 };
 
+/**
+ * Whether this person holds a role the kind can reach: the one reach test, which dispatch mirrors as an SQL prefilter
+ * and every narrower reach rule (`noteReaches`) starts from.
+ */
+export function canReceivePush(kind: PushKind, access: UserAccessSummary | null | undefined): boolean {
+  const role = getBusinessRole(access, PUSH_KINDS[kind].business);
+  return role !== null && PUSH_KINDS[kind].roles.includes(role);
+}
+
 /** The kinds any of this person's roles can reach, in registry order: what the Settings page lists. */
 export function pushKindsFor(access: UserAccessSummary | null | undefined): PushKind[] {
-  return pushKinds.filter((kind) => {
-    const role = getBusinessRole(access, PUSH_KINDS[kind].business);
-    return role !== null && PUSH_KINDS[kind].roles.includes(role);
-  });
+  return pushKinds.filter((kind) => canReceivePush(kind, access));
 }
 
 /** Whether a push can reach this person at all: the only people the phone asks for notification permission. */

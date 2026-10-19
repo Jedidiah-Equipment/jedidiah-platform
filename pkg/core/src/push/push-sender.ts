@@ -1,15 +1,9 @@
 import type { Db } from '@pkg/db';
+import type { PushContent } from '@pkg/domain';
 import { prunePushTokens } from './push-token-service.js';
 
-export type PushMessage = {
-  to: string;
-  title: string;
-  body: string;
-  data: Record<string, string>;
-  channelId?: string;
-  priority?: 'default' | 'high';
-  sound?: 'default';
-};
+/** One push content addressed to one install's token. */
+export type PushMessage = PushContent & { to: string };
 
 export type PushOutcome = { to: string; ok: true } | { to: string; ok: false; error: string };
 

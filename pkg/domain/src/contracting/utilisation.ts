@@ -1,5 +1,5 @@
 import type { DateOnlyIso } from '@pkg/schema';
-import type { HourKindTotals, ReadingRole, ReportWindow } from '@pkg/schema/contracting';
+import type { DayCounts, HourKindTotals, ReadingRole, ReportWindow } from '@pkg/schema/contracting';
 import { addDateOnlyDays, diffDateOnlyDays } from '../formatting/date-only.js';
 import { round1 } from './hours.js';
 import { reportWindowInstants } from './report-window.js';
@@ -13,9 +13,14 @@ const later = (a: DateOnlyIso, b: DateOnlyIso) => (a >= b ? a : b);
 /** The days a Machine belongs to the fleet: from its creation date through its retirement date. */
 export type FleetSpan = { createdDate: DateOnlyIso; retiredDate: DateOnlyIso | null };
 
-/** The window days the Machine belongs to the fleet, or null when it belongs to none of them. */
+/** What the day counts read off a Machine: its fleet span and its stints. */
+export type UtilisationMachine = FleetSpan & { spans: readonly ActiveSpan[] };
+
+/**
+ * The window days the Machine belongs to the fleet, or null when it belongs to none of them. A window after today
+ * resolves with `end < start`, so it holds no fleet days without a guard.
+ */
 function fleetBounds(fleet: FleetSpan, window: ReportWindow): { from: DateOnlyIso; to: DateOnlyIso } | null {
-  if (window.days === 0) return null;
   const from = later(fleet.createdDate, window.start);
   const to = earlier(fleet.retiredDate ?? window.end, window.end);
   return to < from ? null : { from, to };
@@ -26,16 +31,11 @@ function fleetBounds(fleet: FleetSpan, window: ReportWindow): { from: DateOnlyIs
  * Machine's fleet span never count, so a Machine retired while on site, or a Read At back-dated before its creation,
  * cannot have more active days than fleet days.
  */
-export function activeDaysIn(
-  spans: readonly ActiveSpan[],
-  window: ReportWindow,
-  today: DateOnlyIso,
-  fleet: FleetSpan,
-): number {
-  const bounds = fleetBounds(fleet, window);
+function activeDaysIn(machine: UtilisationMachine, window: ReportWindow, today: DateOnlyIso): number {
+  const bounds = fleetBounds(machine, window);
   if (!bounds) return 0;
   const days = new Set<DateOnlyIso>();
-  for (const span of spans) {
+  for (const span of machine.spans) {
     const from = later(span.arrivalDate, bounds.from);
     const to = earlier(span.departureDate ?? today, bounds.to);
     for (let day = from; day <= to; day = addDateOnlyDays(day, 1)) days.add(day);
@@ -44,13 +44,27 @@ export function activeDaysIn(
 }
 
 /** Window days from the Machine's creation date through its retirement date, or the window end. */
-export function fleetDaysIn(machine: FleetSpan, window: ReportWindow): number {
+function fleetDaysIn(machine: FleetSpan, window: ReportWindow): number {
   const bounds = fleetBounds(machine, window);
   return bounds ? diffDateOnlyDays(bounds.to, bounds.from) + 1 : 0;
 }
 
 export const utilisationPercent = (activeDays: number, fleetDays: number): number | null =>
   fleetDays === 0 ? null : round1((activeDays / fleetDays) * 100);
+
+/** One Machine's day counts for the window: zero fleet days when it was not in the fleet during it. */
+export function dayCounts(machine: UtilisationMachine, window: ReportWindow, today: DateOnlyIso): DayCounts {
+  const activeDays = activeDaysIn(machine, window, today);
+  const fleetDays = fleetDaysIn(machine, window);
+  return { activeDays, fleetDays, utilisationPercent: utilisationPercent(activeDays, fleetDays) };
+}
+
+/** Day-weighted totals: the sums of the members' days, and the percentage of those sums, never a mean of percentages. */
+export function sumDayCounts(rows: readonly DayCounts[]): DayCounts {
+  const activeDays = rows.reduce((total, row) => total + row.activeDays, 0);
+  const fleetDays = rows.reduce((total, row) => total + row.fleetDays, 0);
+  return { activeDays, fleetDays, utilisationPercent: utilisationPercent(activeDays, fleetDays) };
+}
 
 export type LedgerReading = { id: string; role: ReadingRole; value: number; capturedAt: string };
 export type LedgerStint = {
@@ -125,24 +139,25 @@ export function hourSegments(
   return segments;
 }
 
-/** Each segment's hours in proportion to its overlap with the window's plant-time instant range. */
+/**
+ * Each segment's hours in proportion to its overlap with the window's plant-time instant range. A window after today
+ * resolves with `end < start`, so its range is empty and every share is zero without a guard.
+ */
 export function allocateHours(segments: readonly HourSegment[], window: ReportWindow): HourKindTotals {
   const totals: Record<HourKind, number> = { work: 0, travel: 0, unaccounted: 0, unresolved: 0 };
-  if (window.days > 0) {
-    const instants = reportWindowInstants(window);
-    const range = { from: instants.from.getTime(), to: instants.to.getTime() };
-    for (const segment of segments) {
-      const from = Date.parse(segment.from);
-      const to = Date.parse(segment.to);
-      const length = to - from;
-      const share =
-        length <= 0
-          ? from >= range.from && from < range.to
-            ? 1
-            : 0
-          : Math.max(0, Math.min(to, range.to) - Math.max(from, range.from)) / length;
-      totals[segment.kind] += segment.hours * share;
-    }
+  const instants = reportWindowInstants(window);
+  const range = { from: instants.from.getTime(), to: instants.to.getTime() };
+  for (const segment of segments) {
+    const from = Date.parse(segment.from);
+    const to = Date.parse(segment.to);
+    const length = to - from;
+    const share =
+      length <= 0
+        ? from >= range.from && from < range.to
+          ? 1
+          : 0
+        : Math.max(0, Math.min(to, range.to) - Math.max(from, range.from)) / length;
+    totals[segment.kind] += segment.hours * share;
   }
   return {
     workHours: round1(totals.work),

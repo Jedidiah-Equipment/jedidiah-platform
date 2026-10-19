@@ -1,8 +1,17 @@
+import type { PushMessage } from '@pkg/core';
 import type { ExpoPushMessage, ExpoPushTicket } from 'expo-server-sdk';
 import { describe, expect, it } from 'vitest';
 import { createExpoPushSender, type ExpoPushClient } from './expo-push-sender.js';
 
-const message = (to: string) => ({ to, title: 'Code Red · JD6140M-2', body: 'Hydraulic leak.', data: {} });
+const message = (to: string): PushMessage => ({
+  to,
+  title: 'Code Red · JD6140M-2',
+  body: 'Hydraulic leak.',
+  data: { business: 'contracting', kind: 'breakdown', id: 'b1', path: '/contracting/workshop/b1' },
+  channelId: 'workshop',
+  priority: 'high',
+  sound: 'default',
+});
 
 function fakeExpo(
   answer: (chunk: ExpoPushMessage[]) => ExpoPushTicket[] | Error,

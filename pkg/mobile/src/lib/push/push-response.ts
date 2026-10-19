@@ -32,7 +32,7 @@ export function usePushResponseNavigation(): void {
     const open = (response: Notifications.NotificationResponse | null) => {
       const target = pushTargetFromResponse(response);
       if (!target) return;
-      addBreadcrumb('navigation', 'push opened', { kind: String(response?.notification.request.content.data?.kind) });
+      addBreadcrumb('navigation', 'push opened', { kind: target.kind });
       Notifications.clearLastNotificationResponse();
       pending = target;
       router.push(target.href as Href);

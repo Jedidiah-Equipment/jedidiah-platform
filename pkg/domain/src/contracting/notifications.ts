@@ -1,8 +1,8 @@
 import type { PushKind } from '@pkg/schema';
 import type { BreakdownUrgency, NoteThreadKind } from '@pkg/schema/contracting';
 import { formatHours } from '../formatting/number.js';
+import { type PushContent, pushAlert } from '../push/push-content.js';
 import { breakdownUrgencyLabels } from './breakdowns.js';
-import { alertFor } from './push-alert.js';
 import { serviceDueStatusLabels } from './service-due.js';
 
 /** The Push Kind a reported Breakdown is, decided from the record: its urgency picks the kind. */
@@ -15,15 +15,8 @@ export type ContractingPushEvent =
   | { kind: 'machine.service-due-soon'; machineId: string }
   | { kind: 'note.added'; thread: NoteThreadKind; noteId: string };
 
-/** What a push says and where tapping it lands; data names the record, never money. */
-export type ContractingPushContent = {
-  title: string;
-  body: string;
-  data: { business: 'contracting'; kind: 'breakdown' | 'machine' | 'job'; id: string; path: string };
-  channelId: string;
-  priority: 'high';
-  sound: 'default';
-};
+/** A push that names a Contracting record, so a Contracting builder cannot point the phone at the other business. */
+export type ContractingPushContent = PushContent & { data: { business: 'contracting' } };
 
 export function breakdownPushMessage(breakdown: {
   id: string;
@@ -45,7 +38,7 @@ export function breakdownPushMessage(breakdown: {
       id: breakdown.id,
       path: `/contracting/workshop/${breakdown.id}`,
     },
-    ...alertFor(breakdownPushKind(breakdown.urgency)),
+    ...pushAlert(breakdownPushKind(breakdown.urgency)),
   };
 }
 
@@ -62,6 +55,6 @@ export function serviceDueSoonPushMessage(machine: {
       ? `Overdue by ${formatHours(-machine.hoursToService)}.`
       : `${formatHours(machine.hoursToService)} to next service.`,
     data: { business: 'contracting', kind: 'machine', id: machine.id, path: `/contracting/machines/${machine.id}` },
-    ...alertFor(SERVICE_DUE_SOON_PUSH_KIND),
+    ...pushAlert(SERVICE_DUE_SOON_PUSH_KIND),
   };
 }

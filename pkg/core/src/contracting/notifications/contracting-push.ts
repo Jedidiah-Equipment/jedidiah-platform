@@ -1,6 +1,6 @@
 import { type Db, user } from '@pkg/db';
 import { contractingBreakdowns } from '@pkg/db/contracting';
-import { createUserAccessSummaryForUser, PUSH_KINDS } from '@pkg/domain';
+import { canReceivePush, createUserAccessSummaryForUser, PUSH_KINDS } from '@pkg/domain';
 import {
   breakdownPushKind,
   breakdownPushMessage,
@@ -24,8 +24,9 @@ import { getMachine } from '../fleet/machine-service.js';
 import { noteThreadStore } from '../notes/note-thread.js';
 
 /**
- * The people holding a role the kind can reach who have not muted it and whom `reaches` keeps: never a shared device
- * or a banned account, and never the actor.
+ * The people `reaches` keeps who have not muted the kind: never a shared device or a banned account, and never the
+ * actor. `reaches` always starts from `canReceivePush`; the role prefilter below is its query-side twin, so the rows
+ * read are only ever those the registry lets the kind reach.
  */
 async function recipientUserIds(
   db: Db,
@@ -41,6 +42,7 @@ async function recipientUserIds(
       and(
         eq(user.isDevice, false),
         sql`${user.banned} is not true`,
+        // The query-side twin of `canReceivePush(kind, access)`.
         inArray(businessRoleSql(business), [...roles]),
         sql`not (${user.mutedPushKinds} @> ${JSON.stringify([kind])}::jsonb)`,
         excludeUserId === null ? undefined : ne(user.id, excludeUserId),
@@ -54,7 +56,7 @@ async function addressed(
   kind: PushKind,
   excludeUserId: string | null,
   content: ContractingPushContent,
-  reaches: (access: UserAccessSummary) => boolean = () => true,
+  reaches: (access: UserAccessSummary) => boolean,
 ): Promise<PushMessage[]> {
   const tokens = await listPushTokensForUsers({
     db,
@@ -83,11 +85,13 @@ async function breakdownReportedPush(db: Db, breakdownId: string): Promise<PushM
   const [row] = await selectBreakdowns(db).where(eq(contractingBreakdowns.id, breakdownId)).limit(1);
   if (!row) return [];
   const breakdown = toBreakdownSummary(row);
+  const kind = breakdownPushKind(breakdown.urgency);
   return addressed(
     db,
-    breakdownPushKind(breakdown.urgency),
+    kind,
     breakdown.reportedByUserId,
     breakdownPushMessage({ ...breakdown, subjectCode: breakdown.subject.code }),
+    (access) => canReceivePush(kind, access),
   );
 }
 
@@ -102,6 +106,7 @@ async function serviceDueSoonPush(db: Db, machineId: string): Promise<PushMessag
     SERVICE_DUE_SOON_PUSH_KIND,
     null,
     serviceDueSoonPushMessage({ id: machine.id, code: machine.code, hoursToService: machine.hoursToService }),
+    (access) => canReceivePush(SERVICE_DUE_SOON_PUSH_KIND, access),
   );
 }
 

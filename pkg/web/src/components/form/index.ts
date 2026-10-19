@@ -25,4 +25,6 @@ export { AutosaveIssuesProvider, useAutosaveIssues } from './hooks/autosave-issu
 export { useFieldContext, useFormContext } from './hooks/form-context.js';
 export { useAppForm, useTypedAppFormContext, withFieldGroup, withForm } from './hooks/use-app-form.js';
 export { useAutosaveForm } from './hooks/use-autosave-form.js';
+export { useSaveForm } from './hooks/use-save-form.js';
+export { SaveButton } from './SaveButton.js';
 export type { ArrayFieldApi, FieldApi, FormFieldComponent } from './types.js';

@@ -1,4 +1,4 @@
-import type { AssignmentDetail, JobDetail } from '@pkg/schema/contracting';
+import type { AssignmentActions, AssignmentDetail, JobDetail } from '@pkg/schema/contracting';
 import { actionSheet } from './action-verdicts.js';
 import { hasJobCard } from './job-card.js';
 import { assignmentStateDisplayOrder, groupStints } from './stints.js';
@@ -9,9 +9,6 @@ import { assignmentStateDisplayOrder, groupStints } from './stints.js';
  *   disabled with the server's own refusal while the Job refuses it.
  * - Row controls (icon buttons and inline cells inside a stint card or table row) render only while `can` is true,
  *   and a value that is on display renders read-only.
- *
- * A stint entry carries only its own Assignment Actions; Job Actions on a stint card (`reportBreakdown`,
- * `patchTravel`) still come from the Job's sheet, so which record refuses stays visible.
  */
 export function jobSheet(job: JobDetail) {
   const sheet = actionSheet(job.actions);
@@ -35,7 +32,11 @@ export type JobSheet = ReturnType<typeof jobSheet>;
 export type JobSheetStint = JobSheet['stints'][number];
 
 /** What is on site, then what is coming, then what has left; each tier in `groupStints` order, numbered per Machine. */
-function screenOrder(assignments: readonly AssignmentDetail[]) {
+function screenOrder(assignments: readonly AssignmentDetail[]): ReadonlyArray<{
+  stint: AssignmentDetail;
+  number: number;
+  sheet: ReturnType<typeof actionSheet<keyof AssignmentActions>>;
+}> {
   const { machines, planned } = groupStints(assignments);
   const numbers = new Map<string, number>();
   return [...machines.flatMap((machine) => machine.stints), ...planned]

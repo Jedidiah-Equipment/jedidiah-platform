@@ -56,11 +56,11 @@ describe('jobSheet stints', () => {
       stint('c-plan-new', 'c', 'planned', null, '2026-09-06T07:00:00Z'),
       stint('a-first', 'a', 'left', '2026-09-01T08:00:00Z', '2026-09-01T06:00:00Z'),
       stint('d-site', 'd', 'on-site', '2026-09-03T08:00:00Z', '2026-09-03T07:00:00Z'),
-      stint('c-plan-old', 'e', 'planned', null, '2026-09-02T07:00:00Z'),
+      stint('e-plan-old', 'e', 'planned', null, '2026-09-02T07:00:00Z'),
     ];
     expect(order(assignments)).toEqual([
       ['d-site', 1],
-      ['c-plan-old', 1],
+      ['e-plan-old', 1],
       ['c-plan-new', 1],
       ['a-first', 1],
       ['a-back', 2],

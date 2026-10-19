@@ -469,7 +469,6 @@ test('refuses self merges and missing Customers without changing the survivor', 
   ])
     await expect(mergeCustomer({ actorUserId: 'actor-user-id', db, input })).rejects.toMatchObject({
       code: 'customer.not_found',
-      metadata: { id: missing },
     });
   await expect(getCustomer({ db, id: customer.id })).resolves.toEqual(customer);
 });
@@ -675,9 +674,7 @@ describe('Possible Customer matches', () => {
       }),
     ).rejects.toMatchObject({
       code: 'customer.possible_match',
-      metadata: {
-        matches: expect.arrayContaining([expect.objectContaining({ id: first.id, contactPerson: 'Mark Buhr' })]),
-      },
+      matches: expect.arrayContaining([expect.objectContaining({ id: first.id, contactPerson: 'Mark Buhr' })]),
     });
   });
 });

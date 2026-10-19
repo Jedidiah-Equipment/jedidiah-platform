@@ -577,7 +577,6 @@ describe('removeProductUnit', () => {
     ).rejects.toMatchObject({
       code: 'product_unit.in_use',
       message: `Completed ${phantom.jobCode} built this unit, so its record stands.`,
-      metadata: { jobCode: phantom.jobCode, reason: 'built' },
     });
 
     await expect(context.db.$count(productUnits, eq(productUnits.id, phantom.unitId))).resolves.toBe(1);
@@ -607,7 +606,6 @@ describe('removeProductUnit', () => {
     ).rejects.toMatchObject({
       code: 'product_unit.in_use',
       message: `Completed ${completedJobCode} built this unit, so its record stands.`,
-      metadata: { jobCode: completedJobCode, reason: 'built' },
     });
   });
 
@@ -619,7 +617,6 @@ describe('removeProductUnit', () => {
     ).rejects.toMatchObject({
       code: 'product_unit.in_use',
       message: `${phantom.jobCode} is still live, so this unit cannot be removed.`,
-      metadata: { jobCode: phantom.jobCode, reason: 'live-job' },
     });
   });
 

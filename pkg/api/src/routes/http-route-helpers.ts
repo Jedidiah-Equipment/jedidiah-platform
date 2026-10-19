@@ -121,7 +121,7 @@ export function sendUploadHttpError(reply: FastifyReply, error: unknown, options
     return;
   }
 
-  if (isFileError(error) && error.code !== 'file.not_found') {
+  if (isFileError(error) && (error.code === 'file.content_type_not_allowed' || error.code === 'file.too_large')) {
     reply.status(400).send({ data: { appCode: error.code }, message: error.message });
     return;
   }

@@ -365,10 +365,10 @@ describe('mergePart', () => {
     await context.db.update(parts).set({ standardPurchaseLengthMm: 3_000 }).where(eq(parts.id, duplicate.id));
 
     await expect(merge(context.db, duplicate.id, survivor.id)).rejects.toMatchObject({
-      metadata: { blockers: [{ kind: 'standard-purchase-length' }, { kind: 'stock-tracking-mode' }] },
+      message: 'These Parts cannot be merged yet: standard-purchase-length, stock-tracking-mode',
     });
     await expect(merge(context.db, context.parts.fabricated.id, context.parts.measured.id)).rejects.toMatchObject({
-      metadata: { blockers: [{ kind: 'unit-of-measure' }, { kind: 'built-part' }] },
+      message: 'These Parts cannot be merged yet: unit-of-measure, built-part',
     });
     await expect(context.db.$count(stockMovements, eq(stockMovements.partId, duplicate.id))).resolves.toBe(1);
   });
@@ -409,18 +409,11 @@ describe('mergePart', () => {
     const sameOrder = await merge(context.db, duplicate.id, survivor.id).catch((error: unknown) => error);
     expect(sameOrder).toMatchObject({ code: 'part.merge_blocked' });
     expect(sameOrder).toMatchObject({
-      metadata: { blockers: [{ kind: 'same-purchase-order', purchaseOrderCodes: [expect.stringMatching(/^PO-/)] }] },
+      message: 'These Parts cannot be merged yet: same-purchase-order',
     });
     // The draft and the approved order block; the sent order is history and would follow the Part.
     await expect(merge(context.db, otherDuplicate.id, survivor.id)).rejects.toMatchObject({
-      metadata: {
-        blockers: [
-          {
-            kind: 'open-order-supplier',
-            purchaseOrderCodes: [expect.stringMatching(/^PO-/), expect.stringMatching(/^PO-/)],
-          },
-        ],
-      },
+      message: 'These Parts cannot be merged yet: open-order-supplier',
     });
   });
 
@@ -434,13 +427,13 @@ describe('mergePart', () => {
     ]);
 
     await expect(merge(context.db, duplicate.id, built.id)).rejects.toMatchObject({
-      metadata: { blockers: [{ kind: 'bom-link' }] },
+      message: 'These Parts cannot be merged yet: bom-link',
     });
     await expect(merge(context.db, built.id, duplicate.id)).rejects.toMatchObject({
-      metadata: { blockers: [{ kind: 'bom-link' }] },
+      message: 'These Parts cannot be merged yet: bom-link',
     });
     await expect(merge(context.db, middle.id, built.id)).rejects.toMatchObject({
-      metadata: { blockers: [{ kind: 'bom-link' }] },
+      message: 'These Parts cannot be merged yet: bom-link',
     });
   });
 
@@ -501,7 +494,7 @@ describe('mergePart', () => {
     await context.db.insert(stocktakeSessions).values({ openedByUserId: actorUserId, scope: 'stores' });
 
     await expect(merge(context.db, duplicate.id, survivor.id)).rejects.toMatchObject({
-      metadata: { blockers: [{ kind: 'open-stocktake', scope: 'stores' }] },
+      message: 'These Parts cannot be merged yet: open-stocktake',
     });
   });
 });

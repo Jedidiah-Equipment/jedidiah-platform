@@ -1,6 +1,7 @@
 export type JobErrorCode =
   | 'job.already_completed'
   | 'job.bay_already_assigned'
+  // A Bay was asked to be deleted while something still references it; disable it instead.
   | 'job.bay_in_use'
   | 'job.bay_not_found'
   | 'job.bay_operator_assignment_denied'
@@ -12,6 +13,7 @@ export type JobErrorCode =
   | 'job.create_from_quote_denied'
   | 'job.department_timing_already_completed'
   | 'job.department_timing_already_started'
+  // A correction that would leave the stamps or their crew in a shape the done-stamp never produces.
   | 'job.department_timing_invalid'
   | 'job.department_timing_locked'
   | 'job.department_timing_not_started'

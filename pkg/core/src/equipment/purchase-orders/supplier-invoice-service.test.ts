@@ -475,8 +475,7 @@ describe('supplier invoice cross-check', () => {
     for (const purchaseOrder of [draft, cancelled])
       await expect(upload(context, purchaseOrder.id, reads(extraction({ lines: [line()] })))).rejects.toMatchObject({
         code: 'purchase_order.not_sent',
-        action: 'fileDocuments',
-        reason: 'not-sent',
+        refused: { action: 'fileDocuments', reason: 'not-sent' },
       });
   });
 

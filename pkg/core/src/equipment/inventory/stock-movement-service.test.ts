@@ -154,7 +154,8 @@ describe('Checkout Basket', () => {
       }),
     ).rejects.toMatchObject({
       code: 'inventory.periodic_movement',
-      metadata: { movement: 'checkout', partId: context.parts.periodic.id },
+      message: 'Periodic stock does not record checkout movements',
+      partId: context.parts.periodic.id,
     });
 
     expect(await context.db.select().from(stockMovements)).toHaveLength(before.length);

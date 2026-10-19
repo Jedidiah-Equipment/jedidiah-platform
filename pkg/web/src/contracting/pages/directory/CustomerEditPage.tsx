@@ -43,7 +43,7 @@ export function CustomerEditPage({
               <TabsTrigger value="details">Details</TabsTrigger>
               {readsJobs ? <TabsTrigger value="jobs">Jobs</TabsTrigger> : null}
             </TabsList>
-            <TabsContent className="pt-4" value="details">
+            <TabsContent className="pt-4" value="details" keepMounted>
               <DetailAsideGrid>
                 <CustomerForm key={id} customer={customer} />
                 <Farms customerId={customer.id} />

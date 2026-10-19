@@ -100,7 +100,7 @@ function MachineForm({
           {readsServices ? <TabsTrigger value="service">Service</TabsTrigger> : null}
           {readsJobs ? <TabsTrigger value="jobs">Jobs</TabsTrigger> : null}
         </TabsList>
-        <TabsContent className="pt-4" value="details">
+        <TabsContent className="pt-4" value="details" keepMounted>
           <DetailAsideGrid>
             <div className="min-w-0 space-y-5">
               <AutosaveFormCard formProps={formProps} autosave={autosave} disabled={!canEdit}>

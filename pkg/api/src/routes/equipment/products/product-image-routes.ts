@@ -1,11 +1,12 @@
 import type { ImageCacheOptions, StorageAdapter } from '@pkg/core';
-import { isProductCoreError, readMobileProductImage, readProductImage, replaceProductImage } from '@pkg/core/equipment';
+import { readMobileProductImage, readProductImage, replaceProductImage } from '@pkg/core/equipment';
 import type { Db } from '@pkg/db';
 import { PRODUCT_IMAGE_POLICY } from '@pkg/domain/equipment';
 import { ProductImageSlotParams } from '@pkg/schema/equipment';
 import { z } from 'zod';
 
-import { type EntityFileRouteConfig, RouteHttpError } from '../files/entity-file-http.route.js';
+import { productErrorFamily } from '../equipment-error-families.js';
+import type { EntityFileRouteConfig } from '../files/entity-file-http.route.js';
 
 // Product image slots, wired into the generic entity-file registrar. Image uploads use the same
 // permission as editing a Product; previews use Product read access.
@@ -27,21 +28,7 @@ export function createProductImageRouteConfig(
     readForbiddenMessage: 'You do not have permission to view this product image.',
     noFileMessage: 'Choose an image to upload.',
     policy: PRODUCT_IMAGE_POLICY,
-    // Owner-not-found surfaces as the Product's core error; this config owns that mapping so the generic
-    // registrar stays free of Product specifics.
-    mapOwnerError: (error) => {
-      if (!isProductCoreError(error)) {
-        return undefined;
-      }
-
-      const notFound = error.code === 'product.not_found';
-
-      return new RouteHttpError({
-        appCode: error.code,
-        message: notFound ? 'Product not found.' : error.message,
-        statusCode: notFound ? 404 : 400,
-      });
-    },
+    ownerErrorFamilies: [productErrorFamily],
     replace: ({ actorUserId, bytes, rawParams }) => {
       const params = ProductImageSlotParams.parse(rawParams);
 

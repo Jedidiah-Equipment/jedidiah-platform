@@ -1,6 +1,5 @@
 import type { StorageAdapter } from '@pkg/core';
 import {
-  isProductRangeCoreError,
   readProductRangeImage,
   readProductRangeLogo,
   replaceProductRangeImage,
@@ -10,23 +9,8 @@ import type { Db } from '@pkg/db';
 import { RANGE_IMAGE_POLICY, RANGE_LOGO_POLICY } from '@pkg/domain/equipment';
 import { ProductRangeImageParams, ProductRangeLogoParams } from '@pkg/schema/equipment';
 
-import { type EntityFileRouteConfig, RouteHttpError } from '../files/entity-file-http.route.js';
-
-// Owner-not-found surfaces as the Range's core error; shared by the image and logo route configs so the
-// generic registrar stays free of Range specifics.
-function mapProductRangeOwnerError(error: unknown): RouteHttpError | undefined {
-  if (!isProductRangeCoreError(error)) {
-    return undefined;
-  }
-
-  const notFound = error.code === 'product_range.not_found';
-
-  return new RouteHttpError({
-    appCode: error.code,
-    message: notFound ? 'Product Range not found.' : error.message,
-    statusCode: notFound ? 404 : 400,
-  });
-}
+import { productRangeErrorFamily } from '../equipment-error-families.js';
+import type { EntityFileRouteConfig } from '../files/entity-file-http.route.js';
 
 // The Product Range presentation image, wired into the generic entity-file registrar. Uploads use the
 // same permission as editing a Range; previews use Range read access.
@@ -40,7 +24,7 @@ export function createProductRangeImageRouteConfig(db: Db, storage: StorageAdapt
     readForbiddenMessage: 'You do not have permission to view this Product Range image.',
     noFileMessage: 'Choose an image to upload.',
     policy: RANGE_IMAGE_POLICY,
-    mapOwnerError: mapProductRangeOwnerError,
+    ownerErrorFamilies: [productRangeErrorFamily],
     replace: ({ bytes, rawParams }) => {
       const params = ProductRangeImageParams.parse(rawParams);
 
@@ -66,7 +50,7 @@ export function createProductRangeLogoRouteConfig(db: Db, storage: StorageAdapte
     readForbiddenMessage: 'You do not have permission to view this Product Range logo.',
     noFileMessage: 'Choose a logo to upload.',
     policy: RANGE_LOGO_POLICY,
-    mapOwnerError: mapProductRangeOwnerError,
+    ownerErrorFamilies: [productRangeErrorFamily],
     replace: ({ bytes, rawParams }) => {
       const params = ProductRangeLogoParams.parse(rawParams);
 

@@ -4,8 +4,6 @@ import {
   getCatalogTranslationStatus,
   listCatalogTranslationKeysNeedingTranslation,
   listCatalogTranslationsNeedingReview,
-  ProductNotFoundError,
-  ProductRangeNotFoundError,
   patchCatalogProductRangeTranslation,
   patchCatalogProductTranslation,
 } from '@pkg/core/equipment';
@@ -22,8 +20,9 @@ import {
 import { z } from 'zod';
 
 import type { TranslationMarker } from '../../../equipment/catalog-translations/translation-scheduler.js';
-import { type CoreErrorMapping, mapKnownCoreError } from '../../../trpc/errors.js';
+import { mapCoreErrors } from '../../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../../trpc/init.js';
+import { productErrorFamily, productRangeErrorFamily } from '../equipment-error-families.js';
 
 export function createCatalogTranslationsRouter(catalogTranslationScheduler: TranslationMarker) {
   return router({
@@ -31,7 +30,11 @@ export function createCatalogTranslationsRouter(catalogTranslationScheduler: Tra
       .input(z.object({ id: UUID }))
       .output(CatalogProductTranslation)
       .query(async ({ ctx, input }) =>
-        mapCatalogTranslationErrors(() => getCatalogProductTranslation({ db: ctx.db, id: input.id })),
+        mapCoreErrors(
+          () => getCatalogProductTranslation({ db: ctx.db, id: input.id }),
+          productErrorFamily,
+          productRangeErrorFamily,
+        ),
       ),
 
     updateProduct: authorizedProcedure('equipment_product:update')
@@ -45,7 +48,11 @@ export function createCatalogTranslationsRouter(catalogTranslationScheduler: Tra
       .input(z.object({ id: UUID }))
       .output(CatalogProductRangeTranslation)
       .query(async ({ ctx, input }) =>
-        mapCatalogTranslationErrors(() => getCatalogProductRangeTranslation({ db: ctx.db, id: input.id })),
+        mapCoreErrors(
+          () => getCatalogProductRangeTranslation({ db: ctx.db, id: input.id }),
+          productErrorFamily,
+          productRangeErrorFamily,
+        ),
       ),
 
     updateRange: authorizedProcedure('equipment_product_range:update')
@@ -77,34 +84,7 @@ async function patchAndRequeue<Translation>(
   scheduler: TranslationMarker,
   patch: () => Promise<{ requeueKeys: CatalogTranslationKey[]; translation: Translation }>,
 ): Promise<Translation> {
-  const result = await mapCatalogTranslationErrors(patch);
+  const result = await mapCoreErrors(patch, productErrorFamily, productRangeErrorFamily);
   for (const key of result.requeueKeys) scheduler.markNow(key);
   return result.translation;
 }
-
-function mapCatalogTranslationErrors<T>(action: () => Promise<T>): Promise<T> {
-  return mapKnownCoreError(
-    action,
-    isCatalogTranslationTargetMissing,
-    (error) => catalogTranslationErrorMappings[error.code],
-  );
-}
-
-function isCatalogTranslationTargetMissing(error: unknown): error is ProductNotFoundError | ProductRangeNotFoundError {
-  return error instanceof ProductNotFoundError || error instanceof ProductRangeNotFoundError;
-}
-
-const catalogTranslationErrorMappings = {
-  'product.not_found': {
-    appCode: 'product.not_found',
-    code: 'NOT_FOUND',
-    message: 'Product not found.',
-  },
-  'product_range.not_found': {
-    appCode: 'product_range.not_found',
-    code: 'NOT_FOUND',
-    message: 'Product Range not found.',
-  },
-} satisfies {
-  [TCode in (ProductNotFoundError | ProductRangeNotFoundError)['code']]: CoreErrorMapping<TCode>;
-};

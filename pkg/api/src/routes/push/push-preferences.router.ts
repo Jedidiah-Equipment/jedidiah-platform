@@ -2,7 +2,7 @@ import { getPushPreferences, setPushPreferences } from '@pkg/core';
 import { PushPreferencesSetInput } from '@pkg/schema';
 import { mapCoreErrors } from '../../trpc/errors.js';
 import { protectedProcedure, router } from '../../trpc/init.js';
-import { pushErrorFamily } from './push-errors.js';
+import { pushErrorFamily } from '../shared-error-families.js';
 
 /** Each signed-in person's own muted Push Kinds; a mute only stops pushes, never the feeds or badges. */
 export const pushPreferencesRouter = router({

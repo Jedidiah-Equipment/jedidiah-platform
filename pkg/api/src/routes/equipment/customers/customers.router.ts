@@ -18,8 +18,9 @@ import {
   CustomerUpdateInput,
 } from '@pkg/schema/equipment';
 import { z } from 'zod';
+import { mapCoreErrors } from '../../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../../trpc/init.js';
-import { mapCustomerErrors } from './customer-error-mapping.js';
+import { customerErrorFamily } from '../equipment-error-families.js';
 
 export const customersRouter = router({
   findPossibleMatches: authorizedProcedure(['equipment_customer:create', 'equipment_quote:create'])
@@ -33,35 +34,38 @@ export const customersRouter = router({
 
   get: authorizedProcedure('equipment_customer:read')
     .input(z.object({ id: UUID }))
-    .query(({ ctx, input }) => mapCustomerErrors(() => getCustomer({ db: ctx.db, id: input.id }))),
+    .query(({ ctx, input }) => mapCoreErrors(() => getCustomer({ db: ctx.db, id: input.id }), customerErrorFamily)),
 
   create: authorizedProcedure('equipment_customer:create')
     .input(CustomerCreateInput)
     .mutation(({ ctx, input }) =>
-      mapCustomerErrors(() => createCustomer({ db: ctx.db, input, actorUserId: ctx.session.user.id })),
+      mapCoreErrors(() => createCustomer({ db: ctx.db, input, actorUserId: ctx.session.user.id }), customerErrorFamily),
     ),
 
   update: authorizedProcedure('equipment_customer:update')
     .input(CustomerUpdateInput)
     .mutation(({ ctx, input }) =>
-      mapCustomerErrors(() => updateCustomer({ db: ctx.db, input, actorUserId: ctx.session.user.id })),
+      mapCoreErrors(() => updateCustomer({ db: ctx.db, input, actorUserId: ctx.session.user.id }), customerErrorFamily),
     ),
 
   mergePreview: authorizedProcedure('equipment_customer:merge')
     .input(z.object({ sourceId: UUID }))
     .query(({ ctx, input }) =>
-      mapCustomerErrors(() => getCustomerMergePreview({ db: ctx.db, sourceId: input.sourceId })),
+      mapCoreErrors(() => getCustomerMergePreview({ db: ctx.db, sourceId: input.sourceId }), customerErrorFamily),
     ),
 
   merge: authorizedProcedure('equipment_customer:merge')
     .input(CustomerMergeInput)
     .mutation(({ ctx, input }) =>
-      mapCustomerErrors(() => mergeCustomer({ db: ctx.db, input, actorUserId: ctx.session.user.id })),
+      mapCoreErrors(() => mergeCustomer({ db: ctx.db, input, actorUserId: ctx.session.user.id }), customerErrorFamily),
     ),
 
   remove: authorizedProcedure('equipment_customer:remove')
     .input(z.object({ id: UUID }))
     .mutation(({ ctx, input }) =>
-      mapCustomerErrors(() => removeCustomer({ db: ctx.db, id: input.id, actorUserId: ctx.session.user.id })),
+      mapCoreErrors(
+        () => removeCustomer({ db: ctx.db, id: input.id, actorUserId: ctx.session.user.id }),
+        customerErrorFamily,
+      ),
     ),
 });

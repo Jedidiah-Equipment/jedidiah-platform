@@ -1,9 +1,10 @@
-import { type ChangelogCoreError, getUnseenChangelogs, isChangelogCoreError, markChangelogSeen } from '@pkg/core';
+import { getUnseenChangelogs, markChangelogSeen } from '@pkg/core';
 import { Business, DateIso } from '@pkg/schema';
 import { z } from 'zod';
 
-import { type CoreErrorMapping, mapKnownCoreError } from '../../trpc/errors.js';
+import { mapCoreErrors } from '../../trpc/errors.js';
 import { protectedProcedure, router } from '../../trpc/init.js';
+import { changelogErrorFamily } from '../shared-error-families.js';
 
 // Both reads take the business the caller is standing in as input, since one shared router serves both modes.
 const changelogProcedure = protectedProcedure.input(z.object({ business: Business }));
@@ -20,32 +21,16 @@ export const changelogRouter = router({
     }),
   ),
   markSeen: changelogProcedure.input(z.object({ releasedAt: DateIso })).mutation(({ ctx, input }) =>
-    mapChangelogErrors(() =>
-      markChangelogSeen({
-        business: input.business,
-        changelogs: ctx.changelogLoader(),
-        db: ctx.db,
-        releasedAt: new Date(input.releasedAt),
-        userId: ctx.session.user.id,
-      }),
+    mapCoreErrors(
+      () =>
+        markChangelogSeen({
+          business: input.business,
+          changelogs: ctx.changelogLoader(),
+          db: ctx.db,
+          releasedAt: new Date(input.releasedAt),
+          userId: ctx.session.user.id,
+        }),
+      changelogErrorFamily,
     ),
   ),
 });
-
-async function mapChangelogErrors<T>(action: () => Promise<T>): Promise<T> {
-  return mapKnownCoreError(action, isChangelogCoreError, mapChangelogCoreError);
-}
-
-function mapChangelogCoreError(error: ChangelogCoreError): CoreErrorMapping<ChangelogCoreError['code']> {
-  return changelogErrorMappings[error.code];
-}
-
-const changelogErrorMappings = {
-  'changelog.unknown_release': {
-    appCode: 'changelog.unknown_release',
-    code: 'BAD_REQUEST',
-    message: 'That release could not be found.',
-  },
-} satisfies {
-  [TCode in ChangelogCoreError['code']]: CoreErrorMapping<TCode>;
-};

@@ -1,30 +1,29 @@
-import { FileNotFoundError, type StoredObject } from '@pkg/core';
+import type { StoredObject } from '@pkg/core';
 import type { FilePolicy } from '@pkg/domain';
 import type { AppPermission } from '@pkg/schema';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 
 import {
-  RouteHttpError,
+  mapCoreErrorToRoute,
   requirePermission,
   requireRouteAuth,
   sendUploadHttpError,
   streamObjectBody,
 } from '@/routes/http-route-helpers.js';
-
-// Re-exported so an entity's route config can build its owner-error mapping from one import.
-export { RouteHttpError } from '@/routes/http-route-helpers.js';
+import { fileErrorFamily } from '@/routes/shared-error-families.js';
+import type { CoreErrorFamily } from '@/trpc/errors.js';
 
 // Describes one entity's replace-in-place file routes. The registrar owns the shared transport
 // concerns (auth, permission gating, multipart read, streaming, error mapping); the config supplies the
-// entity-specific paths, permissions, core service calls, and how to map its own owner errors (e.g. a
+// entity-specific paths, permissions, core service calls, and the error families its owner raises (e.g. a
 // missing Product). Each config parses the raw route params itself (it owns its param shape); a parse
 // failure surfaces as a 400 through the shared mapper. Reuse for any entity that stores uploaded files
 // in private object storage.
 export type EntityFileRouteConfig = {
   downloadPath: string;
-  // Maps an owner error raised by the binding (e.g. ProductNotFoundError) to a route response, or returns
-  // undefined to let it propagate. Keeps entity-specific error knowledge out of this generic registrar.
-  mapOwnerError: (error: unknown) => RouteHttpError | undefined;
+  // The families an owner error raised by the binding (e.g. a missing Product) belongs to, mapped like the
+  // owner's tRPC router maps them. Keeps entity-specific error knowledge out of this generic registrar.
+  ownerErrorFamilies: CoreErrorFamily[];
   noFileMessage: string;
   // Its cap is applied to the upload stream, so an oversized file is refused before it is buffered.
   policy: FilePolicy;
@@ -88,18 +87,9 @@ function registerEntityFileConfig(app: FastifyInstance, config: EntityFileRouteC
 }
 
 function sendFileHttpError(reply: FastifyReply, error: unknown, config: EntityFileRouteConfig): void {
-  sendUploadHttpError(reply, toFileRouteError(error, config) ?? error, {
+  sendUploadHttpError(reply, mapCoreErrorToRoute(error, fileErrorFamily, ...config.ownerErrorFamilies), {
     policy: config.policy,
     fallbackMessage: 'File request failed.',
     invalidRequestMessage: 'Invalid file request.',
   });
-}
-
-// Maps the generic file error this layer owns, then defers owner-not-found and the like to the config.
-function toFileRouteError(error: unknown, config: EntityFileRouteConfig): RouteHttpError | undefined {
-  if (error instanceof FileNotFoundError) {
-    return new RouteHttpError({ appCode: error.code, message: 'File not found.', statusCode: 404 });
-  }
-
-  return config.mapOwnerError(error);
 }

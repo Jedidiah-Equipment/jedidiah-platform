@@ -1,162 +1,80 @@
 import {
-  type DocumentCoreError,
   deleteJobPurchaseOrder,
   deleteProductDocument,
   getProductDocuments,
   getQuoteDocuments,
-  isDocumentCoreError,
-  isJobCoreError,
-  isProductCoreError,
-  isQuoteCoreError,
-  type JobCoreError,
-  type ProductCoreError,
-  type QuoteCoreError,
 } from '@pkg/core/equipment';
 import {
   DocumentListByProductInput,
   DocumentListByQuoteInput,
-  type DocumentOwnerType,
   JobDocumentInput,
   ProductDocumentInput,
 } from '@pkg/schema/equipment';
 
-import { assertNever, type CoreErrorMapping, mapKnownCoreError } from '../../../trpc/errors.js';
+import { mapCoreErrors } from '../../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../../trpc/init.js';
+import {
+  documentErrorFamily,
+  jobErrorFamily,
+  productErrorFamily,
+  quoteErrorFamily,
+} from '../equipment-error-families.js';
 
 export const documentsRouter = router({
   listByProduct: authorizedProcedure('equipment_product:read')
     .input(DocumentListByProductInput)
     .query(({ ctx, input }) =>
-      mapDocumentErrors(() => getProductDocuments({ db: ctx.db, productId: input.productId })),
+      mapCoreErrors(
+        () => getProductDocuments({ db: ctx.db, productId: input.productId }),
+        documentErrorFamily,
+        jobErrorFamily,
+        productErrorFamily,
+        quoteErrorFamily,
+      ),
     ),
   listByQuote: authorizedProcedure('equipment_quote:read')
     .input(DocumentListByQuoteInput)
-    .query(({ ctx, input }) => mapDocumentErrors(() => getQuoteDocuments({ db: ctx.db, quoteId: input.quoteId }))),
+    .query(({ ctx, input }) =>
+      mapCoreErrors(
+        () => getQuoteDocuments({ db: ctx.db, quoteId: input.quoteId }),
+        documentErrorFamily,
+        jobErrorFamily,
+        productErrorFamily,
+        quoteErrorFamily,
+      ),
+    ),
   deleteByProduct: authorizedProcedure('equipment_product:update')
     .input(ProductDocumentInput)
     .mutation(({ ctx, input }) =>
-      mapDocumentErrors(() =>
-        deleteProductDocument({
-          actorUserId: ctx.session.user.id,
-          db: ctx.db,
-          documentId: input.documentId,
-          productId: input.productId,
-        }),
+      mapCoreErrors(
+        () =>
+          deleteProductDocument({
+            actorUserId: ctx.session.user.id,
+            db: ctx.db,
+            documentId: input.documentId,
+            productId: input.productId,
+          }),
+        documentErrorFamily,
+        jobErrorFamily,
+        productErrorFamily,
+        quoteErrorFamily,
       ),
     ),
   deleteByJob: authorizedProcedure('equipment_job:update')
     .input(JobDocumentInput)
     .mutation(({ ctx, input }) =>
-      mapDocumentErrors(() =>
-        deleteJobPurchaseOrder({
-          actorUserId: ctx.session.user.id,
-          db: ctx.db,
-          documentId: input.documentId,
-          jobId: input.jobId,
-        }),
+      mapCoreErrors(
+        () =>
+          deleteJobPurchaseOrder({
+            actorUserId: ctx.session.user.id,
+            db: ctx.db,
+            documentId: input.documentId,
+            jobId: input.jobId,
+          }),
+        documentErrorFamily,
+        jobErrorFamily,
+        productErrorFamily,
+        quoteErrorFamily,
       ),
     ),
 });
-
-export async function mapDocumentErrors<T>(action: () => Promise<T>): Promise<T> {
-  return mapKnownCoreError(
-    () =>
-      mapKnownCoreError(
-        () =>
-          mapKnownCoreError(
-            () => mapKnownCoreError(action, isProductCoreError, mapDocumentProductCoreError),
-            isQuoteCoreError,
-            mapDocumentQuoteCoreError,
-          ),
-        isJobCoreError,
-        mapDocumentJobCoreError,
-      ),
-    isDocumentCoreError,
-    mapDocumentCoreError,
-  );
-}
-
-function mapDocumentJobCoreError(error: JobCoreError): CoreErrorMapping<JobCoreError['code']> {
-  if (error.code === 'job.not_found') {
-    return {
-      appCode: error.code,
-      code: 'NOT_FOUND',
-      message: 'Job not found.',
-    };
-  }
-
-  return {
-    appCode: error.code,
-    code: 'BAD_REQUEST',
-    message: error.message,
-  };
-}
-
-/** What an owner is called in a message to a person, as against its `owner_type` column value. */
-const DOCUMENT_OWNER_NOUNS = {
-  job: 'Job',
-  product: 'Product',
-  purchase_order: 'Purchase Order',
-  quote: 'Quote',
-} as const satisfies Record<DocumentOwnerType, string>;
-
-export function mapDocumentCoreError(error: DocumentCoreError): CoreErrorMapping<DocumentCoreError['code']> {
-  switch (error.code) {
-    case 'document.delete_not_allowed':
-    case 'document.content_type_not_allowed':
-    case 'document.file_too_large':
-    case 'document.metadata_invalid':
-    case 'document.storage_key_conflict':
-      return {
-        appCode: error.code,
-        code: 'BAD_REQUEST',
-        message: error.message,
-      };
-    case 'document.duplicate_filename':
-      return {
-        appCode: error.code,
-        code: 'CONFLICT',
-        message: `A document with this filename already exists for this ${DOCUMENT_OWNER_NOUNS[error.metadata.ownerType]}.`,
-      };
-    case 'document.not_found':
-      return {
-        appCode: error.code,
-        code: 'NOT_FOUND',
-        message: 'Document not found.',
-      };
-    default:
-      return assertNever(error);
-  }
-}
-
-function mapDocumentProductCoreError(error: ProductCoreError): CoreErrorMapping<ProductCoreError['code']> {
-  if (error.code === 'product.not_found') {
-    return {
-      appCode: error.code,
-      code: 'NOT_FOUND',
-      message: 'Product not found.',
-    };
-  }
-
-  return {
-    appCode: error.code,
-    code: 'BAD_REQUEST',
-    message: error.message,
-  };
-}
-
-function mapDocumentQuoteCoreError(error: QuoteCoreError): CoreErrorMapping<QuoteCoreError['code']> {
-  if (error.code === 'quote.not_found') {
-    return {
-      appCode: error.code,
-      code: 'NOT_FOUND',
-      message: 'Quote not found.',
-    };
-  }
-
-  return {
-    appCode: error.code,
-    code: 'BAD_REQUEST',
-    message: error.message,
-  };
-}

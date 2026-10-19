@@ -2,7 +2,9 @@ import { getContractingActivityView, listActivity, markContractingActivitySeen }
 import { activityPermissions } from '@pkg/domain/contracting';
 import { ActivitySeenInput } from '@pkg/schema';
 import { ActivityListInput } from '@pkg/schema/contracting';
+import { mapCoreErrors } from '../../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../../trpc/init.js';
+import { activityErrorFamily } from '../contracting-error-families.js';
 
 /**
  * Contracting Activity. The gate is the one rule the phone tab, the web route and the nav ask: a Jobs reach or a
@@ -11,7 +13,9 @@ import { authorizedProcedure, router } from '../../../trpc/init.js';
 export const contractingActivityRouter = router({
   list: authorizedProcedure(activityPermissions)
     .input(ActivityListInput)
-    .query(({ ctx, input }) => listActivity({ db: ctx.db, actor: ctx.access, input })),
+    .query(({ ctx, input }) =>
+      mapCoreErrors(() => listActivity({ db: ctx.db, actor: ctx.access, input }), activityErrorFamily),
+    ),
   getLastSeen: authorizedProcedure(activityPermissions).query(({ ctx }) =>
     getContractingActivityView({ db: ctx.db, actor: ctx.access }),
   ),

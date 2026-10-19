@@ -2,7 +2,9 @@
 
 - Keep routers thin: auth, input parsing, transport mapping, and calls into `@pkg/core`.
 - Better Auth endpoints under `/api/auth/*` own auth mutations; do not reimplement them in tRPC.
-- Map expected core errors at the feature boundary with public messages and stable `appCode`s. Preserve the core error as `cause`.
+- Map expected core errors at the feature boundary through `defineCoreErrorFamily` in the business's `*-error-families.ts`,
+  applied with `mapCoreErrors` / `mapCoreErrorToRoute`; never a per-router mapper. Public messages and stable `appCode`s;
+  preserve the core error as `cause`.
 - List inputs use `limit: 0` for unpaged picker reads instead of exceeding shared caps.
 - `Auth` is injected, never imported: HTTP routes read `request.server.auth`, tRPC reads `ctx.auth`, tests get it
   from the tester scope. `app-auth.ts` is root wiring; shared modules must not import it.

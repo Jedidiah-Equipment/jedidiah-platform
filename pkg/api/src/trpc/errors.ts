@@ -18,8 +18,8 @@ type AppCodedTRPCError = TRPCError & {
   publicMetadata?: unknown;
 };
 
-export type CoreErrorMapping<TAppCode extends AppCode = AppCode> = {
-  appCode: TAppCode;
+type CoreErrorMapping = {
+  appCode: AppCode;
   code: TrpcErrorCode;
   message: string;
   metadata?: unknown;
@@ -36,27 +36,6 @@ export function createPublicTRPCError(options: PublicTRPCErrorOptions): TRPCErro
   error.publicMetadata = options.metadata;
 
   return error;
-}
-
-export async function mapKnownCoreError<T, TCoreError extends Error>(
-  action: () => Promise<T>,
-  isKnownError: (error: unknown) => error is TCoreError,
-  mapError: (error: TCoreError) => CoreErrorMapping,
-): Promise<T> {
-  try {
-    return await action();
-  } catch (error) {
-    if (isKnownError(error)) {
-      const mapping = mapError(error);
-
-      throw createPublicTRPCError({
-        ...mapping,
-        cause: error,
-      });
-    }
-
-    throw error;
-  }
 }
 
 /**
@@ -81,8 +60,11 @@ export function defineCoreErrorFamily<TCoreError extends Error & { code: AppCode
   /** Every code in the family, exhaustively — the `Record` is what makes a missed one a type error. */
   codes: Readonly<Record<TCoreError['code'], TrpcErrorCode>>;
   is: (error: unknown) => error is TCoreError;
-  /** Public message per code. Omitted codes surface the core error's own message. */
-  messages?: Readonly<Partial<Record<TCoreError['code'], string>>>;
+  /**
+   * Public message per code, or a function of the error when the words depend on what failed.
+   * Omitted codes surface the core error's own message.
+   */
+  messages?: { readonly [TCode in TCoreError['code']]?: string | ((error: TCoreError & { code: TCode }) => string) };
   /** Explicitly selected, public-safe context for a caller that can act on the failed item. */
   metadata?: (error: TCoreError) => unknown;
 }): CoreErrorFamily {
@@ -90,7 +72,9 @@ export function defineCoreErrorFamily<TCoreError extends Error & { code: AppCode
   // exhaustively against the family's codes by the parameter types, but `AppCode` is a template
   // union, so the runtime lookup needs the plain-string view of the same two objects.
   const codeByAppCode = codes as Readonly<Record<string, TrpcErrorCode | undefined>>;
-  const messageByAppCode = (messages ?? {}) as Readonly<Record<string, string | undefined>>;
+  const messageByAppCode = (messages ?? {}) as Readonly<
+    Record<string, string | ((error: TCoreError) => string) | undefined>
+  >;
 
   return {
     match: (error) => {
@@ -102,10 +86,12 @@ export function defineCoreErrorFamily<TCoreError extends Error & { code: AppCode
       // mapped failure, so `serializeError` still logs what actually went wrong.
       if (!code) throw new Error(`Unmapped core error code: ${error.code}`, { cause: error });
 
+      const message = messageByAppCode[error.code];
+
       return {
         appCode: error.code,
         code,
-        message: messageByAppCode[error.code] ?? error.message,
+        message: (typeof message === 'function' ? message(error) : message) ?? error.message,
         ...(metadata ? { metadata: metadata(error) } : {}),
       };
     },
@@ -176,8 +162,4 @@ export function serializeError(error: unknown, depth = 0): unknown {
     stack: error.stack,
     ...(error.cause === undefined ? {} : { cause: serializeError(error.cause, depth + 1) }),
   };
-}
-
-export function assertNever(value: never): never {
-  throw new Error(`Unhandled mapping: ${String(value)}`);
 }

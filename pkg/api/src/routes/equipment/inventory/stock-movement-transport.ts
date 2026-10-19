@@ -8,7 +8,7 @@ import { createAuthTRPCError } from '../../../trpc/errors.js';
 
 // The ledger's transport rules, shared by every router that writes a movement — the inventory
 // surface and the Purchase Order receiving one — so a movement cannot mean two different things
-// depending on which endpoint posted it. The error side lives in `inventory-error-families.ts`.
+// depending on which endpoint posted it. The error side lives in `equipment-error-families.ts`.
 
 export function projectMovement(movement: StockMovement, access: InventoryCostAccess) {
   return projectInventoryCostFields({ access, costFields: StockMovementCostFields, output: movement });

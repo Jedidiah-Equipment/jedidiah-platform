@@ -1,4 +1,4 @@
-import { isPartCoreError, renderPartLabel, renderPartLabelBatch } from '@pkg/core/equipment';
+import { renderPartLabel, renderPartLabelBatch } from '@pkg/core/equipment';
 import type { Db } from '@pkg/db';
 import { renderPartLabelsPdf } from '@pkg/pdf/equipment';
 import { UUID } from '@pkg/schema';
@@ -13,11 +13,12 @@ import { z } from 'zod';
 
 import {
   createContentDisposition,
-  RouteHttpError,
+  mapCoreErrorToRoute,
   requireAnyPermission,
   requireRouteAuth,
   sendHttpError,
 } from '@/routes/http-route-helpers.js';
+import { partCoreErrorFamily } from '../equipment-error-families.js';
 
 const PartLabelParams = z.object({ partId: UUID });
 
@@ -36,7 +37,7 @@ export async function registerPartLabelHttpRoutes(
     try {
       requirePartLabelAccess(auth);
       const selection = readSelection();
-      const result = await mapPartLabelErrors(() => renderPartLabelBatch({ db, pdfRenderer, selection }));
+      const result = await renderPartLabelBatch({ db, pdfRenderer, selection });
       return sendPdf(reply, result);
     } catch (error) {
       sendPartLabelHttpError(reply, error);
@@ -58,7 +59,7 @@ export async function registerPartLabelHttpRoutes(
     try {
       requirePartLabelAccess(auth);
       const { partId } = PartLabelParams.parse(request.params);
-      const result = await mapPartLabelErrors(() => renderPartLabel({ db, id: partId, pdfRenderer }));
+      const result = await renderPartLabel({ db, id: partId, pdfRenderer });
       return sendPdf(reply, result);
     } catch (error) {
       sendPartLabelHttpError(reply, error);
@@ -83,29 +84,6 @@ function requirePartLabelAccess(auth: Parameters<typeof requireAnyPermission>[0]
   );
 }
 
-async function mapPartLabelErrors<T>(action: () => Promise<T>): Promise<T> {
-  try {
-    return await action();
-  } catch (error) {
-    if (isPartCoreError(error)) {
-      if (error.code === 'part.not_found') {
-        throw new RouteHttpError({ appCode: error.code, message: 'Part not found.', statusCode: 404 });
-      }
-      if (error.code === 'part.import_batch_not_found') {
-        throw new RouteHttpError({ appCode: error.code, message: 'Part import not found.', statusCode: 404 });
-      }
-      if (error.code === 'part.label_selection_empty') {
-        throw new RouteHttpError({
-          appCode: error.code,
-          message: 'No Parts match this label selection.',
-          statusCode: 404,
-        });
-      }
-    }
-    throw error;
-  }
-}
-
 function sendPdf(reply: FastifyReply, result: { bytes: Uint8Array; filename: string }) {
   reply.header('Content-Type', 'application/pdf');
   reply.header('Content-Length', result.bytes.byteLength);
@@ -114,7 +92,7 @@ function sendPdf(reply: FastifyReply, result: { bytes: Uint8Array; filename: str
 }
 
 function sendPartLabelHttpError(reply: FastifyReply, error: unknown): void {
-  sendHttpError(reply, error, {
+  sendHttpError(reply, mapCoreErrorToRoute(error, partCoreErrorFamily), {
     fallbackMessage: 'Part label request failed.',
     invalidRequestMessage: 'Invalid Part label request.',
   });

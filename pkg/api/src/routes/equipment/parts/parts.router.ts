@@ -39,7 +39,7 @@ import { z } from 'zod';
 import { projectInventoryCostFields } from '../../../equipment/trpc/inventory-cost-projection.js';
 import { mapCoreErrors } from '../../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../../trpc/init.js';
-import { partBomErrorFamily, partCoreErrorFamily } from './part-error-families.js';
+import { partBomErrorFamily, partCoreErrorFamily } from '../equipment-error-families.js';
 import { partLabelReaders } from './part-label-http.route.js';
 
 export const partsRouter = router({

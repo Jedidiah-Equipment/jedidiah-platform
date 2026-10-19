@@ -1,10 +1,9 @@
 import { formatHours, getFirstName } from '@pkg/domain';
 import {
-  actionSheet,
   assignmentStateColorClassNames,
-  assignmentStateDisplayOrder,
   assignmentStateLabels,
-  hasJobCard,
+  type JobSheetStint,
+  jobSheet,
 } from '@pkg/domain/contracting';
 import type { AssignmentDetail, JobCardVariant } from '@pkg/schema/contracting';
 import { IconPlayerPlay, IconPlayerStop, IconPlus } from '@tabler/icons-react-native';
@@ -34,11 +33,11 @@ export default function JobScreen() {
   const jobQuery = useJob(jobId);
   const [tab, setTab] = useRecordTab();
   const job = jobQuery.data;
-  const sheet = job ? actionSheet(job.actions) : null;
-  const finished = job ? hasJobCard(job.status) : false;
+  const sheet = job ? jobSheet(job) : null;
+  const finished = sheet?.finished ?? false;
   const canAdd = sheet?.can('assign') ?? false;
   const canReport = sheet?.can('reportBreakdown') ?? false;
-  const canShareJobCard = (job?.seesMoney ?? false) && finished;
+  const canShareJobCard = sheet?.showsMoney ?? false;
   // Someone the field Job gate keeps out (a workshop participant opening a note) came from Activity, so returns there.
   const parent = jobQuery.canRead
     ? { label: 'Jobs', href: '/contracting/jobs' as const }
@@ -54,12 +53,7 @@ export default function JobScreen() {
     if (job)
       void share.run(() => shareDocument(jobCardShareAction(job.jobNumber, variant)), 'Unable to share the Job Card.');
   };
-  // A copy: sorting the query's own array would reorder the cached Job.
-  const stints = [...(job?.assignments ?? [])].sort(
-    (left, right) =>
-      assignmentStateDisplayOrder[left.state] - assignmentStateDisplayOrder[right.state] ||
-      left.createdAt.localeCompare(right.createdAt),
-  );
+  const stints = sheet?.stints ?? [];
 
   const openCapture = (stint: AssignmentDetail, role: 'arrival' | 'departure') =>
     router.push({
@@ -146,22 +140,22 @@ export default function JobScreen() {
             </View>
           ) : null}
 
-          {stints.map((stint) => (
+          {stints.map((entry) => (
             <StintCard
               canAdd={canAdd}
               canReport={canReport}
-              key={stint.id}
-              onReport={() => reportProblem(stint)}
-              stint={stint}
-              onStart={() => openCapture(stint, 'arrival')}
-              onStop={() => openCapture(stint, 'departure')}
+              entry={entry}
+              key={entry.stint.id}
+              onReport={() => reportProblem(entry.stint)}
+              onStart={() => openCapture(entry.stint, 'arrival')}
+              onStop={() => openCapture(entry.stint, 'departure')}
               onReadd={() =>
                 router.push({
                   pathname: '/contracting/jobs/[jobId]/add-machine',
                   params: {
                     jobId,
-                    machineId: stint.machineId,
-                    implementId: stint.implementId ?? '',
+                    machineId: entry.stint.machineId,
+                    implementId: entry.stint.implementId ?? '',
                   },
                 } as unknown as Href)
               }
@@ -189,7 +183,7 @@ export default function JobScreen() {
 }
 
 function StintCard({
-  stint,
+  entry: { stint, sheet: stintSheet },
   canAdd,
   canReport,
   onStart,
@@ -197,7 +191,7 @@ function StintCard({
   onReadd,
   onReport,
 }: {
-  stint: AssignmentDetail;
+  entry: JobSheetStint;
   canAdd: boolean;
   canReport: boolean;
   onStart: () => void;
@@ -205,7 +199,6 @@ function StintCard({
   onReadd: () => void;
   onReport: () => void;
 }) {
-  const stintSheet = actionSheet(stint.actions);
   return (
     <View className="gap-2 rounded-xl border border-border bg-surface p-4">
       <View className="flex-row items-center justify-between gap-2">

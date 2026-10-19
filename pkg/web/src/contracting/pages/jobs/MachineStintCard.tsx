@@ -1,6 +1,5 @@
 import { formatDate, formatHours, formatNumber, getFirstName } from '@pkg/domain';
 import {
-  actionSheet,
   assignmentAttentionKindLabels,
   assignmentAttentionKindLevels,
   assignmentAttentionLevelColorClassNames,
@@ -13,11 +12,12 @@ import {
   breakdownUrgencyColorClassNames,
   breakdownUrgencyLabels,
   isOverGapWindow,
+  type JobSheet,
+  type JobSheetStint,
   shownReadingAttention,
 } from '@pkg/domain/contracting';
 import type {
   Assignment,
-  AssignmentDetail,
   BreakdownSummary,
   BreakdownUrgency,
   JobReading,
@@ -64,7 +64,7 @@ import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
 import { AddMeasureDialog } from './AddMeasureDialog.js';
 import { AssignmentEditDialog } from './AssignmentEditDialog.js';
-import type { JobSheet, MachineDialog } from './types.js';
+import type { MachineDialog } from './types.js';
 import { useJobWrite } from './use-job-write.js';
 
 type Opens = { onOpen: (dialog: MachineDialog) => void };
@@ -171,14 +171,13 @@ function GapDetail({
 
 /** The Hour Gap between the Machine's previous departure and this arrival: flagged, resolved, or counted as travel. */
 function GapRow({
-  stint,
+  entry: { stint, sheet },
   gapFlagThresholdHours,
   onOpen,
-}: { stint: AssignmentDetail; gapFlagThresholdHours: number } & Opens) {
+}: { entry: JobSheetStint; gapFlagThresholdHours: number } & Opens) {
   const gapHours = stint.gapHours;
   if (gapHours === null || gapHours === 0) return null;
-  const verdict = actionSheet(stint.actions).verdict('resolveGap');
-  const why = verdict.allowed ? null : verdict.message;
+  const why = sheet.refusal('resolveGap');
   const open = () => onOpen({ kind: 'gap', stintId: stint.id });
   const edit = why ? null : <IconAction icon={IconPencil} label="Edit gap split" onClick={open} />;
   const hours = formatHours(gapHours);
@@ -332,15 +331,13 @@ function AddMenu({
 }
 
 export function MachineStintCard({
-  stint,
-  stintNumber,
+  entry,
   sheet,
   breakdowns,
   gapFlagThresholdHours,
   onOpen,
 }: {
-  stint: AssignmentDetail;
-  stintNumber: number;
+  entry: JobSheetStint;
   sheet: JobSheet;
   /** This stint's Breakdowns on the Job, oldest first. */
   breakdowns: readonly BreakdownSummary[];
@@ -350,7 +347,7 @@ export function MachineStintCard({
   const trpc = useTRPC();
   const [measuring, setMeasuring] = useState(false);
   const readsMachines = useCan('contracting_machine:read').can;
-  const stintSheet = actionSheet(stint.actions);
+  const { stint, number, sheet: stintSheet } = entry;
   const canMeasure = stintSheet.can('editMeasures');
   const canReport = sheet.can('reportBreakdown');
   const phases = breakdownPhases(stint, breakdowns);
@@ -366,8 +363,7 @@ export function MachineStintCard({
   const planned = stint.state === 'planned';
   const onSite = stint.state === 'on-site';
   const lookLevel = assignmentNeedsALookLevel(stint);
-  const stintLabel =
-    stintNumber === 1 ? 'First stint' : stintNumber === 2 ? 'Second stint' : `Stint ${formatNumber(stintNumber)}`;
+  const stintLabel = number === 1 ? 'First stint' : number === 2 ? 'Second stint' : `Stint ${formatNumber(number)}`;
   return (
     <Card
       className={cn(
@@ -431,7 +427,7 @@ export function MachineStintCard({
             title="Planned"
             tone="done"
           />
-          <GapRow onOpen={onOpen} stint={stint} gapFlagThresholdHours={gapFlagThresholdHours} />
+          <GapRow entry={entry} gapFlagThresholdHours={gapFlagThresholdHours} onOpen={onOpen} />
           {breakdownRows(phases.beforeArrival)}
           <TimelineRow
             actions={

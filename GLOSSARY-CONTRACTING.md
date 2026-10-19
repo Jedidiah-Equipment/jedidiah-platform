@@ -53,6 +53,13 @@ dispute trail of readings and amounts that shows **one total hours figure per li
 work/travel split**. Reading values print; meter photos stay in the app. Diesel is shown
 VAT-exempt. Its ex-VAT total is a works summary — a Job Card is never an invoice.
 
+**Job Sheet** is the signed-in person's reading of one Job on a screen: the served Job Actions and Assignment
+Actions, the Machine Assignments in screen order — what is on site, then what is coming, then what has left, each
+tier grouped per Machine by first arrival — each with its **stint number** (the Machine's nth stint on this Job),
+and which parts of the page show. It is a reading, never a record, and never the Job Card: the Job Card groups by
+Machine with no state tier because it is the document. Web and phone read the same sheet; the phone shows less of it.
+_Avoid_: job view, view model, Equipment's JobSheet form
+
 **Note Thread** is a record's append-only conversation: a Job has one and a Breakdown has one, and each
 entry is a Job Note or a Breakdown Note — author, text (typed or from a Voice Note), time. A thread is read
 from its record's Activity and from the cross-Job Activity feed, and a new entry pushes the thread's

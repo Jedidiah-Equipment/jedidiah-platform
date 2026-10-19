@@ -12,6 +12,7 @@ export * from './fleet/index.js';
 export * from './hours.js';
 export * from './job-actions.js';
 export * from './job-card.js';
+export * from './job-sheet.js';
 export * from './job-transitions.js';
 export * from './jobs.js';
 export * from './mechanic-performance.js';

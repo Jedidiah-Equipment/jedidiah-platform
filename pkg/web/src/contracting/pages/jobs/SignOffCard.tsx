@@ -1,4 +1,5 @@
 import { formatDate, formatNumber } from '@pkg/domain';
+import type { JobSheet } from '@pkg/domain/contracting';
 import { canComplete, completionGateReasons, groupStints, suggestJobDates } from '@pkg/domain/contracting';
 import { DateOnlyIso } from '@pkg/schema';
 import { JobCompleteInput, type JobDetail, JobPatchInput, Litres } from '@pkg/schema/contracting';
@@ -26,7 +27,6 @@ import { useResetOnOpen } from '@/contracting/hooks/use-contracting-write.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { getApiErrorAppCode } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
-import type { JobSheet } from './types.js';
 import { useJobWrite } from './use-job-write.js';
 
 const signOffFieldDefaults = { startDate: '', endDate: '', dieselLitres: 0, notes: '' };

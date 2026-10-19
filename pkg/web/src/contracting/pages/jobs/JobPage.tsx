@@ -1,3 +1,4 @@
+import { type JobSheet, jobSheet } from '@pkg/domain/contracting';
 import { requiredTrimmedText } from '@pkg/schema';
 import type { JobDetail } from '@pkg/schema/contracting';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -25,7 +26,7 @@ import { JobStatusBadge } from './JobStatusBadge.js';
 import { MachinesCard } from './MachinesCard.js';
 import { PricingCard } from './PricingCard.js';
 import { SignOffCard } from './SignOffCard.js';
-import { JobCreateValues, type JobSheet, jobSheet, toJobCreateInput } from './types.js';
+import { JobCreateValues, toJobCreateInput } from './types.js';
 import { useJobWrite } from './use-job-write.js';
 
 export function JobPage({ code }: { code: string }) {
@@ -44,7 +45,7 @@ export function JobPage({ code }: { code: string }) {
       actions={
         query.data ? (
           <div className="flex items-center gap-2">
-            {sheet?.seesMoney ? <JobCardMenu job={query.data} /> : null}
+            {sheet?.showsMoney ? <JobCardMenu job={query.data} /> : null}
             <JobStatusBadge size="lg" status={query.data.status} />
           </div>
         ) : null

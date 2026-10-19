@@ -5,7 +5,7 @@ import { resolveInsertAtDatePlacement } from '@pkg/domain/equipment';
 import { DateOnlyIso, type UUID } from '@pkg/schema';
 import { and, asc, desc, eq, gt, gte, lt, sql } from 'drizzle-orm';
 
-import { JobBayNotFoundError, JobSlotBookingDeniedError, JobSlotNotFoundError } from './job-errors.js';
+import { JobError, jobBayNotFound, jobSlotNotFound } from './job-errors.js';
 import { loadBayWorkingCalendar } from './working-calendar-service.js';
 
 type JobBayRow = typeof jobBays.$inferSelect;
@@ -46,7 +46,7 @@ export async function lockBayQueue(
   const [bay] = await tx.select().from(jobBays).where(eq(jobBays.id, bayId)).for('update');
 
   if (!bay) {
-    throw new JobBayNotFoundError(bayId);
+    throw jobBayNotFound(bayId);
   }
 
   return createBayQueue(tx, bay, options.plantToday ?? getPlantDateNow());
@@ -56,7 +56,7 @@ export async function lockBayQueueBySlot(tx: DatabaseTransaction, slotId: UUID):
   const [slot] = await tx.select({ bayId: jobSlots.bayId }).from(jobSlots).where(eq(jobSlots.id, slotId));
 
   if (!slot) {
-    throw new JobSlotNotFoundError(slotId);
+    throw jobSlotNotFound(slotId);
   }
 
   return lockBayQueue(tx, slot.bayId);
@@ -224,7 +224,7 @@ function createBayQueue(tx: DatabaseTransaction, bay: JobBayRow, plantToday: Dat
 
 function assertBayAcceptsBookings(bay: JobBayRow): void {
   if (bay.disabledAt) {
-    throw new JobSlotBookingDeniedError('This Bay is disabled and cannot accept new bookings.');
+    throw new JobError('job.slot_booking_denied', 'This Bay is disabled and cannot accept new bookings.');
   }
 }
 
@@ -271,7 +271,7 @@ async function getQueueSlot(tx: DatabaseTransaction, bayId: UUID, slotId: UUID):
     .where(and(eq(jobSlots.id, slotId), eq(jobSlots.bayId, bayId)));
 
   if (!slot) {
-    throw new JobSlotNotFoundError(slotId);
+    throw jobSlotNotFound(slotId);
   }
 
   return slot;

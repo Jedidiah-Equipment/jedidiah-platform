@@ -6,7 +6,6 @@ import { describe, expect } from 'vitest';
 
 import { createTester } from '../../test/create-tester.js';
 import { bulkImportParts } from './part-bulk-service.js';
-import { PartImportBatchNotFoundError, PartLabelSelectionEmptyError } from './part-errors.js';
 import { getPartImportBatch, listPartImportBatches } from './part-import-batch-service.js';
 import { renderPartLabelBatch } from './part-label-service.js';
 import { mergePart } from './part-merge-service.js';
@@ -115,7 +114,7 @@ describe('Part Import Batches', () => {
         pdfRenderer: capturingRenderer([]),
         selection: { batchId: again.batchId, includeUpdated: false, selection: 'importBatch' },
       }),
-    ).rejects.toBeInstanceOf(PartLabelSelectionEmptyError);
+    ).rejects.toMatchObject({ code: 'part.label_selection_empty' });
   });
 
   test('keeps a batch whose every row was rejected', async ({ context }) => {
@@ -200,16 +199,16 @@ describe('Part Import Batches', () => {
   });
 
   test('refuses a batch that does not exist', async ({ context }) => {
-    await expect(getPartImportBatch({ batchId: MISSING_BATCH_ID, db: context.db })).rejects.toBeInstanceOf(
-      PartImportBatchNotFoundError,
-    );
+    await expect(getPartImportBatch({ batchId: MISSING_BATCH_ID, db: context.db })).rejects.toMatchObject({
+      code: 'part.import_batch_not_found',
+    });
     await expect(
       renderPartLabelBatch({
         db: context.db,
         pdfRenderer: capturingRenderer([]),
         selection: { batchId: MISSING_BATCH_ID, includeUpdated: false, selection: 'importBatch' },
       }),
-    ).rejects.toBeInstanceOf(PartImportBatchNotFoundError);
+    ).rejects.toMatchObject({ code: 'part.import_batch_not_found' });
   });
 });
 

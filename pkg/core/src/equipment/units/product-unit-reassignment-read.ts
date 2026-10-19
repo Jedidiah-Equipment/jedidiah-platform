@@ -16,9 +16,9 @@ import {
   type ProductUnitReassignSpecDiff,
 } from '@pkg/schema/equipment';
 import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
-import { QuoteNotFoundError } from '../quotes/quote-errors.js';
+import { quoteNotFound } from '../quotes/quote-errors.js';
 import { loadAsBuiltSpec } from './product-unit-as-built.js';
-import { ProductUnitNotFoundError } from './product-unit-errors.js';
+import { productUnitNotFound } from './product-unit-errors.js';
 import {
   assertQuoteCanReceive,
   isReworkJob,
@@ -75,7 +75,7 @@ export async function previewReassignment({
   const incoming = facts.find((candidate) => candidate.id === productUnitId);
 
   if (!incoming) {
-    throw new ProductUnitNotFoundError(productUnitId);
+    throw productUnitNotFound(productUnitId);
   }
 
   const displaced = currentUnitId
@@ -103,7 +103,7 @@ async function loadReceivingQuote(db: Db, quoteId: UUID): Promise<ReceivingQuote
     .where(eq(quotes.id, quoteId));
 
   if (!quote) {
-    throw new QuoteNotFoundError(quoteId);
+    throw quoteNotFound(quoteId);
   }
 
   assertQuoteCanReceive(quote);

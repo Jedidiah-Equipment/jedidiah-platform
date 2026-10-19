@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { InMemoryStorageAdapter } from '@pkg/core';
 import {
-  PurchaseOrderActionRefusedError,
+  isPurchaseOrderError,
   renderPurchaseOrderPreview,
   uploadCreditNote,
   uploadSupplierInvoice,
@@ -182,7 +182,8 @@ type Refusal = { action: PurchaseOrderActionName; reason: PurchaseOrderActionBlo
 
 /** The Purchase Order Action a write was refused under, if the order's own state refused it. */
 function refusalOf(error: unknown): Refusal | undefined {
-  if (error instanceof PurchaseOrderActionRefusedError) return { action: error.action, reason: error.reason };
+  if (isPurchaseOrderError(error) && error.refused)
+    return { action: error.refused.action, reason: error.refused.reason };
   if (error instanceof TRPCError) return getTRPCPublicMetadata(error) as Refusal | undefined;
   return undefined;
 }

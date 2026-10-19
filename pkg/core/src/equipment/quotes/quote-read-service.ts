@@ -38,11 +38,7 @@ import { listBayQueueAvailability } from '../jobs/job-read-service.js';
 import { listAssemblies } from '../products/product-assembly-service.js';
 import { listProductBays } from '../products/product-service.js';
 import { quoteEverPlacedAUnit } from '../units/product-unit-service.js';
-import {
-  QuoteInvalidReferenceError,
-  QuoteNotFoundError,
-  QuoteProductBayAvailabilityNotApplicableError,
-} from './quote-errors.js';
+import { QuoteError, quoteNotFound } from './quote-errors.js';
 import {
   mapPriorityQuote,
   mapQuoteDetail,
@@ -337,7 +333,7 @@ export async function getQuote({ db, id }: { db: Db | DatabaseTransaction; id: U
   });
 
   if (!row) {
-    throw new QuoteNotFoundError(id);
+    throw quoteNotFound(id);
   }
 
   const offering = narrowQuoteOffering(row);
@@ -434,13 +430,14 @@ export async function getQuoteProductBayAvailability({
 }): Promise<QuoteProductBayAvailabilityResult> {
   const quote = await getQuote({ db, id: input.quoteId });
   if (quote.kind === 'custom') {
-    throw new QuoteProductBayAvailabilityNotApplicableError(
+    throw new QuoteError(
+      'quote.product_bay_availability_not_applicable',
       'Product Bay availability is only available for Product Quotes.',
     );
   }
 
   if (!quote.productId || quote.product === null) {
-    throw new QuoteInvalidReferenceError('Quote product was not found.');
+    throw new QuoteError('quote.invalid_reference', 'Quote product was not found.');
   }
 
   const productBaysForQuote = (await listProductBays({ db, productId: quote.productId })).filter(

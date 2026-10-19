@@ -6,7 +6,7 @@ import type { PostReceiptInput, StockMovementPostResult } from '@pkg/schema/equi
 import { StockMovementPostResult as StockMovementPostResultSchema, unitClassFor } from '@pkg/schema/equipment';
 import { and, eq } from 'drizzle-orm';
 
-import { PurchaseOrderLineNotFoundError } from '../purchase-orders/purchase-order-errors.js';
+import { purchaseOrderLineNotFound } from '../purchase-orders/purchase-order-errors.js';
 import { openPurchaseOrder } from '../purchase-orders/purchase-order-gate.js';
 import { insertMovement, loadStockPart } from './ledger.js';
 import { resolveMovementActor } from './movement-actor.js';
@@ -83,7 +83,7 @@ async function loadPurchaseOrderLine(tx: DatabaseTransaction, purchaseOrderId: U
     })
     .from(purchaseOrderLines)
     .where(and(eq(purchaseOrderLines.purchaseOrderId, purchaseOrderId), eq(purchaseOrderLines.partId, partId)));
-  if (!line) throw new PurchaseOrderLineNotFoundError(purchaseOrderId, partId);
+  if (!line) throw purchaseOrderLineNotFound();
 
   return line;
 }

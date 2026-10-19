@@ -3,7 +3,7 @@ import {
   type BrochurePreviewResult,
   generateProductBrochureIfComplete,
   getProduct,
-  ProductNotFoundError,
+  isProductError,
 } from '@pkg/core/equipment';
 import { isBrochureReady } from '@pkg/domain/equipment';
 import { renderBrochurePdf } from '@pkg/pdf/equipment';
@@ -74,7 +74,7 @@ export async function serveProductBrochure(productId: string, locale: Locale): P
     // The completeness gate only checks that image refs exist in the DB, not that the S3 objects are
     // still present. A missing Product or a missing stored asset both mean "no real PDF to serve", so
     // both hide behind a 404 rather than surfacing a 500 — matching how the image routes treat them.
-    if (error instanceof ProductNotFoundError || error instanceof StorageObjectNotFoundError) {
+    if ((isProductError(error) && error.code === 'product.not_found') || error instanceof StorageObjectNotFoundError) {
       return brochureResponse(null);
     }
 

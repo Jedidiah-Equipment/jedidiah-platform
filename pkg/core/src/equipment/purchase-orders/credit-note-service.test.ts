@@ -61,7 +61,10 @@ describe('credit notes', () => {
         input: { purchaseOrderId: draft.id, stockMovementIds: [randomUUID()] },
         storage: context.storage,
       }),
-    ).rejects.toMatchObject({ code: 'purchase_order.not_sent', action: 'fileDocuments', reason: 'not-sent' });
+    ).rejects.toMatchObject({
+      code: 'purchase_order.not_sent',
+      refused: { action: 'fileDocuments', reason: 'not-sent' },
+    });
   });
 
   test('files a credit note into the order collection and records the returns it settles', async ({ context }) => {

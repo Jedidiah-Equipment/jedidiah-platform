@@ -6,10 +6,10 @@ import { RANGE_IMAGE_POLICY, RANGE_LOGO_POLICY } from '@pkg/domain/equipment';
 import type { UUID } from '@pkg/schema';
 import type { ProductRange } from '@pkg/schema/equipment';
 import { and, eq } from 'drizzle-orm';
-import { FileNotFoundError } from '../../files/file-errors.js';
+import { FileError } from '../../files/file-errors.js';
 import { fileExtensionFor, replaceFile } from '../../files/stored-file-service.js';
 import type { StorageAdapter, StoredObject } from '../../storage/storage-adapter.js';
-import { ProductRangeNotFoundError } from './product-range-errors.js';
+import { productRangeNotFound } from './product-range-errors.js';
 import { getProductRange } from './product-range-service.js';
 
 export type ReplaceProductRangeImageInput = {
@@ -46,7 +46,7 @@ export async function replaceProductRangeImage({
           .for('update');
 
         if (!before) {
-          throw new ProductRangeNotFoundError(input.rangeId);
+          throw productRangeNotFound(input.rangeId);
         }
 
         await tx
@@ -78,11 +78,11 @@ export async function readProductRangeImage({
     .limit(1);
 
   if (!row) {
-    throw new ProductRangeNotFoundError(rangeId);
+    throw productRangeNotFound(rangeId);
   }
 
   if (!row.image) {
-    throw new FileNotFoundError(`Image not found for product range ${rangeId}`, { rangeId });
+    throw new FileError('file.not_found', `Image not found for product range ${rangeId}`);
   }
 
   return storage.get(row.image.storageKey);
@@ -121,7 +121,7 @@ export async function replaceProductRangeLogo({
           .for('update');
 
         if (!before) {
-          throw new ProductRangeNotFoundError(input.rangeId);
+          throw productRangeNotFound(input.rangeId);
         }
 
         await tx
@@ -153,11 +153,11 @@ export async function readProductRangeLogo({
     .limit(1);
 
   if (!row) {
-    throw new ProductRangeNotFoundError(rangeId);
+    throw productRangeNotFound(rangeId);
   }
 
   if (!row.logo) {
-    throw new FileNotFoundError(`Logo not found for product range ${rangeId}`, { rangeId });
+    throw new FileError('file.not_found', `Logo not found for product range ${rangeId}`);
   }
 
   return storage.get(row.logo.storageKey);

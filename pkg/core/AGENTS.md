@@ -3,7 +3,7 @@
 - Put domain behavior here when it should not live in Fastify, tRPC, or React.
 - Do not depend on browser code, Fastify setup, Better Auth handlers, database clients, or direct `process.env`.
 - Shape related data in the owning service query using Drizzle relational `with` where practical; avoid router/API follow-up queries for core-owned reads.
-- Export feature-specific errors and type guards beside the behavior that raises them.
+- Export one error class per feature with a code union, a guard and factories for the throw sites, beside the behavior that raises them (see `src/contracting/jobs/job-errors.ts`); never one class per code.
 - Name a partial update `patchXxxx` (paired with a `XxxxPatchInput` schema). A patch reads the current row under the same `.for('update')` lock as the write and merges only the provided fields — `undefined` keeps the current value, an explicit `null` clears a nullable field. Use it instead of a caller-side get-then-merge, which reads outside the lock and can revert a concurrent edit to an omitted field. Reserve `updateXxxx` for full-replacement writes. See `patchQuote` / `patchCustomer`.
 
 - Write an audited update through `mutateEntity` (`src/audit/mutate-entity.ts`), which owns the transaction, the row lock, the skip-on-no-change branch, and the audit event. Hand-roll `diffAuditUpdate` + `recordAuditUpdate` only when real logic must run between the diff and the write; that module's doc names the paths that do.

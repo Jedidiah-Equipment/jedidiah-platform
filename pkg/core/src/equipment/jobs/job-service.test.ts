@@ -66,7 +66,6 @@ import {
   unassignJobBayOperator,
 } from './job-bay-service.js';
 import { sweepJobCompletions } from './job-completion-service.js';
-import { JobCreateFromQuoteDeniedError } from './job-errors.js';
 import { getJob, listBayQueueAvailability, listBays, listJobCustomerOptions, listJobs } from './job-read-service.js';
 import {
   addIdleJobSlot,
@@ -1058,7 +1057,7 @@ describe('createJob', () => {
 
     await expect(
       createJob({ actorUserId, db: context.db, input: { baySeeds: [], quoteId: partsSale.id } }),
-    ).rejects.toBeInstanceOf(JobCreateFromQuoteDeniedError);
+    ).rejects.toMatchObject({ code: 'job.create_from_quote_denied' });
   });
 
   test('creates a Rework Job on the allocated Unit for only the Assemblies being added', async ({ context }) => {
@@ -2268,7 +2267,7 @@ describe('updateJob', () => {
         db: context.db,
         input: { completedOn: null, description: 'Should not save', id: job.id },
       }),
-    ).rejects.toMatchObject({ code: 'job.cancelled', metadata: { id: job.id } });
+    ).rejects.toMatchObject({ code: 'job.cancelled' });
   });
 
   test('stores a manual completion date and clears it again', async ({ context }) => {
@@ -2543,7 +2542,7 @@ describe('bookJobSlot', () => {
         db: context.db,
         input: { bayId: bay.id, durationDays: 1, jobId: job.id },
       }),
-    ).rejects.toMatchObject({ code: 'job.cancelled', metadata: { id: job.id } });
+    ).rejects.toMatchObject({ code: 'job.cancelled' });
 
     await expect(context.db.select().from(jobSlots).where(eq(jobSlots.jobId, job.id))).resolves.toEqual([]);
   });
@@ -2793,7 +2792,7 @@ describe('addIdleJobSlot', () => {
         db: context.db,
         input: { durationDays: 1, placement: 'after', targetSlotId: workSlot.slot.id },
       }),
-    ).rejects.toMatchObject({ code: 'job.cancelled', metadata: { id: job.id } });
+    ).rejects.toMatchObject({ code: 'job.cancelled' });
   });
 
   test('inserts one-day idle slots before and after target slots and keeps sequences contiguous', async ({
@@ -2875,7 +2874,7 @@ describe('resizeJobSlot', () => {
 
     await expect(
       resizeJobSlot({ db: context.db, input: { durationDays: 2, slotId: slot.slot.id } }),
-    ).rejects.toMatchObject({ code: 'job.cancelled', metadata: { id: job.id } });
+    ).rejects.toMatchObject({ code: 'job.cancelled' });
   });
 
   test('updates duration and reflows downstream projected dates only', async ({ context }) => {
@@ -3035,7 +3034,7 @@ describe('moveJobSlot', () => {
 
     await expect(
       moveJobSlot({ actorUserId, db: context.db, input: { direction: 'right', slotId: slot.slot.id } }),
-    ).rejects.toMatchObject({ code: 'job.cancelled', metadata: { id: job.id } });
+    ).rejects.toMatchObject({ code: 'job.cancelled' });
   });
 
   test("rejects moving a live slot across a cancelled Job's adjacent slot", async ({ context }) => {
@@ -3051,7 +3050,7 @@ describe('moveJobSlot', () => {
 
     await expect(
       moveJobSlot({ actorUserId, db: context.db, input: { direction: 'right', slotId: liveSlot.slot.id } }),
-    ).rejects.toMatchObject({ code: 'job.cancelled', metadata: { id: cancelledJob.id } });
+    ).rejects.toMatchObject({ code: 'job.cancelled' });
   });
 
   test('moves a middle slot left by swapping with the previous bay slot', async ({ context }) => {
@@ -3290,7 +3289,7 @@ describe('cancelJob', () => {
         db: context.db,
         input: { cancellationReason: 'Too late', id: job.id, removeUnit: false },
       }),
-    ).rejects.toMatchObject({ code: 'job.already_completed', metadata: { id: job.id } });
+    ).rejects.toMatchObject({ code: 'job.already_completed' });
   });
 
   test('refuses an already-cancelled Job rather than passing silently', async ({ context }) => {
@@ -3299,7 +3298,7 @@ describe('cancelJob', () => {
 
     await expect(
       cancelJob({ actorUserId, db: context.db, input: { cancellationReason: 'Again', id: job.id, removeUnit: false } }),
-    ).rejects.toMatchObject({ code: 'job.cancelled', metadata: { id: job.id } });
+    ).rejects.toMatchObject({ code: 'job.cancelled' });
   });
 
   // A Stock Build has no sale behind it, so the machine it minted has nobody else to belong to. This
@@ -3374,7 +3373,7 @@ describe('cancelJob', () => {
         db: context.db,
         input: { cancellationReason: 'Wrong spec', id: job.id, removeUnit: true },
       }),
-    ).rejects.toMatchObject({ code: 'job.unit_removal_denied', metadata: { id: job.id } });
+    ).rejects.toMatchObject({ code: 'job.unit_removal_denied' });
 
     // Refused whole: the Job is still live and the machine is still there.
     const [untouched] = await context.db.select().from(jobs).where(eq(jobs.id, job.id));

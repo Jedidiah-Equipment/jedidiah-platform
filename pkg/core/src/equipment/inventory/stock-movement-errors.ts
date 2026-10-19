@@ -1,95 +1,53 @@
 import type { UUID } from '@pkg/schema';
 import type { JobStockMovementType, PartUnitClass, StockAdjustmentReason } from '@pkg/schema/equipment';
 
-export class StockMovementPartNotFoundError extends Error {
-  readonly code = 'inventory.part_not_found';
-  readonly metadata: { partId: UUID };
+export type StockMovementErrorCode =
+  | 'inventory.fabricated_part_cost'
+  | 'inventory.invalid_delta'
+  | 'inventory.invalid_length'
+  | 'inventory.part_code_not_found'
+  | 'inventory.part_not_found'
+  | 'inventory.periodic_movement';
 
-  constructor(partId: UUID) {
-    super(`Part not found: ${partId}`);
-    this.name = 'StockMovementPartNotFoundError';
-    this.metadata = { partId };
+export class StockMovementError extends Error {
+  constructor(
+    readonly code: StockMovementErrorCode,
+    message: string,
+    /** The Part a caller can point at when the refusal is about one. */
+    readonly partId?: UUID,
+  ) {
+    super(message);
+    this.name = 'StockMovementError';
   }
 }
+
+export const isStockMovementError = (error: unknown): error is StockMovementError =>
+  error instanceof StockMovementError;
+export const stockMovementPartNotFound = (partId: UUID) =>
+  new StockMovementError('inventory.part_not_found', `Part not found: ${partId}`, partId);
 
 /**
  * A scanned label that names no Part. Separate from the id-keyed miss because the reader is holding
  * a physical label: the answer is a reprint or a typed search, not "check the link you followed".
  */
-export class ScannedPartNotFoundError extends Error {
-  readonly code = 'inventory.part_code_not_found';
-  readonly metadata: { partCode: string };
-
-  constructor(partCode: string) {
-    super(`No Part carries the code: ${partCode}`);
-    this.name = 'ScannedPartNotFoundError';
-    this.metadata = { partCode };
-  }
-}
-
-export class StockMovementDeltaError extends Error {
-  readonly code = 'inventory.invalid_delta';
-  readonly metadata: { unitClass: PartUnitClass };
-
-  constructor(unitClass: PartUnitClass) {
-    super(`${unitClass} stock movements require an integer delta`);
-    this.name = 'StockMovementDeltaError';
-    this.metadata = { unitClass };
-  }
-}
-
-export class StockMovementLengthError extends Error {
-  readonly code = 'inventory.invalid_length';
-  readonly metadata: { requiresLength: boolean };
-
-  constructor(requiresLength: boolean) {
-    super(requiresLength ? 'Linear stock movements require a length' : 'Length is only valid for linear stock');
-    this.name = 'StockMovementLengthError';
-    this.metadata = { requiresLength };
-  }
-}
+export const scannedPartNotFound = (partCode: string) =>
+  new StockMovementError('inventory.part_code_not_found', `No Part carries the code: ${partCode}`);
+export const stockMovementDelta = (unitClass: PartUnitClass) =>
+  new StockMovementError('inventory.invalid_delta', `${unitClass} stock movements require an integer delta`);
+export const stockMovementLength = (requiresLength: boolean) =>
+  new StockMovementError(
+    'inventory.invalid_length',
+    requiresLength ? 'Linear stock movements require a length' : 'Length is only valid for linear stock',
+  );
 
 /** A periodic Part records only its opening balance, receipts, and stock counts — never consumption. */
-export class PeriodicStockMovementError extends Error {
-  readonly code = 'inventory.periodic_movement';
-  readonly metadata: { movement: JobStockMovementType | StockAdjustmentReason; partId?: UUID };
-
-  constructor(movement: JobStockMovementType | StockAdjustmentReason, partId?: UUID) {
-    super(`Periodic stock does not record ${movement} movements`);
-    this.name = 'PeriodicStockMovementError';
-    this.metadata = { movement, ...(partId ? { partId } : {}) };
-  }
-}
+export const periodicStockMovement = (movement: JobStockMovementType | StockAdjustmentReason, partId?: UUID) =>
+  new StockMovementError('inventory.periodic_movement', `Periodic stock does not record ${movement} movements`, partId);
 
 /**
  * A Built Part's cost is only ever derived from its own ledger — a build divides the value it
  * consumed across the units it produced. Hand-entering one would assert a price for something we
  * never bought, and for sheet metal cut from plate it would pay for the plate twice (spec §5).
  */
-export class FabricatedPartCostError extends Error {
-  readonly code = 'inventory.fabricated_part_cost';
-
-  constructor() {
-    super('A built Part is costed by its build, not by hand');
-    this.name = 'FabricatedPartCostError';
-  }
-}
-
-export type StockMovementCoreError =
-  | FabricatedPartCostError
-  | PeriodicStockMovementError
-  | ScannedPartNotFoundError
-  | StockMovementDeltaError
-  | StockMovementLengthError
-  | StockMovementPartNotFoundError;
-
-export function isStockMovementCoreError(error: unknown): error is StockMovementCoreError {
-  return (
-    error instanceof FabricatedPartCostError ||
-    error instanceof PeriodicStockMovementError ||
-    error instanceof ScannedPartNotFoundError ||
-    error instanceof StockMovementDeltaError ||
-    error instanceof StockMovementLengthError ||
-    error instanceof StockMovementPartNotFoundError
-  );
-}
+export const fabricatedPartCost = () =>
+  new StockMovementError('inventory.fabricated_part_cost', 'A built Part is costed by its build, not by hand');

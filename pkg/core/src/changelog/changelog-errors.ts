@@ -1,16 +1,15 @@
-export class UnknownChangelogReleaseError extends Error {
-  readonly code = 'changelog.unknown_release';
-  readonly metadata: { releasedAt: string };
+export type ChangelogErrorCode = 'changelog.unknown_release';
 
-  constructor(releasedAt: string) {
-    super(`No changelog was released at ${releasedAt}`);
-    this.name = 'UnknownChangelogReleaseError';
-    this.metadata = { releasedAt };
+export class ChangelogError extends Error {
+  constructor(
+    readonly code: ChangelogErrorCode,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'ChangelogError';
   }
 }
 
-export type ChangelogCoreError = UnknownChangelogReleaseError;
-
-export function isChangelogCoreError(error: unknown): error is ChangelogCoreError {
-  return error instanceof UnknownChangelogReleaseError;
-}
+export const isChangelogError = (error: unknown): error is ChangelogError => error instanceof ChangelogError;
+export const unknownChangelogRelease = (releasedAt: string) =>
+  new ChangelogError('changelog.unknown_release', `No changelog was released at ${releasedAt}`);

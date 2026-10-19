@@ -18,17 +18,9 @@ import { getProductCostEstimate } from '../products/product-cost-estimate-servic
 import { estimateSnapshot } from '../test/inventory-fixtures.js';
 import { seedPartCategory, partValues as testPartValues } from '../test/part-fixtures.js';
 import { listBuyList } from './buy-list-service.js';
-import { StockMovementDeltaError } from './stock-movement-errors.js';
 import { getStockMovementHistory } from './stock-movement-history-read.js';
 import { postAdjustment } from './stock-movement-service.js';
 import { listStockOnHand } from './stock-on-hand-list.js';
-import {
-  StocktakePartOutOfScopeError,
-  StocktakeSessionAlreadyOpenError,
-  StocktakeSessionClosedError,
-  StocktakeSessionNotFoundError,
-  StocktakeUncountedBucketError,
-} from './stocktake-errors.js';
 import {
   closeStocktakeSession,
   getStocktakeSession,
@@ -109,7 +101,9 @@ describe('stocktake sessions', () => {
       openedByUserId: actorUserId,
       scope: 'stores',
     });
-    await expect(openStoresSession(context.db)).rejects.toBeInstanceOf(StocktakeSessionAlreadyOpenError);
+    await expect(openStoresSession(context.db)).rejects.toMatchObject({
+      code: 'inventory.stocktake_session_already_open',
+    });
 
     // The other rhythm is a different walk, so it opens beside this one.
     const rawMaterial = await openStocktakeSession({ actorUserId, db: context.db, input: { scope: 'raw-material' } });
@@ -123,7 +117,7 @@ describe('stocktake sessions', () => {
     expect(outcomes.filter((outcome) => outcome.status === 'fulfilled')).toHaveLength(1);
     const rejected = outcomes.find((outcome) => outcome.status === 'rejected');
     // The loser lost at the partial unique index, and that violation reads as the same sentence.
-    expect(rejected?.reason).toBeInstanceOf(StocktakeSessionAlreadyOpenError);
+    expect(rejected?.reason).toMatchObject({ code: 'inventory.stocktake_session_already_open' });
   });
 
   test('closes once and refuses everything afterwards', async ({ context }) => {
@@ -134,14 +128,14 @@ describe('stocktake sessions', () => {
     expect(closed.closedByUserId).toBe(actorUserId);
     await expect(
       closeStocktakeSession({ actorUserId, db: context.db, input: { sessionId: session.id } }),
-    ).rejects.toBeInstanceOf(StocktakeSessionClosedError);
+    ).rejects.toMatchObject({ code: 'inventory.stocktake_session_closed' });
     await expect(
       postStockCount({
         actorUserId,
         db: context.db,
         input: { buckets: [{ lengthMm: null, observed: 1 }], partId: context.boltId, sessionId: session.id },
       }),
-    ).rejects.toBeInstanceOf(StocktakeSessionClosedError);
+    ).rejects.toMatchObject({ code: 'inventory.stocktake_session_closed' });
 
     // Closing frees the scope: the next walk opens where the last one left off.
     await expect(openStoresSession(context.db)).resolves.toMatchObject({ scope: 'stores' });
@@ -150,7 +144,7 @@ describe('stocktake sessions', () => {
   test('refuses a session nobody opened', async ({ context }) => {
     await expect(
       getStocktakeSession({ db: context.db, sessionId: '00000000-0000-4000-8000-000000000000' }),
-    ).rejects.toBeInstanceOf(StocktakeSessionNotFoundError);
+    ).rejects.toMatchObject({ code: 'inventory.stocktake_session_not_found' });
   });
 });
 
@@ -290,7 +284,7 @@ describe('postStockCount', () => {
         db: context.db,
         input: { buckets: [{ lengthMm: 6000, observed: 2 }], partId: context.channelId, sessionId: session.id },
       }),
-    ).rejects.toBeInstanceOf(StocktakeUncountedBucketError);
+    ).rejects.toMatchObject({ code: 'inventory.stocktake_uncounted_bucket' });
     expect(await stockOnHandOf(context.db, context.channelId)).toBe(9);
   });
 
@@ -303,7 +297,7 @@ describe('postStockCount', () => {
         db: context.db,
         input: { buckets: [{ lengthMm: null, observed: 1 }], partId: context.boltId, sessionId: session.id },
       }),
-    ).rejects.toBeInstanceOf(StocktakePartOutOfScopeError);
+    ).rejects.toMatchObject({ code: 'inventory.stocktake_part_out_of_scope' });
   });
 
   test('refuses a fractional count of a discrete Part', async ({ context }) => {
@@ -315,7 +309,7 @@ describe('postStockCount', () => {
         db: context.db,
         input: { buckets: [{ lengthMm: null, observed: 1.5 }], partId: context.boltId, sessionId: session.id },
       }),
-    ).rejects.toBeInstanceOf(StockMovementDeltaError);
+    ).rejects.toMatchObject({ code: 'inventory.invalid_delta' });
   });
 
   test('stamps the session on the movement and leaves ad-hoc counts sessionless', async ({ context }) => {

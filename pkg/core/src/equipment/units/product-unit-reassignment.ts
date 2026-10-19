@@ -13,15 +13,15 @@ import { aliasedTable, and, asc, eq, inArray, isNull, or } from 'drizzle-orm';
 import { recordAuditEvent } from '../../audit/audit-writer.js';
 import { jobAuditDescriptor } from '../jobs/job-audit.js';
 import { quoteAuditDescriptor } from '../quotes/quote-audit.js';
-import { QuoteNotFoundError } from '../quotes/quote-errors.js';
-import { ProductUnitNotFoundError } from './product-unit-errors.js';
+import { quoteNotFound } from '../quotes/quote-errors.js';
+import { productUnitNotFound } from './product-unit-errors.js';
 import { getProductUnit } from './product-unit-read-service.js';
 import {
-  ProductUnitReassignDeadJobError,
-  ProductUnitReassignDisplacedOwnerError,
-  ProductUnitReassignQuoteIneligibleError,
-  ProductUnitReassignUnitIneligibleError,
   type ProductUnitReassignUnitIneligibleReason,
+  productUnitReassignDeadJob,
+  productUnitReassignDisplacedOwner,
+  productUnitReassignQuoteIneligible,
+  productUnitReassignUnitIneligible,
 } from './product-unit-reassignment-errors.js';
 import { lockUnitForOwnership, type UnitOwnershipHandle } from './product-unit-service.js';
 
@@ -137,14 +137,14 @@ export async function reassignProductUnitToQuote({
     });
 
     if (displacedJob?.productUnitId === input.productUnitId) {
-      throw new ProductUnitReassignUnitIneligibleError(input.productUnitId, 'already-on-quote');
+      throw productUnitReassignUnitIneligible('already-on-quote');
     }
 
     const handles = await lockUnitsSorted(tx, [input.productUnitId, displacedJob?.productUnitId ?? null]);
     const moving = handles.get(input.productUnitId);
 
     if (!moving) {
-      throw new ProductUnitNotFoundError(input.productUnitId);
+      throw productUnitNotFound(input.productUnitId);
     }
 
     const sourceAllocationQuoteId = await assertUnitEligible({ liveJobs, moving, quote, tx });
@@ -157,13 +157,13 @@ export async function reassignProductUnitToQuote({
       const displaced = handles.get(displacedJob.productUnitId);
 
       if (!displaced) {
-        throw new ProductUnitNotFoundError(displacedJob.productUnitId);
+        throw productUnitNotFound(displacedJob.productUnitId);
       }
 
       displacedProductSerialNumber = ProductSerialNumber.parse(displaced.unit.productSerialNumber);
 
       if (displaced.currentOwnerId !== quote.customerId) {
-        throw new ProductUnitReassignDisplacedOwnerError(displaced.unit.id, displaced.unit.productSerialNumber);
+        throw productUnitReassignDisplacedOwner(displaced.unit.productSerialNumber);
       }
 
       await displaced.record({
@@ -221,16 +221,16 @@ export function assertQuoteCanReceive<TQuote extends ReceiverCandidateQuote>(
   quote: TQuote,
 ): asserts quote is TQuote & { productId: string } {
   if (quote.kind !== 'product' || quote.productId === null) {
-    throw new ProductUnitReassignQuoteIneligibleError(quote.id, 'not-product');
+    throw productUnitReassignQuoteIneligible('not-product');
   }
   if (quote.status !== 'accepted') {
-    throw new ProductUnitReassignQuoteIneligibleError(quote.id, 'not-accepted');
+    throw productUnitReassignQuoteIneligible('not-accepted');
   }
   if (quote.invoiceNumber !== null) {
-    throw new ProductUnitReassignQuoteIneligibleError(quote.id, 'invoiced');
+    throw productUnitReassignQuoteIneligible('invoiced');
   }
   if (quote.productUnitId !== null) {
-    throw new ProductUnitReassignQuoteIneligibleError(quote.id, 'allocation-quote');
+    throw productUnitReassignQuoteIneligible('allocation-quote');
   }
 }
 
@@ -250,7 +250,7 @@ async function lockReceivingQuote(tx: DatabaseTransaction, quoteId: UUID): Promi
     .for('update');
 
   if (!quote) {
-    throw new QuoteNotFoundError(quoteId);
+    throw quoteNotFound(quoteId);
   }
 
   assertQuoteCanReceive(quote);
@@ -308,7 +308,7 @@ async function lockJobsForReassignment(
   const displacedJob = rows.find((row) => row.quoteId === quoteId) ?? null;
 
   if (displacedJob && displacedJob.productUnitId === null) {
-    throw new ProductUnitReassignDeadJobError(displacedJob.id, formatJobCode(displacedJob.code));
+    throw productUnitReassignDeadJob(formatJobCode(displacedJob.code));
   }
 
   return {
@@ -337,7 +337,7 @@ async function lockUnitsSorted(
     const handle = await lockUnitForOwnership(tx, id);
 
     if (!handle) {
-      throw new ProductUnitNotFoundError(id);
+      throw productUnitNotFound(id);
     }
 
     handles.set(id, handle);
@@ -377,7 +377,7 @@ async function assertUnitEligible({
   );
 
   if (reason) {
-    throw new ProductUnitReassignUnitIneligibleError(moving.unit.id, reason);
+    throw productUnitReassignUnitIneligible(reason);
   }
 
   return sellingQuote?.productUnitId === moving.unit.id ? sourceQuoteId : null;

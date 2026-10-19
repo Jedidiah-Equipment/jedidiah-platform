@@ -14,7 +14,6 @@ import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
 import { seedPartCategory } from '../test/part-fixtures.js';
-import { JobAlreadyClosedOutError, JobClosedOutError, JobNotCompletedError } from './close-out-errors.js';
 import { closeOutJob, listCloseOutQueue } from './close-out-service.js';
 import { listJobStock, postAdjustment, postJobMovement } from './stock-movement-service.js';
 import { listStockOnHand } from './stock-on-hand-list.js';
@@ -74,7 +73,7 @@ describe('closeOutJob', () => {
     expect(closeOut).toMatchObject({ actorUserId, jobId: context.jobs.cfo.id, note: 'Bin counted back in' });
     await expect(
       closeOutJob({ actorUserId, db: context.db, input: { jobId: context.jobs.cfo.id, note: null } }),
-    ).rejects.toBeInstanceOf(JobAlreadyClosedOutError);
+    ).rejects.toMatchObject({ code: 'inventory.job_already_closed_out' });
 
     const rows = await context.db
       .select()
@@ -88,7 +87,7 @@ describe('closeOutJob', () => {
 
     await expect(
       closeOutJob({ actorUserId, db: context.db, input: { jobId: context.jobs.cfo.id, note: null } }),
-    ).rejects.toBeInstanceOf(JobNotCompletedError);
+    ).rejects.toMatchObject({ code: 'inventory.job_not_completed' });
   });
 });
 
@@ -157,7 +156,7 @@ describe('close-out and commitment', () => {
         input: { jobId: context.jobs.cfo.id, lengthMm: null, partId: context.partId, quantity: 1 },
         movementType: 'checkout',
       }),
-    ).rejects.toBeInstanceOf(JobClosedOutError);
+    ).rejects.toMatchObject({ code: 'inventory.job_closed_out' });
 
     await expect(
       postJobMovement({

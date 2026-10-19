@@ -24,9 +24,7 @@ import { describe, expect } from 'vitest';
 import { InMemoryStorageAdapter } from '../../storage/in-memory-storage-adapter.js';
 import { createTester } from '../../test/create-tester.js';
 import { createJobPurchaseOrder, deleteJobPurchaseOrder } from '../jobs/job-document-service.js';
-import { JobNotFoundError } from '../jobs/job-errors.js';
 import { readJobDocument } from '../jobs/job-read-service.js';
-import { ProductNotFoundError } from '../products/product-errors.js';
 import {
   createProductDocument,
   deleteProductDocument,
@@ -36,12 +34,6 @@ import {
 import { createQuoteDocument, getQuoteDocuments, readQuoteDocument } from '../quotes/quote-document.js';
 import { generateQuoteDocument } from '../quotes/quote-document-generation.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
-import {
-  DocumentDeleteNotAllowedError,
-  DocumentNotFoundError,
-  DocumentPolicyViolationError,
-  DuplicateDocumentFilenameError,
-} from './document-errors.js';
 
 const ACTOR_USER_ID = 'test-user-id';
 const UNKNOWN_ID = '11111111-1111-4111-8111-111111111111';
@@ -172,10 +164,10 @@ describe('Job Purchase Orders', () => {
         jobId: job.id,
         storage: context.storage,
       }),
-    ).rejects.toMatchObject({ code: 'job.cancelled', metadata: { id: job.id } });
+    ).rejects.toMatchObject({ code: 'job.cancelled' });
     await expect(
       deleteJobPurchaseOrder({ actorUserId: ACTOR_USER_ID, db: context.db, documentId: document.id, jobId: job.id }),
-    ).rejects.toMatchObject({ code: 'job.cancelled', metadata: { id: job.id } });
+    ).rejects.toMatchObject({ code: 'job.cancelled' });
   });
 
   test('uploads multiple PDFs to a Custom Job as source-less Purchase Orders', async ({ context }) => {
@@ -256,7 +248,7 @@ describe('Job Purchase Orders', () => {
         documentId: snapshot.id,
         jobId: job.id,
       }),
-    ).rejects.toBeInstanceOf(DocumentDeleteNotAllowedError);
+    ).rejects.toMatchObject({ code: 'document.delete_not_allowed' });
     await expect(context.db.select().from(documents)).resolves.toEqual([expect.objectContaining({ id: snapshot.id })]);
   });
 });
@@ -407,7 +399,7 @@ describe('createProductDocument', () => {
           },
           storage: context.storage,
         }),
-      ).rejects.toBeInstanceOf(DocumentPolicyViolationError);
+      ).rejects.toMatchObject({ code: 'document.content_type_not_allowed' });
     }
 
     await expect(getProductDocuments({ db: context.db, productId: context.productId })).resolves.toEqual([]);
@@ -428,7 +420,7 @@ describe('createProductDocument', () => {
         },
         storage: context.storage,
       }),
-    ).rejects.toBeInstanceOf(DocumentPolicyViolationError);
+    ).rejects.toMatchObject({ code: 'document.content_type_not_allowed' });
 
     await expect(context.db.select().from(documents)).resolves.toEqual([]);
     expect(context.storage.objects.size).toBe(0);
@@ -437,9 +429,9 @@ describe('createProductDocument', () => {
   test('rejects duplicate filenames case-insensitively per product', async ({ context }) => {
     await uploadPdf(context, { filename: 'Part Book.pdf', productId: context.productId });
 
-    await expect(
-      uploadPdf(context, { filename: 'part book.PDF', productId: context.productId }),
-    ).rejects.toBeInstanceOf(DuplicateDocumentFilenameError);
+    await expect(uploadPdf(context, { filename: 'part book.PDF', productId: context.productId })).rejects.toMatchObject(
+      { code: 'document.duplicate_filename' },
+    );
     expect(context.storage.objects.size).toBe(1);
 
     await expect(
@@ -464,7 +456,7 @@ describe('createProductDocument', () => {
         },
         storage: context.storage,
       }),
-    ).rejects.toBeInstanceOf(DocumentPolicyViolationError);
+    ).rejects.toMatchObject({ code: 'document.content_type_not_allowed' });
 
     await expect(
       createProductDocument({
@@ -479,7 +471,7 @@ describe('createProductDocument', () => {
         },
         storage: context.storage,
       }),
-    ).rejects.toBeInstanceOf(DocumentPolicyViolationError);
+    ).rejects.toMatchObject({ code: 'document.content_type_not_allowed' });
 
     await expect(context.db.select().from(documents)).resolves.toEqual([]);
     expect(context.storage.objects.size).toBe(0);
@@ -499,7 +491,7 @@ describe('createProductDocument', () => {
         },
         storage: context.storage,
       }),
-    ).rejects.toBeInstanceOf(DocumentPolicyViolationError);
+    ).rejects.toMatchObject({ code: 'document.metadata_invalid' });
 
     await expect(
       createProductDocument({
@@ -514,7 +506,7 @@ describe('createProductDocument', () => {
         },
         storage: context.storage,
       }),
-    ).rejects.toBeInstanceOf(DocumentPolicyViolationError);
+    ).rejects.toMatchObject({ code: 'document.metadata_invalid' });
 
     await expect(context.db.select().from(documents)).resolves.toEqual([]);
     expect(context.storage.objects.size).toBe(0);
@@ -584,7 +576,7 @@ describe('createQuoteDocument', () => {
         },
         storage: context.storage,
       }),
-    ).rejects.toBeInstanceOf(DocumentPolicyViolationError);
+    ).rejects.toMatchObject({ code: 'document.content_type_not_allowed' });
 
     await expect(
       createQuoteDocument({
@@ -598,7 +590,7 @@ describe('createQuoteDocument', () => {
         },
         storage: context.storage,
       }),
-    ).rejects.toBeInstanceOf(DocumentPolicyViolationError);
+    ).rejects.toMatchObject({ code: 'document.metadata_invalid' });
 
     await expect(context.db.select().from(documents)).resolves.toEqual([]);
     expect(context.storage.objects.size).toBe(0);
@@ -609,7 +601,7 @@ describe('createQuoteDocument', () => {
 
     await expect(
       uploadQuotePdf(context, { filename: 'quote.PDF', quoteId: context.quoteId, revision: 2 }),
-    ).rejects.toBeInstanceOf(DuplicateDocumentFilenameError);
+    ).rejects.toMatchObject({ code: 'document.duplicate_filename' });
     expect(context.storage.objects.size).toBe(1);
   });
 });
@@ -1096,7 +1088,7 @@ describe('getProductDocuments and readProductDocument', () => {
         productId: context.productId,
         storage: context.storage,
       }),
-    ).rejects.toBeInstanceOf(ProductNotFoundError);
+    ).rejects.toMatchObject({ code: 'product.not_found' });
   });
 
   test('reads job-owned snapshot document bytes', async ({ context }) => {
@@ -1180,7 +1172,7 @@ describe('getProductDocuments and readProductDocument', () => {
     await expect(readAll(read.object.body)).resolves.toEqual(pdfBytes());
   });
 
-  test('throws DocumentNotFoundError when the product exists but the document does not', async ({ context }) => {
+  test('refuses a missing document when the product exists but the document does not', async ({ context }) => {
     await expect(
       readProductDocument({
         db: context.db,
@@ -1188,10 +1180,10 @@ describe('getProductDocuments and readProductDocument', () => {
         productId: context.productId,
         storage: context.storage,
       }),
-    ).rejects.toBeInstanceOf(DocumentNotFoundError);
+    ).rejects.toMatchObject({ code: 'document.not_found' });
   });
 
-  test('throws DocumentNotFoundError when the document belongs to another product', async ({ context }) => {
+  test('refuses a missing document when the document belongs to another product', async ({ context }) => {
     const otherProductDocument = await uploadPdf(context, {
       filename: 'Other.pdf',
       productId: context.otherProductId,
@@ -1204,10 +1196,10 @@ describe('getProductDocuments and readProductDocument', () => {
         productId: context.productId,
         storage: context.storage,
       }),
-    ).rejects.toBeInstanceOf(DocumentNotFoundError);
+    ).rejects.toMatchObject({ code: 'document.not_found' });
   });
 
-  test('throws ProductNotFoundError when the product itself does not exist', async ({ context }) => {
+  test('refuses a missing product when the product itself does not exist', async ({ context }) => {
     await expect(
       readProductDocument({
         db: context.db,
@@ -1215,10 +1207,10 @@ describe('getProductDocuments and readProductDocument', () => {
         productId: UNKNOWN_ID,
         storage: context.storage,
       }),
-    ).rejects.toBeInstanceOf(ProductNotFoundError);
+    ).rejects.toMatchObject({ code: 'product.not_found' });
   });
 
-  test('throws DocumentNotFoundError when the job exists but the document does not', async ({ context }) => {
+  test('refuses a missing document when the job exists but the document does not', async ({ context }) => {
     const job = await createJobOwner(context.db, context.productId);
 
     await expect(
@@ -1228,10 +1220,10 @@ describe('getProductDocuments and readProductDocument', () => {
         jobId: job.id,
         storage: context.storage,
       }),
-    ).rejects.toBeInstanceOf(DocumentNotFoundError);
+    ).rejects.toMatchObject({ code: 'document.not_found' });
   });
 
-  test('throws JobNotFoundError when the job itself does not exist', async ({ context }) => {
+  test('refuses a missing job when the job itself does not exist', async ({ context }) => {
     await expect(
       readJobDocument({
         db: context.db,
@@ -1239,7 +1231,7 @@ describe('getProductDocuments and readProductDocument', () => {
         jobId: UNKNOWN_ID,
         storage: context.storage,
       }),
-    ).rejects.toBeInstanceOf(JobNotFoundError);
+    ).rejects.toMatchObject({ code: 'job.not_found' });
   });
 });
 

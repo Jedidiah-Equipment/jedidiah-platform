@@ -154,7 +154,8 @@ describe('Checkout Basket', () => {
       }),
     ).rejects.toMatchObject({
       code: 'inventory.periodic_movement',
-      metadata: { movement: 'checkout', partId: context.parts.periodic.id },
+      message: 'Periodic stock does not record checkout movements',
+      partId: context.parts.periodic.id,
     });
 
     expect(await context.db.select().from(stockMovements)).toHaveLength(before.length);
@@ -1070,7 +1071,7 @@ describe('postAdjustment', () => {
         db: context.db,
         input: adjustmentInput(context.parts.linear.id),
       }),
-    ).rejects.toMatchObject({ code: 'inventory.invalid_length', metadata: { requiresLength: true } });
+    ).rejects.toMatchObject({ code: 'inventory.invalid_length', message: 'Linear stock movements require a length' });
 
     await expect(
       postAdjustment({
@@ -1078,7 +1079,7 @@ describe('postAdjustment', () => {
         db: context.db,
         input: adjustmentInput(context.parts.piece.id, { lengthMm: 6_000 }),
       }),
-    ).rejects.toMatchObject({ code: 'inventory.invalid_length', metadata: { requiresLength: false } });
+    ).rejects.toMatchObject({ code: 'inventory.invalid_length', message: 'Length is only valid for linear stock' });
   });
 
   test('allows only opening balances and stock counts for periodic parts', async ({ context }) => {

@@ -1,19 +1,16 @@
-import { UserNotFoundError } from '../../users/user-errors.js';
+export type UserDeviceErrorCode = 'user.is_device';
 
 /** A badge card names a person, and `resolveMovementActor` refuses a device as the actor. */
-export class UserIsDeviceError extends Error {
-  readonly code = 'user.is_device';
-  readonly metadata: { id: string };
-
-  constructor(id: string) {
-    super(`A shared device has no badge card: ${id}`);
-    this.name = 'UserIsDeviceError';
-    this.metadata = { id };
+export class UserDeviceError extends Error {
+  constructor(
+    readonly code: UserDeviceErrorCode,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'UserDeviceError';
   }
 }
 
-export type UserCoreError = UserIsDeviceError | UserNotFoundError;
-
-export function isUserCoreError(error: unknown): error is UserCoreError {
-  return error instanceof UserIsDeviceError || error instanceof UserNotFoundError;
-}
+export const isUserDeviceError = (error: unknown): error is UserDeviceError => error instanceof UserDeviceError;
+export const userIsDevice = (id: string) =>
+  new UserDeviceError('user.is_device', `A shared device has no badge card: ${id}`);

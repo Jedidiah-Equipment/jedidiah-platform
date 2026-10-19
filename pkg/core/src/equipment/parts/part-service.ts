@@ -33,13 +33,13 @@ import { and, asc, count, eq, isNotNull, isNull, ne, or, type SQL, sql } from 'd
 import { defineAuditDescriptor, recordAuditCreate } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
 import {
-  DuplicatePartCodeError,
-  PartBomLockedError,
-  PartCategoryNotFoundError,
-  PartNotFoundError,
-  PartSupplierLockedByPurchaseOrderError,
-  PartSupplierNotFoundError,
-  PartUnitOfMeasureLockedError,
+  duplicatePartCode,
+  partBomLocked,
+  partCategoryNotFound,
+  partNotFound,
+  partSupplierLockedByPurchaseOrder,
+  partSupplierNotFound,
+  partUnitOfMeasureLocked,
 } from './part-errors.js';
 
 type PartRow = typeof parts.$inferSelect;
@@ -263,7 +263,7 @@ export async function getPart({ db, id }: { db: Db | DatabaseTransaction; id: UU
     .limit(1);
 
   if (!row) {
-    throw new PartNotFoundError(id);
+    throw partNotFound(id);
   }
 
   return mapPart({
@@ -325,7 +325,7 @@ export async function updatePart({
       db,
       descriptor: partAuditDescriptor,
       id: input.id,
-      notFound: () => new PartNotFoundError(input.id),
+      notFound: () => partNotFound(input.id),
       project: (tx, row) => getPart({ db: tx, id: row.id }),
       // `parts` carries no timestamp columns, so there is no `updatedAt` to touch.
       set: () => ({
@@ -372,7 +372,7 @@ export async function assertUnitOfMeasureMutable({
     .limit(1);
 
   if (movement) {
-    throw new PartUnitOfMeasureLockedError(before.id);
+    throw partUnitOfMeasureLocked(before.id);
   }
 }
 
@@ -394,7 +394,7 @@ export async function assertSupplierMutable({
     .where(and(eq(purchaseOrderLines.partId, before.id), ne(purchaseOrders.status, 'cancelled')))
     .limit(1);
 
-  if (purchaseOrderLine) throw new PartSupplierLockedByPurchaseOrderError(before.id);
+  if (purchaseOrderLine) throw partSupplierLockedByPurchaseOrder(before.id);
 }
 
 /**
@@ -419,7 +419,7 @@ async function assertBomCleared({
     .where(eq(partBom.parentPartId, before.id))
     .limit(1);
 
-  if (line) throw new PartBomLockedError(before.id);
+  if (line) throw partBomLocked();
 }
 
 /** A Built Part names no Supplier, so there is nothing to check; the XOR rule is Zod's and the DB's. */
@@ -441,7 +441,7 @@ async function assertSupplierExists({
     .for('share');
 
   if (!row) {
-    throw new PartSupplierNotFoundError(supplierId);
+    throw partSupplierNotFound(supplierId);
   }
 }
 
@@ -460,7 +460,7 @@ async function assertPartCategoryExists({
     // Waits out a Part Category Merge deleting this category, then sees it gone instead of hitting the FK.
     .for('share');
 
-  if (!row) throw new PartCategoryNotFoundError(categoryId);
+  if (!row) throw partCategoryNotFound(categoryId);
 }
 
 function getPartSortColumn(sortBy: PartListInput['sortBy']) {
@@ -477,7 +477,7 @@ function mapPartUniqueViolation(error: unknown, input: Pick<PartCreateInput, 'co
   const constraint = getUniqueViolationConstraint(error);
 
   if (constraint?.includes('parts_code_unique') || constraint?.includes('code')) {
-    return new DuplicatePartCodeError(input.code);
+    return duplicatePartCode(input.code);
   }
 
   return error instanceof Error ? error : new Error(String(error));

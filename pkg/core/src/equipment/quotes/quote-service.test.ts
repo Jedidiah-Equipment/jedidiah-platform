@@ -31,7 +31,6 @@ import { getQuoteCancellationPlan } from '../cancellation/cancellation-plan-serv
 import { getJob } from '../jobs/job-read-service.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import { createProductUnit } from '../units/product-unit-service.js';
-import { QuoteInvalidReferenceError } from './quote-errors.js';
 import {
   getQuote,
   getQuoteProductBayAvailability,
@@ -2656,7 +2655,7 @@ describe('Quote salesperson eligibility', () => {
       });
 
     await expect(createFor('quote-procurement-id')).resolves.toMatchObject({ salesPersonId: 'quote-procurement-id' });
-    await expect(createFor('unticked-admin-id')).rejects.toBeInstanceOf(QuoteInvalidReferenceError);
+    await expect(createFor('unticked-admin-id')).rejects.toMatchObject({ code: 'quote.invalid_reference' });
   });
 
   test('allows other edits after unticking, but rejects assigning another unticked user', async ({ context }) => {
@@ -2701,13 +2700,13 @@ describe('Quote salesperson eligibility', () => {
         db: context.db,
         input: { id: quote.id, salesPersonId: 'another-unticked-id' },
       }),
-    ).rejects.toBeInstanceOf(QuoteInvalidReferenceError);
+    ).rejects.toMatchObject({ code: 'quote.invalid_reference' });
     await expect(
       updateQuote({
         actorUserId: context.salesPerson.id,
         db: context.db,
         input: buildQuoteUpdateInput(patched, { salesPersonId: 'another-unticked-id' }),
       }),
-    ).rejects.toBeInstanceOf(QuoteInvalidReferenceError);
+    ).rejects.toMatchObject({ code: 'quote.invalid_reference' });
   });
 });

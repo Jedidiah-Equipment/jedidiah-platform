@@ -5,13 +5,13 @@ import type { Assembly, AssemblyInput, AssemblyKind, AssemblyNameListResult } fr
 import { asc, eq, inArray, sql } from 'drizzle-orm';
 
 import {
-  AssemblyKindChangedError,
-  AssemblyOverrideTargetNotFoundError,
-  AssemblyOverrideTargetWrongKindError,
-  AssemblyOverrideTargetWrongProductError,
-  AssemblyWrongProductError,
-  DuplicateAssemblyNameError,
-  DuplicateAssemblyPartError,
+  assemblyKindChanged,
+  assemblyOverrideTargetNotFound,
+  assemblyOverrideTargetWrongKind,
+  assemblyOverrideTargetWrongProduct,
+  assemblyWrongProduct,
+  duplicateAssemblyName,
+  duplicateAssemblyPart,
 } from './product-errors.js';
 
 type AssemblyRow = typeof productAssemblies.$inferSelect;
@@ -224,7 +224,7 @@ async function assertAssemblyIdsBelongToProduct({
 
   for (const row of persistedRows) {
     if (row.productId !== productId) {
-      throw new AssemblyWrongProductError(row.id, productId);
+      throw assemblyWrongProduct(row.id);
     }
   }
 }
@@ -251,7 +251,7 @@ function assertAssemblyKindsUnchanged({
     const currentKind = currentKindById.get(assembly.id);
 
     if (currentKind !== undefined && currentKind !== assembly.kind) {
-      throw new AssemblyKindChangedError(assembly.id);
+      throw assemblyKindChanged(assembly.id);
     }
   }
 }
@@ -263,7 +263,7 @@ function assertUniqueAssemblyNames(assemblies: AssemblyInput[]): void {
     const name = assembly.name.trim().toLowerCase();
 
     if (names.has(name)) {
-      throw new DuplicateAssemblyNameError(assembly.name);
+      throw duplicateAssemblyName(assembly.name);
     }
 
     names.add(name);
@@ -276,7 +276,7 @@ function assertUniqueAssemblyParts(assemblies: AssemblyInput[]): void {
 
     for (const part of assembly.parts) {
       if (partIds.has(part.partId)) {
-        throw new DuplicateAssemblyPartError(part.partId);
+        throw duplicateAssemblyPart(part.partId);
       }
 
       partIds.add(part.partId);
@@ -313,7 +313,7 @@ async function assertValidOverrideTargets({
 
     if (desiredTarget) {
       if (desiredTarget.kind !== 'standard') {
-        throw new AssemblyOverrideTargetWrongKindError(targetId);
+        throw assemblyOverrideTargetWrongKind(targetId);
       }
 
       continue;
@@ -322,15 +322,15 @@ async function assertValidOverrideTargets({
     const persistedTarget = persistedById.get(targetId);
 
     if (!persistedTarget) {
-      throw new AssemblyOverrideTargetNotFoundError(targetId);
+      throw assemblyOverrideTargetNotFound(targetId);
     }
 
     if (persistedTarget.productId !== productId) {
-      throw new AssemblyOverrideTargetWrongProductError(targetId, productId);
+      throw assemblyOverrideTargetWrongProduct(targetId);
     }
 
     if (persistedTarget.kind !== 'standard') {
-      throw new AssemblyOverrideTargetWrongKindError(targetId);
+      throw assemblyOverrideTargetWrongKind(targetId);
     }
   }
 }

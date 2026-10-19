@@ -155,8 +155,8 @@ export const createQuoteDefinition = {
       const quote = await quotesCore.createQuote({ actorUserId, db: ctx.db, input });
       return toCreateQuoteResponse(quote, ctx.access);
     } catch (error) {
-      if (error instanceof quotesCore.CustomerPossibleMatchError)
-        return toCustomerMatchResponse(error.metadata.matches);
+      if (quotesCore.isCustomerError(error) && error.code === 'customer.possible_match')
+        return toCustomerMatchResponse(error.matches ?? []);
       throw error;
     }
   },

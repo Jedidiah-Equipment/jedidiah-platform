@@ -29,15 +29,11 @@ import {
 } from './quote-allocation.js';
 import { quoteAuditDescriptor } from './quote-audit.js';
 import {
-  QuoteAlreadyCancelledError,
-  QuoteCancelDeniedError,
-  QuoteCancelNotAnUpdateError,
-  QuoteCustomSelectedAssembliesError,
-  QuoteDeliveryUnconfirmedError,
-  QuoteDiscountInvalidError,
-  QuoteInvalidReferenceError,
-  QuoteLockedError,
-  QuoteNotFoundError,
+  QuoteError,
+  quoteAlreadyCancelled,
+  quoteCancelDenied,
+  quoteCancelNotAnUpdate,
+  quoteNotFound,
 } from './quote-errors.js';
 import { narrowQuoteOffering } from './quote-offering.js';
 import { getQuote } from './quote-read-service.js';
@@ -107,11 +103,11 @@ export async function cancelQuote({
     const [before] = await tx.select().from(quotes).where(eq(quotes.id, id)).for('update');
 
     if (!before) {
-      throw new QuoteNotFoundError(id);
+      throw quoteNotFound(id);
     }
 
     if (before.status === 'cancelled') {
-      throw new QuoteAlreadyCancelledError();
+      throw quoteAlreadyCancelled();
     }
 
     if (
@@ -123,7 +119,7 @@ export async function cancelQuote({
         status: before.status,
       })
     ) {
-      throw new QuoteCancelDeniedError();
+      throw quoteCancelDenied();
     }
 
     const [selectedAssemblies, workItems] = await Promise.all([
@@ -179,7 +175,7 @@ export async function cancelQuote({
       .returning();
 
     if (!row) {
-      throw new QuoteNotFoundError(id);
+      throw quoteNotFound(id);
     }
 
     if (changes) {
@@ -301,13 +297,13 @@ export async function updateQuote({
     const [before] = await tx.select().from(quotes).where(eq(quotes.id, input.id)).for('update');
 
     if (!before) {
-      throw new QuoteNotFoundError(input.id);
+      throw quoteNotFound(input.id);
     }
 
     const beforeOffering = narrowQuoteOffering(before);
 
     if (input.offering.kind !== beforeOffering.kind) {
-      throw new QuoteInvalidReferenceError('Quote offering kind cannot be changed.');
+      throw new QuoteError('quote.invalid_reference', 'Quote offering kind cannot be changed.');
     }
 
     if (beforeOffering.kind === 'custom') {
@@ -384,7 +380,7 @@ export async function updateQuote({
     });
 
     if (!editable.allowed) {
-      throw new QuoteLockedError(editable.reason);
+      throw new QuoteError('quote.locked', editable.reason);
     }
 
     await transferAllocationQuoteOnAcceptance({
@@ -405,7 +401,7 @@ export async function updateQuote({
       .returning();
 
     if (!row) {
-      throw new QuoteNotFoundError(input.id);
+      throw quoteNotFound(input.id);
     }
 
     const { selectedAssemblies, workItems } = await persistQuoteCollectionPatch({
@@ -450,7 +446,7 @@ export async function patchQuote({
     const [before] = await tx.select().from(quotes).where(eq(quotes.id, input.id)).for('update');
 
     if (!before) {
-      throw new QuoteNotFoundError(input.id);
+      throw quoteNotFound(input.id);
     }
 
     const beforeOffering = narrowQuoteOffering(before);
@@ -517,7 +513,7 @@ export async function patchQuote({
     });
 
     if (!editable.allowed) {
-      throw new QuoteLockedError(editable.reason);
+      throw new QuoteError('quote.locked', editable.reason);
     }
 
     await transferAllocationQuoteOnAcceptance({
@@ -538,7 +534,7 @@ export async function patchQuote({
       .returning();
 
     if (!row) {
-      throw new QuoteNotFoundError(input.id);
+      throw quoteNotFound(input.id);
     }
 
     const { selectedAssemblies, workItems } = await persistQuoteCollectionPatch({
@@ -764,7 +760,7 @@ async function resolveQuoteOffering({
     .limit(1);
 
   if (!product) {
-    throw new QuoteInvalidReferenceError('Quote product was not found.');
+    throw new QuoteError('quote.invalid_reference', 'Quote product was not found.');
   }
 
   const allocationSeed = input.offering.productUnitId
@@ -792,7 +788,7 @@ function assertNoCustomSelectedAssemblies(
   input: Pick<QuoteCreateInput | QuotePatchInput | QuoteUpdateInput, 'selectedAssemblies'>,
 ): void {
   if ((input.selectedAssemblies?.length ?? 0) > 0) {
-    throw new QuoteCustomSelectedAssembliesError('Custom Quotes cannot have Selected Assemblies.');
+    throw new QuoteError('quote.custom_selected_assemblies', 'Custom Quotes cannot have Selected Assemblies.');
   }
 }
 
@@ -805,7 +801,7 @@ async function assertQuoteCustomer({ customerId, tx }: { customerId: UUID; tx: D
     .where(eq(customers.id, customerId));
 
   if (!customer) {
-    throw new QuoteInvalidReferenceError('Quote customer was not found.');
+    throw new QuoteError('quote.invalid_reference', 'Quote customer was not found.');
   }
 }
 
@@ -824,7 +820,7 @@ async function assertQuoteSalesPerson({
     .where(and(eq(user.id, salesPersonId), eq(user.quoteSalesperson, true)));
 
   if (!salesPerson) {
-    throw new QuoteInvalidReferenceError('Quote salesperson must be a User marked as a Quote salesperson.');
+    throw new QuoteError('quote.invalid_reference', 'Quote salesperson must be a User marked as a Quote salesperson.');
   }
 }
 
@@ -838,7 +834,7 @@ function assertDeliveryConfirmedForAcceptance({
   const message = getQuoteDeliveryAcceptanceError({ deliveryTerms, status });
 
   if (message) {
-    throw new QuoteDeliveryUnconfirmedError(message);
+    throw new QuoteError('quote.delivery_unconfirmed', message);
   }
 }
 
@@ -846,7 +842,7 @@ function assertValidDiscount({ discountPercent }: { discountPercent: number }): 
   const result = validateDiscount({ discountPercent });
 
   if (!result.allowed) {
-    throw new QuoteDiscountInvalidError(result.reason);
+    throw new QuoteError('quote.discount_invalid', result.reason);
   }
 }
 
@@ -857,7 +853,7 @@ function assertValidDiscount({ discountPercent }: { discountPercent: number }): 
  */
 function assertNotCancellingByUpdate({ before, next }: { before: QuoteStatus; next: QuoteStatus | undefined }): void {
   if (next === 'cancelled' && before !== 'cancelled') {
-    throw new QuoteCancelNotAnUpdateError();
+    throw quoteCancelNotAnUpdate();
   }
 }
 

@@ -11,11 +11,11 @@ import type { BuildPostResult, PartStockTrackingMode, PartUnitOfMeasure, PostBui
 import { BuildPostResult as BuildPostResultSchema, unitClassFor } from '@pkg/schema/equipment';
 import { asc, eq, inArray } from 'drizzle-orm';
 
-import { PartNotFoundError } from '../parts/part-errors.js';
-import { BuildComponentNotFoundError, BuildSelfComponentError } from './build-errors.js';
+import { partNotFound } from '../parts/part-errors.js';
+import { buildComponentNotFound, buildSelfComponent } from './build-errors.js';
 import { loadBucketQuantities, loadMovingAverages, scaleUnitCost } from './ledger.js';
 import { resolveMovementActor } from './movement-actor.js';
-import { assertPartStockAction } from './part-stock-action-errors.js';
+import { assertPartStockAction } from './part-stock-action.js';
 import { assertDeltaMatchesUnitClass, assertLengthMatchesUnitClass } from './unit-class-rules.js';
 
 type BuildPart = {
@@ -56,14 +56,14 @@ export async function postBuild({
       sessionUserId: actorUserId,
     });
     const builtPart = partsById.get(input.builtPartId);
-    if (!builtPart) throw new PartNotFoundError(input.builtPartId);
+    if (!builtPart) throw partNotFound(input.builtPartId);
 
     assertBuildable(builtPart);
     assertDeltaMatchesUnitClass(input.quantity, unitClassFor(builtPart.unitOfMeasure));
     // Builds never recurse, so a Part can never consume itself (spec §6). The BOM table forbids the
     // stored row; this forbids the keyed line, which is the only other way one could arrive.
     if (input.consumption.some((line) => line.componentPartId === input.builtPartId)) {
-      throw new BuildSelfComponentError(input.builtPartId);
+      throw buildSelfComponent();
     }
 
     const componentPartIds = input.consumption.map((line) => line.componentPartId);
@@ -75,7 +75,7 @@ export async function postBuild({
 
     const posted = input.consumption.map((line): BuildPostedLine => {
       const component = partsById.get(line.componentPartId);
-      if (!component) throw new BuildComponentNotFoundError(line.componentPartId);
+      if (!component) throw buildComponentNotFound();
       const unitClass = unitClassFor(component.unitOfMeasure);
       assertDeltaMatchesUnitClass(line.quantity, unitClass);
       assertLengthMatchesUnitClass(line.lengthMm, unitClass);

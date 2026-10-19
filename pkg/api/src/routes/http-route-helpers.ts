@@ -1,6 +1,6 @@
 import { Readable } from 'node:stream';
 
-import { FilePolicyViolationError } from '@pkg/core';
+import { isFileError } from '@pkg/core';
 import { createUserAccessSummaryForUser, type FilePolicy, fileTooLargeMessage, hasPermission } from '@pkg/domain';
 import type { AppPermission } from '@pkg/schema';
 import { TRPCError } from '@trpc/server';
@@ -121,7 +121,7 @@ export function sendUploadHttpError(reply: FastifyReply, error: unknown, options
     return;
   }
 
-  if (error instanceof FilePolicyViolationError) {
+  if (isFileError(error) && (error.code === 'file.content_type_not_allowed' || error.code === 'file.too_large')) {
     reply.status(400).send({ data: { appCode: error.code }, message: error.message });
     return;
   }

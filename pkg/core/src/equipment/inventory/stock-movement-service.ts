@@ -46,13 +46,13 @@ import { and, asc, eq, inArray, ne, or, type SQL, sql } from 'drizzle-orm';
 import { lockJob, lockMutableJob } from '../jobs/job-mutation-guards.js';
 import { loadOpenOrderLines } from '../purchase-orders/purchase-order-service.js';
 import {
-  CheckoutQuoteNotFoundError,
-  CheckoutQuoteNotOpenError,
-  CheckoutQuoteNotPartsSaleError,
-  CheckoutRecipientIneligibleError,
-  InvalidSourceCheckoutError,
+  checkoutQuoteNotFound,
+  checkoutQuoteNotOpen,
+  checkoutQuoteNotPartsSale,
+  checkoutRecipientIneligible,
+  invalidSourceCheckout,
 } from './checkout-errors.js';
-import { JobClosedOutError } from './close-out-errors.js';
+import { jobClosedOut } from './close-out-errors.js';
 import { getJobCloseOutAt } from './close-out-service.js';
 
 import { loadOpenCommitments, sumCommitmentsByPart } from './commitment-read.js';
@@ -72,15 +72,11 @@ import {
   sumDelta,
 } from './ledger.js';
 import { resolveMovementActor } from './movement-actor.js';
-import { assertPartStockAction } from './part-stock-action-errors.js';
+import { assertPartStockAction } from './part-stock-action.js';
 import { loadPlantStockPosition } from './plant-stock-position.js';
 import { eligibleMovementPersonCondition } from './recipient-read.js';
 import { sumBy, sumNullableBy } from './row-grouping.js';
-import {
-  PeriodicStockMovementError,
-  ScannedPartNotFoundError,
-  StockMovementPartNotFoundError,
-} from './stock-movement-errors.js';
+import { periodicStockMovement, scannedPartNotFound, stockMovementPartNotFound } from './stock-movement-errors.js';
 import { assertDeltaMatchesUnitClass, assertLengthMatchesUnitClass } from './unit-class-rules.js';
 
 export async function postAdjustment({
@@ -105,7 +101,7 @@ export async function postAdjustment({
     assertLengthMatchesUnitClass(input.lengthMm, unitClass);
     assertBuiltPartCostIsDerived(part.isInternallyFabricated, input.unitCost);
     if (part.stockTrackingMode === 'periodic' && !isPeriodicStockAdjustmentReason(input.reason)) {
-      throw new PeriodicStockMovementError(input.reason);
+      throw periodicStockMovement(input.reason);
     }
 
     return insertMovement(tx, {
@@ -235,7 +231,7 @@ export async function postCheckoutBasket({
 
     for (const line of input.lines) {
       const part = partsById.get(line.partId);
-      if (!part) throw new StockMovementPartNotFoundError(line.partId);
+      if (!part) throw stockMovementPartNotFound(line.partId);
       lines.push(await drawLine(tx, session, { lengthMm: line.lengthMm, part, quantity: line.quantity }));
     }
 
@@ -405,7 +401,7 @@ async function lockDrawTarget(tx: DatabaseTransaction, target: DrawTarget): Prom
       // Close-out ended this Job's stock life; a later draw would sit against it unprompted forever,
       // since a closed Job can never re-enter the queue. Returns are deliberately still allowed.
       if (target.movementType === 'checkout' && (await getJobCloseOutAt({ db: tx, jobId: target.jobId })) !== null) {
-        throw new JobClosedOutError(target.jobId);
+        throw jobClosedOut();
       }
       return;
     case 'quote': {
@@ -414,11 +410,11 @@ async function lockDrawTarget(tx: DatabaseTransaction, target: DrawTarget): Prom
         .from(quotes)
         .where(eq(quotes.id, target.quoteId))
         .for('update');
-      if (!quote) throw new CheckoutQuoteNotFoundError(target.quoteId);
-      if (!quote.isPartsSale) throw new CheckoutQuoteNotPartsSaleError(target.quoteId);
+      if (!quote) throw checkoutQuoteNotFound(target.quoteId);
+      if (!quote.isPartsSale) throw checkoutQuoteNotPartsSale(target.quoteId);
       // Returns stay open whatever became of the sale: recovered stock must reach the ledger.
       if (target.movementType === 'checkout' && !PARTS_SALE_CHECKOUT_STATUSES.has(quote.status)) {
-        throw new CheckoutQuoteNotOpenError(target.quoteId);
+        throw checkoutQuoteNotOpen(target.quoteId);
       }
       return;
     }
@@ -537,7 +533,7 @@ async function loadSourceCheckout(db: DatabaseTransaction, sourceCheckoutId: UUI
     .from(stockMovements)
     .where(eq(stockMovements.id, sourceCheckoutId))
     .limit(1);
-  if (!row || !isCheckoutWithoutJob(row)) throw new InvalidSourceCheckoutError(sourceCheckoutId);
+  if (!row || !isCheckoutWithoutJob(row)) throw invalidSourceCheckout(sourceCheckoutId);
 
   return row;
 }
@@ -548,7 +544,7 @@ async function assertEligibleRecipient(db: DatabaseTransaction, recipientUserId:
     .from(user)
     .where(and(eq(user.id, recipientUserId), eligibleMovementPersonCondition()))
     .limit(1);
-  if (!recipient) throw new CheckoutRecipientIneligibleError(recipientUserId);
+  if (!recipient) throw checkoutRecipientIneligible(recipientUserId);
 }
 
 export async function listJobStock({ db, jobId }: { db: Db; jobId: UUID }): Promise<JobStockResult> {
@@ -639,7 +635,7 @@ export async function listJobStock({ db, jobId }: { db: Db; jobId: UUID }): Prom
  */
 export async function getPartStockByCode({ code, db }: { code: string; db: Db }): Promise<StockOnHandRow> {
   const [part] = await db.select({ id: parts.id }).from(parts).where(eq(parts.code, code)).limit(1);
-  if (!part) throw new ScannedPartNotFoundError(code);
+  if (!part) throw scannedPartNotFound(code);
 
   const snapshot = await db.transaction((tx) => listStockOnHandSnapshot(tx, [part.id]), {
     accessMode: 'read only',
@@ -647,7 +643,7 @@ export async function getPartStockByCode({ code, db }: { code: string; db: Db })
   });
   const row = snapshot.items[0];
   // The Part was read a moment ago, so an empty snapshot means it was deleted between the two reads.
-  if (!row) throw new ScannedPartNotFoundError(code);
+  if (!row) throw scannedPartNotFound(code);
 
   return row;
 }

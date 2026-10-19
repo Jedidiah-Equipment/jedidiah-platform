@@ -4,7 +4,7 @@ import { isJobCancelled } from '@pkg/domain/equipment';
 import type { UUID } from '@pkg/schema';
 import { eq } from 'drizzle-orm';
 
-import { JobCancelledError, JobNotFoundError } from './job-errors.js';
+import { jobCancelled, jobNotFound } from './job-errors.js';
 import type { JobRow } from './job-mappers.js';
 
 export async function lockMutableJob(tx: DatabaseTransaction, jobId: UUID): Promise<JobRow> {
@@ -18,7 +18,7 @@ export async function lockJob(tx: DatabaseTransaction, jobId: UUID): Promise<Job
   const [job] = await tx.select().from(jobs).where(eq(jobs.id, jobId)).for('update');
 
   if (!job) {
-    throw new JobNotFoundError(jobId);
+    throw jobNotFound(jobId);
   }
 
   return job;
@@ -26,6 +26,6 @@ export async function lockJob(tx: DatabaseTransaction, jobId: UUID): Promise<Job
 
 export function assertJobIsMutable(job: Pick<JobRow, 'cancelledAt' | 'id'>): void {
   if (isJobCancelled(job)) {
-    throw new JobCancelledError(job.id);
+    throw jobCancelled();
   }
 }

@@ -4,7 +4,7 @@ import type { PurchaseOrderDocumentMetadata, PurchaseOrderDocumentRow } from '@p
 import { PurchaseOrderDocumentRow as PurchaseOrderDocumentRowSchema } from '@pkg/schema/equipment';
 import { eq } from 'drizzle-orm';
 import type { StorageAdapter } from '../../storage/storage-adapter.js';
-import { DuplicateDocumentFilenameError } from '../documents/document-errors.js';
+import { duplicateDocumentFilename } from '../documents/document-errors.js';
 import { collectDocumentErrorText, createDocumentRecord, type DocumentBaseRow } from '../documents/document-service.js';
 import { purchaseOrderDocumentStorageKey } from './purchase-order-service.js';
 
@@ -98,9 +98,8 @@ function mapPurchaseOrderDocumentUniqueViolation(
     constraint?.includes(PURCHASE_ORDER_DOCUMENT_FILENAME_UNIQUE_INDEX) ||
     isPurchaseOrderDocumentFilenameUniqueDetail(error)
   ) {
-    return new DuplicateDocumentFilenameError({
+    return duplicateDocumentFilename({
       filename: input.filename,
-      ownerId: input.purchaseOrderId,
       ownerType: 'purchase_order',
     });
   }

@@ -24,7 +24,7 @@ import { and, asc, eq, isNotNull, isNull, or, type SQL, sql } from 'drizzle-orm'
 import { defineAuditDescriptor } from '../audit/audit-writer.js';
 import { mutateEntity } from '../audit/mutate-entity.js';
 import { businessRoleSql } from './business-role.js';
-import { UserNotFoundError } from './user-errors.js';
+import { userNotFound } from './user-errors.js';
 
 type UserAuditInput = Pick<
   typeof user.$inferSelect,
@@ -94,7 +94,7 @@ export async function getUserById({ db, userId }: { db: Db; userId: AuthId }): P
   const [row] = await db.select(userAccountColumns).from(user).where(eq(user.id, userId)).limit(1);
 
   if (!row) {
-    throw new UserNotFoundError(userId);
+    throw userNotFound(userId);
   }
 
   return mapUserAccount(row);
@@ -192,7 +192,7 @@ export async function setUserIsDevice({
     db,
     descriptor: userAuditDescriptor,
     id: userId,
-    notFound: () => new UserNotFoundError(userId),
+    notFound: () => userNotFound(userId),
     project: (_tx, row) => mapUserAccount(row),
     set: () => ({ isDevice, updatedAt: new Date() }),
     table: user,
@@ -215,7 +215,7 @@ export async function updateUserThumbnail({
     db,
     descriptor: userAuditDescriptor,
     id: userId,
-    notFound: () => new UserNotFoundError(userId),
+    notFound: () => userNotFound(userId),
     project: (_tx, row) => mapUserAccount(row),
     set: () => ({ image: thumbnailDataUrl, updatedAt: new Date() }),
     table: user,

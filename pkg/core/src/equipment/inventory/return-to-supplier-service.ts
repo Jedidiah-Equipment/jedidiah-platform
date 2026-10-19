@@ -6,7 +6,7 @@ import type { PostReturnToSupplierInput, StockMovementPostResult } from '@pkg/sc
 import { StockMovementPostResult as StockMovementPostResultSchema, unitClassFor } from '@pkg/schema/equipment';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 
-import { PurchaseOrderLineNotFoundError } from '../purchase-orders/purchase-order-errors.js';
+import { purchaseOrderLineNotFound } from '../purchase-orders/purchase-order-errors.js';
 import { openPurchaseOrder } from '../purchase-orders/purchase-order-gate.js';
 import { RECEIPT_POOL_MOVEMENT_TYPES } from '../purchase-orders/receipt-pool.js';
 import { bucketMatches, insertMovement, loadStockPart } from './ledger.js';
@@ -99,5 +99,5 @@ async function assertPurchaseOrderLineExists(
     .select({ partId: purchaseOrderLines.partId })
     .from(purchaseOrderLines)
     .where(and(eq(purchaseOrderLines.purchaseOrderId, purchaseOrderId), eq(purchaseOrderLines.partId, partId)));
-  if (!line) throw new PurchaseOrderLineNotFoundError(purchaseOrderId, partId);
+  if (!line) throw purchaseOrderLineNotFound();
 }

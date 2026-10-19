@@ -9,7 +9,7 @@ import { listAssemblies } from '../products/product-assembly-service.js';
 import { narrowQuoteOffering } from '../quotes/quote-offering.js';
 import { loadAsBuiltSpec } from '../units/product-unit-as-built.js';
 import { lockUnitForOwnership } from '../units/product-unit-service.js';
-import { JobCreateFromQuoteDeniedError, StockBuildDeniedError } from './job-errors.js';
+import { JobError } from './job-errors.js';
 
 type QuoteRow = typeof quotes.$inferSelect;
 
@@ -134,7 +134,7 @@ async function assertStockBuildProductExists({
     .limit(1);
 
   if (!product) {
-    throw new StockBuildDeniedError('Product not found.');
+    throw new JobError('job.stock_build_denied', 'Product not found.');
   }
 }
 
@@ -166,7 +166,10 @@ async function resolveStockBuildSpec({
   const unknown = uniqueIds.filter((assemblyId) => !optionalAssembliesById.has(assemblyId));
 
   if (unknown.length > 0) {
-    throw new StockBuildDeniedError(`Optional assembly does not belong to this Product: ${unknown.join(', ')}.`);
+    throw new JobError(
+      'job.stock_build_denied',
+      `Optional assembly does not belong to this Product: ${unknown.join(', ')}.`,
+    );
   }
 
   return uniqueIds.map((assemblyId) => ({
@@ -185,7 +188,7 @@ async function lockQuoteForJobCreate({ quoteId, tx }: { quoteId: UUID; tx: Datab
   const [quote] = await tx.select().from(quotes).where(eq(quotes.id, quoteId)).for('update');
 
   if (!quote) {
-    throw new JobCreateFromQuoteDeniedError('Quote not found.');
+    throw new JobError('job.create_from_quote_denied', 'Quote not found.');
   }
 
   const quoteJobs = await tx
@@ -244,7 +247,7 @@ function assertQuoteCanStartJob({
   });
 
   if (!eligibility.allowed) {
-    throw new JobCreateFromQuoteDeniedError(eligibility.reason);
+    throw new JobError('job.create_from_quote_denied', eligibility.reason);
   }
 }
 

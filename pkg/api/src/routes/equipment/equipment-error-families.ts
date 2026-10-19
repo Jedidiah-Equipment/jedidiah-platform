@@ -1,51 +1,48 @@
 import {
   type AssertedActorError,
   type BuildError,
-  type CheckoutCoreError,
-  type CreditNoteCoreError,
-  type CustomerCoreError,
-  CustomerPossibleMatchError,
-  type DocumentCoreError,
-  type FeedbackCoreError,
+  type CheckoutError,
+  type CreditNoteError,
+  type CustomerError,
+  type DocumentError,
+  type FeedbackError,
   isAssertedActorError,
   isBuildError,
-  isCheckoutCoreError,
-  isCreditNoteCoreError,
-  isCustomerCoreError,
-  isDocumentCoreError,
-  isFeedbackCoreError,
+  isCheckoutError,
+  isCreditNoteError,
+  isCustomerError,
+  isDocumentError,
+  isFeedbackError,
   isJobCloseOutError,
-  isJobCoreError,
+  isJobError,
   isPartBomError,
-  isPartCoreError,
-  isProductCoreError,
-  isProductRangeCoreError,
-  isProductUnitCoreError,
+  isPartError,
+  isProductError,
+  isProductRangeError,
+  isProductUnitError,
   isProductUnitReassignError,
-  isPurchaseOrderCoreError,
-  isQuoteCoreError,
-  isStockMovementCoreError,
+  isPurchaseOrderError,
+  isQuoteError,
+  isStockMovementError,
   isStocktakeError,
-  isSupplierCoreError,
-  isSupplierInvoiceCoreError,
+  isSupplierError,
+  isSupplierInvoiceError,
+  isUserDeviceError,
   type JobCloseOutError,
-  type JobCoreError,
+  type JobError,
   type PartBomError,
-  type PartCoreError,
-  PeriodicStockMovementError,
-  type ProductCoreError,
-  type ProductRangeCoreError,
-  type ProductUnitCoreError,
+  type PartError,
+  type ProductError,
+  type ProductRangeError,
+  type ProductUnitError,
   type ProductUnitReassignError,
-  PurchaseOrderActionRefusedError,
-  type PurchaseOrderCoreError,
-  type QuoteCoreError,
-  type StockMovementCoreError,
-  StockMovementPartNotFoundError,
+  type PurchaseOrderError,
+  type QuoteError,
+  type StockMovementError,
   type StocktakeError,
-  type SupplierCoreError,
-  type SupplierInvoiceCoreError,
-  UserIsDeviceError,
+  type SupplierError,
+  type SupplierInvoiceError,
+  type UserDeviceError,
 } from '@pkg/core/equipment';
 import type { DocumentOwnerType } from '@pkg/schema/equipment';
 
@@ -56,7 +53,7 @@ import { defineCoreErrorFamily } from '../../trpc/errors.js';
  * declared once here, beside its siblings, so every router that can surface a code maps it the same way.
  */
 
-export const quoteErrorFamily = defineCoreErrorFamily<QuoteCoreError>({
+export const quoteErrorFamily = defineCoreErrorFamily<QuoteError>({
   codes: {
     'quote.allocation_conflict': 'CONFLICT',
     'quote.already_cancelled': 'BAD_REQUEST',
@@ -72,7 +69,7 @@ export const quoteErrorFamily = defineCoreErrorFamily<QuoteCoreError>({
     'quote.offering_invariant': 'BAD_REQUEST',
     'quote.product_bay_availability_not_applicable': 'BAD_REQUEST',
   },
-  is: isQuoteCoreError,
+  is: isQuoteError,
   messages: {
     'quote.discount_invalid': 'Quote discount is invalid.',
     'quote.invalid_reference': 'Quote includes an invalid Customer, Product, Product Unit, or salesperson.',
@@ -80,7 +77,7 @@ export const quoteErrorFamily = defineCoreErrorFamily<QuoteCoreError>({
   },
 });
 
-export const productUnitErrorFamily = defineCoreErrorFamily<ProductUnitCoreError>({
+export const productUnitErrorFamily = defineCoreErrorFamily<ProductUnitError>({
   codes: {
     // Removal refused because the machine is still real: the message names which claim holds it.
     'product_unit.in_use': 'CONFLICT',
@@ -90,7 +87,7 @@ export const productUnitErrorFamily = defineCoreErrorFamily<ProductUnitCoreError
     'product_unit.transfer_backdated': 'BAD_REQUEST',
     'product_unit.transfer_in_future': 'BAD_REQUEST',
   },
-  is: isProductUnitCoreError,
+  is: isProductUnitError,
   messages: { 'product_unit.not_found': 'Product unit not found.' },
 });
 
@@ -105,7 +102,7 @@ export const productUnitReassignErrorFamily = defineCoreErrorFamily<ProductUnitR
   is: isProductUnitReassignError,
 });
 
-export const jobErrorFamily = defineCoreErrorFamily<JobCoreError>({
+export const jobErrorFamily = defineCoreErrorFamily<JobError>({
   codes: {
     'job.already_completed': 'BAD_REQUEST',
     'job.bay_already_assigned': 'CONFLICT',
@@ -130,7 +127,7 @@ export const jobErrorFamily = defineCoreErrorFamily<JobCoreError>({
     // A request the product never offers: only a Stock Build shows the remove-the-unit option.
     'job.unit_removal_denied': 'BAD_REQUEST',
   },
-  is: isJobCoreError,
+  is: isJobError,
   messages: {
     'job.bay_not_found': 'Job bay not found.',
     'job.bay_operator_assignment_not_found': 'Bay has no current operator assignment.',
@@ -140,7 +137,7 @@ export const jobErrorFamily = defineCoreErrorFamily<JobCoreError>({
   },
 });
 
-export const productErrorFamily = defineCoreErrorFamily<ProductCoreError>({
+export const productErrorFamily = defineCoreErrorFamily<ProductError>({
   codes: {
     'product.assembly.duplicate_name': 'BAD_REQUEST',
     'product.assembly.duplicate_part': 'BAD_REQUEST',
@@ -160,7 +157,7 @@ export const productErrorFamily = defineCoreErrorFamily<ProductCoreError>({
     'product.range.not_found': 'NOT_FOUND',
     'product.variant.not_found': 'BAD_REQUEST',
   },
-  is: isProductCoreError,
+  is: isProductError,
   messages: {
     'product.assembly.duplicate_name': 'Assembly names must be unique within a product.',
     'product.assembly.duplicate_part': 'A part can only be added once per assembly.',
@@ -193,7 +190,7 @@ const DOCUMENT_OWNER_NOUNS = {
   quote: 'Quote',
 } as const satisfies Record<DocumentOwnerType, string>;
 
-export const documentErrorFamily = defineCoreErrorFamily<DocumentCoreError>({
+export const documentErrorFamily = defineCoreErrorFamily<DocumentError>({
   codes: {
     'document.content_type_not_allowed': 'BAD_REQUEST',
     'document.delete_not_allowed': 'BAD_REQUEST',
@@ -203,27 +200,29 @@ export const documentErrorFamily = defineCoreErrorFamily<DocumentCoreError>({
     'document.not_found': 'NOT_FOUND',
     'document.storage_key_conflict': 'BAD_REQUEST',
   },
-  is: isDocumentCoreError,
+  is: isDocumentError,
   messages: {
     'document.duplicate_filename': (error) =>
-      `A document with this filename already exists for this ${DOCUMENT_OWNER_NOUNS[error.metadata.ownerType]}.`,
+      error.ownerType
+        ? `A document with this filename already exists for this ${DOCUMENT_OWNER_NOUNS[error.ownerType]}.`
+        : 'A document with this filename already exists.',
     'document.not_found': 'Document not found.',
   },
 });
 
-export const feedbackErrorFamily = defineCoreErrorFamily<FeedbackCoreError>({
+export const feedbackErrorFamily = defineCoreErrorFamily<FeedbackError>({
   codes: {
     'feedback.not_found': 'NOT_FOUND',
     'feedback.subject_not_found': 'NOT_FOUND',
   },
-  is: isFeedbackCoreError,
+  is: isFeedbackError,
   messages: {
     'feedback.not_found': 'The feedback item could not be found.',
     'feedback.subject_not_found': 'The Quote, Job or Purchase Order this feedback is about could not be found.',
   },
 });
 
-export const productRangeErrorFamily = defineCoreErrorFamily<ProductRangeCoreError>({
+export const productRangeErrorFamily = defineCoreErrorFamily<ProductRangeError>({
   codes: {
     'product_range.duplicate_name': 'CONFLICT',
     'product_range.has_products': 'CONFLICT',
@@ -232,7 +231,7 @@ export const productRangeErrorFamily = defineCoreErrorFamily<ProductRangeCoreErr
     'product_range.variant_has_products': 'CONFLICT',
     'product_range.variant_not_found': 'NOT_FOUND',
   },
-  is: isProductRangeCoreError,
+  is: isProductRangeError,
   messages: {
     'product_range.duplicate_name': 'A Product Range with this name already exists.',
     'product_range.has_products': 'Product Range has active linked products and cannot be removed.',
@@ -243,14 +242,14 @@ export const productRangeErrorFamily = defineCoreErrorFamily<ProductRangeCoreErr
   },
 });
 
-export const supplierErrorFamily = defineCoreErrorFamily<SupplierCoreError>({
+export const supplierErrorFamily = defineCoreErrorFamily<SupplierError>({
   codes: {
     'supplier.duplicate_name': 'CONFLICT',
     'supplier.has_draft_purchase_orders': 'CONFLICT',
     'supplier.merge_self': 'BAD_REQUEST',
     'supplier.not_found': 'NOT_FOUND',
   },
-  is: isSupplierCoreError,
+  is: isSupplierError,
   messages: {
     'supplier.duplicate_name': 'A supplier with this name already exists.',
     'supplier.has_draft_purchase_orders':
@@ -260,7 +259,7 @@ export const supplierErrorFamily = defineCoreErrorFamily<SupplierCoreError>({
   },
 });
 
-export const customerErrorFamily = defineCoreErrorFamily<CustomerCoreError>({
+export const customerErrorFamily = defineCoreErrorFamily<CustomerError>({
   codes: {
     'customer.in_use': 'CONFLICT',
     'customer.merge_busy': 'CONFLICT',
@@ -268,7 +267,7 @@ export const customerErrorFamily = defineCoreErrorFamily<CustomerCoreError>({
     'customer.not_found': 'NOT_FOUND',
     'customer.possible_match': 'CONFLICT',
   },
-  is: isCustomerCoreError,
+  is: isCustomerError,
   messages: {
     'customer.in_use': 'This customer cannot be removed because another record still references it.',
     'customer.merge_busy':
@@ -277,7 +276,7 @@ export const customerErrorFamily = defineCoreErrorFamily<CustomerCoreError>({
     'customer.not_found': 'Customer not found.',
   },
   // The candidates the caller picks from instead of creating a duplicate.
-  metadata: (error) => (error instanceof CustomerPossibleMatchError ? error.metadata : undefined),
+  metadata: (error) => (error.matches ? { matches: error.matches } : undefined),
 });
 
 export const partBomErrorFamily = defineCoreErrorFamily<PartBomError>({
@@ -290,7 +289,7 @@ export const partBomErrorFamily = defineCoreErrorFamily<PartBomError>({
   is: isPartBomError,
 });
 
-export const partCoreErrorFamily = defineCoreErrorFamily<PartCoreError>({
+export const partErrorFamily = defineCoreErrorFamily<PartError>({
   codes: {
     'part.bom_locked': 'CONFLICT',
     'part.bulk_import_conflict': 'CONFLICT',
@@ -307,7 +306,7 @@ export const partCoreErrorFamily = defineCoreErrorFamily<PartCoreError>({
     'part.supplier_not_found': 'NOT_FOUND',
     'part.unit_of_measure_locked': 'CONFLICT',
   },
-  is: isPartCoreError,
+  is: isPartError,
   // Only where the core error's own wording is too internal to show a user.
   messages: {
     'part.bulk_import_conflict': 'A CSV row matches an existing part code with a different supplier.',
@@ -324,7 +323,7 @@ export const partCoreErrorFamily = defineCoreErrorFamily<PartCoreError>({
   },
 });
 
-export const purchaseOrderErrorFamily = defineCoreErrorFamily<PurchaseOrderCoreError>({
+export const purchaseOrderErrorFamily = defineCoreErrorFamily<PurchaseOrderError>({
   codes: {
     'purchase_order.arrival_below_zero': 'BAD_REQUEST',
     'purchase_order.already_cancelled': 'BAD_REQUEST',
@@ -354,37 +353,36 @@ export const purchaseOrderErrorFamily = defineCoreErrorFamily<PurchaseOrderCoreE
     'purchase_order.substitution_has_receipts': 'CONFLICT',
     'purchase_order.supplier_not_found': 'NOT_FOUND',
   },
-  is: isPurchaseOrderCoreError,
+  is: isPurchaseOrderError,
   // Which Purchase Order Action a state refusal refused, and why — the served verdict's own words.
-  metadata: (error) =>
-    error instanceof PurchaseOrderActionRefusedError ? { action: error.action, reason: error.reason } : undefined,
+  metadata: (error) => (error.refused ? { action: error.refused.action, reason: error.refused.reason } : undefined),
 });
 
 /** A credit note fails on the returns it claims, never on the document itself. */
-export const creditNoteErrorFamily = defineCoreErrorFamily<CreditNoteCoreError>({
+export const creditNoteErrorFamily = defineCoreErrorFamily<CreditNoteError>({
   codes: {
     'credit_note.already_settled': 'CONFLICT',
     'credit_note.return_not_found': 'NOT_FOUND',
   },
-  is: isCreditNoteCoreError,
+  is: isCreditNoteError,
 });
 
 /**
  * The invoice panel fails on the flag being acted on, never on the extraction. An unreadable
  * invoice is a state the panel reports, not an error a procedure raises.
  */
-export const supplierInvoiceErrorFamily = defineCoreErrorFamily<SupplierInvoiceCoreError>({
+export const supplierInvoiceErrorFamily = defineCoreErrorFamily<SupplierInvoiceError>({
   codes: {
     'invoice.flag_already_resolved': 'CONFLICT',
     'invoice.flag_not_found': 'NOT_FOUND',
     'invoice.not_found': 'NOT_FOUND',
     'invoice.price_not_applicable': 'BAD_REQUEST',
   },
-  is: isSupplierInvoiceCoreError,
+  is: isSupplierInvoiceError,
 });
 
 /** The ledger's own rules, shared by every router that writes a movement. */
-export const stockMovementErrorFamily = defineCoreErrorFamily<StockMovementCoreError>({
+export const stockMovementErrorFamily = defineCoreErrorFamily<StockMovementError>({
   codes: {
     'inventory.fabricated_part_cost': 'BAD_REQUEST',
     'inventory.invalid_delta': 'BAD_REQUEST',
@@ -393,16 +391,12 @@ export const stockMovementErrorFamily = defineCoreErrorFamily<StockMovementCoreE
     'inventory.part_not_found': 'NOT_FOUND',
     'inventory.periodic_movement': 'BAD_REQUEST',
   },
-  is: isStockMovementCoreError,
+  is: isStockMovementError,
   messages: {
     'inventory.part_code_not_found': 'No Part carries that code. Search for it by name instead.',
     'inventory.part_not_found': 'Part not found.',
   },
-  metadata: (error) => {
-    if (error instanceof StockMovementPartNotFoundError) return { partId: error.metadata.partId };
-    if (error instanceof PeriodicStockMovementError && error.metadata.partId) return { partId: error.metadata.partId };
-    return undefined;
-  },
+  metadata: (error) => (error.partId ? { partId: error.partId } : undefined),
 });
 
 /**
@@ -426,7 +420,7 @@ export const assertedActorErrorFamily = defineCoreErrorFamily<AssertedActorError
   },
 });
 
-export const checkoutErrorFamily = defineCoreErrorFamily<CheckoutCoreError>({
+export const checkoutErrorFamily = defineCoreErrorFamily<CheckoutError>({
   codes: {
     'inventory.invalid_source_checkout': 'BAD_REQUEST',
     'inventory.quote_not_found': 'NOT_FOUND',
@@ -434,7 +428,7 @@ export const checkoutErrorFamily = defineCoreErrorFamily<CheckoutCoreError>({
     'inventory.quote_not_parts_sale': 'BAD_REQUEST',
     'inventory.recipient_ineligible': 'BAD_REQUEST',
   },
-  is: isCheckoutCoreError,
+  is: isCheckoutError,
   messages: {
     'inventory.invalid_source_checkout': 'Select a Checkout without a Job.',
     'inventory.quote_not_found': 'Select a Parts Sale.',
@@ -480,8 +474,8 @@ export const stocktakeErrorFamily = defineCoreErrorFamily<StocktakeError>({
 });
 
 /** A shared device cannot sign for stock, so it has no Badge Card to print. */
-export const userDeviceErrorFamily = defineCoreErrorFamily<UserIsDeviceError>({
+export const userDeviceErrorFamily = defineCoreErrorFamily<UserDeviceError>({
   codes: { 'user.is_device': 'BAD_REQUEST' },
-  is: (error): error is UserIsDeviceError => error instanceof UserIsDeviceError,
+  is: isUserDeviceError,
   messages: { 'user.is_device': 'A shared device has no badge card.' },
 });

@@ -23,7 +23,7 @@ import { type AnyColumn, and, asc, eq, inArray, isNotNull, isNull, type SQL, sql
 
 import { jobDisplayNameOf, jobDisplaySelection } from '../jobs/job-display.js';
 import { lockMutableJob } from '../jobs/job-mutation-guards.js';
-import { JobAlreadyClosedOutError, JobNotCompletedError } from './close-out-errors.js';
+import { jobAlreadyClosedOut, jobNotCompleted } from './close-out-errors.js';
 import { resolveMovementActor } from './movement-actor.js';
 
 /**
@@ -50,9 +50,9 @@ export async function closeOutJob({
       sessionUserId: actorUserId,
     });
 
-    if (job.completedOn === null) throw new JobNotCompletedError(input.jobId);
+    if (job.completedOn === null) throw jobNotCompleted();
     if ((await getJobCloseOutAt({ db: tx, jobId: input.jobId })) !== null) {
-      throw new JobAlreadyClosedOutError(input.jobId);
+      throw jobAlreadyClosedOut();
     }
 
     const [row] = await tx

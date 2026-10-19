@@ -10,11 +10,11 @@ import {
 } from '@pkg/schema/equipment';
 import { eq, inArray } from 'drizzle-orm';
 import { loadMovingAverages } from '../inventory/ledger.js';
-import { assertPartStockAction } from '../inventory/part-stock-action-errors.js';
+import { assertPartStockAction } from '../inventory/part-stock-action.js';
 import {
-  PurchaseOrderInvalidQuantityError,
-  PurchaseOrderPartNotFoundError,
-  PurchaseOrderPartNotPurchasableError,
+  purchaseOrderInvalidQuantity,
+  purchaseOrderPartNotFound,
+  purchaseOrderPartNotPurchasable,
 } from './purchase-order-errors.js';
 import { createPurchaseOrderWithin, savePurchaseOrderDraftWithin } from './purchase-order-service.js';
 
@@ -115,15 +115,15 @@ async function groupSelectionBySupplier({
 
   for (const line of input.lines) {
     const part = partsById.get(line.partId);
-    if (!part) throw new PurchaseOrderPartNotFoundError(line.partId);
+    if (!part) throw purchaseOrderPartNotFound();
     assertPartStockAction(derivePartStockActions(part).purchase, { action: 'purchase', partId: line.partId });
     // The Supplier is left-joined on a column the purchasable verdict has already vouched for; this
     // narrows the pair the group is keyed and named by.
     if (part.supplierId === null || part.supplierName === null) {
-      throw new PurchaseOrderPartNotPurchasableError(line.partId);
+      throw purchaseOrderPartNotPurchasable();
     }
     if (!isWholeUnitQuantity(line.quantity, unitClassFor(part.unitOfMeasure))) {
-      throw new PurchaseOrderInvalidQuantityError(line.partId);
+      throw purchaseOrderInvalidQuantity();
     }
 
     const group = bySupplier.get(part.supplierId) ?? { lines: [], supplierName: part.supplierName };

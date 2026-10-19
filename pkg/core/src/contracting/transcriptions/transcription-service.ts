@@ -15,7 +15,7 @@ import {
   TranscriptionSavedInput,
 } from '@pkg/schema/contracting';
 import { and, asc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
-import { FilePolicyViolationError } from '../../files/file-errors.js';
+import { filePolicyViolation } from '../../files/file-errors.js';
 import { TranscriptionError } from './transcription-errors.js';
 
 export type VoiceTranscript = { text: string; language: string | null };
@@ -80,7 +80,7 @@ export async function transcribeVoiceNote({
   keyterms: () => Promise<KeytermCandidate[]>;
 }): Promise<Transcription> {
   const validation = validateFile(audio, VOICE_NOTE_POLICY);
-  if (!validation.ok) throw new FilePolicyViolationError(validation);
+  if (!validation.ok) throw filePolicyViolation(validation);
   const hints = await listActiveHints({ db });
   let heard: VoiceTranscript;
   try {

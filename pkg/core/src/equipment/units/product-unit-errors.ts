@@ -1,62 +1,45 @@
-export class ProductUnitNotFoundError extends Error {
-  readonly code = 'product_unit.not_found';
-  readonly metadata: { id: string };
+export type ProductUnitErrorCode =
+  | 'product_unit.in_use'
+  | 'product_unit.not_found'
+  | 'product_unit.owner_unchanged'
+  | 'product_unit.product_not_found'
+  | 'product_unit.transfer_backdated'
+  | 'product_unit.transfer_in_future';
 
-  constructor(id: string) {
-    super(`Product unit not found: ${id}`);
-    this.name = 'ProductUnitNotFoundError';
-    this.metadata = { id };
+export class ProductUnitError extends Error {
+  constructor(
+    readonly code: ProductUnitErrorCode,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'ProductUnitError';
   }
 }
 
-export class ProductUnitProductNotFoundError extends Error {
-  readonly code = 'product_unit.product_not_found';
-  readonly metadata: { productId: string };
-
-  constructor(productId: string) {
-    super('Product not found.');
-    this.name = 'ProductUnitProductNotFoundError';
-    this.metadata = { productId };
-  }
-}
+export const isProductUnitError = (error: unknown): error is ProductUnitError => error instanceof ProductUnitError;
+export const productUnitNotFound = (id: string) =>
+  new ProductUnitError('product_unit.not_found', `Product unit not found: ${id}`);
+export const productUnitProductNotFound = () =>
+  new ProductUnitError('product_unit.product_not_found', 'Product not found.');
 
 /** A transfer that leaves the machine where it already is asserts no move, and the log records moves. */
-export class ProductUnitOwnerUnchangedError extends Error {
-  readonly code = 'product_unit.owner_unchanged';
-  readonly metadata: { id: string; ownerId: string | null };
-
-  constructor(id: string, ownerId: string | null) {
-    super(ownerId === null ? 'This unit is already in stock.' : 'This unit already belongs to that customer.');
-    this.name = 'ProductUnitOwnerUnchangedError';
-    this.metadata = { id, ownerId };
-  }
-}
-
-export class ProductUnitTransferInFutureError extends Error {
-  readonly code = 'product_unit.transfer_in_future';
-  readonly metadata: { occurredOn: string; plantToday: string };
-
-  constructor(occurredOn: string, plantToday: string) {
-    super('Transfer date cannot be in the future.');
-    this.name = 'ProductUnitTransferInFutureError';
-    this.metadata = { occurredOn, plantToday };
-  }
-}
+export const productUnitOwnerUnchanged = (ownerId: string | null) =>
+  new ProductUnitError(
+    'product_unit.owner_unchanged',
+    ownerId === null ? 'This unit is already in stock.' : 'This unit already belongs to that customer.',
+  );
+export const productUnitTransferInFuture = () =>
+  new ProductUnitError('product_unit.transfer_in_future', 'Transfer date cannot be in the future.');
 
 /**
  * The Owner is the newest Transfer's destination, so a move dated before the last one would enter the
  * history claiming an origin the machine had already left.
  */
-export class ProductUnitTransferBackdatedError extends Error {
-  readonly code = 'product_unit.transfer_backdated';
-  readonly metadata: { latestOccurredOn: string; occurredOn: string };
-
-  constructor(occurredOn: string, latestOccurredOn: string) {
-    super(`Transfer date cannot be before this unit's most recent transfer (${latestOccurredOn}).`);
-    this.name = 'ProductUnitTransferBackdatedError';
-    this.metadata = { latestOccurredOn, occurredOn };
-  }
-}
+export const productUnitTransferBackdated = (latestOccurredOn: string) =>
+  new ProductUnitError(
+    'product_unit.transfer_backdated',
+    `Transfer date cannot be before this unit's most recent transfer (${latestOccurredOn}).`,
+  );
 
 /** Why a Unit cannot be removed. Each reason names something that would be wrong afterwards. */
 export type ProductUnitInUseReason = 'live-job' | 'built' | 'quoted' | 'referenced';
@@ -88,32 +71,5 @@ function productUnitInUseMessage(reason: ProductUnitInUseReason, jobCode: string
  * a live build, a build that finished, a Quote still selling it — refuses here rather than at a foreign
  * key. An Owner does not: a build-to-order phantom is owned from the moment it is minted.
  */
-export class ProductUnitInUseError extends Error {
-  readonly code = 'product_unit.in_use';
-  readonly metadata: { id: string; jobCode: string | null; reason: ProductUnitInUseReason };
-
-  constructor(id: string, reason: ProductUnitInUseReason, jobCode: string | null = null) {
-    super(productUnitInUseMessage(reason, jobCode));
-    this.name = 'ProductUnitInUseError';
-    this.metadata = { id, jobCode, reason };
-  }
-}
-
-export type ProductUnitCoreError =
-  | ProductUnitInUseError
-  | ProductUnitNotFoundError
-  | ProductUnitOwnerUnchangedError
-  | ProductUnitProductNotFoundError
-  | ProductUnitTransferBackdatedError
-  | ProductUnitTransferInFutureError;
-
-export function isProductUnitCoreError(error: unknown): error is ProductUnitCoreError {
-  return (
-    error instanceof ProductUnitInUseError ||
-    error instanceof ProductUnitNotFoundError ||
-    error instanceof ProductUnitOwnerUnchangedError ||
-    error instanceof ProductUnitProductNotFoundError ||
-    error instanceof ProductUnitTransferBackdatedError ||
-    error instanceof ProductUnitTransferInFutureError
-  );
-}
+export const productUnitInUse = (reason: ProductUnitInUseReason, jobCode: string | null = null) =>
+  new ProductUnitError('product_unit.in_use', productUnitInUseMessage(reason, jobCode));

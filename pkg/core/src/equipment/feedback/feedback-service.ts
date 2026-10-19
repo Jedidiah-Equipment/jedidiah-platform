@@ -41,7 +41,7 @@ import {
 } from '@pkg/schema/equipment';
 import { and, asc, desc, eq, inArray, ne, or } from 'drizzle-orm';
 
-import { FeedbackNotFoundError, FeedbackSubjectNotFoundError } from './feedback-errors.js';
+import { feedbackNotFound, feedbackSubjectNotFound } from './feedback-errors.js';
 import { feedbackPurchaseOrderRelation, toFeedbackPurchaseOrder } from './feedback-purchase-order.js';
 
 type FeedbackRow = typeof feedback.$inferSelect;
@@ -76,19 +76,19 @@ export async function submitFeedback({
     const exists = await db.query.quotes.findFirst({ columns: { id: true }, where: eq(quotes.id, subject.quoteId) });
 
     if (!exists) {
-      throw new FeedbackSubjectNotFoundError('quote', subject.quoteId);
+      throw feedbackSubjectNotFound('quote', subject.quoteId);
     }
   } else if (subject.subjectType === 'purchase-order') {
     const exists = await db.query.purchaseOrders.findFirst({
       columns: { id: true },
       where: eq(purchaseOrders.id, subject.purchaseOrderId),
     });
-    if (!exists) throw new FeedbackSubjectNotFoundError('purchase-order', subject.purchaseOrderId);
+    if (!exists) throw feedbackSubjectNotFound('purchase-order', subject.purchaseOrderId);
   } else {
     const exists = await db.query.jobs.findFirst({ columns: { id: true }, where: eq(jobs.id, subject.jobId) });
 
     if (!exists) {
-      throw new FeedbackSubjectNotFoundError('job', subject.jobId);
+      throw feedbackSubjectNotFound('job', subject.jobId);
     }
   }
 
@@ -195,13 +195,13 @@ export async function updateFeedback({
     .returning({ id: feedback.id });
 
   if (!updated) {
-    throw new FeedbackNotFoundError(input.id);
+    throw feedbackNotFound(input.id);
   }
 
   const detail = await getFeedback({ db, input: { id: input.id } });
 
   if (!detail) {
-    throw new FeedbackNotFoundError(input.id);
+    throw feedbackNotFound(input.id);
   }
 
   return detail;
@@ -256,7 +256,7 @@ export async function updateJobFeedback({
     .returning({ id: feedback.id });
 
   if (!updated) {
-    throw new FeedbackNotFoundError(input.id);
+    throw feedbackNotFound(input.id);
   }
 
   const row = await db.query.feedback.findFirst({
@@ -265,7 +265,7 @@ export async function updateJobFeedback({
   });
 
   if (!row) {
-    throw new FeedbackNotFoundError(input.id);
+    throw feedbackNotFound(input.id);
   }
 
   return { item: mapJobFeedbackItem(row) };

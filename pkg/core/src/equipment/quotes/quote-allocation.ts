@@ -7,7 +7,7 @@ import { and, eq, isNull } from 'drizzle-orm';
 
 import { loadAsBuiltSpec } from '../units/product-unit-as-built.js';
 import { lockUnitForOwnership } from '../units/product-unit-service.js';
-import { QuoteAllocationConflictError, QuoteInvalidReferenceError } from './quote-errors.js';
+import { QuoteError } from './quote-errors.js';
 
 /**
  * Where an Allocation Quote meets the machine it sells. The Quote decides *when* ownership moves — on
@@ -43,7 +43,7 @@ export async function transferAllocationQuoteOnAcceptance({
   const ownership = await lockUnitForOwnership(tx, quote.productUnitId);
 
   if (!ownership) {
-    throw new QuoteInvalidReferenceError('Product Unit was not found.');
+    throw new QuoteError('quote.invalid_reference', 'Product Unit was not found.');
   }
 
   if (ownership.currentOwnerId) {
@@ -101,13 +101,14 @@ export async function returnQuoteProductUnitToStock({
   const ownership = await lockUnitForOwnership(tx, saleTransfer.productUnitId);
 
   if (!ownership) {
-    throw new QuoteInvalidReferenceError('Product Unit was not found.');
+    throw new QuoteError('quote.invalid_reference', 'Product Unit was not found.');
   }
 
   const { latest, unit } = ownership;
 
   if (latest?.toCustomerId !== customerId || latest.sourceQuoteId !== quoteId) {
-    throw new QuoteAllocationConflictError(
+    throw new QuoteError(
+      'quote.allocation_conflict',
       `Product Unit ${unit.productSerialNumber} has a later Ownership Transfer and cannot be returned to Stock by cancelling this Quote.`,
     );
   }
@@ -140,10 +141,10 @@ export async function resolveAllocationQuoteSeed({
   const ownership = await lockUnitForOwnership(tx, productUnitId);
 
   if (!ownership) {
-    throw new QuoteInvalidReferenceError('Product Unit was not found.');
+    throw new QuoteError('quote.invalid_reference', 'Product Unit was not found.');
   }
   if (ownership.unit.productId !== productId) {
-    throw new QuoteInvalidReferenceError('Product Unit does not match the Quote Product.');
+    throw new QuoteError('quote.invalid_reference', 'Product Unit does not match the Quote Product.');
   }
 
   if (ownership.currentOwnerId) {
@@ -155,7 +156,7 @@ export async function resolveAllocationQuoteSeed({
           productSerialNumber: ownership.unit.productSerialNumber,
           tx,
         })
-      : new QuoteInvalidReferenceError('Product Unit is not Stock.');
+      : new QuoteError('quote.invalid_reference', 'Product Unit is not Stock.');
   }
 
   const asBuilt = await loadAsBuiltSpec({ db: tx, productUnitId });
@@ -163,7 +164,10 @@ export async function resolveAllocationQuoteSeed({
 
   for (const assembly of asBuilt) {
     if (!assembly.productAssemblyId) {
-      throw new QuoteInvalidReferenceError("Product Unit's As-Built Spec contains an unavailable Optional Assembly.");
+      throw new QuoteError(
+        'quote.invalid_reference',
+        "Product Unit's As-Built Spec contains an unavailable Optional Assembly.",
+      );
     }
     liveAssemblyIds.add(assembly.productAssemblyId);
   }
@@ -204,14 +208,15 @@ async function createQuoteAllocationConflictError({
   currentOwnerId: string;
   productSerialNumber: string;
   tx: DatabaseTransaction;
-}): Promise<QuoteAllocationConflictError> {
+}): Promise<QuoteError> {
   const [owner] = await tx
     .select({ companyName: customers.companyName })
     .from(customers)
     .where(eq(customers.id, currentOwnerId));
   const ownerName = owner?.companyName ?? 'another Customer';
 
-  return new QuoteAllocationConflictError(
+  return new QuoteError(
+    'quote.allocation_conflict',
     `Product Unit ${productSerialNumber} is already owned by ${ownerName} and cannot be sold by this Quote.`,
   );
 }

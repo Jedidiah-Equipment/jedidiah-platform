@@ -1,6 +1,6 @@
 import { isWholeUnitQuantity, type PartUnitClass } from '@pkg/schema/equipment';
 
-import { StockMovementDeltaError, StockMovementLengthError } from './stock-movement-errors.js';
+import { stockMovementDelta, stockMovementLength } from './stock-movement-errors.js';
 
 /**
  * The two rules every ledger write shares, whatever posted it: a Part is counted in the units its
@@ -9,16 +9,16 @@ import { StockMovementDeltaError, StockMovementLengthError } from './stock-movem
 
 export function assertDeltaMatchesUnitClass(delta: number, unitClass: PartUnitClass): void {
   if (!isWholeUnitQuantity(delta, unitClass)) {
-    throw new StockMovementDeltaError(unitClass);
+    throw stockMovementDelta(unitClass);
   }
 }
 
 export function assertLengthMatchesUnitClass(lengthMm: number | null, unitClass: PartUnitClass): void {
   if (unitClass === 'linear' && lengthMm === null) {
-    throw new StockMovementLengthError(true);
+    throw stockMovementLength(true);
   }
 
   if (unitClass !== 'linear' && lengthMm !== null) {
-    throw new StockMovementLengthError(false);
+    throw stockMovementLength(false);
   }
 }

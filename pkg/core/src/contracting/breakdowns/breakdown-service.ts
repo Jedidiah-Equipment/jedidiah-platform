@@ -51,7 +51,7 @@ import {
 import { and, asc, desc, eq, inArray, ne, or, type SQL, sql } from 'drizzle-orm';
 import { recordAuditCreate } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
-import { FilePolicyViolationError } from '../../files/file-errors.js';
+import { filePolicyViolation } from '../../files/file-errors.js';
 import type { StorageAdapter } from '../../storage/storage-adapter.js';
 import { onSiteAssignment, stintSubjectColumn } from '../fleet/on-site-assignment.js';
 import { type DbOrTx, selectJobs } from '../jobs/job-load.js';
@@ -95,7 +95,7 @@ const CANNOT_REPORT = 'You cannot report Breakdowns.';
 async function storePhotos({ storage, photos }: BreakdownEvidence): Promise<BreakdownPhoto[]> {
   const validated = photos.map((bytes) => {
     const validation = validateFile(bytes, BREAKDOWN_PHOTO_POLICY);
-    if (!validation.ok) throw new FilePolicyViolationError(validation);
+    if (!validation.ok) throw filePolicyViolation(validation);
     return { bytes, validation };
   });
   const stored: BreakdownPhoto[] = [];

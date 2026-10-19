@@ -26,7 +26,7 @@ import { and, asc, eq, inArray, or, type SQL, sql } from 'drizzle-orm';
 import type { PgColumn } from 'drizzle-orm/pg-core';
 
 import { loadAsBuiltSpec } from './product-unit-as-built.js';
-import { ProductUnitNotFoundError } from './product-unit-errors.js';
+import { productUnitNotFound } from './product-unit-errors.js';
 
 /** `NULL` here means Stock, which is why the owner filter has to distinguish "no rows" from "no match". */
 const currentOwnerId = currentOwnerCustomerId(productUnits.id);
@@ -150,7 +150,7 @@ export async function getProductUnit({
     .where(eq(productUnits.id, id));
 
   if (!row) {
-    throw new ProductUnitNotFoundError(id);
+    throw productUnitNotFound(id);
   }
 
   const [owners, unitJobs, transfers, asBuiltSpec] = await Promise.all([

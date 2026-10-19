@@ -38,13 +38,12 @@ import {
 } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
 import {
-  JobBayAlreadyAssignedError,
-  JobBayInUseError,
-  JobBayNotFoundError,
-  JobBayOperatorAssignmentDeniedError,
-  JobBayOperatorAssignmentNotFoundError,
-  JobBayOperatorNotFoundError,
-  JobBayOperatorRoleDeniedError,
+  JobError,
+  jobBayAlreadyAssigned,
+  jobBayNotFound,
+  jobBayOperatorAssignmentNotFound,
+  jobBayOperatorNotFound,
+  jobBayOperatorRoleDenied,
 } from './job-errors.js';
 
 type JobBayRow = typeof jobBays.$inferSelect;
@@ -130,7 +129,7 @@ export async function renameJobBay({
     db,
     descriptor: jobBayAuditDescriptor,
     id: input.id,
-    notFound: () => new JobBayNotFoundError(input.id),
+    notFound: () => jobBayNotFound(input.id),
     project: (tx, bay) => projectJobBay(tx, bay, JobBayRenameResult),
     set: () => ({
       name: input.name,
@@ -154,7 +153,7 @@ export async function setJobBayDisabled({
     db,
     descriptor: jobBayAuditDescriptor,
     id: input.id,
-    notFound: () => new JobBayNotFoundError(input.id),
+    notFound: () => jobBayNotFound(input.id),
     project: (tx, bay) => projectJobBay(tx, bay, JobBaySetDisabledResult),
     set: () => ({
       disabledAt: input.disabled ? new Date() : null,
@@ -191,7 +190,7 @@ export async function deleteJobBay({
       await tx.delete(jobBays).where(eq(jobBays.id, input.id));
     } catch (error) {
       if (getForeignKeyViolationConstraint(error)) {
-        throw new JobBayInUseError(input.id, 'Something still references this Bay. Disable it instead of deleting it.');
+        throw new JobError('job.bay_in_use', 'Something still references this Bay. Disable it instead of deleting it.');
       }
 
       throw error;
@@ -268,7 +267,10 @@ export async function assignJobBayOperator({
     const bay = await getJobBayForUpdate(tx, input.bayId);
 
     if (bay.disabledAt) {
-      throw new JobBayOperatorAssignmentDeniedError('This Bay is disabled and cannot accept new operator assignments.');
+      throw new JobError(
+        'job.bay_operator_assignment_denied',
+        'This Bay is disabled and cannot accept new operator assignments.',
+      );
     }
 
     const operator = await getAssignableBayOperatorForUpdate(tx, input.operatorUserId);
@@ -283,7 +285,7 @@ export async function assignJobBayOperator({
       });
     } catch (error) {
       if (getUniqueViolationConstraint(error)?.includes('job_bay_operator_assignment_open_bay_unique')) {
-        throw new JobBayAlreadyAssignedError();
+        throw jobBayAlreadyAssigned();
       }
 
       throw error;
@@ -315,7 +317,7 @@ export async function unassignJobBayOperator({
     const currentAssignment = await getCurrentAssignmentForUpdate(tx, input.bayId);
 
     if (!currentAssignment) {
-      throw new JobBayOperatorAssignmentNotFoundError(input.bayId);
+      throw jobBayOperatorAssignmentNotFound(input.bayId);
     }
 
     const unassignedAt = new Date();
@@ -326,7 +328,7 @@ export async function unassignJobBayOperator({
       .returning();
 
     if (!closedAssignment) {
-      throw new JobBayOperatorAssignmentNotFoundError(input.bayId);
+      throw jobBayOperatorAssignmentNotFound(input.bayId);
     }
 
     await recordBayOperatorAssignmentAudit({
@@ -355,7 +357,7 @@ async function getJobBayForUpdate(tx: DatabaseTransaction, id: string): Promise<
   const [bay] = await tx.select().from(jobBays).where(eq(jobBays.id, id)).for('update');
 
   if (!bay) {
-    throw new JobBayNotFoundError(id);
+    throw jobBayNotFound(id);
   }
 
   return bay;
@@ -365,7 +367,7 @@ async function assertJobBayUnreferenced(tx: DatabaseTransaction, id: string): Pr
   const [slot] = await tx.select({ id: jobSlots.id }).from(jobSlots).where(eq(jobSlots.bayId, id)).limit(1);
 
   if (slot) {
-    throw new JobBayInUseError(id, 'This Bay has Slots on its queue. Disable it instead of deleting it.');
+    throw new JobError('job.bay_in_use', 'This Bay has Slots on its queue. Disable it instead of deleting it.');
   }
 
   const [productBay] = await tx
@@ -375,7 +377,7 @@ async function assertJobBayUnreferenced(tx: DatabaseTransaction, id: string): Pr
     .limit(1);
 
   if (productBay) {
-    throw new JobBayInUseError(id, 'This Bay is a default Bay for a Product. Disable it instead of deleting it.');
+    throw new JobError('job.bay_in_use', 'This Bay is a default Bay for a Product. Disable it instead of deleting it.');
   }
 
   const [assignment] = await tx
@@ -385,7 +387,7 @@ async function assertJobBayUnreferenced(tx: DatabaseTransaction, id: string): Pr
     .limit(1);
 
   if (assignment) {
-    throw new JobBayInUseError(id, 'This Bay has Operator history. Disable it instead of deleting it.');
+    throw new JobError('job.bay_in_use', 'This Bay has Operator history. Disable it instead of deleting it.');
   }
 }
 
@@ -393,7 +395,7 @@ async function assertJobBayExists(db: Db | DatabaseTransaction, id: string): Pro
   const [bay] = await db.select({ id: jobBays.id }).from(jobBays).where(eq(jobBays.id, id)).limit(1);
 
   if (!bay) {
-    throw new JobBayNotFoundError(id);
+    throw jobBayNotFound(id);
   }
 }
 
@@ -499,11 +501,11 @@ export async function getAssignableBayOperatorForUpdate(
     .for('update');
 
   if (!operator) {
-    throw new JobBayOperatorNotFoundError(operatorUserId);
+    throw jobBayOperatorNotFound(operatorUserId);
   }
 
   if (operator.role !== 'bay-operator') {
-    throw new JobBayOperatorRoleDeniedError();
+    throw jobBayOperatorRoleDenied();
   }
 
   return operator;

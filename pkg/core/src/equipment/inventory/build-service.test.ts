@@ -1,11 +1,8 @@
 import { eq } from '@pkg/db';
 import { stockMovements } from '@pkg/db/equipment';
 import { describe, expect } from 'vitest';
-import { PartNotBuiltError } from '../parts/part-bom-errors.js';
 import { actorUserId, opening, test } from '../test/build-fixtures.js';
-import { BuildPeriodicPartError, BuildSelfComponentError } from './build-errors.js';
 import { postBuild } from './build-service.js';
-import { FabricatedPartCostError } from './stock-movement-errors.js';
 import { getStockMovementHistory } from './stock-movement-history-read.js';
 import { postAdjustment, postRevaluation } from './stock-movement-service.js';
 import { listStockOnHand } from './stock-on-hand-list.js';
@@ -165,7 +162,7 @@ describe('postBuild', () => {
         db: context.db,
         input: { builtPartId: context.parts.bolt.id, consumption: [], quantity: 1 },
       }),
-    ).rejects.toBeInstanceOf(PartNotBuiltError);
+    ).rejects.toMatchObject({ code: 'part.not_built' });
 
     await expect(
       postBuild({
@@ -173,7 +170,7 @@ describe('postBuild', () => {
         db: context.db,
         input: { builtPartId: context.parts.periodicBuilt.id, consumption: [], quantity: 1 },
       }),
-    ).rejects.toBeInstanceOf(BuildPeriodicPartError);
+    ).rejects.toMatchObject({ code: 'inventory.build_periodic_part' });
 
     await expect(
       postBuild({
@@ -185,7 +182,7 @@ describe('postBuild', () => {
           quantity: 1,
         },
       }),
-    ).rejects.toBeInstanceOf(BuildSelfComponentError);
+    ).rejects.toMatchObject({ code: 'inventory.build_self_component' });
   });
 
   test('costs a Built Part by its build and refuses the same figure keyed by hand', async ({ context }) => {
@@ -210,7 +207,7 @@ describe('postBuild', () => {
         db: context.db,
         input: opening(context.parts.assembly.id, { delta: 1, unitCost: 10 }),
       }),
-    ).rejects.toBeInstanceOf(FabricatedPartCostError);
+    ).rejects.toMatchObject({ code: 'inventory.fabricated_part_cost' });
 
     await expect(
       postRevaluation({
@@ -218,6 +215,6 @@ describe('postBuild', () => {
         db: context.db,
         input: { note: null, partId: context.parts.assembly.id, unitCost: 10 },
       }),
-    ).rejects.toBeInstanceOf(FabricatedPartCostError);
+    ).rejects.toMatchObject({ code: 'inventory.fabricated_part_cost' });
   });
 });

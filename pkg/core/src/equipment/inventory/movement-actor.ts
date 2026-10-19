@@ -3,10 +3,10 @@ import type { AuthId } from '@pkg/schema';
 import { inArray } from 'drizzle-orm';
 
 import {
-  AssertedActorDisabledError,
-  AssertedActorNotFoundError,
-  DeviceActorAssertedError,
-  DeviceActorRequiredError,
+  assertedActorDisabled,
+  assertedActorNotFound,
+  deviceActorAsserted,
+  deviceActorRequired,
 } from './movement-actor-errors.js';
 
 /**
@@ -54,16 +54,16 @@ export async function resolveMovementActor({
   if (asserted === null) {
     // An unknown session is not this function's failure to report — the request authorized, so the
     // account exists; a missing row is treated as "not a device" and the session attributes itself.
-    if (session?.isDevice === true) throw new DeviceActorRequiredError(sessionUserId);
+    if (session?.isDevice === true) throw deviceActorRequired(sessionUserId);
 
     return sessionUserId;
   }
 
   const actor = rows.find((row) => row.id === asserted);
 
-  if (!actor) throw new AssertedActorNotFoundError(asserted);
-  if (actor.isDevice) throw new DeviceActorAssertedError(asserted);
-  if (actor.banned === true) throw new AssertedActorDisabledError(asserted);
+  if (!actor) throw assertedActorNotFound(asserted);
+  if (actor.isDevice) throw deviceActorAsserted(asserted);
+  if (actor.banned === true) throw assertedActorDisabled(asserted);
 
   return actor.id;
 }

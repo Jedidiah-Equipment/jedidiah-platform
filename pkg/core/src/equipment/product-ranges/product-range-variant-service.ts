@@ -11,10 +11,10 @@ import { ProductRangeVariant as ProductRangeVariantSchema } from '@pkg/schema/eq
 import { and, asc, eq, type SQL, sql } from 'drizzle-orm';
 
 import {
-  DuplicateProductRangeVariantNameError,
-  ProductRangeNotFoundError,
-  ProductRangeVariantHasProductsError,
-  ProductRangeVariantNotFoundError,
+  duplicateProductRangeVariantName,
+  productRangeNotFound,
+  productRangeVariantHasProducts,
+  productRangeVariantNotFound,
 } from './product-range-errors.js';
 
 const PRODUCT_RANGE_VARIANT_NAME_UNIQUE_INDEX = 'product_range_variants_range_name_ci_unique';
@@ -87,7 +87,7 @@ export async function updateProductRangeVariant({
         .returning();
 
       if (!row) {
-        throw new ProductRangeVariantNotFoundError(input.rangeId, input.id);
+        throw productRangeVariantNotFound(input.rangeId, input.id);
       }
 
       return mapProductRangeVariant(row);
@@ -123,7 +123,7 @@ export async function removeProductRangeVariant({
       .returning({ id: productRangeVariants.id });
 
     if (!row) {
-      throw new ProductRangeVariantNotFoundError(rangeId, id);
+      throw productRangeVariantNotFound(rangeId, id);
     }
   });
 }
@@ -144,7 +144,7 @@ async function assertVariantHasNoActiveProducts({
     .limit(1);
 
   if (product) {
-    throw new ProductRangeVariantHasProductsError(rangeId, id);
+    throw productRangeVariantHasProducts(id);
   }
 }
 
@@ -167,7 +167,7 @@ export async function reorderProductRangeVariants({
 
     const unknownId = orderedIds.find((id) => !existingIds.has(id));
     if (unknownId) {
-      throw new ProductRangeVariantNotFoundError(input.rangeId, unknownId);
+      throw productRangeVariantNotFound(input.rangeId, unknownId);
     }
 
     const sameSize = orderedIds.length === existingIds.size;
@@ -225,7 +225,7 @@ async function assertActiveProductRange({ tx, rangeId }: { tx: DatabaseTransacti
     .for('update');
 
   if (!row) {
-    throw new ProductRangeNotFoundError(rangeId);
+    throw productRangeNotFound(rangeId);
   }
 }
 
@@ -236,7 +236,7 @@ function mapProductRangeVariantUniqueViolation(
   const constraint = getUniqueViolationConstraint(error);
 
   if (constraint === PRODUCT_RANGE_VARIANT_NAME_UNIQUE_INDEX) {
-    return new DuplicateProductRangeVariantNameError(input.rangeId, input.name);
+    return duplicateProductRangeVariantName(input.rangeId, input.name);
   }
 
   return error instanceof Error ? error : new Error(String(error));

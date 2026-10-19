@@ -3,7 +3,6 @@ import { partBom } from '@pkg/db/equipment';
 import { describe, expect } from 'vitest';
 
 import { actorUserId, test } from '../test/build-fixtures.js';
-import { PartNotBuiltError } from './part-bom-errors.js';
 import { savePartBom } from './part-bom-service.js';
 
 describe('savePartBom', () => {
@@ -14,7 +13,7 @@ describe('savePartBom', () => {
         db: context.db,
         input: { lines: [{ componentPartId: context.parts.cylinder.id, quantity: 1 }], partId: context.parts.bolt.id },
       }),
-    ).rejects.toBeInstanceOf(PartNotBuiltError);
+    ).rejects.toMatchObject({ code: 'part.not_built' });
   });
 
   test('rewrites the whole BOM, and an empty one is the trivial build', async ({ context }) => {

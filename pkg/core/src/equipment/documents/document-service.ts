@@ -13,11 +13,7 @@ import {
   StorageKeyAlreadyExistsError,
   type StoredObject,
 } from '../../storage/storage-adapter.js';
-import {
-  DocumentNotFoundError,
-  DocumentPolicyViolationError,
-  DocumentStorageConflictError,
-} from './document-errors.js';
+import { documentNotFound, documentPolicyViolation, documentStorageConflict } from './document-errors.js';
 
 type DocumentRow = typeof documents.$inferSelect;
 export type DocumentDb = Db | DatabaseTransaction;
@@ -99,7 +95,7 @@ export function assertDocumentAcceptable(input: {
 
   if (!verifiedContentType) {
     const policy = getDocumentPolicy(input.ownerType, input.metadata);
-    throw new DocumentPolicyViolationError({
+    throw documentPolicyViolation({
       code: 'document.content_type_not_allowed',
       message: `Uploaded file content does not match an allowed document type: ${policy.allowedContentTypes.join(', ')}.`,
     });
@@ -113,7 +109,7 @@ export function assertDocumentAcceptable(input: {
   });
 
   if (!policyResult.ok) {
-    throw new DocumentPolicyViolationError(policyResult);
+    throw documentPolicyViolation(policyResult);
   }
 
   return verifiedContentType;
@@ -146,7 +142,7 @@ export async function createDocumentRecord({
     });
   } catch (error) {
     if (error instanceof StorageKeyAlreadyExistsError) {
-      throw new DocumentStorageConflictError();
+      throw documentStorageConflict();
     }
 
     throw error;
@@ -206,7 +202,7 @@ export async function deleteDocumentRecord({
     const [deleted] = await tx.delete(documents).where(eq(documents.id, document.id)).returning({ id: documents.id });
 
     if (!deleted) {
-      throw new DocumentNotFoundError(document.id);
+      throw documentNotFound(document.id);
     }
 
     await recordAuditDelete({ db: tx, descriptor: documentAuditDescriptor, actorUserId, input: document });

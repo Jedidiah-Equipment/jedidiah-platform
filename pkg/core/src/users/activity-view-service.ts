@@ -4,7 +4,7 @@ import { ActivityViewMap, type AuthId, type Business, DateIso } from '@pkg/schem
 import { eq } from 'drizzle-orm';
 
 import { mutateEntity } from '../audit/mutate-entity.js';
-import { UserNotFoundError } from './user-errors.js';
+import { userNotFound } from './user-errors.js';
 import { userAuditDescriptor } from './user-service.js';
 
 /** The user's Activity View in one business: the newest feed instant they have received there. */
@@ -22,7 +22,7 @@ export async function getActivityView({
     .from(user)
     .where(eq(user.id, userId));
 
-  if (!account) throw new UserNotFoundError(userId);
+  if (!account) throw userNotFound(userId);
 
   return activityViewFor(ActivityViewMap.parse(account.map), business, DateIso.parse(account.createdAt));
 }
@@ -58,7 +58,7 @@ export async function setActivityView({
     db,
     descriptor: userAuditDescriptor,
     id: userId,
-    notFound: () => new UserNotFoundError(userId),
+    notFound: () => userNotFound(userId),
     project: (_tx, account) => {
       const { map, createdAt } = read(account);
       return activityViewFor(map, business, createdAt);

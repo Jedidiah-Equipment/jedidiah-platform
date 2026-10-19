@@ -19,15 +19,15 @@ import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { StorageAdapter } from '../../storage/storage-adapter.js';
 import { assertDocumentAcceptable } from '../documents/document-service.js';
 import { insertMovement, loadMovingAverages, loadStockPart } from '../inventory/ledger.js';
-import { assertPartStockAction } from '../inventory/part-stock-action-errors.js';
+import { assertPartStockAction } from '../inventory/part-stock-action.js';
 import { filePurchaseOrderDocument } from './purchase-order-document-filing.js';
 import { openPurchaseOrder } from './purchase-order-gate.js';
 import { getPurchaseOrder, type PurchaseOrderDb } from './purchase-order-service.js';
 import {
-  InvoiceFlagAlreadyResolvedError,
-  InvoiceFlagNotFoundError,
-  InvoicePriceNotApplicableError,
-  SupplierInvoiceNotFoundError,
+  invoiceFlagAlreadyResolved,
+  invoiceFlagNotFound,
+  invoicePriceNotApplicable,
+  supplierInvoiceNotFound,
 } from './supplier-invoice-errors.js';
 import {
   loadInvoiceDocuments,
@@ -229,7 +229,7 @@ export async function applyInvoicePrice({
       purchaseOrderId: input.purchaseOrderId,
     });
     if (!row.correction?.canApply || row.correction.newAverageUnitCost === null) {
-      throw new InvoicePriceNotApplicableError(input.partId);
+      throw invoicePriceNotApplicable();
     }
     // `postRevaluation` opens its own transaction, so this path appends the row itself — but it is
     // held to the same rule: a Built Part's cost is derived from its build and never keyed, whatever
@@ -273,7 +273,7 @@ export async function dismissInvoiceFlag({
     });
 
     const known = review.rows.some((row) => row.flags.some((flag) => flag.key === input.flagKey));
-    if (!known) throw new InvoiceFlagNotFoundError(input.flagKey);
+    if (!known) throw invoiceFlagNotFound();
 
     return recordResolution(tx, {
       actorUserId,
@@ -374,7 +374,7 @@ async function loadPriceCorrectionBases({
 async function requireReview(tx: DatabaseTransaction, { documentId, purchaseOrderId }: SupplierInvoiceRef) {
   const reviews = await loadSupplierInvoiceReviews({ db: tx, documentId, purchaseOrderId });
   const review = reviews.items.find((item) => item.documentId === documentId);
-  if (!review) throw new SupplierInvoiceNotFoundError(documentId);
+  if (!review) throw supplierInvoiceNotFound();
 
   return review;
 }
@@ -390,10 +390,10 @@ async function requireFlaggedRow(
 
   const row = review.rows.find((candidate) => candidate.partId === partId);
   const flag = row?.flags.find((candidate) => candidate.kind === kind);
-  if (!row || !flag) throw new InvoiceFlagNotFoundError(`${kind}:${partId}`);
+  if (!row || !flag) throw invoiceFlagNotFound();
   // Checked before the correction, so a second click reads as the repeat it is rather than as a
   // correction that has stopped being possible.
-  if (review.resolutions[flag.key]) throw new InvoiceFlagAlreadyResolvedError(flag.key);
+  if (review.resolutions[flag.key]) throw invoiceFlagAlreadyResolved();
 
   return { flag, row };
 }
@@ -415,7 +415,7 @@ async function recordResolution(
     // click harmless, and the empty result is what tells the caller it was already answered.
     .onConflictDoNothing()
     .returning({ createdAt: invoiceFlagResolutions.createdAt });
-  if (!inserted) throw new InvoiceFlagAlreadyResolvedError(values.flagKey);
+  if (!inserted) throw invoiceFlagAlreadyResolved();
 
   const [actor] = await tx.select({ name: user.name }).from(user).where(eq(user.id, values.actorUserId));
 

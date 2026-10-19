@@ -34,7 +34,7 @@ import { and, asc, desc, eq, getTableColumns, gt, inArray, or, sql } from 'drizz
 import { alias } from 'drizzle-orm/pg-core';
 import { defineAuditDescriptor, recordAuditCreate } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
-import { FilePolicyViolationError } from '../../files/file-errors.js';
+import { filePolicyViolation } from '../../files/file-errors.js';
 import { readStoredObject, type StorageAdapter } from '../../storage/storage-adapter.js';
 import { reopenPricingWithin } from '../jobs/pricing-service.js';
 import { getContractingSettings } from '../settings/settings-service.js';
@@ -94,7 +94,7 @@ const awaitingVerdict: AiVerdict = { aiValue: null, aiConfidence: null, aiVerifi
 
 async function storeMeterPhoto({ storage, photoBytes }: ReadingEvidence): Promise<StoredFile> {
   const validation = validateFile(photoBytes, READING_PHOTO_POLICY);
-  if (!validation.ok) throw new FilePolicyViolationError(validation);
+  if (!validation.ok) throw filePolicyViolation(validation);
   const photo: StoredFile = {
     byteSize: validation.byteSize,
     contentType: validation.contentType,

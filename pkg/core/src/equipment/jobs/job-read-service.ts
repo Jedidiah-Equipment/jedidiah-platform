@@ -62,7 +62,7 @@ import {
 } from '@pkg/schema/equipment';
 import { and, asc, desc, eq, gte, inArray, isNull, lte, or, type SQL, type SQLWrapper, sql } from 'drizzle-orm';
 import type { StorageAdapter } from '../../storage/storage-adapter.js';
-import { DocumentNotFoundError } from '../documents/document-errors.js';
+import { documentNotFound } from '../documents/document-errors.js';
 import {
   type DocumentSummaryRow,
   documentBaseSelect,
@@ -77,7 +77,7 @@ import {
   toProjectedBoard,
   withoutCancelledJobSlots,
 } from './board-read.js';
-import { JobNotFoundError } from './job-errors.js';
+import { jobNotFound } from './job-errors.js';
 import { type JobProductUnitRow, type JobRow, mapJob } from './job-mappers.js';
 import { listWorkingCalendarOffDays } from './working-calendar-service.js';
 
@@ -593,7 +593,7 @@ export async function getJob({ db, id }: { db: Db | DatabaseTransaction; id: UUI
   });
 
   if (!row) {
-    throw new JobNotFoundError(id);
+    throw jobNotFound(id);
   }
 
   const [cfo, documents, workRows, schedule, departmentTimings, linkedOrders] = await Promise.all([
@@ -743,7 +743,7 @@ export async function readJobDocument({
 
   if (!document) {
     await assertJobExists({ db, jobId });
-    throw new DocumentNotFoundError(documentId);
+    throw documentNotFound(documentId);
   }
 
   return {
@@ -828,7 +828,7 @@ async function assertJobExists({ db, jobId }: { db: Db | DatabaseTransaction; jo
   });
 
   if (!row) {
-    throw new JobNotFoundError(jobId);
+    throw jobNotFound(jobId);
   }
 }
 

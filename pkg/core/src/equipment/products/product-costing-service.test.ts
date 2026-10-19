@@ -9,7 +9,6 @@ import { getLaborRateCard, updateLaborRateCard } from '../labor-rates/labor-rate
 import { partValues, seedPartCategory } from '../test/part-fixtures.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
 import { getProductCostEstimate } from './product-cost-estimate-service.js';
-import { ProductMaterialPartInvalidError } from './product-errors.js';
 import { createProduct, getProduct, updateProduct } from './product-service.js';
 
 const actorUserId = 'product-costing-test-user';
@@ -124,7 +123,7 @@ describe('Product costing child collections', () => {
           materialLines: [{ partId: context.bought.id, quantityPerUnit: 1 }],
         }),
       }),
-    ).rejects.toBeInstanceOf(ProductMaterialPartInvalidError);
+    ).rejects.toMatchObject({ code: 'product.material_part.invalid' });
   });
 
   test('creates, replaces, preserves, and reads per-unit materials and labor hours', async ({ context }) => {

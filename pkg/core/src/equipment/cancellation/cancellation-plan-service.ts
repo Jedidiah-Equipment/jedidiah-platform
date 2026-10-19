@@ -16,9 +16,9 @@ import { type CancellationLinkedUnit, JobCancellationPlan, QuoteCancellationPlan
 import { and, asc, eq, isNull } from 'drizzle-orm';
 
 import { loadQuoteStockBuckets } from '../inventory/quote-stock-read.js';
-import { JobNotFoundError } from '../jobs/job-errors.js';
+import { jobNotFound } from '../jobs/job-errors.js';
 import { loadBayWorkingCalendar } from '../jobs/working-calendar-service.js';
-import { QuoteNotFoundError } from '../quotes/quote-errors.js';
+import { quoteNotFound } from '../quotes/quote-errors.js';
 
 /**
  * What a cancellation is about to reach, answered once by the server that will carry it out. Both
@@ -48,7 +48,7 @@ export async function getQuoteCancellationPlan({ db, id }: { db: Db; id: UUID })
     .where(eq(quotes.id, id));
 
   if (!quote) {
-    throw new QuoteNotFoundError(id);
+    throw quoteNotFound(id);
   }
 
   // A Parts Sale sources no Job, so stock still out against it is the one thing cancelling leaves behind.
@@ -101,7 +101,7 @@ export async function getJobCancellationPlan({ db, id }: { db: Db; id: UUID }): 
     .where(eq(jobs.id, id));
 
   if (!job) {
-    throw new JobNotFoundError(id);
+    throw jobNotFound(id);
   }
 
   const facts = await loadJobCancellationFacts({ completedOn: job.completedOn, jobId: job.id, db });

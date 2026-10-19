@@ -1,3 +1,23 @@
+export type ProductUnitReassignErrorCode =
+  | 'product_unit.reassign_dead_job'
+  | 'product_unit.reassign_displaced_owner'
+  | 'product_unit.reassign_quote_ineligible'
+  | 'product_unit.reassign_unit_ineligible';
+
+/** The rules that only exist between a Unit and the Quote it is moving to. */
+export class ProductUnitReassignError extends Error {
+  constructor(
+    readonly code: ProductUnitReassignErrorCode,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'ProductUnitReassignError';
+  }
+}
+
+export const isProductUnitReassignError = (error: unknown): error is ProductUnitReassignError =>
+  error instanceof ProductUnitReassignError;
+
 /**
  * Why a Quote cannot receive a reassigned machine. Each reason names a rule the deal itself breaks,
  * before any Unit is considered.
@@ -17,16 +37,8 @@ function reassignQuoteIneligibleMessage(reason: ProductUnitReassignQuoteIneligib
   }
 }
 
-export class ProductUnitReassignQuoteIneligibleError extends Error {
-  readonly code = 'product_unit.reassign_quote_ineligible';
-  readonly metadata: { quoteId: string; reason: ProductUnitReassignQuoteIneligibleReason };
-
-  constructor(quoteId: string, reason: ProductUnitReassignQuoteIneligibleReason) {
-    super(reassignQuoteIneligibleMessage(reason));
-    this.name = 'ProductUnitReassignQuoteIneligibleError';
-    this.metadata = { quoteId, reason };
-  }
-}
+export const productUnitReassignQuoteIneligible = (reason: ProductUnitReassignQuoteIneligibleReason) =>
+  new ProductUnitReassignError('product_unit.reassign_quote_ineligible', reassignQuoteIneligibleMessage(reason));
 
 /**
  * Why a machine cannot move. Invoicing is the wall on the selling side too, so a Unit whose sale has
@@ -57,61 +69,26 @@ function reassignUnitIneligibleMessage(reason: ProductUnitReassignUnitIneligible
   }
 }
 
-export class ProductUnitReassignUnitIneligibleError extends Error {
-  readonly code = 'product_unit.reassign_unit_ineligible';
-  readonly metadata: { productUnitId: string; reason: ProductUnitReassignUnitIneligibleReason };
-
-  constructor(productUnitId: string, reason: ProductUnitReassignUnitIneligibleReason) {
-    super(reassignUnitIneligibleMessage(reason));
-    this.name = 'ProductUnitReassignUnitIneligibleError';
-    this.metadata = { productUnitId, reason };
-  }
-}
+export const productUnitReassignUnitIneligible = (reason: ProductUnitReassignUnitIneligibleReason) =>
+  new ProductUnitReassignError('product_unit.reassign_unit_ineligible', reassignUnitIneligibleMessage(reason));
 
 /**
  * The receiving Quote's live Job has lost its machine — Unit Removal detached it — so displacement has
  * nothing to send back to Stock. Cancelling that dead Job is the only honest way forward.
  */
-export class ProductUnitReassignDeadJobError extends Error {
-  readonly code = 'product_unit.reassign_dead_job';
-  readonly metadata: { jobCode: string; jobId: string };
-
-  constructor(jobId: string, jobCode: string) {
-    super(`${jobCode} on this Quote no longer has a machine. Cancel it before reassigning a Unit here.`);
-    this.name = 'ProductUnitReassignDeadJobError';
-    this.metadata = { jobCode, jobId };
-  }
-}
+export const productUnitReassignDeadJob = (jobCode: string) =>
+  new ProductUnitReassignError(
+    'product_unit.reassign_dead_job',
+    `${jobCode} on this Quote no longer has a machine. Cancel it before reassigning a Unit here.`,
+  );
 
 /**
  * The machine this Quote is building is no longer owned by its Customer, so returning it to Stock would
  * take it off whoever holds it now. A hand-recorded Transfer got there first, and a person has to say
  * what should happen.
  */
-export class ProductUnitReassignDisplacedOwnerError extends Error {
-  readonly code = 'product_unit.reassign_displaced_owner';
-  readonly metadata: { productUnitId: string };
-
-  constructor(productUnitId: string, productSerialNumber: string) {
-    super(
-      `Unit ${productSerialNumber} on this Quote is no longer owned by its Customer, so it cannot be returned to Stock.`,
-    );
-    this.name = 'ProductUnitReassignDisplacedOwnerError';
-    this.metadata = { productUnitId };
-  }
-}
-
-export type ProductUnitReassignError =
-  | ProductUnitReassignDeadJobError
-  | ProductUnitReassignDisplacedOwnerError
-  | ProductUnitReassignQuoteIneligibleError
-  | ProductUnitReassignUnitIneligibleError;
-
-export function isProductUnitReassignError(error: unknown): error is ProductUnitReassignError {
-  return (
-    error instanceof ProductUnitReassignDeadJobError ||
-    error instanceof ProductUnitReassignDisplacedOwnerError ||
-    error instanceof ProductUnitReassignQuoteIneligibleError ||
-    error instanceof ProductUnitReassignUnitIneligibleError
+export const productUnitReassignDisplacedOwner = (productSerialNumber: string) =>
+  new ProductUnitReassignError(
+    'product_unit.reassign_displaced_owner',
+    `Unit ${productSerialNumber} on this Quote is no longer owned by its Customer, so it cannot be returned to Stock.`,
   );
-}

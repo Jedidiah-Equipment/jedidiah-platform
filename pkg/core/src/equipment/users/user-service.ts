@@ -6,7 +6,7 @@ import { Department, type EquipmentUserListInput, type UserDepartmentListResult 
 import { and, asc, eq, exists, sql } from 'drizzle-orm';
 
 import { recordAuditEvent } from '../../audit/audit-writer.js';
-import { UserNotFoundError } from '../../users/user-errors.js';
+import { userNotFound } from '../../users/user-errors.js';
 import { listUsers, userAuditDescriptor } from '../../users/user-service.js';
 import { listOpenBayOperatorAssignmentBayNames } from '../jobs/job-bay-service.js';
 
@@ -93,7 +93,7 @@ async function getAuditTargetUser({
     .where(eq(user.id, userId));
 
   if (!targetUser) {
-    throw new UserNotFoundError(userId);
+    throw userNotFound(userId);
   }
 
   return targetUser;

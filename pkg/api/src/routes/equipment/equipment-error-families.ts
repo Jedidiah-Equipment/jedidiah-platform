@@ -289,7 +289,7 @@ export const partBomErrorFamily = defineCoreErrorFamily<PartBomError>({
   is: isPartBomError,
 });
 
-export const partCoreErrorFamily = defineCoreErrorFamily<PartError>({
+export const partErrorFamily = defineCoreErrorFamily<PartError>({
   codes: {
     'part.bom_locked': 'CONFLICT',
     'part.bulk_import_conflict': 'CONFLICT',

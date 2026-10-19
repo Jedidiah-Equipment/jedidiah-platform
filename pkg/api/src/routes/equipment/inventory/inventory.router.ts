@@ -107,7 +107,7 @@ import {
   jobCloseOutErrorFamily,
   jobErrorFamily,
   partBomErrorFamily,
-  partCoreErrorFamily,
+  partErrorFamily,
   stockMovementErrorFamily,
   stocktakeErrorFamily,
 } from '../equipment-error-families.js';
@@ -519,7 +519,7 @@ async function mapBuildErrors<T>(action: () => Promise<T>): Promise<T> {
     stockMovementErrorFamily,
     buildErrorFamily,
     partBomErrorFamily,
-    partCoreErrorFamily,
+    partErrorFamily,
     assertedActorErrorFamily,
   );
 }

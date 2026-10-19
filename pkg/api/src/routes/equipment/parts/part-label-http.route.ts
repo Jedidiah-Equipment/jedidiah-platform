@@ -18,7 +18,7 @@ import {
   requireRouteAuth,
   sendHttpError,
 } from '@/routes/http-route-helpers.js';
-import { partCoreErrorFamily } from '../equipment-error-families.js';
+import { partErrorFamily } from '../equipment-error-families.js';
 
 const PartLabelParams = z.object({ partId: UUID });
 
@@ -92,7 +92,7 @@ function sendPdf(reply: FastifyReply, result: { bytes: Uint8Array; filename: str
 }
 
 function sendPartLabelHttpError(reply: FastifyReply, error: unknown): void {
-  sendHttpError(reply, mapCoreErrorToRoute(error, partCoreErrorFamily), {
+  sendHttpError(reply, mapCoreErrorToRoute(error, partErrorFamily), {
     fallbackMessage: 'Part label request failed.',
     invalidRequestMessage: 'Invalid Part label request.',
   });

@@ -12,7 +12,7 @@ import { z } from 'zod';
 
 import { mapCoreErrors } from '../../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../../trpc/init.js';
-import { partCoreErrorFamily } from '../equipment-error-families.js';
+import { partErrorFamily } from '../equipment-error-families.js';
 
 /**
  * The admin surface sits wholly behind the manage permission, reads included: pickers read names
@@ -51,5 +51,5 @@ export const partCategoriesRouter = router({
 });
 
 async function mapPartCategoryErrors<T>(action: () => Promise<T>): Promise<T> {
-  return mapCoreErrors(action, partCoreErrorFamily);
+  return mapCoreErrors(action, partErrorFamily);
 }

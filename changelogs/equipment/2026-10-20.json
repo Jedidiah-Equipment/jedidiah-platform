@@ -1,0 +1,15 @@
+{
+  "business": "equipment",
+  "releasedAt": "2026-10-20T05:17:33.348Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Spot approved purchase orders more easily",
+          "description": "Approved purchase orders now appear blue, making them easier to distinguish from green Received orders."
+        }
+      ]
+    }
+  ]
+}

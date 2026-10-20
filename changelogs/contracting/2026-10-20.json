@@ -1,0 +1,23 @@
+{
+  "business": "contracting",
+  "releasedAt": "2026-10-20T05:17:33.348Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Find jobs from a machine or customer",
+          "description": "Open the new Jobs tab on a machine or customer to see related jobs, newest first, filter by stage, and open a job directly. Unsaved details stay intact when switching tabs."
+        },
+        {
+          "title": "Filter machine history by date",
+          "description": "Use the date range filter in the History table’s When column to focus on the period you need."
+        },
+        {
+          "title": "Find report and farm controls in their headers",
+          "description": "Choose the reporting period from the Reports header, and add a farm using New farm in the Farms header."
+        }
+      ]
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 import { formatNumber } from '@pkg/domain';
-import { UUID } from '@pkg/schema';
+import { requiredSelection, UUID } from '@pkg/schema';
 import { type Assignment, Quantity } from '@pkg/schema/contracting';
 import { IconTrash } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -7,7 +7,6 @@ import { useLayoutEffect } from 'react';
 import { z } from 'zod';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { useAppForm } from '@/components/form/index.js';
-import { requiredSelection } from '@/components/form/utils/form-schema.js';
 import { Button } from '@/components/ui/button.js';
 import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog.js';
 import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';

@@ -1,6 +1,7 @@
 import { type JobSheet, jobSheet } from '@pkg/domain/contracting';
 import { requiredTrimmedText } from '@pkg/schema';
 import type { JobDetail } from '@pkg/schema/contracting';
+import { JobCreateValues, toJobCreateInput } from '@pkg/schema/contracting';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -26,7 +27,6 @@ import { JobStatusBadge } from './JobStatusBadge.js';
 import { MachinesCard } from './MachinesCard.js';
 import { PricingCard } from './PricingCard.js';
 import { SignOffCard } from './SignOffCard.js';
-import { JobCreateValues, toJobCreateInput } from './types.js';
 import { useJobWrite } from './use-job-write.js';
 
 export function JobPage({ code }: { code: string }) {

@@ -11,6 +11,7 @@ export * from './jobs/invoicing.js';
 export * from './jobs/job.js';
 export * from './jobs/job-actions.js';
 export * from './jobs/job-card.js';
+export * from './jobs/job-create-form.js';
 export * from './jobs/job-enums.js';
 export * from './jobs/job-note.js';
 export * from './jobs/pricing.js';

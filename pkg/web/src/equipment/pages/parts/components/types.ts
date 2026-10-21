@@ -1,4 +1,4 @@
-import { type UUID, UUID as UUIDSchema } from '@pkg/schema';
+import { requiredSelection, type UUID, UUID as UUIDSchema } from '@pkg/schema';
 import {
   PART_STOCK_TRACKING_MODE_LABELS,
   PART_UNIT_OF_MEASURE_LABELS,
@@ -23,7 +23,7 @@ import {
 } from '@pkg/schema/equipment';
 import { z } from 'zod';
 
-import { emptyStringOr, requiredSelection } from '@/components/form/utils/form-schema.js';
+import { emptyStringOr } from '@/components/form/utils/form-schema.js';
 
 const PartFormFields = z.object({
   averageUtilizationPercent: z.union([PartAverageUtilizationPercent, z.nan()]),

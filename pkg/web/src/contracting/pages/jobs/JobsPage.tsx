@@ -10,7 +10,15 @@ import {
   UNASSIGNED_FOREMAN_LABEL,
 } from '@pkg/domain/contracting';
 import type { JobListInput, JobQueue, JobSummary } from '@pkg/schema/contracting';
-import { CustomerName, FarmName, JobSortBy, jobQueues, WorkTypeName } from '@pkg/schema/contracting';
+import {
+  CustomerName,
+  FarmName,
+  JobCreateValues,
+  JobSortBy,
+  jobQueues,
+  toJobCreateInput,
+  WorkTypeName,
+} from '@pkg/schema/contracting';
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import type { ColumnFiltersState } from '@tanstack/react-table';
@@ -44,7 +52,6 @@ import {
   NEEDS_A_LOOK,
   STAGE_COLUMN_ID,
 } from './job-stage-filter.js';
-import { JobCreateValues, toJobCreateInput } from './types.js';
 import { useJobWrite } from './use-job-write.js';
 
 function machineSummary(job: JobSummary) {

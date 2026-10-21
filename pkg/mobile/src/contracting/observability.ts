@@ -60,6 +60,17 @@ export const CONTRACTING_MUTATION_EVENTS = {
     properties: (variables) => pickRecordIds(variables, ['thread', 'id']),
   },
   'contractingActivity.setLastSeen': { event: 'activity seen', properties: () => ({}) },
+  'contractingJobs.jobs.create': {
+    event: 'job created',
+    properties: (variables) => pickRecordIds(variables, ['customerId', 'farmId', 'workTypeId']),
+  },
+  // Directory names are free text, so only the parent id travels.
+  'contractingDirectory.customers.create': { event: 'customer created', properties: () => ({}) },
+  'contractingDirectory.farms.create': {
+    event: 'farm created',
+    properties: (variables) => pickRecordIds(variables, ['customerId']),
+  },
+  'contractingDirectory.workTypes.create': { event: 'work type created', properties: () => ({}) },
   'contractingJobs.assignments.add': {
     event: 'machine added to job',
     properties: (variables) => pickRecordIds(variables, ['jobId', 'machineId']),

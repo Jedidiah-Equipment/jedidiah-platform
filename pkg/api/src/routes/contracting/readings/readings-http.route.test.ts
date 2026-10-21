@@ -54,7 +54,8 @@ const test = createTester(async ({ db, auth }) => {
   const workType = await createWorkType({ db, actorUserId, input: { name: 'Dam building' } });
   const job = await createJob({
     db,
-    actor,
+    // Management sets the Job up; the Foreman only captures on it.
+    actor: accessForRole('contracting-manager', actorUserId),
     input: {
       customerId: customer.id,
       farmId: farm.id,

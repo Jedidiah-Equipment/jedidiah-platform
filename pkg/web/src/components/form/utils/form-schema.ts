@@ -14,15 +14,6 @@ export function emptyStringOr<T extends z.ZodTypeAny>(schema: T) {
 }
 
 /**
- * Browser form-field for a required selection (combobox/select) whose value must satisfy a
- * `@pkg/schema` scalar once chosen. The control holds `''` until the user picks something, so an
- * empty or otherwise invalid value fails with `message` — e.g. `requiredSelection(UUID, 'Select a product')`.
- */
-export function requiredSelection<T extends z.ZodTypeAny>(schema: T, message: string) {
-  return z.string().refine((value) => schema.safeParse(value).success, message);
-}
-
-/**
  * Browser form-field for an optional *numeric* field. `NumberField` renders a text input and holds
  * an empty control as `NaN`, so emptiness is the one rule this adds — sign, bounds and decimal
  * places all stay owned by the `@pkg/schema` leaf, which the browser does not re-state.

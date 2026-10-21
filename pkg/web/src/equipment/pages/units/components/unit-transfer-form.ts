@@ -1,9 +1,7 @@
 import { getPlantDateNow } from '@pkg/domain';
-import { DateOnlyIsoString, UUID } from '@pkg/schema';
+import { DateOnlyIsoString, requiredSelection, UUID } from '@pkg/schema';
 import { ProductUnitTransferInput } from '@pkg/schema/equipment';
 import { z } from 'zod';
-
-import { requiredSelection } from '@/components/form/utils/form-schema.js';
 
 /** Where the machine goes. Stock is a state of the machine, not a Customer, so it needs a choice of its own. */
 export type UnitTransferDestination = z.infer<typeof UnitTransferDestination>;

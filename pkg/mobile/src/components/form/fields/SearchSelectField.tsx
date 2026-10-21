@@ -1,28 +1,27 @@
-import { IconCheck, IconChevronDown, IconX } from '@tabler/icons-react-native';
+import { IconCheck, IconChevronDown, IconPlus, IconX } from '@tabler/icons-react-native';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
-
 import { Icon } from '@/components/ui/icon';
 import { PickerDropdown } from '@/components/ui/picker-dropdown';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/ui/text-input';
+import { useBusyAction } from '@/lib/use-busy-action';
 import { useFieldContext } from '../hooks/form-context';
 import { type FormFieldError, getFieldErrors } from '../utils/field-errors';
 import { fieldStateClassNames } from '../utils/field-style';
+import {
+  type SearchSelectCreate,
+  type SearchSelectFieldOption,
+  type SearchSelectRow,
+  searchSelectRows,
+} from '../utils/search-select-rows';
 import { FieldShell } from './FieldShell';
 
-export type SearchSelectFieldOption = {
-  /** Second line under the label; search matches it too. */
-  description?: string;
-  /** Shown but not pickable, such as a Machine already on another Job. */
-  disabled?: boolean;
-  icon?: ReactNode;
-  label: string;
-  value: string;
-};
+export type { SearchSelectCreate, SearchSelectFieldOption };
 
 export type SearchSelectProps = {
+  create?: SearchSelectCreate | undefined;
   disabled?: boolean;
   emptyMessage?: string;
   errors?: FormFieldError[];
@@ -44,6 +43,7 @@ export type SearchSelectFieldProps = Omit<SearchSelectProps, 'errors' | 'onChang
  * a capped, scrolling list and closes again as soon as a row is picked.
  */
 export function SearchSelect({
+  create,
   disabled = false,
   emptyMessage = 'No matches.',
   errors = [],
@@ -56,11 +56,13 @@ export function SearchSelect({
 }: SearchSelectProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const { busy: creating, error: createError, setError: setCreateError, run } = useBusyAction();
   const selected = options.find((option) => option.value === value);
 
   const close = () => {
     setOpen(false);
     setSearch('');
+    setCreateError(null);
   };
 
   const choose = (option: SearchSelectFieldOption) => {
@@ -68,17 +70,28 @@ export function SearchSelect({
     if (option.value !== value) onChange(option.value);
   };
 
+  const createNamed = (name: string) =>
+    run(async () => {
+      if (!create) return;
+      const id = await create.onCreate(name);
+      close();
+      onChange(id);
+    }, `Unable to create ${name}.`);
+
   return (
-    <FieldShell errors={errors} label={label}>
+    <FieldShell errors={createError ? [...errors, { message: createError }] : errors} label={label}>
       {open ? (
         <View className="flex-row items-center gap-2">
           <TextInput
             accessibilityLabel={typeof label === 'string' ? `Search ${label}` : 'Search'}
-            autoCapitalize="none"
+            autoCapitalize={create ? 'words' : 'none'}
             autoCorrect={false}
             autoFocus
             className="h-12 min-w-0 flex-1"
-            onChangeText={setSearch}
+            onChangeText={(text) => {
+              setSearch(text);
+              setCreateError(null);
+            }}
             placeholder={searchPlaceholder}
             value={search}
           />
@@ -112,23 +125,32 @@ export function SearchSelect({
         </Pressable>
       )}
 
-      <PickerDropdown
+      <PickerDropdown<SearchSelectRow>
         emptyMessage={emptyMessage}
-        isDisabled={(option) => option.disabled === true}
-        keyOf={(option) => `option:${option.value}`}
-        onSelect={choose}
+        isDisabled={(row) => disabled || (row.kind === 'option' && row.option.disabled === true)}
+        keyOf={(row) => (row.kind === 'option' ? `option:${row.option.value}` : 'create')}
+        onSelect={(row) => (row.kind === 'option' ? choose(row.option) : void createNamed(row.name))}
         open={open}
-        pending={false}
-        renderRow={(option) => {
-          const active = option.value === value;
+        pending={creating}
+        renderRow={(row) => {
+          if (row.kind === 'create')
+            return (
+              <>
+                <Icon className="text-primary" icon={IconPlus} size={16} />
+                <Text className="min-w-0 flex-1 text-sm text-primary" numberOfLines={1} weight="semibold">
+                  Create "{row.name}"
+                </Text>
+              </>
+            );
+          const active = row.option.value === value;
           return (
             <>
-              <OptionContent active={active} option={option} />
+              <OptionContent active={active} option={row.option} />
               {active ? <Icon className="text-primary" icon={IconCheck} size={16} /> : null}
             </>
           );
         }}
-        rows={filterOptions(options, search)}
+        rows={searchSelectRows(options, search, create)}
         selectedKey={`option:${value}`}
       />
     </FieldShell>
@@ -170,17 +192,5 @@ function OptionContent({ active = false, option }: { active?: boolean; option: S
         ) : null}
       </View>
     </View>
-  );
-}
-
-function filterOptions(
-  options: readonly SearchSelectFieldOption[],
-  search: string,
-): readonly SearchSelectFieldOption[] {
-  const term = search.trim().toLowerCase();
-  if (!term) return options;
-
-  return options.filter((option) =>
-    [option.label, option.description].some((text) => text?.toLowerCase().includes(term)),
   );
 }

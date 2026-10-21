@@ -2,7 +2,7 @@ import { closestCenter, DndContext, type DragEndEvent, PointerSensor, useSensor,
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { createStableRowKeys, formatCurrency, getFormIssuesForField, hasFormIssuesWithin } from '@pkg/domain';
-import { PriceDelta, UUID } from '@pkg/schema';
+import { PriceDelta, requiredSelection, UUID } from '@pkg/schema';
 import { AssemblyName, type Part } from '@pkg/schema/equipment';
 import { IconChevronDown, IconGripVertical, IconPlus, IconTrash, IconWorld } from '@tabler/icons-react';
 import React, { useMemo } from 'react';
@@ -20,7 +20,6 @@ import {
 import type { ArrayFieldApi, FieldApi } from '@/components/form/types.js';
 import { getFieldErrors, mergeFieldErrors } from '@/components/form/utils/field-errors.js';
 import { validateStructuralFieldOnMount } from '@/components/form/utils/field-validators.js';
-import { requiredSelection } from '@/components/form/utils/form-schema.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import {

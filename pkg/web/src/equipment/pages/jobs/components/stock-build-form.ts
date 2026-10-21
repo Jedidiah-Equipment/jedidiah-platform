@@ -1,8 +1,6 @@
-import { UUID } from '@pkg/schema';
+import { requiredSelection, UUID } from '@pkg/schema';
 import { type ProductBay, StockBuildCreateInput } from '@pkg/schema/equipment';
 import { z } from 'zod';
-
-import { requiredSelection } from '@/components/form/utils/form-schema.js';
 
 import {
   type BaySeedScheduling,

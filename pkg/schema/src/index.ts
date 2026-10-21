@@ -8,6 +8,7 @@ export * from './common/api-error.js';
 export * from './common/business.js';
 export * from './common/date.js';
 export * from './common/file.js';
+export * from './common/form.js';
 export * from './common/image.js';
 export * from './common/locale.js';
 export * from './common/pagination.js';

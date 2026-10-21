@@ -1,0 +1,15 @@
+{
+  "business": "contracting",
+  "releasedAt": "2026-10-21T12:25:22.579Z",
+  "sections": [
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Create a job from your phone",
+          "description": "Management can now create jobs from the Jobs list, choosing or adding a customer, farm and work type without leaving the form. Assign an optional foreman and type or dictate a description."
+        }
+      ]
+    }
+  ]
+}

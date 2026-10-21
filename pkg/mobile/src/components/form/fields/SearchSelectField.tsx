@@ -18,7 +18,7 @@ import {
 } from '../utils/search-select-rows';
 import { FieldShell } from './FieldShell';
 
-export type { SearchSelectCreate, SearchSelectFieldOption, SearchSelectRow };
+export type { SearchSelectCreate, SearchSelectFieldOption };
 
 export type SearchSelectProps = {
   create?: SearchSelectCreate | undefined;
@@ -72,7 +72,10 @@ export function SearchSelect({
   const createNamed = async (name: string) => {
     if (!create) return;
     setCreating(true);
-    const id = await create.onCreate(name).finally(() => setCreating(false));
+    const id = await create
+      .onCreate(name)
+      .catch(() => undefined)
+      .finally(() => setCreating(false));
     if (id === undefined) return;
     close();
     onChange(id);

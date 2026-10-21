@@ -1,5 +1,5 @@
 import { UUID } from '@pkg/schema';
-import { JobCreateInput, JobDescription } from '@pkg/schema/contracting';
+import { JobCreateInput } from '@pkg/schema/contracting';
 
 /** The New job form as typed: an unchosen picker and an unchosen Foreman are both empty strings. */
 export type JobDraft = {
@@ -37,7 +37,7 @@ export function deriveNewJob(
       customerId: draft.customerId,
       farmId: draft.farmId,
       workTypeId: draft.workTypeId,
-      description: JobDescription.parse(draft.description.trim() || null),
+      description: draft.description,
       foremanUserId: draft.foremanUserId || null,
     }),
   };

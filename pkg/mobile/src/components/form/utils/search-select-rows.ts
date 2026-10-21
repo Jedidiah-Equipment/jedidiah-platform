@@ -12,7 +12,10 @@ export type SearchSelectFieldOption = {
 
 /** Lets the person add a missing record by typing its name. */
 export type SearchSelectCreate = {
-  /** Creates the record and returns its id, which the field then picks; undefined leaves the list open. */
+  /**
+   * Creates the record and returns its id, which the field then picks. Undefined leaves the list open; a rejection
+   * leaves it open and shows the error's message on the field.
+   */
   onCreate: (name: string) => Promise<string | undefined>;
   /** The name the typed text would be stored as, or nothing when it is not one; defaults to a trim. */
   toName?: ((text: string) => string | undefined) | undefined;

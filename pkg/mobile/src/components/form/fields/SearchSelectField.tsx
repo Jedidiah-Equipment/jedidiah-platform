@@ -57,41 +57,52 @@ export function SearchSelect({
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
   const selected = options.find((option) => option.value === value);
 
   const close = () => {
     setOpen(false);
     setSearch('');
+    setCreateError(null);
   };
 
   const choose = (option: SearchSelectFieldOption) => {
+    if (disabled) return;
     close();
     if (option.value !== value) onChange(option.value);
   };
 
   const createNamed = async (name: string) => {
-    if (!create) return;
+    if (!create || disabled) return;
     setCreating(true);
-    const id = await create
-      .onCreate(name)
-      .catch(() => undefined)
-      .finally(() => setCreating(false));
+    setCreateError(null);
+    const id = await create.onCreate(name).then(
+      (created) => created,
+      (failure: unknown) => {
+        setCreateError(failure instanceof Error ? failure.message : `Unable to create ${name}.`);
+        return undefined;
+      },
+    );
+    setCreating(false);
     if (id === undefined) return;
     close();
     onChange(id);
   };
 
   return (
-    <FieldShell errors={errors} label={label}>
+    <FieldShell errors={createError ? [...errors, { message: createError }] : errors} label={label}>
       {open ? (
         <View className="flex-row items-center gap-2">
           <TextInput
             accessibilityLabel={typeof label === 'string' ? `Search ${label}` : 'Search'}
-            autoCapitalize="none"
+            autoCapitalize={create ? 'words' : 'none'}
             autoCorrect={false}
             autoFocus
             className="h-12 min-w-0 flex-1"
-            onChangeText={setSearch}
+            onChangeText={(text) => {
+              setSearch(text);
+              setCreateError(null);
+            }}
             placeholder={searchPlaceholder}
             value={search}
           />
@@ -127,7 +138,7 @@ export function SearchSelect({
 
       <PickerDropdown<SearchSelectRow>
         emptyMessage={emptyMessage}
-        isDisabled={(row) => row.kind === 'option' && row.option.disabled === true}
+        isDisabled={(row) => disabled || (row.kind === 'option' && row.option.disabled === true)}
         keyOf={(row) => (row.kind === 'option' ? `option:${row.option.value}` : 'create')}
         onSelect={(row) => (row.kind === 'option' ? choose(row.option) : void createNamed(row.name))}
         open={open}

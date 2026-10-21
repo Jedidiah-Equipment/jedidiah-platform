@@ -31,7 +31,7 @@ export default function NewJobScreen() {
     value: draft.description,
     onChangeText: (description) => set({ description }),
   });
-  const { busy: saving, error, setError, run } = useBusyAction();
+  const { busy: saving, error, run } = useBusyAction();
   // A directory create in flight holds the whole form, so neither the Job nor a changed Customer races it.
   const [creatingDirectory, setCreatingDirectory] = useState(false);
   const busy = saving || creatingDirectory;
@@ -57,16 +57,13 @@ export default function NewJobScreen() {
   ): SearchSelectCreate | undefined =>
     canUpdateDirectory
       ? {
+          // A refusal rejects, and the field shows its served sentence.
           onCreate: async (name) => {
-            setError(null);
             setCreatingDirectory(true);
             try {
               const created = await create(name);
               await queryClient.invalidateQueries({ queryKey: trpc.contractingDirectory.pathKey() });
               return created.id;
-            } catch (createError) {
-              setError(createError instanceof Error ? createError.message : `Unable to create ${name}.`);
-              return undefined;
             } finally {
               setCreatingDirectory(false);
             }

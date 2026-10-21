@@ -1,4 +1,4 @@
-import { CustomerName, FarmName, WorkTypeName } from '@pkg/schema/contracting';
+import { CustomerName, FarmName, type JobCreateValues, WorkTypeName } from '@pkg/schema/contracting';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type Href, router } from 'expo-router';
 import { useState } from 'react';
@@ -13,7 +13,7 @@ import { VoiceTextArea } from '@/contracting/voice/VoiceTextArea';
 import { useTRPC } from '@/lib/trpc';
 import { useCan } from '@/lib/use-access';
 import { useBusyAction } from '@/lib/use-busy-action';
-import { deriveNewJob, EMPTY_JOB_DRAFT, type JobDraft } from './new-job-form';
+import { deriveNewJob, EMPTY_JOB_DRAFT } from './new-job-form';
 
 const CREATE_FAILED = 'The Job could not be created. Try again.';
 const backToJobs = () => router.dismissTo('/contracting/jobs' as Href);
@@ -25,8 +25,8 @@ export default function NewJobScreen() {
   const canCreate = useCan('contracting_job:create').can;
   const canAssign = useCan('contracting_job:assign').can;
   const canUpdateDirectory = useCan('contracting_directory:update').can;
-  const [draft, setDraft] = useState<JobDraft>(EMPTY_JOB_DRAFT);
-  const set = (patch: Partial<JobDraft>) => setDraft((current) => ({ ...current, ...patch }));
+  const [draft, setDraft] = useState<JobCreateValues>(EMPTY_JOB_DRAFT);
+  const set = (patch: Partial<JobCreateValues>) => setDraft((current) => ({ ...current, ...patch }));
   const voice = useVoiceSession('job description', {
     value: draft.description,
     onChangeText: (description) => set({ description }),

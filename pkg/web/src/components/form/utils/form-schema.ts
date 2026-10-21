@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+export { requiredSelection } from '@pkg/schema';
+
 type NonNullableSchema<T extends z.ZodTypeAny> = T extends z.ZodNullable<infer Inner> ? Inner : T;
 
 /**
@@ -11,15 +13,6 @@ type NonNullableSchema<T extends z.ZodTypeAny> = T extends z.ZodNullable<infer I
 export function emptyStringOr<T extends z.ZodTypeAny>(schema: T) {
   const content = (schema instanceof z.ZodNullable ? schema.unwrap() : schema) as NonNullableSchema<T>;
   return z.union([z.literal(''), content]);
-}
-
-/**
- * Browser form-field for a required selection (combobox/select) whose value must satisfy a
- * `@pkg/schema` scalar once chosen. The control holds `''` until the user picks something, so an
- * empty or otherwise invalid value fails with `message` — e.g. `requiredSelection(UUID, 'Select a product')`.
- */
-export function requiredSelection<T extends z.ZodTypeAny>(schema: T, message: string) {
-  return z.string().refine((value) => schema.safeParse(value).success, message);
 }
 
 /**

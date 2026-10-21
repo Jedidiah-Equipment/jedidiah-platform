@@ -10,6 +10,7 @@ import { CatalogListCard } from '@/components/CatalogList';
 import {
   type ListControlOption,
   ListControlRow,
+  ListCreateControl,
   ListDropdownControl,
   ListSearchControl,
 } from '@/components/ListControls';
@@ -18,6 +19,7 @@ import { MainToolbar } from '@/components/TopToolbar';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Text } from '@/components/ui/text';
 import { contractingStorageKey } from '@/contracting/lib/contracting-storage';
+import { useCan } from '@/lib/use-access';
 import { useDebouncedSearch } from '@/lib/use-debounced-search';
 import { usePersistedState } from '@/lib/use-persisted-state';
 import { isStageFilter, readableStage, type StageFilter, stageOptions, stageQueues } from './job-stage-filter';
@@ -36,6 +38,7 @@ const SORT_OPTIONS: readonly ListControlOption<JobListSort>[] = [
 export default function JobsScreen() {
   const { canRead, readable, open } = useJobListAccess();
   const counts = useJobQueueCounts();
+  const canCreate = useCan('contracting_job:create').can;
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedSearch(search);
   const [savedStage, setStage] = usePersistedState<StageFilter>(STAGE_KEY, 'open', isStageFilter);
@@ -78,6 +81,9 @@ export default function JobsScreen() {
                   options={SORT_OPTIONS}
                   value={sort}
                 />
+                {canCreate ? (
+                  <ListCreateControl label="New job" onPress={() => router.push('/contracting/jobs/new' as Href)} />
+                ) : null}
               </View>
             }
           />

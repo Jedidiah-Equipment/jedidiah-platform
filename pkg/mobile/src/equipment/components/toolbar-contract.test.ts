@@ -22,6 +22,7 @@ const SIGNED_IN_ROUTE_TOOLBARS = {
   'contracting/(tabs)/activity/index.tsx': toolbar('main', 'src/contracting/activity/ActivityScreen.tsx'),
   'contracting/(tabs)/jobs/index.tsx': toolbar('main', 'src/contracting/jobs/JobsScreen.tsx'),
   'contracting/(tabs)/jobs/[jobId].tsx': toolbar('secondary', 'src/contracting/jobs/JobScreen.tsx'),
+  'contracting/(tabs)/jobs/new.tsx': toolbar('secondary', 'src/contracting/jobs/NewJobScreen.tsx'),
   'contracting/(tabs)/jobs/[jobId]/add-machine.tsx': toolbar('secondary', 'src/contracting/jobs/AddMachineScreen.tsx'),
   'contracting/(tabs)/jobs/[jobId]/capture.tsx': toolbar('secondary', 'src/contracting/components/CaptureScreen.tsx'),
   'contracting/(tabs)/machines/index.tsx': toolbar('main', 'src/contracting/components/MachinesScreen.tsx'),

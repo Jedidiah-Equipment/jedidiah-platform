@@ -18,6 +18,7 @@ export const HELP_TOPICS = {
   contractingMobileJobs: '/contracting/work-a-job',
   contractingMobileJob: '/contracting/work-a-job',
   contractingMobileAddMachine: '/contracting/work-a-job',
+  contractingMobileNewJob: '/contracting/set-up-a-job',
   contractingMobileMachine: '/contracting/read-machine-hours',
   contractingMobileCapture: '/contracting/capture-a-reading',
   contractingMobileFieldNotes: '/contracting/keep-a-field-note',

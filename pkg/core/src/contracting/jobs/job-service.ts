@@ -19,6 +19,9 @@ import { assignmentIn, getJob } from './job-read.js';
 import { jobTransaction, writeJobRow } from './job-write.js';
 
 export async function createJob({ db, actor, input }: { db: Db; actor: JobActor; input: JobCreateInput }) {
+  // A new Job is born Upcoming with no Foreman, so naming one is that Job's first assignForeman.
+  if (input.foremanUserId !== null)
+    assertJobAction('assignForeman', { status: 'upcoming', foremanUserId: null }, actor);
   return jobTransaction(db, async (tx) => {
     const [row] = await tx.insert(contractingJobs).values(input).returning();
     if (!row) throw new Error('Job insert returned no row');

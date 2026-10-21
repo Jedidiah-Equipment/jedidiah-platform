@@ -166,6 +166,20 @@ describe('Job setup', () => {
     ).rejects.toBeDefined();
   });
 
+  test('names a Foreman at creation only for someone who may assign one', async ({ context }) => {
+    const creatorOnly = {
+      ...manager,
+      permissions: manager.permissions.filter((permission) => permission !== 'contracting_job:assign'),
+    };
+    await expect(createJob({ db: context.db, actor: creatorOnly, input: jobInput(context) })).rejects.toMatchObject({
+      code: 'contracting_job.forbidden',
+      message: 'You do not have permission to assign the Foreman.',
+    });
+    await expect(
+      createJob({ db: context.db, actor: creatorOnly, input: { ...jobInput(context), foremanUserId: null } }),
+    ).resolves.toMatchObject({ jobNumber: 'CJOB-00001' });
+  });
+
   test('an empty patch writes nothing and still refuses an unknown Job', async ({ context }) => {
     const job = await createJob({ db: context.db, actor: manager, input: jobInput(context) });
     const jobEventCount = async () =>

@@ -31,7 +31,10 @@ export default function NewJobScreen() {
     value: draft.description,
     onChangeText: (description) => set({ description }),
   });
-  const { busy, error, setError, run } = useBusyAction();
+  const { busy: saving, error, setError, run } = useBusyAction();
+  // A directory create in flight holds the whole form, so neither the Job nor a changed Customer races it.
+  const [creatingDirectory, setCreatingDirectory] = useState(false);
+  const busy = saving || creatingDirectory;
 
   const customers = useQuery(trpc.contractingDirectory.customers.list.queryOptions());
   const farms = useQuery(
@@ -52,10 +55,11 @@ export default function NewJobScreen() {
     nameSchema: { safeParse: (value: string) => { data?: string | undefined } },
     create: (name: string) => Promise<{ id: string }>,
   ): SearchSelectCreate | undefined =>
-    canUpdateDirectory && !busy
+    canUpdateDirectory
       ? {
           onCreate: async (name) => {
             setError(null);
+            setCreatingDirectory(true);
             try {
               const created = await create(name);
               await queryClient.invalidateQueries({ queryKey: trpc.contractingDirectory.pathKey() });
@@ -63,6 +67,8 @@ export default function NewJobScreen() {
             } catch (createError) {
               setError(createError instanceof Error ? createError.message : `Unable to create ${name}.`);
               return undefined;
+            } finally {
+              setCreatingDirectory(false);
             }
           },
           toName: (text) => nameSchema.safeParse(text).data,
@@ -101,7 +107,7 @@ export default function NewJobScreen() {
           {canCreate && !busy && message ? <Text className="text-sm text-muted-foreground">{message}</Text> : null}
           <Button
             primary={input !== null}
-            title={busy ? 'Creating…' : 'Create job'}
+            title={saving ? 'Creating…' : 'Create job'}
             disabled={input === null}
             onPress={() => {
               void save();

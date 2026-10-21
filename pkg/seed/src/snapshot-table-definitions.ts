@@ -41,6 +41,9 @@ export type SnapshotTableDefinition = {
   // Extracts doc-store object references from a row so seed:read can download the bytes from its selected
   // source and seed:write can upload them to the local store. Only for StoredFile-shaped columns.
   storageFiles?: (row: SnapshotRow) => SnapshotStorageFile[];
+  // Nullable foreign keys whose parent table is outside the registry, so the writer truncates it. A row
+  // that sets one is dropped on read and on seed rather than nulled, since its own checks may need the link.
+  unsnapshottedParentColumns?: readonly string[];
 };
 
 export type SnapshotTableConfig = SnapshotTableDefinition & { table: PgTable };
@@ -333,11 +336,14 @@ export const snapshotTableDefinitions = [
     timestampColumns: ['createdAt', 'updatedAt'],
   },
   {
-    // References Users, Quotes, and Jobs, so it follows all of them.
+    // References Users, Quotes, and Jobs, so it follows all of them. Purchase Order feedback is dropped:
+    // Purchase Orders are not snapshotted, and its subject check forbids a null link. It is general-only,
+    // so no Department or User targets hang off it.
     fileName: 'feedback.json',
     tableName: 'feedback',
     timestampColumns: standardTimestampColumns,
     optionalReadTable: true,
+    unsnapshottedParentColumns: ['purchaseOrderId'],
   },
   {
     fileName: 'feedback_department.json',
@@ -566,6 +572,11 @@ export function collectStorageFiles(
   }
 
   return [...byKey.values()];
+}
+
+export function keepSnapshotRows(config: SnapshotTableDefinition, rows: readonly SnapshotRow[]): SnapshotRow[] {
+  const columns = config.unsnapshottedParentColumns ?? [];
+  return rows.filter((row) => columns.every((column) => row[column] == null));
 }
 
 export function projectWritableRow(config: SnapshotTableDefinition, row: SnapshotRow): SnapshotRow {

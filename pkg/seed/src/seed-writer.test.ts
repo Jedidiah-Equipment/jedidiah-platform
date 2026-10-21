@@ -122,3 +122,12 @@ it('loads credential snapshots from Better Auth 1.7.1 without the retired issuer
   expect(prepareRowsForSeed(config, [{ ...account, issuer: 'local:credential' }])).toEqual([account]);
   expect(prepareRowsForSeed(config, [account])).toEqual([account]);
 });
+
+it('drops Purchase Order feedback from snapshots read before the reader stopped capturing it', () => {
+  const config = snapshotCleanupTables.find((table) => table.tableName === 'feedback');
+  if (!config) throw new Error('Missing feedback config');
+  const jobFeedback = { id: 'job-feedback', subjectType: 'job', jobId: 'job-id', purchaseOrderId: null };
+  const purchaseOrderFeedback = { id: 'po-feedback', subjectType: 'purchase-order', purchaseOrderId: 'po-id' };
+
+  expect(prepareRowsForSeed(config, [jobFeedback, purchaseOrderFeedback])).toEqual([jobFeedback]);
+});

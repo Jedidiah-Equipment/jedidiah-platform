@@ -9,6 +9,7 @@ import { serializeSnapshotRows } from './snapshot-json.js';
 import { objectFilePath, snapshotDirectory } from './snapshot-paths.js';
 import {
   collectStorageFiles,
+  keepSnapshotRows,
   prepareSnapshotRow,
   type SnapshotRow,
   type SnapshotStorageFile,
@@ -59,7 +60,7 @@ export async function readSnapshotTableRows(
   options: ReadSnapshotTableOptions = {},
 ): Promise<SnapshotRow[]> {
   try {
-    return await readExistingSnapshotTable(db, config, options);
+    return keepSnapshotRows(config, await readExistingSnapshotTable(db, config, options));
   } catch (error) {
     if (!options.currentSchema && config.optionalReadTable && hasPostgresErrorCode(error, '42P01')) {
       return [];

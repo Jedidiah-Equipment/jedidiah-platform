@@ -1,4 +1,5 @@
-import { CustomerName, FarmName, type JobCreateValues, WorkTypeName } from '@pkg/schema/contracting';
+import { CustomerName, FarmName, JobCreateValues, toJobCreateInput, WorkTypeName } from '@pkg/schema/contracting';
+import type { QueryKey } from '@tanstack/react-query';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type Href, router } from 'expo-router';
 import { useState } from 'react';
@@ -13,9 +14,9 @@ import { VoiceTextArea } from '@/contracting/voice/VoiceTextArea';
 import { useTRPC } from '@/lib/trpc';
 import { useCan } from '@/lib/use-access';
 import { useBusyAction } from '@/lib/use-busy-action';
-import { deriveNewJob, EMPTY_JOB_DRAFT } from './new-job-form';
 
 const CREATE_FAILED = 'The Job could not be created. Try again.';
+const EMPTY_DRAFT: JobCreateValues = { customerId: '', farmId: '', workTypeId: '', description: '', foremanUserId: '' };
 const backToJobs = () => router.dismissTo('/contracting/jobs' as Href);
 
 /** `/contracting/jobs/new`: the web's New job form for management, online only. */
@@ -25,7 +26,7 @@ export default function NewJobScreen() {
   const canCreate = useCan('contracting_job:create').can;
   const canAssign = useCan('contracting_job:assign').can;
   const canUpdateDirectory = useCan('contracting_directory:update').can;
-  const [draft, setDraft] = useState<JobCreateValues>(EMPTY_JOB_DRAFT);
+  const [draft, setDraft] = useState<JobCreateValues>(EMPTY_DRAFT);
   const set = (patch: Partial<JobCreateValues>) => setDraft((current) => ({ ...current, ...patch }));
   const voice = useVoiceSession('job description', {
     value: draft.description,
@@ -50,10 +51,11 @@ export default function NewJobScreen() {
   const createWorkType = useMutation(trpc.contractingDirectory.workTypes.create.mutationOptions());
   const createJob = useMutation(trpc.contractingJobs.jobs.create.mutationOptions());
 
-  // The new option has to be in the list before the field points at it, or the field reads blank.
+  // The new option has to be in its list before the field points at it, or the field reads blank.
   const directoryCreate = (
     nameSchema: { safeParse: (value: string) => { data?: string | undefined } },
     create: (name: string) => Promise<{ id: string }>,
+    list: QueryKey,
   ): SearchSelectCreate | undefined =>
     canUpdateDirectory
       ? {
@@ -62,7 +64,7 @@ export default function NewJobScreen() {
             setCreatingDirectory(true);
             try {
               const created = await create(name);
-              await queryClient.invalidateQueries({ queryKey: trpc.contractingDirectory.pathKey() });
+              await queryClient.invalidateQueries({ queryKey: list });
               return created.id;
             } finally {
               setCreatingDirectory(false);
@@ -72,13 +74,16 @@ export default function NewJobScreen() {
         }
       : undefined;
 
-  const { input, message } = deriveNewJob(draft, { canCreate, busy: busy || voice.busy });
+  const parsed = JobCreateValues.safeParse(draft);
+  const message = parsed.error?.issues[0]?.message;
+  const canSave = parsed.success && canCreate && !busy && !voice.busy;
   const save = () => {
-    if (!input) return;
+    if (!canSave || !parsed.success) return;
     return run(async () => {
-      const job = await createJob.mutateAsync(input);
+      const job = await createJob.mutateAsync(toJobCreateInput(parsed.data));
       voice.reportSaved();
-      await queryClient.invalidateQueries({ queryKey: trpc.contractingJobs.pathKey() });
+      // The Job screen reads its own Job, so the lists can refresh behind it.
+      void queryClient.invalidateQueries({ queryKey: trpc.contractingJobs.pathKey() });
       router.replace(`/contracting/jobs/${job.id}` as Href);
     }, CREATE_FAILED);
   };
@@ -103,9 +108,9 @@ export default function NewJobScreen() {
           {!canCreate ? <Text className="text-danger">Your role cannot create Jobs.</Text> : null}
           {canCreate && !busy && message ? <Text className="text-sm text-muted-foreground">{message}</Text> : null}
           <Button
-            primary={input !== null}
+            primary={canSave}
             title={saving ? 'Creating…' : 'Create job'}
-            disabled={input === null}
+            disabled={!canSave}
             onPress={() => {
               void save();
             }}
@@ -121,7 +126,11 @@ export default function NewJobScreen() {
         disabled={busy}
         value={draft.customerId}
         onChange={(customerId) => set({ customerId, farmId: '' })}
-        create={directoryCreate(CustomerName, (name) => createCustomer.mutateAsync({ name }))}
+        create={directoryCreate(
+          CustomerName,
+          (name) => createCustomer.mutateAsync({ name }),
+          trpc.contractingDirectory.customers.list.queryKey(),
+        )}
         options={(customers.data ?? []).map((row) => ({ value: row.id, label: row.name }))}
       />
       <SearchSelect
@@ -132,7 +141,11 @@ export default function NewJobScreen() {
         disabled={busy || !draft.customerId}
         value={draft.farmId}
         onChange={(farmId) => set({ farmId })}
-        create={directoryCreate(FarmName, (name) => createFarm.mutateAsync({ customerId: draft.customerId, name }))}
+        create={directoryCreate(
+          FarmName,
+          (name) => createFarm.mutateAsync({ customerId: draft.customerId, name }),
+          trpc.contractingDirectory.farms.list.queryKey({ customerId: draft.customerId }),
+        )}
         options={(farms.data ?? []).map((row) => ({ value: row.id, label: row.name }))}
       />
       <SearchSelect
@@ -143,7 +156,11 @@ export default function NewJobScreen() {
         disabled={busy}
         value={draft.workTypeId}
         onChange={(workTypeId) => set({ workTypeId })}
-        create={directoryCreate(WorkTypeName, (name) => createWorkType.mutateAsync({ name }))}
+        create={directoryCreate(
+          WorkTypeName,
+          (name) => createWorkType.mutateAsync({ name }),
+          trpc.contractingDirectory.workTypes.options.queryKey(),
+        )}
         options={(workTypes.data ?? []).map((row) => ({ value: row.id, label: row.name }))}
       />
       {canAssign ? (

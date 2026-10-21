@@ -12,13 +12,10 @@ export type SearchSelectFieldOption = {
 
 /** Lets the person add a missing record by typing its name. */
 export type SearchSelectCreate = {
-  /**
-   * Creates the record and returns its id, which the field then picks. Undefined leaves the list open; a rejection
-   * leaves it open and shows the error's message on the field.
-   */
-  onCreate: (name: string) => Promise<string | undefined>;
-  /** The name the typed text would be stored as, or nothing when it is not one; defaults to a trim. */
-  toName?: ((text: string) => string | undefined) | undefined;
+  /** Creates the record and returns its id, which the field then picks; a rejection shows on the field. */
+  onCreate: (name: string) => Promise<string>;
+  /** The name the typed text would be stored as, or nothing when it is not one. */
+  toName: (text: string) => string | undefined;
 };
 
 /** A dropdown row: an option to pick, or the offer to create the typed name. */
@@ -40,7 +37,7 @@ export function searchSelectRows(
   const rows = matches.map((option): SearchSelectRow => ({ kind: 'option', option }));
   if (!create) return rows;
 
-  const name = create.toName ? create.toName(search) : search.trim() || undefined;
+  const name = create.toName(search);
   if (!name || options.some((option) => option.label.toLowerCase() === name.toLowerCase())) return rows;
   return [{ kind: 'create', name }, ...rows];
 }

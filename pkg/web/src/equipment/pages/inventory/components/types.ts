@@ -6,7 +6,7 @@ import {
   parseScanToken,
   unacknowledgedWarnings,
 } from '@pkg/domain/equipment';
-import { AuthId, Price, UUID } from '@pkg/schema';
+import { AuthId, Price, requiredSelection, UUID } from '@pkg/schema';
 import {
   CHECKOUT_BASKET_MAX_LINES,
   type CheckoutBasketLineInput,
@@ -34,7 +34,7 @@ import {
 } from '@pkg/schema/equipment';
 import { z } from 'zod';
 
-import { optionalNumber, requiredSelection } from '@/components/form/utils/form-schema.js';
+import { optionalNumber } from '@/components/form/utils/form-schema.js';
 
 export type StockPartOption = Pick<
   StockOnHandRow,

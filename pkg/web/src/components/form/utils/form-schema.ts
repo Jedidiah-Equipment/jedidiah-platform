@@ -1,7 +1,5 @@
 import { z } from 'zod';
 
-export { requiredSelection } from '@pkg/schema';
-
 type NonNullableSchema<T extends z.ZodTypeAny> = T extends z.ZodNullable<infer Inner> ? Inner : T;
 
 /**

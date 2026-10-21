@@ -2,11 +2,11 @@ import { IconCheck, IconChevronDown, IconPlus, IconX } from '@tabler/icons-react
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
-
 import { Icon } from '@/components/ui/icon';
 import { PickerDropdown } from '@/components/ui/picker-dropdown';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/ui/text-input';
+import { useBusyAction } from '@/lib/use-busy-action';
 import { useFieldContext } from '../hooks/form-context';
 import { type FormFieldError, getFieldErrors } from '../utils/field-errors';
 import { fieldStateClassNames } from '../utils/field-style';
@@ -56,8 +56,7 @@ export function SearchSelect({
 }: SearchSelectProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const [creating, setCreating] = useState(false);
-  const [createError, setCreateError] = useState<string | null>(null);
+  const { busy: creating, error: createError, setError: setCreateError, run } = useBusyAction();
   const selected = options.find((option) => option.value === value);
 
   const close = () => {
@@ -67,27 +66,17 @@ export function SearchSelect({
   };
 
   const choose = (option: SearchSelectFieldOption) => {
-    if (disabled) return;
     close();
     if (option.value !== value) onChange(option.value);
   };
 
-  const createNamed = async (name: string) => {
-    if (!create || disabled) return;
-    setCreating(true);
-    setCreateError(null);
-    const id = await create.onCreate(name).then(
-      (created) => created,
-      (failure: unknown) => {
-        setCreateError(failure instanceof Error ? failure.message : `Unable to create ${name}.`);
-        return undefined;
-      },
-    );
-    setCreating(false);
-    if (id === undefined) return;
-    close();
-    onChange(id);
-  };
+  const createNamed = (name: string) =>
+    run(async () => {
+      if (!create) return;
+      const id = await create.onCreate(name);
+      close();
+      onChange(id);
+    }, `Unable to create ${name}.`);
 
   return (
     <FieldShell errors={createError ? [...errors, { message: createError }] : errors} label={label}>

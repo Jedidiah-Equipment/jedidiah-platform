@@ -1,5 +1,5 @@
 import { breakdownStatusLabels, breakdownSubjectKindLabels, breakdownUrgencyLabels } from '@pkg/domain/contracting';
-import { UUID } from '@pkg/schema';
+import { requiredSelection, UUID } from '@pkg/schema';
 import {
   type BreakdownDefaultJob,
   BreakdownDescription,
@@ -14,7 +14,6 @@ import { Link, useNavigate } from '@tanstack/react-router';
 import { z } from 'zod';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
-import { requiredSelection } from '@/components/form/utils/form-schema.js';
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field.js';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
 import { ReportPhotosField, UrgencyChoice, useBreakdownReport } from '@/contracting/components/BreakdownReportParts.js';

@@ -1,4 +1,11 @@
-import { NullableThumbnailDataUrl, Price, PriceDelta, UUID, type UUID as UUIDType } from '@pkg/schema';
+import {
+  NullableThumbnailDataUrl,
+  Price,
+  PriceDelta,
+  requiredSelection,
+  UUID,
+  type UUID as UUIDType,
+} from '@pkg/schema';
 import {
   AssemblyName,
   AssemblyPart,
@@ -32,7 +39,7 @@ import {
 import { z } from 'zod';
 
 import type { SearchableComboboxOption } from '@/components/common/SearchableCombobox.js';
-import { emptyStringOr, requiredSelection } from '@/components/form/utils/form-schema.js';
+import { emptyStringOr } from '@/components/form/utils/form-schema.js';
 
 // Form representation of an assembly: like the API `AssemblyInput` but without its coercion
 // and defaults, so the controlled value shape matches what the editor holds. Field rules still

@@ -399,6 +399,7 @@ export const appRoleAccess = {
     equipment_product_unit: ['read'],
   },
   'job-manager': {
+    equipment_inventory: ['read', 'count'],
     equipment_job: ['read', 'update'],
     equipment_product_unit: ['read'],
   },

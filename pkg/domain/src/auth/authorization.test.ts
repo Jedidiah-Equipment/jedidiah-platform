@@ -210,8 +210,10 @@ describe('getRolePermissions', () => {
     expect(isRoleSlotsSignInEligible(tester)).toBe(true);
   });
 
-  it('grants Job reads and updates to job managers', () => {
+  it('grants Job reads and updates, and stocktake counting, to job managers', () => {
     expect(getRolePermissions('job-manager')).toEqual([
+      'equipment_inventory:count',
+      'equipment_inventory:read',
       'equipment_job:read',
       'equipment_job:update',
       'equipment_product_unit:read',

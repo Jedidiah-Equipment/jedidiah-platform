@@ -27,6 +27,21 @@ function harness({
 }
 
 describe('resolveScan', () => {
+  it('turns a badge away on a phone fixed to its owner, without asking for the Quick-switch list', async () => {
+    const { fetchPartByCode } = harness();
+
+    await expect(
+      resolveScan({ fetchActors: null, fetchPartByCode, raw: badgeScanToken('stores-person') }),
+    ).resolves.toEqual({
+      kind: 'error',
+      message: 'This phone counts as you. Badges switch people at the stores tablet.',
+    });
+    await expect(resolveScan({ fetchActors: null, fetchPartByCode, raw: 'BRG-100' })).resolves.toEqual({
+      kind: 'part',
+      partCode: 'BRG-100',
+    });
+  });
+
   it('selects the person a badge card names', async () => {
     const { fetchActors, fetchPartByCode } = harness();
 

@@ -1,6 +1,7 @@
 import { hasPermission } from '@pkg/domain';
 import type { UserAccessSummary } from '@pkg/schema';
 
+import { canEnterStores } from '@/equipment/lib/stores-access';
 import { MAIN_TAB_PARENTS, type MainTabParent } from '@/equipment/lib/toolbar-navigation';
 
 export type AppTab = 'activity' | 'jobs' | 'plan' | 'quotes' | 'products' | 'units' | 'stores';
@@ -12,9 +13,8 @@ export function visibleTabs(access: UserAccessSummary | null | undefined): AppTa
   if (hasPermission(access, 'equipment_quote:read')) tabs.push('quotes');
   if (hasPermission(access, 'equipment_product:read')) tabs.push('products');
   if (hasPermission(access, 'equipment_product_unit:read')) tabs.push('units');
-  // Keyed on the right to *move* stock rather than to read it: the tab is the physical-flow surface
-  // (spec §10), and a reader with no `equipment_inventory:move` would find every action on it disabled.
-  if (hasPermission(access, 'equipment_inventory:move')) tabs.push('stores');
+  // Keyed on moving or counting rather than reading: the tab is the physical-flow surface (spec §10).
+  if (canEnterStores(access)) tabs.push('stores');
 
   return tabs;
 }

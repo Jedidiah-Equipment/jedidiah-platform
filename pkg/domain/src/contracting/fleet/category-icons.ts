@@ -17,10 +17,13 @@ import { genericImplement } from './category-icons/generic-implement.js';
 import { genericMachine } from './category-icons/generic-machine.js';
 import { grader } from './category-icons/grader.js';
 import { gravelTrailer } from './category-icons/gravel-trailer.js';
+import { limeSpreader } from './category-icons/lime-spreader.js';
 import { lowbed } from './category-icons/lowbed.js';
+import { mower } from './category-icons/mower.js';
 import { planter } from './category-icons/planter.js';
 import { plough } from './category-icons/plough.js';
 import { pump } from './category-icons/pump.js';
+import { rake } from './category-icons/rake.js';
 import { ripper } from './category-icons/ripper.js';
 import { roller } from './category-icons/roller.js';
 import { slasher } from './category-icons/slasher.js';
@@ -50,8 +53,11 @@ const glyphs = [
   waterTanker,
   disc,
   gravelTrailer,
+  limeSpreader,
+  mower,
   planter,
   plough,
+  rake,
   ripper,
   slasher,
   tipTrailer,

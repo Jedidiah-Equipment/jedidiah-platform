@@ -22,10 +22,14 @@ export const categoryIconKeys = [
   'water-tanker',
   'disc',
   'gravel-trailer',
+  'lime-spreader',
+  'mower',
   'planter',
   'plough',
+  'rake',
   'ripper',
   'slasher',
+  'tedder',
   'tip-trailer',
 ] as const;
 

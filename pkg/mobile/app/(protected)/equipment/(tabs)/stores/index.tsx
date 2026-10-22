@@ -16,7 +16,6 @@ import { MainTabToolbar } from '@/equipment/components/TopToolbar';
 import { useStoresActor } from '@/equipment/lib/stores-actor';
 import { MAIN_TAB_PARENTS } from '@/equipment/lib/toolbar-navigation';
 import { useStoresScan } from '@/equipment/lib/use-stores-scan';
-import { useCan } from '@/lib/use-access';
 
 /**
  * The tablet's home: who is at it, one scan field, and the two places a shift starts somewhere
@@ -28,8 +27,7 @@ import { useCan } from '@/lib/use-access';
  */
 export default function StoresScanHomeRoute() {
   const router = useRouter();
-  const { keepAlive, selectActor } = useStoresActor();
-  const canMove = useCan('equipment_inventory:move').can;
+  const { isCounter, keepAlive, selectActor } = useStoresActor();
   const { clearScanError, scan, scanError } = useStoresScan();
   const [quickSwitchOpen, setQuickSwitchOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -38,8 +36,8 @@ export default function StoresScanHomeRoute() {
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
       <MainTabToolbar
         assistantParent={MAIN_TAB_PARENTS.stores}
-        helpTopic={canMove ? 'storesTablet' : 'inventoryStocktake'}
-        subtitle={canMove ? 'SCAN TO MOVE STOCK' : 'COUNT THE SHELF'}
+        helpTopic={isCounter ? 'inventoryStocktake' : 'storesTablet'}
+        subtitle={isCounter ? 'COUNT THE SHELF' : 'SCAN TO MOVE STOCK'}
         title="Stores"
       />
       <ScrollView
@@ -50,7 +48,7 @@ export default function StoresScanHomeRoute() {
         <StoresActorHeader onSwitch={() => setQuickSwitchOpen(true)} />
 
         {/* Someone who only counts would find every Part-screen action disabled. */}
-        {canMove ? (
+        {isCounter ? null : (
           <>
             <View className="gap-3">
               <ScanField isActive={!quickSwitchOpen} onScan={(raw) => void scan(raw)} />
@@ -87,25 +85,25 @@ export default function StoresScanHomeRoute() {
               />
             </View>
           </>
-        ) : null}
+        )}
 
         <View className="gap-3">
-          {canMove ? (
+          {isCounter ? null : (
             <Text className="text-[11px] text-muted-foreground" mono>
               OTHER WORK
             </Text>
-          ) : null}
+          )}
           {/* The two destinations that do not begin at a Part label: one begins at a Job, the other
               at a counting walk. Receiving, both returns, and checkout all hang off a scan, so they
               are reached from the Part screen. */}
-          {canMove ? (
+          {isCounter ? null : (
             <DestinationTile
               caption="Return leftovers and end a Job’s stock life"
               icon={IconChecklist}
               onPress={() => router.push('/equipment/stores/close-out')}
               title="Close-out queue"
             />
-          ) : null}
+          )}
           <DestinationTile
             caption="Count the shelf and correct what the ledger holds"
             icon={IconClipboardCheck}

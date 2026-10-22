@@ -1,8 +1,8 @@
-import { Redirect, Stack } from 'expo-router';
+import { Redirect, Stack, useSegments } from 'expo-router';
 import { useMemo } from 'react';
 
 import { TabAccessLoadingScreen } from '@/equipment/components/TabAccessLoadingScreen';
-import { canEnterStores, storesSelfActor } from '@/equipment/lib/stores-access';
+import { counterMayOpen, storesSeat } from '@/equipment/lib/stores-access';
 import { StoresActorProvider } from '@/equipment/lib/stores-actor';
 import { MAIN_TAB_PARENTS } from '@/equipment/lib/toolbar-navigation';
 import { useAuthSession } from '@/lib/auth-session';
@@ -19,16 +19,18 @@ import { useAccess } from '@/lib/use-access';
 export default function StoresLayout() {
   const access = useAccess();
   const { user } = useAuthSession();
-  const selfActor = useMemo(() => storesSelfActor({ access: access.data, user }), [access.data, user]);
+  const segments = useSegments();
+  const seat = useMemo(() => storesSeat({ access: access.data, user }), [access.data, user]);
 
   if (access.isPending) {
     return <TabAccessLoadingScreen parent={MAIN_TAB_PARENTS.stores} title="Stores" />;
   }
 
-  if (!canEnterStores(access.data)) return <Redirect href="/" />;
+  if (seat === null) return <Redirect href="/" />;
+  if (seat.kind === 'counter' && !counterMayOpen(segments)) return <Redirect href="/equipment/stores/stocktake" />;
 
   return (
-    <StoresActorProvider selfActor={selfActor}>
+    <StoresActorProvider selfActor={seat.kind === 'counter' ? seat.self : null}>
       <Stack screenOptions={{ headerShown: false }} />
     </StoresActorProvider>
   );

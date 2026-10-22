@@ -15,8 +15,8 @@ import { addBreadcrumb, captureEvent } from '@/lib/observability';
  */
 type StoresActorContextValue = {
   actor: QuickSwitchActor | null;
-  /** False when the actor is fixed to the signed-in person, who has no Quick-switch to pick from. */
-  canSwitch: boolean;
+  /** True when the actor is fixed to the signed-in person, who only counts and has no Quick-switch. */
+  isCounter: boolean;
   clearActor: () => void;
   /** Call on any deliberate interaction to hold the actor; a no-op when nobody is selected. */
   keepAlive: () => void;
@@ -84,7 +84,7 @@ export const StoresActorProvider: React.FC<{ children: React.ReactNode; selfActo
   }, [selected]);
 
   const value = useMemo(
-    () => ({ actor, canSwitch: selfActor === null, clearActor, keepAlive, selectActor }),
+    () => ({ actor, isCounter: selfActor !== null, clearActor, keepAlive, selectActor }),
     [actor, clearActor, keepAlive, selectActor, selfActor],
   );
 

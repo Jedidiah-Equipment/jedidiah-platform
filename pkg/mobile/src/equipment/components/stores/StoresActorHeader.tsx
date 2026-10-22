@@ -16,22 +16,22 @@ import { useStoresActor } from '@/equipment/lib/stores-actor';
  * whose actor is fixed to its owner, there is no one else to switch to, so it only confirms the name.
  */
 export function StoresActorHeader({ onSwitch }: { onSwitch: () => void }) {
-  const { actor, canSwitch, clearActor } = useStoresActor();
+  const { actor, clearActor, isCounter } = useStoresActor();
 
   return (
     <View className="flex-row items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3">
       <Pressable
-        accessibilityHint={canSwitch ? 'Choose who is at the tablet' : undefined}
+        accessibilityHint={isCounter ? undefined : 'Choose who is at the tablet'}
         accessibilityLabel={
           actor === null
             ? 'Nobody selected. Choose a name.'
-            : canSwitch
-              ? `Signed in at the tablet: ${actor.name}`
-              : `Working as ${actor.name}`
+            : isCounter
+              ? `Working as ${actor.name}`
+              : `Signed in at the tablet: ${actor.name}`
         }
-        accessibilityRole={canSwitch ? 'button' : 'text'}
+        accessibilityRole={isCounter ? 'text' : 'button'}
         className="min-w-0 flex-1 flex-row items-center gap-3"
-        disabled={!canSwitch}
+        disabled={isCounter}
         onPress={onSwitch}
       >
         {actor === null ? (
@@ -59,7 +59,7 @@ export function StoresActorHeader({ onSwitch }: { onSwitch: () => void }) {
           </Text>
         </View>
       </Pressable>
-      {actor === null || !canSwitch ? null : (
+      {actor === null || isCounter ? null : (
         <Pressable
           accessibilityLabel="Clear the current person"
           accessibilityRole="button"

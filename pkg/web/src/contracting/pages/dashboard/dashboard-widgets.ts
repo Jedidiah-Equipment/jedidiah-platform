@@ -1,7 +1,13 @@
 import { jobQueueLabels } from '@pkg/domain/contracting';
 import type { DashboardWidget } from '@/components/common/dashboard/dashboard-widget-types.js';
-import { AwaitingInvoiceTile, AwaitingPricingTile, LooksFinishedTile } from './widgets/JobQueueTiles.js';
+import {
+  ActiveJobsTile,
+  AwaitingInvoiceTile,
+  AwaitingPricingTile,
+  LooksFinishedTile,
+} from './widgets/JobQueueTiles.js';
 import { JobsNeedingALookWidget } from './widgets/JobsNeedingALookWidget.js';
+import { MachinesOnJobTile } from './widgets/MachinesOnJobTile.js';
 import { ReadingExceptionsTile } from './widgets/ReadingExceptionsTile.js';
 import { ServiceDueWidget } from './widgets/ServiceDueWidget.js';
 import { WorkshopWidget } from './widgets/WorkshopWidget.js';
@@ -34,6 +40,20 @@ export const contractingDashboardWidgets = [
     requires: 'contracting_reading:update',
     size: 'xs',
     title: 'Reading exceptions',
+  },
+  {
+    Component: ActiveJobsTile,
+    id: 'active-jobs',
+    requires: 'contracting_job:read',
+    size: 'md',
+    title: 'Active jobs',
+  },
+  {
+    Component: MachinesOnJobTile,
+    id: 'machines-on-job',
+    requires: 'contracting_machine:read',
+    size: 'md',
+    title: 'Machines On Job',
   },
   {
     Component: JobsNeedingALookWidget,

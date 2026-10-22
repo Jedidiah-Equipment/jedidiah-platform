@@ -7,11 +7,13 @@ import { filterDashboardWidgets } from '@/components/common/dashboard/dashboard-
 import { contractingDashboardWidgets } from './dashboard-widgets.js';
 
 vi.mock('./widgets/JobQueueTiles.js', () => ({
+  ActiveJobsTile: () => null,
   AwaitingInvoiceTile: () => null,
   AwaitingPricingTile: () => null,
   LooksFinishedTile: () => null,
 }));
 vi.mock('./widgets/ReadingExceptionsTile.js', () => ({ ReadingExceptionsTile: () => null }));
+vi.mock('./widgets/MachinesOnJobTile.js', () => ({ MachinesOnJobTile: () => null }));
 vi.mock('./widgets/JobsNeedingALookWidget.js', () => ({ JobsNeedingALookWidget: () => null }));
 vi.mock('./widgets/WorkshopWidget.js', () => ({ WorkshopWidget: () => null }));
 vi.mock('./widgets/ServiceDueWidget.js', () => ({ ServiceDueWidget: () => null }));
@@ -25,6 +27,8 @@ it('shows each role only the blocks whose data it may read, tiles first', () => 
     'awaiting-pricing',
     'awaiting-invoice',
     'reading-exceptions',
+    'active-jobs',
+    'machines-on-job',
     'jobs-needing-a-look',
     'workshop',
     'service-due',
@@ -34,6 +38,8 @@ it('shows each role only the blocks whose data it may read, tiles first', () => 
     'looks-finished',
     'awaiting-pricing',
     'reading-exceptions',
+    'active-jobs',
+    'machines-on-job',
     'jobs-needing-a-look',
     'workshop',
     'service-due',
@@ -42,6 +48,8 @@ it('shows each role only the blocks whose data it may read, tiles first', () => 
   expect(visibleTo('workshop-manager')).toEqual([
     'looks-finished',
     'awaiting-pricing',
+    'active-jobs',
+    'machines-on-job',
     'jobs-needing-a-look',
     'workshop',
     'service-due',

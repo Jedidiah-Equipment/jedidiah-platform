@@ -25,6 +25,10 @@ import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
 import { CategoryPickerField } from './CategoryFields.js';
 import {
+  BUSY_COLUMN_ID,
+  type BusyFilterValue,
+  busyFilterMatches,
+  busyFilterOptions,
   createMachineInput,
   fleetStatusLabels,
   fleetStatusOptions,
@@ -37,9 +41,12 @@ import {
 
 export function MachinesPage({
   service,
+  busy,
 }: {
   /** The Service filter the Dashboard opens the list with; the table owns it from then on. */
   service?: ServiceFilterValue | undefined;
+  /** The Busy with filter the Dashboard opens the list with, owned by the table the same way. */
+  busy?: BusyFilterValue | undefined;
 } = {}) {
   const trpc = useTRPC();
   const navigate = useNavigate();
@@ -48,6 +55,10 @@ export function MachinesPage({
   const readsJobs = useCan('contracting_job:read').can;
   const [status, setStatus] = useState<FleetListInput['status']>('active');
   const query = useQuery(trpc.contractingFleet.machines.list.queryOptions({ status }));
+  const defaultColumnFilters = [
+    ...(service ? [{ id: SERVICE_COLUMN_ID, value: service }] : []),
+    ...(busy ? [{ id: BUSY_COLUMN_ID, value: busy }] : []),
+  ];
   const categories = useQuery(trpc.contractingFleet.categories.list.queryOptions({ kind: 'machine' }));
   const options = useQuery(trpc.contractingFleet.machines.options.queryOptions());
   const flow = useCreateEntityFlow({
@@ -98,12 +109,15 @@ export function MachinesPage({
         cell: ({ row }) => (row.original.currentDriverName ? getFirstName(row.original.currentDriverName) : null),
       },
       {
-        id: 'busyWith',
+        id: BUSY_COLUMN_ID,
         header: 'Busy with',
         accessorFn: (machine) =>
           machine.busyOnJob ? `${machine.busyOnJob.customerName} · ${machine.busyOnJob.farmName}` : '',
         enableSorting: true,
         enableGlobalFilter: false,
+        enableColumnFilter: true,
+        filterFn: (row, _columnId, value) => busyFilterMatches(row.original, value),
+        meta: { filterVariant: 'select', filterOptions: busyFilterOptions },
         cell: ({ row }) => {
           const { busyOnJob, retiredAt } = row.original;
           if (retiredAt) return <Badge variant="outline">Retired</Badge>;
@@ -211,7 +225,7 @@ export function MachinesPage({
             />
           }
           onOpen={(row) => void navigate({ to: '/contracting/fleet/$id/edit', params: { id: row.id } })}
-          {...(service ? { defaultColumnFilters: [{ id: SERVICE_COLUMN_ID, value: service }] } : {})}
+          defaultColumnFilters={defaultColumnFilters}
         />
       </PageLayout>
       <CreateEntityDialog

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { implementPatchInput, machinePatchInput, serviceFilterMatches } from './types.js';
+import { busyFilterMatches, implementPatchInput, machinePatchInput, serviceFilterMatches } from './types.js';
 
 const id = '00000000-0000-4000-8000-000000000001';
 describe('fleet form mappers', () => {
@@ -39,5 +39,18 @@ describe('serviceFilterMatches', () => {
     expect(serviceFilterMatches('ok', 'ok')).toBe(true);
     expect(serviceFilterMatches('overdue', 'ok')).toBe(false);
     expect(serviceFilterMatches('unknown', 'unknown')).toBe(true);
+  });
+});
+
+describe('busyFilterMatches', () => {
+  const onJob = { busyOnJob: { id }, retiredAt: null };
+  const inYard = { busyOnJob: null, retiredAt: null };
+  const retired = { busyOnJob: null, retiredAt: '2026-10-01T00:00:00.000Z' };
+  it('reads On Job as an on-site Assignment, and In Yard as free and still in the fleet', () => {
+    expect(busyFilterMatches(onJob, 'on-job')).toBe(true);
+    expect(busyFilterMatches(inYard, 'on-job')).toBe(false);
+    expect(busyFilterMatches(inYard, 'in-yard')).toBe(true);
+    expect(busyFilterMatches(onJob, 'in-yard')).toBe(false);
+    expect(busyFilterMatches(retired, 'in-yard')).toBe(false);
   });
 });

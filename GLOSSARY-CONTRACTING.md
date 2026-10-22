@@ -348,7 +348,8 @@ current value; nothing stored is re-judged.
 
 The **Dashboard** is the web home: counts and lists of what needs a person now — the Jobs needing a look, the
 Breakdowns not yet Fixed, the Machines Service Due Soon or overdue, the Jobs waiting for sign-off, pricing or an
-Invoice Number, and the Reading Exceptions. Each block shows only to a role holding the permission that reads what
+Invoice Number, and the Reading Exceptions — and two counts of what is under way: the Active Jobs not yet looking
+finished and the Machines On Job. Each block shows only to a role holding the permission that reads what
 it lists, and it refreshes every minute. It never shows anything over a period; that is Reporting's.
 
 ## Activity

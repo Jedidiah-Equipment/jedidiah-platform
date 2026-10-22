@@ -138,3 +138,14 @@ export const serviceFilterOptions: { label: string; value: ServiceFilterValue }[
 ];
 export const serviceFilterMatches = (status: ServiceDueStatus, value: unknown) =>
   value === 'attention' ? serviceDueNeedsAttention(status) : status === value;
+
+export const BUSY_COLUMN_ID = 'busyWith';
+/** The Machines list's Busy with filter: On Job while an Assignment is on site, In Yard while free and not Retired. */
+export const busyFilterValues = ['on-job', 'in-yard'] as const;
+export type BusyFilterValue = (typeof busyFilterValues)[number];
+export const busyFilterOptions: { label: string; value: BusyFilterValue }[] = [
+  { label: 'On Job', value: 'on-job' },
+  { label: 'In Yard', value: 'in-yard' },
+];
+export const busyFilterMatches = (machine: { busyOnJob: object | null; retiredAt: string | null }, value: unknown) =>
+  value === 'on-job' ? machine.busyOnJob !== null : !machine.busyOnJob && !machine.retiredAt;

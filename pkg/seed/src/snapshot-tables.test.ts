@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { getTableColumns } from 'drizzle-orm';
+import { getTableColumns, getTableUniqueName } from 'drizzle-orm';
+import { getTableConfig } from 'drizzle-orm/pg-core';
 import { describe, expect, it } from 'vitest';
 
 import { deserializeSnapshotRows } from './snapshot-json.js';
@@ -30,6 +31,27 @@ describe('snapshot table registry', () => {
     expect(configFor('part_category').optionalReadTable).toBeUndefined();
     expect(configFor('part_category').emptySnapshotRows).toBeUndefined();
     expect(configFor('parts').optionalReadColumns).not.toContain('categoryId');
+  });
+
+  it('points every foreign key at a snapshot table or declares its parent unsnapshotted', () => {
+    const snapshotted = new Set(snapshotTables.map((config) => getTableUniqueName(config.table)));
+    const outsideRegistry = snapshotTables.flatMap((config) => {
+      const propertyByColumn = new Map(
+        Object.entries(getTableColumns(config.table)).map(([key, column]) => [column, key]),
+      );
+
+      return getTableConfig(config.table)
+        .foreignKeys.map((foreignKey) => foreignKey.reference())
+        .filter((reference) => !snapshotted.has(getTableUniqueName(reference.foreignTable)))
+        .flatMap((reference) =>
+          reference.columns.map((column) => `${config.tableName}.${propertyByColumn.get(column)}`),
+        );
+    });
+    const declared = snapshotTables.flatMap((config) =>
+      (config.unsnapshottedParentColumns ?? []).map((column) => `${config.tableName}.${column}`),
+    );
+
+    expect(outsideRegistry).toEqual(declared);
   });
 
   it('lists snapshot tables in dependency order', () => {

@@ -61,6 +61,7 @@ import { type SnapshotTableConfig, snapshotTableDefinitions } from './snapshot-t
 
 export {
   collectStorageFiles,
+  keepSnapshotRows,
   prepareSnapshotRow,
   projectWritableRow,
   type SnapshotRow,

@@ -16,6 +16,7 @@ import { deserializeSnapshotRows } from './snapshot-json.js';
 import { objectFilePath, snapshotDirectory } from './snapshot-paths.js';
 import {
   collectStorageFiles,
+  keepSnapshotRows,
   prepareSnapshotRow,
   projectWritableRow,
   type SnapshotRow,
@@ -91,9 +92,10 @@ export async function writeLocalSeedSnapshot(database?: Db): Promise<void> {
   }
 }
 
-// Add rollout defaults beneath captured values, then normalize legacy values for the current schema.
+// Drop rows whose parent is not snapshotted, add rollout defaults beneath captured values, then normalize
+// legacy values for the current schema.
 export function prepareRowsForSeed(config: SnapshotTableConfig, rows: readonly SnapshotRow[]): SnapshotRow[] {
-  const source = rows.length === 0 ? (config.emptySnapshotRows ?? rows) : rows;
+  const source = rows.length === 0 ? (config.emptySnapshotRows ?? rows) : keepSnapshotRows(config, rows);
   return source.map((row, index) => prepareSnapshotRow(config, projectWritableRow(config, row), index));
 }
 

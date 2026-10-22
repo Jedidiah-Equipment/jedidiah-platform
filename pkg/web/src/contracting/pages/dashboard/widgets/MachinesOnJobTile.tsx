@@ -8,8 +8,9 @@ import { useTRPC } from '@/lib/trpc.js';
 
 export function MachinesOnJobTile() {
   const trpc = useTRPC();
+  // Retiring does not refuse a Machine on site, so the count spans the whole fleet.
   const query = useQuery({
-    ...trpc.contractingFleet.machines.list.queryOptions({ status: 'active' }),
+    ...trpc.contractingFleet.machines.list.queryOptions({ status: 'all' }),
     refetchInterval: DASHBOARD_REFETCH_INTERVAL_MS,
     select: (machines) => machines.filter((machine) => busyFilterMatches(machine, 'on-job')).length,
   });

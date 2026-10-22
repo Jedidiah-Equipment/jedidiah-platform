@@ -46,7 +46,10 @@ describe('busyFilterMatches', () => {
   const onJob = { busyOnJob: { id }, retiredAt: null };
   const inYard = { busyOnJob: null, retiredAt: null };
   const retired = { busyOnJob: null, retiredAt: '2026-10-01T00:00:00.000Z' };
+  const retiredOnSite = { busyOnJob: { id }, retiredAt: '2026-10-01T00:00:00.000Z' };
   it('reads On Job as an on-site Assignment, and In Yard as free and still in the fleet', () => {
+    // Retiring does not refuse a Machine on site, so it stays On Job until its departure is captured.
+    expect(busyFilterMatches(retiredOnSite, 'on-job')).toBe(true);
     expect(busyFilterMatches(onJob, 'on-job')).toBe(true);
     expect(busyFilterMatches(inYard, 'on-job')).toBe(false);
     expect(busyFilterMatches(inYard, 'in-yard')).toBe(true);

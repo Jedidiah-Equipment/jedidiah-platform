@@ -53,7 +53,7 @@ export function MachinesPage({
   const { invalidateFleet } = useQueryInvalidation();
   const canEdit = useCan('contracting_machine:update').can;
   const readsJobs = useCan('contracting_job:read').can;
-  const [status, setStatus] = useState<FleetListInput['status']>('active');
+  const [status, setStatus] = useState<FleetListInput['status']>(busy === 'on-job' ? 'all' : 'active');
   const query = useQuery(trpc.contractingFleet.machines.list.queryOptions({ status }));
   const defaultColumnFilters = [
     ...(service ? [{ id: SERVICE_COLUMN_ID, value: service }] : []),
@@ -120,8 +120,12 @@ export function MachinesPage({
         meta: { filterVariant: 'select', filterOptions: busyFilterOptions },
         cell: ({ row }) => {
           const { busyOnJob, retiredAt } = row.original;
-          if (retiredAt) return <Badge variant="outline">Retired</Badge>;
-          if (!busyOnJob) return <span className="text-muted-foreground">Free</span>;
+          if (!busyOnJob)
+            return retiredAt ? (
+              <Badge variant="outline">Retired</Badge>
+            ) : (
+              <span className="text-muted-foreground">Free</span>
+            );
           const label = (
             <span
               className="flex min-w-0 flex-col"

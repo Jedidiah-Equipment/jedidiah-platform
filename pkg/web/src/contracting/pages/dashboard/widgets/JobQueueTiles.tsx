@@ -16,7 +16,13 @@ function useQueueCount(queue: JobQueue) {
   return { value, error: query.error, errorMessage: 'Unable to load Job counts.' };
 }
 
-function JobsStageTile({ stage, sublabel }: { stage: 'looks-finished' | 'awaiting-pricing'; sublabel: string }) {
+function JobsStageTile({
+  stage,
+  sublabel,
+}: {
+  stage: 'active' | 'looks-finished' | 'awaiting-pricing';
+  sublabel: string;
+}) {
   return (
     <DashboardTile
       {...useQueueCount(stage)}
@@ -29,6 +35,8 @@ function JobsStageTile({ stage, sublabel }: { stage: 'looks-finished' | 'awaitin
     />
   );
 }
+
+export const ActiveJobsTile = () => <JobsStageTile stage="active" sublabel="Under way" />;
 
 export const LooksFinishedTile = () => <JobsStageTile stage="looks-finished" sublabel="Need sign-off" />;
 

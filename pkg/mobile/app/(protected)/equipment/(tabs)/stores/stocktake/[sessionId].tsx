@@ -43,7 +43,7 @@ export default function StoresStocktakeSessionRoute() {
   const toast = useAppToast();
   const queryClient = useQueryClient();
   const actorUserId = useMovementActorUserId();
-  const { keepAlive, selectActor } = useStoresActor();
+  const { canSwitch, keepAlive, selectActor } = useStoresActor();
   const [partCode, setPartCode] = useState<string | null>(null);
   const [scanError, setScanError] = useState<string | null>(null);
   const [isClosing, setIsClosing] = useState(false);
@@ -79,7 +79,7 @@ export default function StoresStocktakeSessionRoute() {
     keepAlive();
     setScanError(null);
     const resolution = await resolveScan({
-      fetchActors: () => queryClient.fetchQuery(trpc.inventory.quickSwitchActors.queryOptions()),
+      fetchActors: canSwitch ? () => queryClient.fetchQuery(trpc.inventory.quickSwitchActors.queryOptions()) : null,
       fetchPartByCode: (code) => queryClient.fetchQuery(trpc.inventory.partByCode.queryOptions({ code })),
       onLookupFailure: (error, resultKind) =>
         captureSanitizedException(error, 'Stores scan lookup failed', { resultKind, source: 'stores_scan' }),

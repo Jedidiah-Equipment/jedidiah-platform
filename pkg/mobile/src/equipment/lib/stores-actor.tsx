@@ -15,6 +15,8 @@ import { addBreadcrumb, captureEvent } from '@/lib/observability';
  */
 type StoresActorContextValue = {
   actor: QuickSwitchActor | null;
+  /** False when the actor is fixed to the signed-in person, who has no Quick-switch to pick from. */
+  canSwitch: boolean;
   clearActor: () => void;
   /** Call on any deliberate interaction to hold the actor; a no-op when nobody is selected. */
   keepAlive: () => void;
@@ -26,19 +28,23 @@ const StoresActorContext = createContext<StoresActorContextValue | null>(null);
 /** How often the idle check runs. Finer than the timeout so expiry lands close to when it is due. */
 const IDLE_TICK_MS = 15_000;
 
-export const StoresActorProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [actor, setActor] = useState<QuickSwitchActor | null>(null);
+export const StoresActorProvider: React.FC<{ children: React.ReactNode; selfActor: QuickSwitchActor | null }> = ({
+  children,
+  selfActor,
+}) => {
+  const [selected, setSelected] = useState<QuickSwitchActor | null>(null);
+  const actor = selfActor ?? selected;
   const lastInteractionAt = useRef(Date.now());
 
   const selectActor = useCallback((next: QuickSwitchActor) => {
     lastInteractionAt.current = Date.now();
-    setActor(next);
+    setSelected(next);
     addBreadcrumb('equipment', 'stores actor selected', { present: true });
     captureEvent('stores actor selected', { present: true });
   }, []);
 
   const clearActor = useCallback(() => {
-    setActor(null);
+    setSelected(null);
     addBreadcrumb('equipment', 'stores actor cleared', { present: false });
   }, []);
 
@@ -53,14 +59,15 @@ export const StoresActorProvider: React.FC<{ children: React.ReactNode }> = ({ c
    * having fired and yesterday's name still showing. The clock is the authority, not the tick —
    * `lastInteractionAt` is wall time, so the elapsed check is correct however long the gap was.
    *
-   * Both only run while somebody is selected: a tablet with nobody at it has nothing to forget.
+   * Both only run while somebody is selected: a tablet with nobody at it has nothing to forget, and a
+   * fixed self actor is never forgotten, since the phone it is on belongs to them.
    */
   useEffect(() => {
-    if (actor === null) return;
+    if (selected === null) return;
 
     const expireIfIdle = () => {
       if (isStoresActorExpired({ lastInteractionAt: lastInteractionAt.current, now: Date.now() })) {
-        setActor(null);
+        setSelected(null);
         addBreadcrumb('equipment', 'stores actor expired', { present: false });
         captureEvent('stores actor expired', { present: false });
       }
@@ -74,11 +81,11 @@ export const StoresActorProvider: React.FC<{ children: React.ReactNode }> = ({ c
       clearInterval(interval);
       subscription.remove();
     };
-  }, [actor]);
+  }, [selected]);
 
   const value = useMemo(
-    () => ({ actor, clearActor, keepAlive, selectActor }),
-    [actor, clearActor, keepAlive, selectActor],
+    () => ({ actor, canSwitch: selfActor === null, clearActor, keepAlive, selectActor }),
+    [actor, clearActor, keepAlive, selectActor, selfActor],
   );
 
   return (

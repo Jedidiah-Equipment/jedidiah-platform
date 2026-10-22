@@ -7,9 +7,10 @@ sitting; stores is counted monthly and may roll over several days.
 
 ## Open or resume a session
 
-1. On the stores tablet, tap **Stocktake** under **Other work**.
+1. On the stores tablet, tap **Stocktake** under **Other work**. A Job Manager can also count from
+   their own phone: open **Stores** and tap **Stocktake**.
 2. Make sure your name is on the tablet. A count is attributed to a person, so the tablet will not
-   open a session for nobody.
+   open a session for nobody. On your own phone, the count is always yours.
 3. Tap **Raw material** or **Stores**. If a session is already open for that scope, the tile says so
    and tapping it carries on where the last shift left off.
 

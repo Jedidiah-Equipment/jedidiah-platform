@@ -16,6 +16,7 @@ import { MainTabToolbar } from '@/equipment/components/TopToolbar';
 import { useStoresActor } from '@/equipment/lib/stores-actor';
 import { MAIN_TAB_PARENTS } from '@/equipment/lib/toolbar-navigation';
 import { useStoresScan } from '@/equipment/lib/use-stores-scan';
+import { useCan } from '@/lib/use-access';
 
 /**
  * The tablet's home: who is at it, one scan field, and the two places a shift starts somewhere
@@ -28,6 +29,7 @@ import { useStoresScan } from '@/equipment/lib/use-stores-scan';
 export default function StoresScanHomeRoute() {
   const router = useRouter();
   const { keepAlive, selectActor } = useStoresActor();
+  const canMove = useCan('equipment_inventory:move').can;
   const { clearScanError, scan, scanError } = useStoresScan();
   const [quickSwitchOpen, setQuickSwitchOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -37,7 +39,7 @@ export default function StoresScanHomeRoute() {
       <MainTabToolbar
         assistantParent={MAIN_TAB_PARENTS.stores}
         helpTopic="storesTablet"
-        subtitle="SCAN TO MOVE STOCK"
+        subtitle={canMove ? 'SCAN TO MOVE STOCK' : 'COUNT THE SHELF'}
         title="Stores"
       />
       <ScrollView
@@ -47,54 +49,64 @@ export default function StoresScanHomeRoute() {
       >
         <StoresActorHeader onSwitch={() => setQuickSwitchOpen(true)} />
 
+        {/* Someone who counts but cannot move stock has no Part screen to scan into: every action on
+            it would be disabled, so their Stores is the counting walk alone. */}
+        {canMove ? (
+          <>
+            <View className="gap-3">
+              <ScanField isActive={!quickSwitchOpen} onScan={(raw) => void scan(raw)} />
+              {scanError === null ? null : (
+                <Text className="text-sm text-danger" weight="semibold">
+                  {scanError}
+                </Text>
+              )}
+            </View>
+
+            <View className="gap-2">
+              <Text className="text-[11px] text-muted-foreground" mono>
+                CAN’T SCAN THE LABEL?
+              </Text>
+              <TextInput
+                accessibilityLabel="Search Parts by code or name"
+                autoCapitalize="none"
+                autoCorrect={false}
+                onChangeText={(next) => {
+                  keepAlive();
+                  clearScanError();
+                  setSearch(next);
+                }}
+                placeholder="Search by part code or name"
+                textSize="toolbar"
+                value={search}
+              />
+              <PartSearchList
+                onSelect={(partCode) => {
+                  setSearch('');
+                  router.push({ params: { partCode }, pathname: '/equipment/stores/parts/[partCode]' });
+                }}
+                search={search}
+              />
+            </View>
+          </>
+        ) : null}
+
         <View className="gap-3">
-          <ScanField isActive={!quickSwitchOpen} onScan={(raw) => void scan(raw)} />
-          {scanError === null ? null : (
-            <Text className="text-sm text-danger" weight="semibold">
-              {scanError}
+          {canMove ? (
+            <Text className="text-[11px] text-muted-foreground" mono>
+              OTHER WORK
             </Text>
-          )}
-        </View>
-
-        <View className="gap-2">
-          <Text className="text-[11px] text-muted-foreground" mono>
-            CAN’T SCAN THE LABEL?
-          </Text>
-          <TextInput
-            accessibilityLabel="Search Parts by code or name"
-            autoCapitalize="none"
-            autoCorrect={false}
-            onChangeText={(next) => {
-              keepAlive();
-              clearScanError();
-              setSearch(next);
-            }}
-            placeholder="Search by part code or name"
-            textSize="toolbar"
-            value={search}
-          />
-          <PartSearchList
-            onSelect={(partCode) => {
-              setSearch('');
-              router.push({ params: { partCode }, pathname: '/equipment/stores/parts/[partCode]' });
-            }}
-            search={search}
-          />
-        </View>
-
-        <View className="gap-3">
-          <Text className="text-[11px] text-muted-foreground" mono>
-            OTHER WORK
-          </Text>
+          ) : null}
           {/* The two destinations that do not begin at a Part label: one begins at a Job, the other
               at a counting walk. Receiving, both returns, and checkout all hang off a scan, so they
               are reached from the Part screen. */}
-          <DestinationTile
-            caption="Return leftovers and end a Job’s stock life"
-            icon={IconChecklist}
-            onPress={() => router.push('/equipment/stores/close-out')}
-            title="Close-out queue"
-          />
+          {canMove ? (
+            <DestinationTile
+              caption="Return leftovers and end a Job’s stock life"
+              icon={IconChecklist}
+              onPress={() => router.push('/equipment/stores/close-out')}
+              title="Close-out queue"
+            />
+          ) : null}
           <DestinationTile
             caption="Count the shelf and correct what the ledger holds"
             icon={IconClipboardCheck}

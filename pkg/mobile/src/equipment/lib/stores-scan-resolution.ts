@@ -62,14 +62,20 @@ export async function resolveScan({
   onLookupFailure,
   raw,
 }: {
-  fetchActors: () => Promise<{ items: QuickSwitchActor[] }>;
+  /** `null` where the actor is fixed to the signed-in person, who has no Quick-switch list to read. */
+  fetchActors: (() => Promise<{ items: QuickSwitchActor[] }>) | null;
   fetchPartByCode: (code: string) => Promise<{ partCode: string }>;
   onLookupFailure?: (error: unknown, resultKind: 'actor' | 'part') => void;
   raw: string;
 }): Promise<ScanResolution> {
   const token = parseScanToken(raw);
 
-  if (token.kind !== 'part-code') return resolveBadgeScan({ fetchActors, onLookupFailure, raw });
+  if (token.kind === 'empty') return { kind: 'ignored' };
+  if (token.kind === 'badge') {
+    return fetchActors === null
+      ? { kind: 'error', message: 'This phone counts as you. Badges switch people at the stores tablet.' }
+      : resolveBadgeScan({ fetchActors, onLookupFailure, raw });
+  }
 
   try {
     // Resolved before navigating: a code that names nothing has to fail here, at the shelf, rather

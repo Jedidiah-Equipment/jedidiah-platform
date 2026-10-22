@@ -12,20 +12,26 @@ import { useStoresActor } from '@/equipment/lib/stores-actor';
  *
  * The size is the feature, not decoration: it has to be readable from arm's length across a
  * warehouse bench, because the failure this guards against is somebody posting under the last
- * person's name without noticing. Tapping it switches; the cross clears it deliberately.
+ * person's name without noticing. Tapping it switches; the cross clears it deliberately. On a phone
+ * whose actor is fixed to its owner, there is no one else to switch to, so it only confirms the name.
  */
 export function StoresActorHeader({ onSwitch }: { onSwitch: () => void }) {
-  const { actor, clearActor } = useStoresActor();
+  const { actor, canSwitch, clearActor } = useStoresActor();
 
   return (
     <View className="flex-row items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3">
       <Pressable
-        accessibilityHint="Choose who is at the tablet"
+        accessibilityHint={canSwitch ? 'Choose who is at the tablet' : undefined}
         accessibilityLabel={
-          actor === null ? 'Nobody selected. Choose a name.' : `Signed in at the tablet: ${actor.name}`
+          actor === null
+            ? 'Nobody selected. Choose a name.'
+            : canSwitch
+              ? `Signed in at the tablet: ${actor.name}`
+              : `Working as ${actor.name}`
         }
-        accessibilityRole="button"
+        accessibilityRole={canSwitch ? 'button' : 'text'}
         className="min-w-0 flex-1 flex-row items-center gap-3"
+        disabled={!canSwitch}
         onPress={onSwitch}
       >
         {actor === null ? (
@@ -53,7 +59,7 @@ export function StoresActorHeader({ onSwitch }: { onSwitch: () => void }) {
           </Text>
         </View>
       </Pressable>
-      {actor === null ? null : (
+      {actor === null || !canSwitch ? null : (
         <Pressable
           accessibilityLabel="Clear the current person"
           accessibilityRole="button"

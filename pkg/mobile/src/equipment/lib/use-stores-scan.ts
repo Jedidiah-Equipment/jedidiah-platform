@@ -17,7 +17,7 @@ export function useStoresScan() {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const router = useRouter();
-  const { keepAlive, selectActor } = useStoresActor();
+  const { canSwitch, keepAlive, selectActor } = useStoresActor();
   const [scanError, setScanError] = useState<string | null>(null);
 
   const scan = useCallback(
@@ -28,7 +28,7 @@ export function useStoresScan() {
       // `resolveScan` turns its own failures into an `error` resolution, so there is nothing to
       // catch here — a scan that goes wrong is a message on the screen, never an unhandled throw.
       const resolution = await resolveScan({
-        fetchActors: () => queryClient.fetchQuery(trpc.inventory.quickSwitchActors.queryOptions()),
+        fetchActors: canSwitch ? () => queryClient.fetchQuery(trpc.inventory.quickSwitchActors.queryOptions()) : null,
         fetchPartByCode: (code) => queryClient.fetchQuery(trpc.inventory.partByCode.queryOptions({ code })),
         onLookupFailure: (error, resultKind) =>
           captureSanitizedException(error, 'Stores scan lookup failed', { resultKind, source: 'stores_scan' }),
@@ -53,7 +53,7 @@ export function useStoresScan() {
           break;
       }
     },
-    [keepAlive, queryClient, router, selectActor, trpc],
+    [canSwitch, keepAlive, queryClient, router, selectActor, trpc],
   );
 
   const clearScanError = useCallback(() => setScanError(null), []);

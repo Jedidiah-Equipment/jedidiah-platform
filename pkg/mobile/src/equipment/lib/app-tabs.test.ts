@@ -45,7 +45,13 @@ describe('visibleTabs', () => {
     expect(showTabBar(visibleTabs(access))).toBe(false);
   });
 
-  it('keeps Stores away from a Procurement Manager, who has no right to move stock', () => {
+  it('adds Stores for a Job Manager, who counts stock without moving it', () => {
+    const access = accessForRole('job-manager', 'manager-1');
+
+    expect(visibleTabs(access)).toEqual(['activity', 'jobs', 'plan', 'units', 'stores']);
+  });
+
+  it('keeps Stores away from a Procurement Manager, who neither moves nor counts stock', () => {
     const access = accessForRole('procurement-manager', 'buyer-1');
 
     expect(visibleTabs(access)).not.toContain('stores');

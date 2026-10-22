@@ -1,0 +1,19 @@
+{
+  "business": "contracting",
+  "releasedAt": "2026-10-22T15:10:59.961Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Track active jobs and machines on site",
+          "description": "See Active jobs and Machines On Job totals on the dashboard. Select either tile to open the matching filtered list."
+        },
+        {
+          "title": "Choose more fleet category icons",
+          "description": "Use new mower, rake, lime spreader and tedder icons for your fleet categories."
+        }
+      ]
+    }
+  ]
+}

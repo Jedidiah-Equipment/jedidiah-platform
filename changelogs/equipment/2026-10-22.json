@@ -1,0 +1,15 @@
+{
+  "business": "equipment",
+  "releasedAt": "2026-10-22T15:10:59.961Z",
+  "sections": [
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Run stocktakes from your phone",
+          "description": "Job managers can now open Stores and record stocktake counts on their phones. Counts are recorded under their own names."
+        }
+      ]
+    }
+  ]
+}

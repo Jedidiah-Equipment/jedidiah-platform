@@ -13,8 +13,7 @@ export function visibleTabs(access: UserAccessSummary | null | undefined): AppTa
   if (hasPermission(access, 'equipment_quote:read')) tabs.push('quotes');
   if (hasPermission(access, 'equipment_product:read')) tabs.push('products');
   if (hasPermission(access, 'equipment_product_unit:read')) tabs.push('units');
-  // Keyed on the physical acts rather than on reading stock: the tab is the physical-flow surface
-  // (spec §10), and a reader who can neither move nor count would find every action on it disabled.
+  // Keyed on moving or counting rather than reading: the tab is the physical-flow surface (spec §10).
   if (canEnterStores(access)) tabs.push('stores');
 
   return tabs;

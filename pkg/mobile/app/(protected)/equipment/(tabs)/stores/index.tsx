@@ -38,7 +38,7 @@ export default function StoresScanHomeRoute() {
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
       <MainTabToolbar
         assistantParent={MAIN_TAB_PARENTS.stores}
-        helpTopic="storesTablet"
+        helpTopic={canMove ? 'storesTablet' : 'inventoryStocktake'}
         subtitle={canMove ? 'SCAN TO MOVE STOCK' : 'COUNT THE SHELF'}
         title="Stores"
       />
@@ -49,8 +49,7 @@ export default function StoresScanHomeRoute() {
       >
         <StoresActorHeader onSwitch={() => setQuickSwitchOpen(true)} />
 
-        {/* Someone who counts but cannot move stock has no Part screen to scan into: every action on
-            it would be disabled, so their Stores is the counting walk alone. */}
+        {/* Someone who only counts would find every Part-screen action disabled. */}
         {canMove ? (
           <>
             <View className="gap-3">

@@ -399,7 +399,6 @@ export const appRoleAccess = {
     equipment_product_unit: ['read'],
   },
   'job-manager': {
-    // Counting without moving: the fabrication manager walks the raw-material stocktake.
     equipment_inventory: ['read', 'count'],
     equipment_job: ['read', 'update'],
     equipment_product_unit: ['read'],

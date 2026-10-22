@@ -29,6 +29,7 @@ export const categoryIconKeys = [
   'rake',
   'ripper',
   'slasher',
+  'tedder',
   'tip-trailer',
 ] as const;
 

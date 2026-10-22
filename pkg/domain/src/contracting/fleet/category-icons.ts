@@ -27,6 +27,7 @@ import { rake } from './category-icons/rake.js';
 import { ripper } from './category-icons/ripper.js';
 import { roller } from './category-icons/roller.js';
 import { slasher } from './category-icons/slasher.js';
+import { tedder } from './category-icons/tedder.js';
 import { tipTrailer } from './category-icons/tip-trailer.js';
 import { tipper } from './category-icons/tipper.js';
 import { tlb } from './category-icons/tlb.js';
@@ -60,6 +61,7 @@ const glyphs = [
   rake,
   ripper,
   slasher,
+  tedder,
   tipTrailer,
 ] as const satisfies readonly CategoryIconGlyph[];
 

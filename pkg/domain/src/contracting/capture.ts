@@ -211,16 +211,30 @@ export type CaptureFormVerdict = {
   request: CaptureRequest | null;
 };
 
+/** A reading as typed, read as hours; null until it is a valid reading. A comma counts as the decimal point. */
+export function parseCaptureValue(typed: string): number | null {
+  const value = typed.trim() ? ReadingValue.safeParse(Number(typed.replace(',', '.'))) : null;
+  return value?.success ? value.data : null;
+}
+
+/** The value half of a capture form: whether it is below the latest, and whether that dispute is confirmed. */
+export function captureValueVerdict(
+  latest: CaptureFormWorld['latest'],
+  parsed: number | null,
+  disputedReadingId: string | null,
+) {
+  const below = parsed !== null && captureIsBelowLatest(parsed, latest ?? null);
+  return { below, disputeConfirmed: below && disputedReadingId === latest?.id };
+}
+
 /**
  * The form's half of the table: what a capture form can already refuse before posting, and the request it posts
  * when it cannot. Client-only affordances (a camera open, options loading) stay with each client.
  */
 export function deriveCaptureForm(world: CaptureFormWorld, draft: CaptureDraft): CaptureFormVerdict {
-  const value = draft.value.trim() ? ReadingValue.safeParse(Number(draft.value.replace(',', '.'))) : null;
-  const parsed = value?.success ? value.data : null;
+  const parsed = parseCaptureValue(draft.value);
   const latest = world.latest ?? null;
-  const below = parsed !== null && captureIsBelowLatest(parsed, latest);
-  const disputeConfirmed = below && draft.disputedReadingId === latest?.id;
+  const { below, disputeConfirmed } = captureValueVerdict(latest, parsed, draft.disputedReadingId);
   const commentRequired = captureNeedsComment(draft.role, world);
   const futureReadAt = draft.readAt !== null && isFutureReadAt(draft.readAt, world.now);
   const passes =

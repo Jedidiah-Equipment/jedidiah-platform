@@ -121,7 +121,7 @@ export function ReadingValueField({
  */
 export const ReadingValueCard = withFieldGroup({
   defaultValues: { value: Number.NaN, confirmedDispute: null as ConfirmedDispute },
-  props: {} as { capture: Pick<ReadingCapture, 'judge' | 'latest' | 'latestQuery'> },
+  props: {} as { capture: Pick<ReadingCapture<unknown>, 'judgeValue' | 'latest' | 'latestQuery'> },
   render: function ReadingValueCardGroup({ group, capture }) {
     const [readingFocused, setReadingFocused] = useState(false);
     const { latest, latestQuery } = capture;
@@ -132,8 +132,7 @@ export const ReadingValueCard = withFieldGroup({
         warning={
           <group.Subscribe selector={(state) => state.values}>
             {(values) => {
-              // Below and the dispute read only the value and the latest; the comment plays no part.
-              const verdict = capture.judge({ ...values, comment: '' });
+              const verdict = capture.judgeValue(values);
               return !readingFocused && latest && verdict.below ? (
                 <group.AppField name="confirmedDispute">
                   {(field) => (

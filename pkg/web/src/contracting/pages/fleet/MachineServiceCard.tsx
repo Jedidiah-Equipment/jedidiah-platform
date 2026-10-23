@@ -1,5 +1,5 @@
-import { formatDate, formatHours } from '@pkg/domain';
-import { hoursToServiceLabel, machineServiceBadge } from '@pkg/domain/contracting';
+import { formatDate } from '@pkg/domain';
+import { machineServiceBadge } from '@pkg/domain/contracting';
 import type { Machine, ServiceRecord } from '@pkg/schema/contracting';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -9,8 +9,9 @@ import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
 import { HelpLink } from '@/components/help/index.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
+import { HoursToServiceLabel, hoursOrDash, machineHoursToService } from '@/contracting/components/MachineServiceDue.js';
 import { mechanicFieldOptions } from '@/contracting/components/MechanicCombobox.js';
-import { ServiceBadge } from '@/contracting/components/ServiceBadge.js';
+import { StatusChip } from '@/contracting/components/StatusChip.js';
 import { useContractingWrite } from '@/contracting/hooks/use-contracting-write.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useCan } from '@/hooks/use-access.js';
@@ -21,8 +22,6 @@ import { RecordServiceDialog } from './RecordServiceDialog.js';
 import { SpotCaptureDialog } from './SpotCaptureDialog.js';
 import { OpenServiceValues, openServiceFields } from './types.js';
 import { useServiceMechanicOptions } from './use-service-mechanic-options.js';
-
-const hoursOrDash = (hours: number | null) => (hours === null ? '—' : formatHours(hours));
 
 /** Where the Machine stands on service, and the services still in the workshop; the History card lists the past ones. */
 export function MachineServiceCard({ machine }: { machine: Machine }) {
@@ -43,6 +42,7 @@ export function MachineServiceCard({ machine }: { machine: Machine }) {
   const [closingId, setClosingId] = useState<string | null>(null);
   const openRecords = records.data?.items ?? [];
   const closing = openRecords.find((record) => record.id === closingId);
+  const toGo = machineHoursToService(machine);
   if (!readsServices) return null;
   return (
     <Card>
@@ -54,12 +54,10 @@ export function MachineServiceCard({ machine }: { machine: Machine }) {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-          <ServiceBadge {...machineServiceBadge(machine)} />
+          <StatusChip {...machineServiceBadge(machine)} />
           <span>Latest reading {hoursOrDash(machine.latestReadingHours)}</span>
           <span>Next service due {hoursOrDash(machine.nextServiceDueHours)}</span>
-          {machine.hoursToService !== null ? (
-            <span className="font-medium">{hoursToServiceLabel(machine.hoursToService)}</span>
-          ) : null}
+          {toGo ? <HoursToServiceLabel {...toGo} className="font-medium" /> : null}
           {canCapture || canRecord ? (
             <div className="ml-auto flex gap-2">
               {canCapture ? (
@@ -83,13 +81,14 @@ export function MachineServiceCard({ machine }: { machine: Machine }) {
             ))
           : null}
       </CardContent>
-      <SpotCaptureDialog machine={machine} open={capturing} onOpenChange={setCapturing} />
-      <RecordServiceDialog
-        machineId={machine.id}
-        open={opening}
-        onOpenChange={setOpening}
-        mechanicOptions={mechanicOptions}
-      />
+      {capturing ? <SpotCaptureDialog machine={machine} onClose={() => setCapturing(false)} /> : null}
+      {opening ? (
+        <RecordServiceDialog
+          machineId={machine.id}
+          mechanicOptions={mechanicOptions}
+          onClose={() => setOpening(false)}
+        />
+      ) : null}
       {closing ? (
         <CloseServiceRecordDialog
           key={closing.id}

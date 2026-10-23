@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import type { SearchableComboboxOption } from '@/components/common/SearchableCombobox.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
-import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
+import { MachineDialogTitle, machineDialogSubject } from '@/contracting/components/MachineDialogTitle.js';
 import { mechanicFieldOptions } from '@/contracting/components/MechanicCombobox.js';
 import { useContractingWrite } from '@/contracting/hooks/use-contracting-write.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
@@ -46,17 +46,7 @@ export function CloseServiceRecordDialog({
       onOpenChange={(open) => {
         if (!open) onClose();
       }}
-      title={
-        <MachineDialogTitle
-          machine={{
-            machineCode: machine.code,
-            categoryIcon: machine.categoryIcon,
-            categoryColour: machine.categoryColour,
-          }}
-        >
-          Close service
-        </MachineDialogTitle>
-      }
+      title={<MachineDialogTitle machine={machineDialogSubject(machine)}>Close service</MachineDialogTitle>}
       description="Record what was done and set the Next Service Due you print on the sticker."
       submitLabel="Close service"
       defaultValues={defaultValues}

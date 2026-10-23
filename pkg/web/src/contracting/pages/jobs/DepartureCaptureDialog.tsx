@@ -15,10 +15,14 @@ const DepartureValues = z.object({
 type DepartureValues = z.infer<typeof DepartureValues>;
 
 export function DepartureCaptureDialog({ stint, onClose }: { stint: Assignment | null; onClose: () => void }) {
-  const capture = useReadingCapture({ role: 'departure', stint });
+  const capture = useReadingCapture({ role: 'departure', stint }, (values: DepartureValues) => ({
+    ...values,
+    comment: values.reason,
+    readAt: null,
+    stintOverrides: undefined,
+  }));
   const { latestQuery } = capture;
-  const captureValues = (values: DepartureValues) => ({ ...values, comment: values.reason });
-  const judge = (values: DepartureValues) => capture.judge(captureValues(values));
+  const { judge } = capture;
   const close = () => {
     capture.reset();
     onClose();
@@ -42,7 +46,7 @@ export function DepartureCaptureDialog({ stint, onClose }: { stint: Assignment |
       }}
       onBeforeCreate={(values) => judge(values).request !== null}
       onCreate={async (values) => {
-        await capture.submit(captureValues(values));
+        await capture.submit(values);
         return true;
       }}
       onCreated={close}

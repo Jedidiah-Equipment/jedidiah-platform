@@ -1,52 +1,78 @@
-import type { Machine, ServiceRecord, ServiceRecordListInput, ServiceRecordStatus } from '@pkg/schema/contracting';
-import { serviceRecordStatuses } from '@pkg/schema/contracting';
+import type { BadgeColorClassNames } from '@pkg/domain';
+import { machineServiceBadge, serviceRecordBadge } from '@pkg/domain/contracting';
+import type { AuthId, DateOnlyIso } from '@pkg/schema';
+import {
+  type Machine,
+  type ServiceRecord,
+  type ServiceRecordListInput,
+  type ServiceRecordStatus,
+  serviceRecordStatuses,
+} from '@pkg/schema/contracting';
 import type { ColumnFiltersState } from '@tanstack/react-table';
-import { isPickedExactly, readMultiSelectFilter, togglePick } from '@/components/data-table/column-filter-values.js';
+import { readMultiSelectFilter } from '@/components/data-table/column-filter-values.js';
+import { type HoursToService, machineHoursToService } from '@/contracting/components/MachineServiceDue.js';
 
 export const MACHINE_COLUMN_ID = 'machine';
 export const MECHANIC_COLUMN_ID = 'mechanic';
 export const START_COLUMN_ID = 'startDate';
 export const STATUS_COLUMN_ID = 'status';
 
-/** A Services table row: a Machine Due for Service pinned on top, or one Service Record. */
-export type ServicesTableRow = { kind: 'due'; machine: Machine } | { kind: 'record'; record: ServiceRecord };
+/**
+ * A Services table row as its columns show it. A Machine Due for Service is pinned above the records and can be
+ * booked in from its row; a Service Record fills the columns a pinned Machine leaves empty.
+ */
+export type ServicesTableRow = {
+  pinned: boolean;
+  machine: Pick<Machine, 'id' | 'code' | 'categoryName' | 'categoryIcon' | 'categoryColour'>;
+  mechanic: { id: AuthId; name: string } | null;
+  startDate: DateOnlyIso | null;
+  status: ServiceRecordStatus | null;
+  badge: { label: string; colours: BadgeColorClassNames };
+  reading: { hours: number | null; at: string | null };
+  nextServiceDue: { hours: number | null; toGo: HoursToService | null };
+  notes: string | null;
+};
 
-export const createDueRow = (machine: Machine): ServicesTableRow => ({ kind: 'due', machine });
-export const createRecordRow = (record: ServiceRecord): ServicesTableRow => ({ kind: 'record', record });
+export const dueRow = (machine: Machine): ServicesTableRow => ({
+  pinned: true,
+  machine,
+  mechanic: null,
+  startDate: null,
+  status: null,
+  badge: machineServiceBadge(machine),
+  reading: { hours: machine.latestReadingHours, at: machine.latestReadingAt },
+  nextServiceDue: { hours: machine.nextServiceDueHours, toGo: machineHoursToService(machine) },
+  notes: null,
+});
 
-/** The Machine either kind of row is about, as its cell shows it; a row click opens it. */
-export function rowMachine(row: ServicesTableRow) {
-  const { categoryName, categoryIcon, categoryColour } = row.kind === 'due' ? row.machine : row.record;
-  return {
-    id: row.kind === 'due' ? row.machine.id : row.record.machineId,
-    code: row.kind === 'due' ? row.machine.code : row.record.machineCode,
-    categoryName,
-    categoryIcon,
-    categoryColour,
-  };
-}
+export const recordRow = (record: ServiceRecord): ServicesTableRow => ({
+  pinned: false,
+  machine: {
+    id: record.machineId,
+    code: record.machineCode,
+    categoryName: record.categoryName,
+    categoryIcon: record.categoryIcon,
+    categoryColour: record.categoryColour,
+  },
+  mechanic:
+    record.primaryMechanicUserId && record.mechanicName
+      ? { id: record.primaryMechanicUserId, name: record.mechanicName }
+      : null,
+  startDate: record.startDate,
+  status: record.status,
+  badge: serviceRecordBadge(record.status),
+  reading: { hours: record.readingAtServiceHours, at: null },
+  nextServiceDue: { hours: record.nextServiceDueHoursSet, toGo: null },
+  notes: record.notes,
+});
 
 /** Everything the Services table's column filters ask of the Service Record list. */
 export function servicesTableFilters(columnFilters: ColumnFiltersState) {
   return {
-    statuses: listedServiceStatuses(columnFilters),
+    statuses: serviceRecordStatuses.filter((status) =>
+      readMultiSelectFilter(columnFilters, STATUS_COLUMN_ID).includes(status),
+    ),
     machineIds: readMultiSelectFilter(columnFilters, MACHINE_COLUMN_ID),
     mechanicUserIds: readMultiSelectFilter(columnFilters, MECHANIC_COLUMN_ID),
   } satisfies Partial<ServiceRecordListInput>;
 }
-
-/** The statuses picked in the Status filter; none picked lists every Service Record. */
-export const listedServiceStatuses = (columnFilters: ColumnFiltersState): ServiceRecordStatus[] =>
-  serviceRecordStatuses.filter((status) => readMultiSelectFilter(columnFilters, STATUS_COLUMN_ID).includes(status));
-
-/** Exactly these statuses are picked; no status at all is All. */
-export const isPickedServiceStatuses = (columnFilters: ColumnFiltersState, statuses: readonly ServiceRecordStatus[]) =>
-  isPickedExactly(columnFilters, STATUS_COLUMN_ID, statuses);
-
-/** Picks exactly these statuses; pressing again clears the pick. */
-export const toggleServiceStatuses = (columnFilters: ColumnFiltersState, statuses: readonly ServiceRecordStatus[]) =>
-  togglePick(columnFilters, STATUS_COLUMN_ID, statuses);
-
-/** All: drops the status pick, every other filter kept. */
-export const clearServiceStatuses = (columnFilters: ColumnFiltersState): ColumnFiltersState =>
-  columnFilters.filter((filter) => filter.id !== STATUS_COLUMN_ID);

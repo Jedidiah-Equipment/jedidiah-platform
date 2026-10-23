@@ -1,4 +1,4 @@
-import { capturedAtFor, deriveCaptureForm } from '@pkg/domain/contracting';
+import { capturedAtFor, captureValueVerdict, deriveCaptureForm, parseCaptureValue } from '@pkg/domain/contracting';
 import { UUID } from '@pkg/schema';
 import { type Assignment, type ReadingCaptureInput, ReadingValue } from '@pkg/schema/contracting';
 import { useState } from 'react';
@@ -15,32 +15,37 @@ const copy = {
   spot: { failed: 'Unable to capture the reading.', done: 'Reading captured' },
 } as const;
 
-/** Where a capture lands: an Assignment's arrival or departure, or a spot reading on the Machine alone. */
+/** Where a capture lands: an Assignment's arrival or departure, or a spot reading on one Machine alone. */
 export type CaptureTarget =
   | { role: 'arrival' | 'departure'; stint: Assignment | null }
-  | { role: 'spot'; machineId: string | null };
+  | { role: 'spot'; machineId: string };
 
 /** A dispute the person confirmed, tied to the value it was confirmed for: changing the value clears it. */
 export const ConfirmedDispute = z.object({ value: ReadingValue, previousId: UUID }).nullable();
 export type ConfirmedDispute = z.infer<typeof ConfirmedDispute>;
 
-/** What a capture dialog's form holds, as the shared form brain reads it. */
-export type CaptureFormValues = {
-  value: number;
+/** The reading half of every capture form: the value and the dispute confirmed for it. */
+export type CaptureValue = { value: number; confirmedDispute: ConfirmedDispute };
+
+/** What a capture dialog's values say, as the domain judges them; each dialog maps its own form onto it once. */
+export type CaptureFormDraft = CaptureValue & {
   comment: string;
-  confirmedDispute: ConfirmedDispute;
-  stintOverrides?: ReadingCaptureInput['stintOverrides'];
-  /** When the meter was read; null or absent is now. */
-  readAt?: Date | null;
+  /** When the meter was read; null is now. */
+  readAt: Date | null;
+  stintOverrides: ReadingCaptureInput['stintOverrides'];
 };
 
-/**
- * A capture dialog's served latest reading, its meter photo and refusal, the domain's judgement of the form, and
- * the submit that posts the request that judgement built.
- */
-export type ReadingCapture = ReturnType<typeof useReadingCapture>;
+const parseFormValue = (value: number) => (Number.isFinite(value) ? parseCaptureValue(String(value)) : null);
+const disputedReadingId = ({ value, confirmedDispute }: CaptureValue) =>
+  confirmedDispute?.value === value ? confirmedDispute.previousId : null;
 
-export function useReadingCapture(target: CaptureTarget) {
+/**
+ * A capture dialog's served latest reading, its meter photo and refusal, the domain's judgement of its values, and the
+ * submit that posts what that judgement built. `toDraft` is the dialog's one mapping of its form onto a capture.
+ */
+export type ReadingCapture<TValues> = ReturnType<typeof useReadingCapture<TValues>>;
+
+export function useReadingCapture<TValues>(target: CaptureTarget, toDraft: (values: TValues) => CaptureFormDraft) {
   const { role } = target;
   const { invalidateJobs, invalidateReadings } = useQueryInvalidation();
   const { stint, machineId } =
@@ -52,16 +57,16 @@ export function useReadingCapture(target: CaptureTarget) {
   const [photo, setPhoto] = useState<File | null>(null);
   const [error, setError] = useState('');
   const latest = latestQuery.isSuccess ? latestQuery.data : undefined;
-  const judge = (values: CaptureFormValues) =>
+  const judgeDraft = (draft: CaptureFormDraft) =>
     deriveCaptureForm(
       { latest, management, hasPhoto: photo !== null, now: new Date() },
       {
         role,
-        value: Number.isFinite(values.value) ? String(values.value) : '',
-        disputedReadingId: values.confirmedDispute?.value === values.value ? values.confirmedDispute.previousId : null,
-        comment: values.comment,
-        readAt: values.readAt ?? null,
-        stintOverrides: values.stintOverrides,
+        value: Number.isFinite(draft.value) ? String(draft.value) : '',
+        disputedReadingId: disputedReadingId(draft),
+        comment: draft.comment,
+        readAt: draft.readAt,
+        stintOverrides: draft.stintOverrides,
       },
     );
   return {
@@ -69,16 +74,20 @@ export function useReadingCapture(target: CaptureTarget) {
     /** The latest once loaded: null when the ledger is empty, undefined while loading or failed. */
     latest,
     photo,
-    judge,
+    judge: (values: TValues) => judgeDraft(toDraft(values)),
+    /** Whether the value is below the latest and its dispute confirmed: all the reading card needs. */
+    judgeValue: (value: CaptureValue) =>
+      captureValueVerdict(latest, parseFormValue(value.value), disputedReadingId(value)),
     /** Spread onto `ReadingCaptureDetails`. */
     details: { photo, onPhotoChange: setPhoto, error, onError: setError },
     reset: () => {
       setPhoto(null);
       setError('');
     },
-    /** Judges the values once more and posts what that judgement built, read when `values.readAt` says. */
-    submit: async (values: CaptureFormValues) => {
-      const { request } = judge(values);
+    /** Judges the values once more and posts what that judgement built, read when the draft's Read At says. */
+    submit: async (values: TValues) => {
+      const draft = toDraft(values);
+      const { request } = judgeDraft(draft);
       if (!machineId || !request) throw new Error('This reading cannot be captured yet.');
       setError('');
       try {
@@ -87,7 +96,7 @@ export function useReadingCapture(target: CaptureTarget) {
             ...request,
             machineId,
             ...(stint ? { assignmentId: stint.id } : {}),
-            capturedAt: capturedAtFor(values.readAt ?? null, new Date()),
+            capturedAt: capturedAtFor(draft.readAt, new Date()),
           },
           photo,
           copy[role].failed,

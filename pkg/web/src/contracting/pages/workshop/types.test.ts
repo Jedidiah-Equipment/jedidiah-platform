@@ -3,13 +3,11 @@ import { describe, expect, it } from 'vitest';
 import {
   focusOnMechanic,
   focusOnUnsolved,
-  isPickedStatuses,
   listedStatuses,
   mechanicFilterPeople,
   quickFilterStatuses,
   reportPatchInput,
   STATUS_COLUMN_ID,
-  toggleStatuses,
   workshopListFilters,
 } from './types.js';
 
@@ -55,14 +53,6 @@ describe('mechanicFilterPeople', () => {
     const left = { id: 'left', name: 'Bongani (left)' };
     expect(mechanicFilterPeople([sipho, anele], [anele, left])).toEqual([anele, left, sipho]);
     expect(mechanicFilterPeople(undefined, undefined)).toEqual([]);
-  });
-});
-
-describe('toggleStatuses', () => {
-  it('picks every status for All, and clears the pick when pressed again', () => {
-    const every = toggleStatuses(status(['open']), breakdownStatuses);
-    expect(isPickedStatuses(every, breakdownStatuses)).toBe(true);
-    expect(toggleStatuses(every, breakdownStatuses)).toEqual([]);
   });
 });
 

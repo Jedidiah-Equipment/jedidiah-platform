@@ -12,6 +12,7 @@ import { EditFormFullWidth } from '@/components/page-layout/EditFormLayout.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
 import { CategoryLabel } from '@/contracting/components/CategoryIcon.js';
+import { machineDialogSubject } from '@/contracting/components/MachineDialogTitle.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { JobsTable } from '@/contracting/pages/jobs/JobsPage.js';
 import { useAccess, useCan } from '@/hooks/use-access.js';
@@ -173,11 +174,7 @@ function MachineForm({
               </AutosaveFormCard>
               {canEdit ? (
                 <FleetRetirement
-                  machine={{
-                    machineCode: machine.code,
-                    categoryIcon: machine.categoryIcon,
-                    categoryColour: machine.categoryColour,
-                  }}
+                  machine={machineDialogSubject(machine)}
                   id={machine.id}
                   noun="machine"
                   autosave={autosave}

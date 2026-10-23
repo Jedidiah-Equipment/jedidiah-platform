@@ -1,5 +1,6 @@
 import { countPhrase } from '@pkg/domain';
-import type { ServiceRecordListInput } from '@pkg/schema/contracting';
+import { serviceRecordStatusColorClassNames, serviceRecordStatusLabels } from '@pkg/domain/contracting';
+import { type ServiceRecordListInput, serviceRecordStatuses } from '@pkg/schema/contracting';
 import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
@@ -12,15 +13,15 @@ import { PRIORITY_ROW_CLASS_NAME } from '@/components/data-table/priority-row.js
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
+import { StatusQuickFilters } from '@/contracting/components/StatusQuickFilters.js';
 import { useMachinesDueForService } from '@/contracting/hooks/use-machines-due-for-service.js';
 import { RecordServiceDialog } from '@/contracting/pages/fleet/RecordServiceDialog.js';
 import { useServiceMechanicOptions } from '@/contracting/pages/fleet/use-service-mechanic-options.js';
 import { useCan } from '@/hooks/use-access.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { ServiceStatusQuickFilters } from './ServiceStatusQuickFilters.js';
 import { useServicesColumns } from './services-columns.js';
-import { createDueRow, createRecordRow, rowMachine, type ServicesTableRow, servicesTableFilters } from './types.js';
+import { dueRow, recordRow, type ServicesTableRow, STATUS_COLUMN_ID, servicesTableFilters } from './types.js';
 
 const useServicesTableStore = createPersistedDataTableStore({
   initialState: { sorting: [{ id: 'startDate', desc: true }] },
@@ -58,7 +59,7 @@ export function ServicesPage() {
   const mechanics = useServiceMechanicOptions(canRecord);
   const { items: records, total } = useCombinedCursorQueryPages(recordsQuery.data?.pages);
   const rows = useMemo<ServicesTableRow[]>(
-    () => [...(dueQuery.data ?? []).map(createDueRow), ...records.map(createRecordRow)],
+    () => [...(dueQuery.data ?? []).map(dueRow), ...records.map(recordRow)],
     [dueQuery.data, records],
   );
   const columns = useServicesColumns({
@@ -90,8 +91,15 @@ export function ServicesPage() {
         error={summary.error ?? filters.error ?? mechanics.error}
         fallbackMessage="Unable to load the Services page."
       />
-      <ServiceStatusQuickFilters
-        summary={summary.data}
+      <StatusQuickFilters
+        label="Service Record statuses"
+        columnId={STATUS_COLUMN_ID}
+        statuses={serviceRecordStatuses}
+        shown={serviceRecordStatuses}
+        allPicks="none"
+        labels={serviceRecordStatusLabels}
+        colours={serviceRecordStatusColorClassNames}
+        counts={summary.data?.counts}
         columnFilters={tableController.columnFilters}
         onColumnFiltersChange={tableController.setColumnFilters}
       />
@@ -101,8 +109,8 @@ export function ServicesPage() {
           getApiQueryErrorMessage(recordsQuery.error, 'Unable to load Service Records.') ??
           getApiQueryErrorMessage(dueQuery.error, 'Unable to load the Machines due for a service.')
         }
-        getRowAriaLabel={(row) => `Open the Machine ${rowMachine(row).code}`}
-        getRowClassName={(row) => (row.kind === 'due' ? PRIORITY_ROW_CLASS_NAME : undefined)}
+        getRowAriaLabel={(row) => `Open the Machine ${row.machine.code}`}
+        getRowClassName={(row) => (row.pinned ? PRIORITY_ROW_CLASS_NAME : undefined)}
         globalFilterPlaceholder="Search Machines and Mechanics…"
         isLoading={recordsQuery.isPending}
         paginationMode="cursor"
@@ -112,7 +120,7 @@ export function ServicesPage() {
           loadedCount: records.length,
           onLoadMore: () => void recordsQuery.fetchNextPage(),
         }}
-        onRowClick={(row) => void navigate({ to: '/contracting/fleet/$id/edit', params: { id: rowMachine(row).id } })}
+        onRowClick={(row) => void navigate({ to: '/contracting/fleet/$id/edit', params: { id: row.machine.id } })}
         table={table}
         total={total}
         totalLabel={(value) => countPhrase(value, 'Service Record', 'Service Records')}
@@ -120,11 +128,8 @@ export function ServicesPage() {
       {recordingMachineId ? (
         <RecordServiceDialog
           machineId={recordingMachineId}
-          open
-          onOpenChange={(open) => {
-            if (!open) setRecordingMachineId(null);
-          }}
           mechanicOptions={mechanics.options}
+          onClose={() => setRecordingMachineId(null)}
         />
       ) : null}
     </PageLayout>

@@ -19,12 +19,19 @@ const ArrivalValues = z.object({
   implementId: emptyStringOr(UUID),
   driverUserId: emptyStringOr(AuthId),
 });
+type ArrivalValues = z.infer<typeof ArrivalValues>;
 
 export function ArrivalCaptureDialog({ stint, onClose }: { stint: Assignment | null; onClose: () => void }) {
-  const capture = useReadingCapture({ role: 'arrival', stint });
   // A refetch can change the live stint mid-capture; the form starts from, and overrides compare against, the opened one.
   const [opened, setOpened] = useState(stint);
   if (stint?.id !== opened?.id) setOpened(stint);
+  const capture = useReadingCapture({ role: 'arrival', stint }, (values: ArrivalValues) => ({
+    ...values,
+    readAt: null,
+    stintOverrides: changesAssignment(opened, values)
+      ? { implementId: values.implementId || null, driverUserId: values.driverUserId || null }
+      : undefined,
+  }));
   const options = useAssignmentOptions({
     enabled: !!stint,
     stint,
@@ -33,15 +40,10 @@ export function ArrivalCaptureDialog({ stint, onClose }: { stint: Assignment | n
     freeImplementsOnly: true,
   });
   const { latestQuery } = capture;
-  const captureValues = (values: z.infer<typeof ArrivalValues>) => ({
-    ...values,
-    stintOverrides: changesAssignment(opened, values)
-      ? { implementId: values.implementId || null, driverUserId: values.driverUserId || null }
-      : undefined,
-  });
-  const judge = (values: z.infer<typeof ArrivalValues>) => capture.judge(captureValues(values));
-  const canCapture = (values: z.infer<typeof ArrivalValues>) =>
-    latestQuery.isSuccess && (!changesAssignment(opened, values) || options.ready) && judge(values).request !== null;
+  const canCapture = (values: ArrivalValues) =>
+    latestQuery.isSuccess &&
+    (!changesAssignment(opened, values) || options.ready) &&
+    capture.judge(values).request !== null;
 
   return (
     <CreateEntityDialog
@@ -67,7 +69,7 @@ export function ArrivalCaptureDialog({ stint, onClose }: { stint: Assignment | n
       disableSubmitWhenInvalid
       onBeforeCreate={canCapture}
       onCreate={async (values) => {
-        await capture.submit(captureValues(values));
+        await capture.submit(values);
         return true;
       }}
       onCreated={() => {

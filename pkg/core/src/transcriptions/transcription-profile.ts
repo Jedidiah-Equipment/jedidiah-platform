@@ -11,3 +11,14 @@ export type TranscriptionProfile = {
   /** The business's own Keyterms in prompt order; the pipeline puts its taught hint keyterms first. */
   loadVocabulary: (input: { db: Db; now?: Date }) => Promise<KeytermCandidate[]>;
 };
+
+/** Keyterm candidates from one source, in order; a missing or empty value is skipped. */
+export const sourcedKeyterms = (source: string, keyterms: readonly (string | null)[]): KeytermCandidate[] =>
+  keyterms.flatMap((keyterm) => (keyterm ? [{ keyterm, source }] : []));
+
+/** People are said by full name and by first name alone. */
+export const personKeyterms = (names: readonly string[]): KeytermCandidate[] =>
+  sourcedKeyterms(
+    'person',
+    names.flatMap((name) => [name, name.trim().split(/\s+/)[0] ?? null]),
+  );

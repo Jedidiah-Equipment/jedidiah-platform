@@ -8,10 +8,12 @@ import { useState } from 'react';
 import { View } from 'react-native';
 
 import { useAppForm } from '@/components/form';
+import { VoiceTextareaField } from '@/components/form/fields/VoiceTextareaField';
 import { AccentButton } from '@/components/ui/accent-button';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { useAppToast } from '@/components/ui/toast';
+import { useVoiceSession } from '@/components/voice/use-voice-session';
 import { useTRPC } from '@/lib/trpc';
 import { useColorMode } from '@/theme/use-color-mode';
 import { FeedbackModalFrame, FeedbackSubmitButton, feedbackErrorMessage } from './FeedbackModalFrame';
@@ -56,12 +58,15 @@ function FeedbackModal({ jobCode, jobId, onClose }: { jobCode: string; jobId: st
     validators: { onSubmit: FeedbackFormValues },
     onSubmit: async ({ value }) => {
       setSubmitError(null);
+      // The box stays editable while the save is in flight, so what was saved is taken now.
+      const reportSaved = voice.snapshotSaved();
       try {
         await submitMutation.mutateAsync(toSubmitInput(value, jobId));
       } catch (error) {
         setSubmitError(feedbackErrorMessage(error));
         return;
       }
+      reportSaved();
       onClose();
       showToast('success', 'Feedback submitted');
       // General feedback is also Job Activity, so both subject views must see a new entry immediately.
@@ -71,6 +76,12 @@ function FeedbackModal({ jobCode, jobId, onClose }: { jobCode: string; jobId: st
       ]);
     },
   });
+
+  const text = useStore(form.store, (state) => state.values.text);
+  const voice = useVoiceSession(
+    { business: 'equipment', purpose: 'job feedback' },
+    { value: text, onChangeText: (next) => form.setFieldValue('text', next) },
+  );
 
   // Only fetch the corrective-user target list once that kind is chosen.
   const kind = useStore(form.store, (state) => state.values.kind);
@@ -99,7 +110,12 @@ function FeedbackModal({ jobCode, jobId, onClose }: { jobCode: string; jobId: st
           })}
         >
           {({ isSubmitting, label }) => (
-            <FeedbackSubmitButton isSubmitting={isSubmitting} label={label} onPress={() => void form.handleSubmit()} />
+            <FeedbackSubmitButton
+              disabled={voice.busy}
+              isSubmitting={isSubmitting}
+              label={label}
+              onPress={() => void form.handleSubmit()}
+            />
           )}
         </form.Subscribe>
       }
@@ -134,7 +150,7 @@ function FeedbackModal({ jobCode, jobId, onClose }: { jobCode: string; jobId: st
       </form.Subscribe>
 
       <form.AppField name="text">
-        {(field) => <field.TextareaField label="Feedback" placeholder="Describe what you noticed…" rows={5} />}
+        {() => <VoiceTextareaField label="Feedback" placeholder="Describe what you noticed…" rows={5} voice={voice} />}
       </form.AppField>
     </FeedbackModalFrame>
   );

@@ -1,25 +1,12 @@
-import type { Machine } from '@pkg/schema/contracting';
 import { expect, it, vi } from 'vitest';
+import { buildMachine } from '@/contracting/test/fleet-fixtures.js';
 import { renderWithRouter } from '@/test/router-harness.js';
 import { ServiceDueWidget } from './ServiceDueWidget.js';
 
-const machine = {
-  id: '00000000-0000-4000-8000-000000000001',
-  code: 'KOL220-2',
-  make: 'Kobelco',
-  model: '220',
-  categoryName: 'Excavator',
-  categoryIcon: 'excavator',
-  categoryColour: 'amber',
-  nextServiceDueHours: 4850,
-  hoursToService: -12.5,
-  serviceDueStatus: 'overdue',
-  serviceBookedIn: false,
-  busyOnJob: null,
-} as unknown as Machine;
+const machine = buildMachine();
 
 vi.mock('@/lib/trpc.js', () => ({
-  useTRPC: () => ({ contractingServices: { dueForService: { queryOptions: () => ({ queryKey: ['due'] }) } } }),
+  useTRPC: () => ({ contractingFleet: { machines: { list: { queryOptions: () => ({ queryKey: ['machines'] }) } } } }),
 }));
 vi.mock('@tanstack/react-query', async (original) => ({
   ...(await original<typeof import('@tanstack/react-query')>()),

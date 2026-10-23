@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { machinesDueForService, orderJobsNeedingALook, orderUnsolvedBreakdowns } from './dashboard.js';
+import { orderJobsNeedingALook, orderUnsolvedBreakdowns } from './dashboard.js';
 
 test('orders Jobs needing a look critical first, then by Job Number', () => {
   const job = (jobNumber: string, critical: number, warning: number) => ({
@@ -22,23 +22,4 @@ test('orders unsolved Breakdowns Code Red first, then the longest waiting', () =
     breakdown('red-old', 'code-red', '2026-10-05T08:00:00Z'),
   ]);
   expect(ordered.map((entry) => entry.id)).toEqual(['red-old', 'red-new', 'green-old']);
-});
-
-test('keeps only Machines Due for Service, overdue first, then the fewest hours to go', () => {
-  const machine = (
-    code: string,
-    serviceDueStatus: 'unknown' | 'ok' | 'due-soon' | 'overdue',
-    hoursToService: number | null,
-    serviceBookedIn = false,
-  ) => ({ code, serviceDueStatus, hoursToService, serviceBookedIn });
-  const due = machinesDueForService([
-    machine('TRAC-1', 'ok', 400),
-    machine('TRAC-2', 'due-soon', 80),
-    machine('TRAC-3', 'unknown', null),
-    machine('TRAC-4', 'overdue', -5),
-    machine('TRAC-5', 'due-soon', 20),
-    machine('TRAC-6', 'overdue', -40),
-    machine('TRAC-7', 'overdue', -90, true),
-  ]);
-  expect(due.map((entry) => entry.code)).toEqual(['TRAC-6', 'TRAC-4', 'TRAC-5', 'TRAC-2']);
 });

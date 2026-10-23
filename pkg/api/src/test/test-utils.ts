@@ -1,4 +1,4 @@
-import type { EquipmentRole, Logger } from '@pkg/schema';
+import type { ContractingRole, EquipmentRole, Logger } from '@pkg/schema';
 import pino from 'pino';
 import { expect } from 'vitest';
 import { z } from 'zod';
@@ -29,6 +29,15 @@ export function mockSession(role: EquipmentRole | null = 'admin'): NonNullable<C
       updatedAt: new Date(),
     },
   } as NonNullable<Context['session']>;
+}
+
+/** A session for one Contracting user: the id signs the writes, the role decides what they may do. */
+export function sessionAs(id: string, role: ContractingRole): NonNullable<Context['session']> {
+  const session = mockSession(null);
+  session.user.id = id;
+  session.session.userId = id;
+  session.user.contractingRole = role;
+  return session;
 }
 
 export function expectIsoDatetime(value: unknown): asserts value is string {

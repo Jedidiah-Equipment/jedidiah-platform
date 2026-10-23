@@ -1,5 +1,5 @@
-import type { Machine } from '@pkg/schema/contracting';
 import { describe, expect, it } from 'vitest';
+import { buildMachine } from '@/contracting/test/fleet-fixtures.js';
 import {
   busyFilterMatches,
   implementPatchInput,
@@ -35,7 +35,7 @@ describe('fleet form mappers', () => {
     });
   });
   it("round-trips a Machine's Service Alert Hours: blank stays blank, a value comes back as itself", () => {
-    const machine = { code: 'JD6140M-1', make: 'Deere', model: '6140M', categoryId: id } as Machine;
+    const machine = buildMachine();
     const roundTrip = (serviceAlertHours: number | null) =>
       machinePatchInput(id, machineFormValues({ ...machine, serviceAlertHours })).serviceAlertHours;
     expect(roundTrip(null)).toBeNull();

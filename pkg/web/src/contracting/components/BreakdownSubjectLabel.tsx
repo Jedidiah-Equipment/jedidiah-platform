@@ -7,9 +7,9 @@ import {
 import type { BreakdownStatus, BreakdownSubject, BreakdownUrgency } from '@pkg/schema/contracting';
 import { IconFlagFilled } from '@tabler/icons-react';
 import type React from 'react';
-import { Badge } from '@/components/ui/badge.js';
 import { cn } from '@/lib/utils.js';
 import { CategoryIcon } from './CategoryIcon.js';
+import { StatusChip } from './StatusChip.js';
 
 type IconSize = 14 | 16 | 20 | 24;
 
@@ -61,10 +61,5 @@ export function BreakdownSubjectLabel({
 
 /** A Breakdown's status as a badge; rows and headers keep it at the far right. */
 export function BreakdownStatusBadge({ status }: { status: BreakdownStatus }) {
-  const tone = breakdownStatusColorClassNames[status];
-  return (
-    <Badge className={cn('shrink-0', tone.chip, tone.text)} variant="outline">
-      {breakdownStatusLabels[status]}
-    </Badge>
-  );
+  return <StatusChip label={breakdownStatusLabels[status]} colours={breakdownStatusColorClassNames[status]} />;
 }

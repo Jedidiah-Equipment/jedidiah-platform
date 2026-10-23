@@ -1,12 +1,13 @@
 import { describe, expect, test } from 'vitest';
 import { statusBadgeColorClassNames } from '../theme/status-badge.js';
 import {
-  effectiveServiceDueThreshold,
+  effectiveServiceAlertHours,
   hoursToService,
   hoursToServiceLabel,
   isDueForService,
   machineBusyWith,
   machineServiceBadge,
+  machinesDueForService,
   serviceDueSoonCrossed,
   serviceDueStatus,
   suggestedNextServiceDue,
@@ -121,13 +122,32 @@ describe('machineServiceBadge', () => {
   });
 });
 
-describe('effectiveServiceDueThreshold', () => {
+describe('effectiveServiceAlertHours', () => {
   test("a Machine's Service Alert Hours win over Settings, and blank falls back to Settings", () => {
-    expect(effectiveServiceDueThreshold({ serviceAlertHours: 50 }, 100)).toBe(50);
-    expect(effectiveServiceDueThreshold({ serviceAlertHours: null }, 100)).toBe(100);
+    expect(effectiveServiceAlertHours({ serviceAlertHours: 50 }, 100)).toBe(50);
+    expect(effectiveServiceAlertHours({ serviceAlertHours: null }, 100)).toBe(100);
   });
 
   test('zero is a real override: due soon only once the meter reaches Next Service Due', () => {
-    expect(effectiveServiceDueThreshold({ serviceAlertHours: 0 }, 100)).toBe(0);
+    expect(effectiveServiceAlertHours({ serviceAlertHours: 0 }, 100)).toBe(0);
   });
+});
+
+test('keeps only Machines Due for Service, overdue first, then the fewest hours to go', () => {
+  const machine = (
+    code: string,
+    serviceDueStatus: 'unknown' | 'ok' | 'due-soon' | 'overdue',
+    hoursToService: number | null,
+    serviceBookedIn = false,
+  ) => ({ code, serviceDueStatus, hoursToService, serviceBookedIn });
+  const due = machinesDueForService([
+    machine('TRAC-1', 'ok', 400),
+    machine('TRAC-2', 'due-soon', 80),
+    machine('TRAC-3', 'unknown', null),
+    machine('TRAC-4', 'overdue', -5),
+    machine('TRAC-5', 'due-soon', 20),
+    machine('TRAC-6', 'overdue', -40),
+    machine('TRAC-7', 'overdue', -90, true),
+  ]);
+  expect(due.map((entry) => entry.code)).toEqual(['TRAC-6', 'TRAC-4', 'TRAC-5', 'TRAC-2']);
 });

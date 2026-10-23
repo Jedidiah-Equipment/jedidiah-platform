@@ -9,17 +9,18 @@ import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation
 import { useTRPC } from '@/lib/trpc.js';
 import { OpenServiceValues, openServiceFields } from './types.js';
 
-/** Books a Machine in: the Machine page's Service card and the Services page's pinned rows both open it. */
+/**
+ * Books one Machine in; mounted while it is being booked, so closing unmounts it. The Machine page's Service card and
+ * the Services page's pinned rows both open it.
+ */
 export function RecordServiceDialog({
   machineId,
-  open,
-  onOpenChange,
   mechanicOptions,
+  onClose,
 }: {
   machineId: string;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
   mechanicOptions: readonly SearchableComboboxOption[];
+  onClose: () => void;
 }) {
   const trpc = useTRPC();
   const write = useContractingWrite(useQueryInvalidation().invalidateServices);
@@ -27,15 +28,17 @@ export function RecordServiceDialog({
   const defaultValues: OpenServiceValues = { startDate: getPlantDateNow(), primaryMechanicUserId: '', notes: '' };
   return (
     <CreateEntityDialog
-      open={open}
-      onOpenChange={onOpenChange}
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
       title="Record a service"
       description="Book the Machine in. Close the service when it leaves the workshop."
       submitLabel="Record service"
       defaultValues={defaultValues}
       validator={OpenServiceValues}
       onCreate={(values) => record.mutateAsync({ machineId, ...openServiceFields(values) })}
-      onCreated={() => onOpenChange(false)}
+      onCreated={onClose}
     >
       {(form) => (
         <>

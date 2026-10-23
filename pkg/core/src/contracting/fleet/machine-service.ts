@@ -1,11 +1,10 @@
 import { createEscapedContainsSearchCondition, type DatabaseTransaction, type Db, user } from '@pkg/db';
 import { contractingMachines, contractingServiceRecords } from '@pkg/db/contracting';
 import {
-  effectiveServiceDueThreshold,
+  effectiveServiceAlertHours,
   fieldReaderSeesJob,
   formatJobNumber,
   hoursToService,
-  machinesDueForService,
   serviceDueStatus,
 } from '@pkg/domain/contracting';
 import type { AuthId, ContractingRole, UserAccessSummary } from '@pkg/schema';
@@ -123,7 +122,7 @@ function mapMachine(
 ) {
   const { category, currentDriver, busyOnJob, ...fields } = row;
   const facts = { latestReadingHours: row.latestReadingHours, nextServiceDueHours: row.nextServiceDueHours };
-  const threshold = effectiveServiceDueThreshold(row, settingsThresholdHours);
+  const threshold = effectiveServiceAlertHours(row, settingsThresholdHours);
   const busy = (job: BusyOnJobRow) => {
     const { code, ...rest } = job;
     return { ...rest, jobNumber: formatJobNumber(code) };
@@ -134,7 +133,7 @@ function mapMachine(
     ...projectTimestamps(row),
     currentDriverName: currentDriver?.name ?? null,
     hoursToService: hoursToService(facts),
-    serviceDueThresholdHours: threshold,
+    effectiveServiceAlertHours: threshold,
     serviceDueStatus: serviceDueStatus(facts, threshold),
     busyOnJob: busyOnJob ? busy(busyOnJob) : null,
   });
@@ -166,10 +165,6 @@ export async function getMachine({ db, id }: { db: Db | DatabaseTransaction; id:
   ]);
   if (!row) throw notFound('Machine');
   return mapMachine(row, serviceDueSoonThresholdHours);
-}
-/** The active Machines Due for Service, overdue first: what the Services page pins and the menu dot counts. */
-export async function listMachinesDueForService({ db }: { db: Db }) {
-  return machinesDueForService(await listMachines({ db, input: { status: 'active', search: '' } }));
 }
 async function assertDriver(tx: DatabaseTransaction, id: string | null | undefined) {
   if (!id) return;

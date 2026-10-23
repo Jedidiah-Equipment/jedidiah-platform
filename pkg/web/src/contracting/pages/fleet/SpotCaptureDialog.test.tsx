@@ -9,9 +9,9 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { SpotCaptureDialog } from './SpotCaptureDialog.js';
 
 const capture = vi.hoisted(() => vi.fn(async (..._args: unknown[]) => undefined));
-vi.mock('@/contracting/pages/jobs/capture-reading.js', () => ({ captureReading: capture }));
+vi.mock('@/contracting/components/readings/capture-reading.js', () => ({ captureReading: capture }));
 const latestId = '00000000-0000-4000-8000-000000000009';
-vi.mock('@/contracting/pages/jobs/use-latest-reading.js', () => ({
+vi.mock('@/contracting/components/readings/use-latest-reading.js', () => ({
   useLatestReading: () => ({
     refetch: async () => undefined,
     isSuccess: true,
@@ -63,11 +63,11 @@ async function mount() {
   document.body.append(container);
   const root = createRoot(container);
   roots.push(root);
-  const onOpenChange = vi.fn();
-  await act(async () => root.render(<SpotCaptureDialog machine={machine} open onOpenChange={onOpenChange} />));
+  const onClose = vi.fn();
+  await act(async () => root.render(<SpotCaptureDialog machine={machine} onClose={onClose} />));
   const save = [...document.querySelectorAll('button')].find((button) => button.textContent?.trim() === 'Capture');
   if (!save) throw new Error('Capture action missing');
-  return { save, onOpenChange };
+  return { save, onClose };
 }
 
 async function enter(name: string, value: string) {
@@ -81,7 +81,7 @@ async function enter(name: string, value: string) {
 }
 
 it('posts a spot reading for the Machine, on no Assignment, read when the meter was read', async () => {
-  const { save, onOpenChange } = await mount();
+  const { save, onClose } = await mount();
   await enter('value', '140');
   await enter('readAt', '2026-10-20T09:30');
   await act(async () => save.click());
@@ -98,7 +98,7 @@ it('posts a spot reading for the Machine, on no Assignment, read when the meter 
     capturedAt: new Date(2026, 9, 20, 9, 30).toISOString(),
   });
   expect(photo).toBeNull();
-  expect(onOpenChange).toHaveBeenCalledWith(false);
+  expect(onClose).toHaveBeenCalled();
 });
 
 it('offers the dispute for a reading below the latest one', async () => {

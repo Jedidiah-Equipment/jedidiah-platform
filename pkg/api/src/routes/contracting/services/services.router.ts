@@ -1,28 +1,24 @@
 import {
   closeServiceRecord,
   getServiceRecord,
-  listMachinesDueForService,
   listMechanics,
   listServiceRecordFilterOptions,
   listServiceRecords,
-  listServiceRecordTable,
   openServiceRecord,
   patchServiceRecord,
   summarizeServiceRecords,
 } from '@pkg/core/contracting';
 import {
-  Machine,
   Mechanic,
   ServiceRecord,
   ServiceRecordCloseInput,
   ServiceRecordFilterOptions,
   ServiceRecordIdInput,
   ServiceRecordListInput,
+  ServiceRecordListResult,
   ServiceRecordOpenInput,
   ServiceRecordPatchInput,
   ServiceRecordSummary,
-  ServiceRecordTableInput,
-  ServiceRecordTableResult,
 } from '@pkg/schema/contracting';
 import { mapCoreErrors } from '../../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../../trpc/init.js';
@@ -31,18 +27,11 @@ import { serviceErrorFamily } from '../contracting-error-families.js';
 export const contractingServicesRouter = router({
   list: authorizedProcedure('contracting_service:read')
     .input(ServiceRecordListInput)
-    .output(ServiceRecord.array())
-    .query(({ ctx, input }) => listServiceRecords({ db: ctx.db, machineId: input.machineId })),
-  table: authorizedProcedure('contracting_service:read')
-    .input(ServiceRecordTableInput)
-    .output(ServiceRecordTableResult)
-    .query(({ ctx, input }) => listServiceRecordTable({ db: ctx.db, input })),
+    .output(ServiceRecordListResult)
+    .query(({ ctx, input }) => listServiceRecords({ db: ctx.db, input })),
   summary: authorizedProcedure('contracting_service:read')
     .output(ServiceRecordSummary)
     .query(({ ctx }) => summarizeServiceRecords({ db: ctx.db })),
-  dueForService: authorizedProcedure('contracting_service:read')
-    .output(Machine.array())
-    .query(({ ctx }) => listMachinesDueForService({ db: ctx.db })),
   get: authorizedProcedure('contracting_service:read')
     .input(ServiceRecordIdInput)
     .output(ServiceRecord)

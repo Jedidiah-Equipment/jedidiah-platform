@@ -24,12 +24,22 @@ export type PushKindDefinition = {
   channel: PushChannel;
 };
 
+/** Who a machine-down or service-due alert reaches: the workshop and Contracting management. */
+const WORKSHOP_AND_MANAGEMENT_ROLES: readonly AppRole[] = [
+  'workshop-manager',
+  'contracting-manager',
+  'contracting-admin',
+  'super-admin',
+];
+/** Who a note can reach: those roles and the Foreman, narrowed per thread by `noteReaches`. */
+const NOTE_ROLES: readonly AppRole[] = ['foreman', ...WORKSHOP_AND_MANAGEMENT_ROLES];
+
 export const PUSH_KINDS: Record<PushKind, PushKindDefinition> = {
   'contracting.breakdown.code-red': {
     business: 'contracting',
     label: 'Code Red breakdowns',
     description: 'A machine is down.',
-    roles: ['workshop-manager', 'contracting-manager', 'contracting-admin', 'super-admin'],
+    roles: WORKSHOP_AND_MANAGEMENT_ROLES,
     channel: WORKSHOP_PUSH_CHANNEL,
   },
   'contracting.breakdown.code-green': {
@@ -43,21 +53,21 @@ export const PUSH_KINDS: Record<PushKind, PushKindDefinition> = {
     business: 'contracting',
     label: 'Service due soon',
     description: 'A reading brought a machine within the service threshold.',
-    roles: ['workshop-manager', 'contracting-manager', 'contracting-admin', 'super-admin'],
+    roles: WORKSHOP_AND_MANAGEMENT_ROLES,
     channel: WORKSHOP_PUSH_CHANNEL,
   },
   'contracting.breakdown-note': {
     business: 'contracting',
     label: 'Breakdown notes',
     description: 'Someone added a note on a Breakdown you are part of.',
-    roles: ['foreman', 'workshop-manager', 'contracting-manager', 'contracting-admin', 'super-admin'],
+    roles: NOTE_ROLES,
     channel: NOTES_PUSH_CHANNEL,
   },
   'contracting.job-note': {
     business: 'contracting',
     label: 'Job notes',
     description: 'Someone added a note on a Job you are part of.',
-    roles: ['foreman', 'workshop-manager', 'contracting-manager', 'contracting-admin', 'super-admin'],
+    roles: NOTE_ROLES,
     channel: NOTES_PUSH_CHANNEL,
   },
 };

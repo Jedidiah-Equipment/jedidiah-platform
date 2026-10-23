@@ -2,15 +2,7 @@ import { user } from '@pkg/db';
 import type { ContractingRole } from '@pkg/schema';
 import { describe, expect } from 'vitest';
 import { createTester } from '@/test/create-tester.js';
-import { mockSession } from '@/test/test-utils.js';
-
-function sessionAs(id: string, role: ContractingRole) {
-  const session = mockSession(null);
-  session.user.id = id;
-  session.session.userId = id;
-  session.user.contractingRole = role;
-  return session;
-}
+import { sessionAs } from '@/test/test-utils.js';
 
 const test = createTester(async ({ db }) => {
   const now = new Date();

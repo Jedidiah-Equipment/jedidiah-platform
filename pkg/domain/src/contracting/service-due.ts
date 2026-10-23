@@ -11,10 +11,8 @@ export const hoursToService = ({ latestReadingHours, nextServiceDueHours }: Serv
   latestReadingHours === null || nextServiceDueHours === null ? null : round1(nextServiceDueHours - latestReadingHours);
 
 /** The threshold a Machine is judged with: its own Service Alert Hours, else the Service Due Soon threshold in Settings. */
-export const effectiveServiceDueThreshold = (
-  machine: { serviceAlertHours: number | null },
-  settingsThreshold: number,
-) => machine.serviceAlertHours ?? settingsThreshold;
+export const effectiveServiceAlertHours = (machine: { serviceAlertHours: number | null }, settingsThreshold: number) =>
+  machine.serviceAlertHours ?? settingsThreshold;
 
 /** `threshold` is the Machine's effective threshold: within that many hours of Next Service Due is due soon. */
 export function serviceDueStatus(facts: ServiceDueFacts, threshold: number): ServiceDueStatus {
@@ -57,6 +55,23 @@ type MachineServiceState = { serviceDueStatus: ServiceDueStatus; serviceBookedIn
  */
 export const isDueForService = ({ serviceDueStatus, serviceBookedIn }: MachineServiceState) =>
   serviceDueNeedsAttention(serviceDueStatus) && !serviceBookedIn;
+
+/** The Machines Due for Service: overdue first, then the fewest hours left; unknown is not urgency. */
+export function machinesDueForService<
+  T extends {
+    code: string;
+    serviceDueStatus: ServiceDueStatus;
+    serviceBookedIn: boolean;
+    hoursToService: number | null;
+  },
+>(machines: readonly T[]): T[] {
+  const rank = (machine: T) => (machine.serviceDueStatus === 'overdue' ? 0 : 1);
+  return machines
+    .filter(isDueForService)
+    .sort(
+      (a, b) => rank(a) - rank(b) || (a.hoursToService ?? 0) - (b.hoursToService ?? 0) || a.code.localeCompare(b.code),
+    );
+}
 
 /** What is left before Next Service Due, in the reader's words, on every surface that shows it. */
 export const hoursToServiceLabel = (hoursToService: number) =>

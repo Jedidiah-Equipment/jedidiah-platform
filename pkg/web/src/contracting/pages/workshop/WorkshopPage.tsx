@@ -1,5 +1,6 @@
 import { countPhrase } from '@pkg/domain';
-import type { BreakdownListInput } from '@pkg/schema/contracting';
+import { breakdownStatusColorClassNames, breakdownStatusLabels } from '@pkg/domain/contracting';
+import { type BreakdownListInput, breakdownStatuses } from '@pkg/schema/contracting';
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
@@ -12,14 +13,20 @@ import { createPersistedDataTableStore } from '@/components/data-table/store.js'
 import type { SortOptions } from '@/components/data-table/table-state.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Button } from '@/components/ui/button.js';
+import { StatusQuickFilters } from '@/contracting/components/StatusQuickFilters.js';
 import { useContractingWrite } from '@/contracting/hooks/use-contracting-write.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useCan } from '@/hooks/use-access.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { BreakdownStatusQuickFilters } from './BreakdownStatusQuickFilters.js';
 import { ReportProblemDialog } from './ReportProblemDialog.js';
-import { focusOnMechanic, focusOnUnsolved, workshopListFilters } from './types.js';
+import {
+  focusOnMechanic,
+  focusOnUnsolved,
+  quickFilterStatuses,
+  STATUS_COLUMN_ID,
+  workshopListFilters,
+} from './types.js';
 import { useWorkshopColumns } from './workshop-columns.js';
 
 const useWorkshopTableStore = createPersistedDataTableStore({
@@ -101,8 +108,15 @@ export function WorkshopPage() {
         error={summary.error ?? filters.error ?? mechanics.error}
         fallbackMessage="Unable to load the Workshop."
       />
-      <BreakdownStatusQuickFilters
-        summary={summary.data}
+      <StatusQuickFilters
+        label="Breakdown statuses"
+        columnId={STATUS_COLUMN_ID}
+        statuses={breakdownStatuses}
+        shown={quickFilterStatuses(summary.data?.counts, tableController.columnFilters)}
+        allPicks="every"
+        labels={breakdownStatusLabels}
+        colours={breakdownStatusColorClassNames}
+        counts={summary.data?.counts}
         columnFilters={tableController.columnFilters}
         onColumnFiltersChange={tableController.setColumnFilters}
       />

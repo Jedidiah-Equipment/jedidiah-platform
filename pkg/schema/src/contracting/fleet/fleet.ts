@@ -115,7 +115,7 @@ export const Machine = MachineCreateInput.extend({
   latestReadingAt: DateIso.nullable(),
   hoursToService: z.number().nullable(),
   /** The threshold the status was judged with: the Machine's Service Alert Hours, else the one in Settings. */
-  serviceDueThresholdHours: ServiceDueSoonThresholdHours,
+  effectiveServiceAlertHours: ServiceDueSoonThresholdHours,
   serviceDueStatus: z.enum(serviceDueStatuses),
   /** Booked In: the Machine has an open Service Record. */
   serviceBookedIn: z.boolean(),

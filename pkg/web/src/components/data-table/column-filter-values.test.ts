@@ -46,5 +46,6 @@ describe('togglePick', () => {
     const picked = togglePick([{ id: 'other', value: 'x' }, ...status(['solved'])], 'status', ['open']);
     expect(picked).toEqual([{ id: 'other', value: 'x' }, ...status(['open'])]);
     expect(togglePick(picked, 'status', ['open'])).toEqual([{ id: 'other', value: 'x' }]);
+    expect(togglePick(picked, 'status', [])).toEqual([{ id: 'other', value: 'x' }]);
   });
 });

@@ -1,9 +1,4 @@
 import { formatHours, getFirstName } from '@pkg/domain';
-import {
-  hoursToServiceLabel,
-  serviceDueNeedsAttention,
-  serviceDueStatusColorClassNames,
-} from '@pkg/domain/contracting';
 import type { FleetListInput, Machine } from '@pkg/schema/contracting';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
@@ -19,10 +14,10 @@ import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { CategoryLabel } from '@/contracting/components/CategoryIcon.js';
+import { machineHoursToService, NextServiceDue } from '@/contracting/components/MachineServiceDue.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { cn } from '@/lib/utils.js';
 import { CategoryPickerField } from './CategoryFields.js';
 import {
   BUSY_COLUMN_ID,
@@ -178,26 +173,9 @@ export function MachinesPage({
         enableColumnFilter: true,
         filterFn: (row, _columnId, value) => serviceFilterMatches(row.original.serviceDueStatus, value),
         meta: { filterVariant: 'select', filterOptions: serviceFilterOptions },
-        cell: ({ row }) => {
-          const { nextServiceDueHours, hoursToService, serviceDueStatus } = row.original;
-          if (nextServiceDueHours === null) return <span className="text-muted-foreground">Not set</span>;
-          const flagged = serviceDueNeedsAttention(serviceDueStatus);
-          return (
-            <span className="flex flex-col">
-              <span className="tabular-nums">{formatHours(nextServiceDueHours)}</span>
-              {hoursToService !== null ? (
-                <span
-                  className={cn(
-                    'text-xs',
-                    flagged ? serviceDueStatusColorClassNames[serviceDueStatus].text : 'text-muted-foreground',
-                  )}
-                >
-                  {hoursToServiceLabel(hoursToService)}
-                </span>
-              ) : null}
-            </span>
-          );
-        },
+        cell: ({ row }) => (
+          <NextServiceDue hours={row.original.nextServiceDueHours} toGo={machineHoursToService(row.original)} />
+        ),
       },
     ],
     [categories.data, readsJobs],

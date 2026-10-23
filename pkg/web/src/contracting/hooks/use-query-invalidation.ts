@@ -1,100 +1,57 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useCallback, useMemo } from 'react';
+import { useMemo } from 'react';
 
 import { useTRPC } from '@/lib/trpc.js';
 
+type ContractingRoot =
+  | 'contractingActivity'
+  | 'contractingBreakdowns'
+  | 'contractingDirectory'
+  | 'contractingFleet'
+  | 'contractingJobs'
+  | 'contractingRateCard'
+  | 'contractingReadings'
+  | 'contractingServices'
+  | 'contractingSettings';
+
+/** Each Contracting write's refresh: every tRPC root whose reads that write moves, named in one place. */
 export function useQueryInvalidation() {
   const queryClient = useQueryClient();
   const trpc = useTRPC();
 
-  // Activity reads its items off Jobs, Breakdowns and readings: a write that adds or changes one refreshes the feed and its dot.
-  const invalidateActivity = useCallback(
-    () => queryClient.invalidateQueries({ queryKey: trpc.contractingActivity.pathKey() }),
-    [queryClient, trpc],
-  );
-  const invalidateDirectory = useCallback(
-    () => queryClient.invalidateQueries({ queryKey: trpc.contractingDirectory.pathKey() }),
-    [queryClient, trpc],
-  );
-  // The Machines Due for Service are derived from the fleet: a Machine's Next Service Due or retirement moves them.
-  const invalidateFleet = useCallback(
-    () =>
-      Promise.all([
-        queryClient.invalidateQueries({ queryKey: trpc.contractingFleet.pathKey() }),
-        queryClient.invalidateQueries({ queryKey: trpc.contractingServices.pathKey() }),
-      ]),
-    [queryClient, trpc],
-  );
-  // A reading moves the Machine's latest hours, so every Machine read refreshes with it.
-  const invalidateReadings = useCallback(
-    () =>
-      Promise.all([
-        queryClient.invalidateQueries({ queryKey: trpc.contractingReadings.pathKey() }),
-        invalidateFleet(),
-        invalidateActivity(),
-      ]),
-    [queryClient, trpc, invalidateFleet, invalidateActivity],
-  );
-  const invalidateJobs = useCallback(
-    () => queryClient.invalidateQueries({ queryKey: trpc.contractingJobs.pathKey() }),
-    [queryClient, trpc],
-  );
-  const invalidateRateCard = useCallback(
-    () => queryClient.invalidateQueries({ queryKey: trpc.contractingRateCard.pathKey() }),
-    [queryClient, trpc],
-  );
-  const invalidateServices = useCallback(
-    () =>
-      Promise.all([
-        queryClient.invalidateQueries({ queryKey: trpc.contractingServices.pathKey() }),
-        queryClient.invalidateQueries({ queryKey: trpc.contractingFleet.pathKey() }),
-        queryClient.invalidateQueries({ queryKey: trpc.contractingBreakdowns.pathKey() }),
-      ]),
-    [queryClient, trpc],
-  );
-  // A threshold change moves Gap Flags and Service Due badges on every screen that shows them.
-  const invalidateSettings = useCallback(
-    () =>
-      Promise.all([
-        queryClient.invalidateQueries({ queryKey: trpc.contractingSettings.pathKey() }),
-        queryClient.invalidateQueries({ queryKey: trpc.contractingJobs.pathKey() }),
-        queryClient.invalidateQueries({ queryKey: trpc.contractingBreakdowns.pathKey() }),
-        invalidateFleet(),
-      ]),
-    [queryClient, trpc, invalidateFleet],
-  );
-  const invalidateWorkshop = useCallback(
-    () =>
-      Promise.all([
-        queryClient.invalidateQueries({ queryKey: trpc.contractingBreakdowns.pathKey() }),
-        queryClient.invalidateQueries({ queryKey: trpc.contractingServices.pathKey() }),
-        invalidateActivity(),
-      ]),
-    [queryClient, trpc, invalidateActivity],
-  );
-
-  return useMemo(
-    () => ({
-      invalidateActivity,
-      invalidateDirectory,
-      invalidateFleet,
-      invalidateJobs,
-      invalidateRateCard,
-      invalidateReadings,
-      invalidateServices,
-      invalidateSettings,
-      invalidateWorkshop,
-    }),
-    [
-      invalidateActivity,
-      invalidateDirectory,
-      invalidateFleet,
-      invalidateJobs,
-      invalidateRateCard,
-      invalidateReadings,
-      invalidateServices,
-      invalidateSettings,
-      invalidateWorkshop,
-    ],
-  );
+  return useMemo(() => {
+    const invalidate =
+      (...roots: ContractingRoot[]) =>
+      () =>
+        Promise.all(roots.map((root) => queryClient.invalidateQueries({ queryKey: trpc[root].pathKey() })));
+    return {
+      // Activity reads its items off Jobs, Breakdowns and readings: a write that adds or changes one refreshes the feed and its dot.
+      invalidateActivity: invalidate('contractingActivity'),
+      invalidateDirectory: invalidate('contractingDirectory'),
+      // A Machine read derives its due state and Booked In; Service Records name their Machine.
+      invalidateFleet: invalidate('contractingFleet', 'contractingServices'),
+      invalidateJobs: invalidate('contractingJobs'),
+      invalidateRateCard: invalidate('contractingRateCard'),
+      // A reading moves the Machine's latest hours, and Activity reads its items off readings.
+      invalidateReadings: invalidate(
+        'contractingReadings',
+        'contractingFleet',
+        'contractingServices',
+        'contractingActivity',
+      ),
+      // A service moves its Machine's Next Service Due and Booked In; Breakdowns refresh with it as they have since
+      // Service Records and the Workshop shared a page.
+      invalidateServices: invalidate('contractingServices', 'contractingFleet', 'contractingBreakdowns'),
+      // A threshold change moves Gap Flags and Service Due badges on every screen that shows them.
+      invalidateSettings: invalidate(
+        'contractingSettings',
+        'contractingJobs',
+        'contractingBreakdowns',
+        'contractingFleet',
+        'contractingServices',
+      ),
+      // Activity reads its items off Breakdowns; Service Records refresh with them for the same history as above.
+      invalidateWorkshop: invalidate('contractingBreakdowns', 'contractingServices', 'contractingActivity'),
+    };
+  }, [queryClient, trpc]);
 }

@@ -10,20 +10,12 @@ import {
 import { eq, user } from '@pkg/db';
 import type { ContractingPushEvent } from '@pkg/domain/contracting';
 import { accessForRole } from '@pkg/domain/testing';
-import { type ContractingRole, DateIso } from '@pkg/schema';
+import { DateIso } from '@pkg/schema';
 import { MachineCreateInput } from '@pkg/schema/contracting';
 import { expect } from 'vitest';
 import { createTester } from '@/test/create-tester.js';
-import { mockSession } from '@/test/test-utils.js';
+import { sessionAs } from '@/test/test-utils.js';
 import { getTRPCAppCode } from '@/trpc/errors.js';
-
-function sessionAs(id: string, role: ContractingRole) {
-  const session = mockSession(null);
-  session.user.id = id;
-  session.session.userId = id;
-  session.user.contractingRole = role;
-  return session;
-}
 
 const test = createTester(async ({ db }) => {
   const now = new Date();

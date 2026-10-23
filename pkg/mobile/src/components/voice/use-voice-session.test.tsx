@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { beforeEach, expect, test, vi } from 'vitest';
 
@@ -39,21 +39,29 @@ const RECORDING = { uri: 'file://note.m4a', seconds: 3, durationMs: 3_100, peakD
 function renderSession(initial = '') {
   const onChangeText = vi.fn();
   let session!: VoiceSession;
+  let text = initial;
   let setText!: (text: string) => void;
   let renderer!: ReactTestRenderer;
+  // The field owns its text and attaches it after every commit, as VoiceTextArea does.
   function Probe() {
     const [value, setValue] = useState(initial);
+    text = value;
     setText = setValue;
-    session = useVoiceSession(
-      { business: 'contracting', purpose: 'field note' },
-      {
-        value,
-        onChangeText: (text) => {
-          onChangeText(text);
-          setValue(text);
+    session = useVoiceSession({ business: 'contracting', purpose: 'field note' });
+    const { attach } = session;
+    const owner = useRef({}).current;
+    useLayoutEffect(() =>
+      attach(
+        {
+          value,
+          onChangeText: (next) => {
+            onChangeText(next);
+            setValue(next);
+          },
+          maxLength: 2000,
         },
-        maxLength: 2000,
-      },
+        owner,
+      ),
     );
     return null;
   }
@@ -64,7 +72,13 @@ function renderSession(initial = '') {
     act(() => {
       renderer.update(<Probe />);
     });
-  return { session: () => session, rerender, onChangeText, setText: (text: string) => act(() => setText(text)) };
+  return {
+    session: () => session,
+    text: () => text,
+    rerender,
+    onChangeText,
+    setText: (next: string) => act(() => setText(next)),
+  };
 }
 
 beforeEach(() => {
@@ -82,17 +96,17 @@ async function record(session: () => VoiceSession, transcription: { id: string; 
 }
 
 test('reports each Transcription once with the text kept in place of its own transcript, then forgets them', async () => {
-  const { session } = renderSession('Fence down.');
+  const { session, text } = renderSession('Fence down.');
   await record(session, { id: 'a', text: 'Gate is open.' });
   await record(session, { id: 'b', text: 'Borehole at Vrede.' });
-  act(() => session().onChangeText(session().value.replace('Vrede', 'Vreede')));
+  act(() => session().onChangeText(text().replace('Vrede', 'Vreede')));
 
   session().reportSaved();
   session().reportSaved();
 
   expect(mutate.mock.calls.map(([variables]) => variables)).toEqual([
-    { business: 'contracting', id: 'a', text: 'Gate is open.', purpose: 'field note' },
-    { business: 'contracting', id: 'b', text: 'Borehole at Vreede.', purpose: 'field note' },
+    { id: 'a', text: 'Gate is open.', purpose: 'field note' },
+    { id: 'b', text: 'Borehole at Vreede.', purpose: 'field note' },
   ]);
 });
 
@@ -106,7 +120,7 @@ test('a snapshot taken as a save begins reports the saved text, not what was typ
   reportSaved();
 
   expect(mutate.mock.calls.map(([variables]) => variables)).toEqual([
-    { business: 'contracting', id: 'a', text: 'Borehole at Vrede.', purpose: 'field note' },
+    { id: 'a', text: 'Borehole at Vrede.', purpose: 'field note' },
   ]);
 });
 
@@ -117,10 +131,7 @@ test('follows text the form sets itself, so a transcript it removed reports empt
 
   session().reportSaved();
 
-  expect(mutate).toHaveBeenCalledWith(
-    { business: 'contracting', id: 'a', text: '', purpose: 'field note' },
-    expect.anything(),
-  );
+  expect(mutate).toHaveBeenCalledWith({ id: 'a', text: '', purpose: 'field note' }, expect.anything());
 });
 
 test('holds the form from the press until the transcript lands, then appends it to the field', async () => {
@@ -200,4 +211,70 @@ test('a refusal shows the server’s sentence; anything else says to type the no
   expect(session().status).toBe('Transcription unavailable — type the note.');
   expect(onChangeText).not.toHaveBeenCalled();
   expect(observability.recordVoiceNoteFailed).toHaveBeenCalledTimes(2);
+});
+
+test('drops a transcript that lands after its field is gone, and never attributes later text to it', async () => {
+  const onChangeText = vi.fn();
+  let session!: VoiceSession;
+  function Field({ voice, value }: { voice: VoiceSession; value: string }) {
+    const { attach } = voice;
+    const owner = useRef({}).current;
+    useLayoutEffect(() => attach({ value, onChangeText }, owner));
+    return null;
+  }
+  function Screen({ editing }: { editing: boolean }) {
+    session = useVoiceSession({ business: 'contracting', purpose: 'close-out note' });
+    return editing ? <Field voice={session} value="" /> : null;
+  }
+  let renderer!: ReactTestRenderer;
+  act(() => {
+    renderer = create(<Screen editing />);
+  });
+  let land!: (value: unknown) => void;
+  transcribe.mockReturnValueOnce(new Promise((resolve) => (land = resolve)));
+  stop.mockResolvedValue(RECORDING);
+  await act(async () => session.onPressIn());
+  await act(async () => session.onPressOut());
+
+  // Cancelled while transcribing: the field goes, then the transcript lands.
+  act(() => renderer.update(<Screen editing={false} />));
+  await act(async () => land({ id: 'late', text: 'Late words.', language: 'eng' }));
+  expect(onChangeText).not.toHaveBeenCalled();
+
+  // Reopened and typed into: the typed note is not the late Transcription's, so nothing is reported for it.
+  act(() => renderer.update(<Screen editing />));
+  act(() => session.onChangeText('A note typed by hand.'));
+  session.reportSaved();
+  expect(mutate).not.toHaveBeenCalled();
+});
+
+test('a transcript recorded in a cancelled field does not land in the field reopened in its place', async () => {
+  const onChangeText = vi.fn();
+  let session!: VoiceSession;
+  function Field({ voice }: { voice: VoiceSession }) {
+    const { attach } = voice;
+    const owner = useRef({}).current;
+    useLayoutEffect(() => attach({ value: 'Reopened draft', onChangeText }, owner));
+    return null;
+  }
+  function Screen({ editing }: { editing: boolean }) {
+    session = useVoiceSession({ business: 'contracting', purpose: 'breakdown description' });
+    return editing ? <Field key={String(editing)} voice={session} /> : null;
+  }
+  let renderer!: ReactTestRenderer;
+  act(() => {
+    renderer = create(<Screen editing />);
+  });
+  let land!: (value: unknown) => void;
+  transcribe.mockReturnValueOnce(new Promise((resolve) => (land = resolve)));
+  stop.mockResolvedValue(RECORDING);
+  await act(async () => session.onPressIn());
+  await act(async () => session.onPressOut());
+
+  // Cancel, then Edit again before the transcript lands: a new field mounts in the old one's place.
+  act(() => renderer.update(<Screen editing={false} />));
+  act(() => renderer.update(<Screen editing />));
+  await act(async () => land({ id: 'late', text: 'Cancelled words.', language: 'eng' }));
+
+  expect(onChangeText).not.toHaveBeenCalled();
 });

@@ -2,7 +2,8 @@ import { createGlobalSearchCondition, type Db, user, withPagination } from '@pkg
 import { getNextCursor } from '@pkg/schema';
 import type { InventoryRecipientOptionListInput, InventoryRecipientOptionListResult } from '@pkg/schema/equipment';
 import { InventoryRecipientOptionListResult as InventoryRecipientOptionListResultSchema } from '@pkg/schema/equipment';
-import { and, asc, eq, isNotNull, isNull, or, type SQL, sql } from 'drizzle-orm';
+import { and, asc, isNotNull, type SQL, sql } from 'drizzle-orm';
+import { activePersonCondition } from '../../users/active-person.js';
 
 /**
  * Who may be named on a Stock Movement, as its Operator or as the Recipient of a Checkout Without a
@@ -13,7 +14,7 @@ import { and, asc, eq, isNotNull, isNull, or, type SQL, sql } from 'drizzle-orm'
  * offers is refused on write.
  */
 export function eligibleMovementPersonCondition(): SQL {
-  return and(isNotNull(user.role), eq(user.isDevice, false), or(isNull(user.banned), eq(user.banned, false))) as SQL;
+  return and(isNotNull(user.role), activePersonCondition()) as SQL;
 }
 
 export async function listInventoryRecipients({

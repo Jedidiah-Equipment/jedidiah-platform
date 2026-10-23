@@ -34,11 +34,11 @@ test('names the working fleet, field people and recent places', async ({ context
   expect(keyterms).toEqual(expect.arrayContaining(['CAT320-1', 'Thabo Nkosi', 'Thabo', 'Sipho']));
   expect(keyterms).not.toEqual(expect.arrayContaining(['TIP-7']));
   expect(keyterms).not.toContain('Yard Tablet');
-  expect(candidates.map((candidate) => candidate.source)).not.toContain('hint');
+  expect(candidates.map((candidate) => candidate.source)).not.toContain('Hint keyterm');
   expect(candidates).toEqual(
     expect.arrayContaining([
-      { keyterm: 'CAT320-1', source: 'machine' },
-      { keyterm: 'Thabo', source: 'person' },
+      { keyterm: 'CAT320-1', source: 'Machine' },
+      { keyterm: 'Thabo', source: 'Person' },
     ]),
   );
 });

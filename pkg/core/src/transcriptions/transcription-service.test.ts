@@ -4,18 +4,17 @@ import type { Business, HintDerivation, KeytermCandidate } from '@pkg/schema';
 import { eq } from 'drizzle-orm';
 import { expect } from 'vitest';
 import { createTester } from '../test/create-tester.js';
+import { M4A_HEADER, testProfile } from './test-fixtures.js';
 import {
   deriveHintFor,
   listActiveHints,
   listTranscriptionsAwaitingHints,
-  loadKeytermCandidates,
   recordTranscriptionSaved,
   type TranscriptionEngine,
   transcribeVoiceNote,
 } from './transcription-service.js';
 
-const ROOIKRAAL: KeytermCandidate = { keyterm: 'Rooikraal', source: 'hint' };
-const M4A = new Uint8Array([0, 0, 0, 32, 0x66, 0x74, 0x79, 0x70, 0x4d, 0x34, 0x41, 0x20]);
+const ROOIKRAAL: KeytermCandidate = { keyterm: 'Rooikraal', source: 'Farm' };
 
 function engineHearing(
   heard: { text: string; language: string | null },
@@ -64,12 +63,10 @@ async function noted(
   const transcription = await transcribeVoiceNote({
     db,
     actorUserId: foremanId,
-    audio: M4A,
-    business,
+    audio: M4A_HEADER,
     purpose: 'capture comment',
-    setting: 'a test note',
+    profile: testProfile(business, [ROOIKRAAL]),
     engine,
-    keyterms: async () => [ROOIKRAAL],
   });
   return { transcription, engine, calls };
 }
@@ -83,7 +80,6 @@ test('keeps what was heard, shown and its language, and stamps only the speakerâ
   expect(transcription).toEqual({ id: expect.any(String), text: 'The gate at rooi kraal is open.', language: 'en' });
   expect(calls.keyterms).toEqual([[ROOIKRAAL]]);
   const input = {
-    business: 'contracting' as const,
     id: transcription.id,
     text: 'The gate at Rooikraal is open.',
     purpose: 'capture comment',
@@ -109,21 +105,12 @@ test('keeps what was heard, shown and its language, and stamps only the speakerâ
 test('refuses audio that is not M4A and says when nothing was heard', async ({ context: { db } }) => {
   const { engine } = engineHearing({ text: '', language: null });
   const transcribe = (audio: Uint8Array) =>
-    transcribeVoiceNote({
-      db,
-      actorUserId: foremanId,
-      audio,
-      business: 'contracting',
-      purpose: 'field note',
-      setting: 'a test note',
-      engine,
-      keyterms: async () => [],
-    });
+    transcribeVoiceNote({ db, actorUserId: foremanId, audio, purpose: 'field note', profile: testProfile(), engine });
 
   await expect(transcribe(new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))).rejects.toMatchObject({
     code: 'file.content_type_not_allowed',
   });
-  await expect(transcribe(M4A)).rejects.toMatchObject({ code: 'transcription.nothing_heard' });
+  await expect(transcribe(M4A_HEADER)).rejects.toMatchObject({ code: 'transcription.nothing_heard' });
 });
 
 test('derives nothing from Afrikaans notes or from a save that kept the shown text', async ({ context: { db } }) => {
@@ -135,7 +122,6 @@ test('derives nothing from Afrikaans notes or from a save that kept the shown te
       db,
       actorUserId: foremanId,
       input: {
-        business: 'contracting',
         id: afrikaans.transcription.id,
         text: 'Die hek by Rooikraal is oop.',
         purpose: 'capture comment',
@@ -145,7 +131,6 @@ test('derives nothing from Afrikaans notes or from a save that kept the shown te
       db,
       actorUserId: foremanId,
       input: {
-        business: 'contracting',
         id: kept.transcription.id,
         text: ' The gate is open. ',
         purpose: 'capture comment',
@@ -170,7 +155,6 @@ async function derivedFrom(db: Db, derivation: HintDerivation, business: Busines
     db,
     actorUserId: foremanId,
     input: {
-      business,
       id: transcription.id,
       text: "At Bassi's Farm, heading to Stoneybrook.",
       purpose: 'capture comment',
@@ -288,7 +272,7 @@ test('each business keeps its own Transcriptions and hint pool', async ({ contex
     'equipment',
   );
 
-  expect(await derive()).toMatchObject({ business: 'equipment', outcome: { action: 'add' } });
+  expect(await derive()).toMatchObject({ action: 'add' });
   // The Contracting pool is full, but an Equipment hint crowds out none of it.
   expect(await listActiveHints({ db, business: 'contracting' })).toHaveLength(TRANSCRIPTION_HINT_CAP);
   expect(await listActiveHints({ db, business: 'equipment' })).toEqual([
@@ -297,32 +281,18 @@ test('each business keeps its own Transcriptions and hint pool', async ({ contex
   expect(await db.query.transcriptions.findFirst({ where: eq(transcriptions.id, transcription.id) })).toMatchObject({
     business: 'equipment',
   });
-  await expect(
-    recordTranscriptionSaved({
-      db,
-      actorUserId: foremanId,
-      input: { business: 'contracting', id: transcription.id, text: 'Again.', purpose: 'capture comment' },
-    }),
-  ).rejects.toMatchObject({ code: 'transcription.not_found' });
 });
 
-test("a business's keyterms are its taught hint keyterms, then its profile's vocabulary", async ({
+test("the speech call hears its business's taught keyterms first, then its profile's vocabulary", async ({
   context: { db },
 }) => {
   await db.insert(transcriptionHints).values([
     { business: 'contracting', rule: 'Spell it Bloemhof.', keyterm: 'Bloemhof' },
     { business: 'contracting', rule: 'Old rule.', keyterm: 'Vaalkop', retiredAt: new Date() },
-    { business: 'contracting', rule: 'A meaning, not a name.', keyterm: null },
     { business: 'equipment', rule: 'Spell it Bossies.', keyterm: 'Bossies' },
   ]);
-  const loadVocabulary = async () => [{ keyterm: 'CAT320-1', source: 'machine' }];
 
-  expect(await loadKeytermCandidates({ db, business: 'contracting', loadVocabulary })).toEqual([
-    { keyterm: 'Bloemhof', source: 'hint' },
-    { keyterm: 'CAT320-1', source: 'machine' },
-  ]);
-  expect(await loadKeytermCandidates({ db, business: 'equipment', loadVocabulary })).toEqual([
-    { keyterm: 'Bossies', source: 'hint' },
-    { keyterm: 'CAT320-1', source: 'machine' },
-  ]);
+  const { calls } = await noted(db, { text: 'the gate', language: 'eng' });
+
+  expect(calls.keyterms).toEqual([[{ keyterm: 'Bloemhof', source: 'Hint keyterm' }, ROOIKRAAL]]);
 });

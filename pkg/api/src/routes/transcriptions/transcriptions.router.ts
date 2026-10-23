@@ -1,15 +1,15 @@
 import { type TranscriptionModels, transcriptionPrompts } from '@pkg/ai';
 import {
+  type BoundTranscriptionProfile,
   listActiveHints,
   listTranscriptionHints,
   listTranscriptionReviews,
   listTranscriptionUsers,
   recordTranscriptionSaved,
 } from '@pkg/core';
-import { transcriptionPermissions } from '@pkg/domain';
+import { keytermCandidates, transcriptionPermissions } from '@pkg/domain';
 import {
   type Business,
-  type KeytermCandidate,
   TranscriptionBusinessInput,
   TranscriptionHintList,
   TranscriptionListInput,
@@ -21,19 +21,16 @@ import {
 import type { z } from 'zod';
 import type { Scheduler } from '../../background-queue.js';
 import { mapCoreErrors } from '../../trpc/errors.js';
-import { businessPermissionProcedure, router } from '../../trpc/init.js';
+import { authorizedProcedure, businessPermissionProcedure, router } from '../../trpc/init.js';
 import { transcriptionErrorFamily } from '../shared-error-families.js';
 
 /** Schedules a Transcription Hint derivation once a corrected Transcription has been saved. */
 export type HintDerivations = Scheduler<string>;
 
-/** One business's part of the pipeline: its tidy-prompt setting, and the keyterm registry its speech calls use. */
-export type TranscriptionBusiness = { setting: string; keyterms: () => Promise<KeytermCandidate[]> };
-
 /** What the Transcriptions router closes over, built once by the shared transcription wiring. */
 export type TranscriptionRouterDependencies = {
   hintDerivations: HintDerivations;
-  businesses: Record<Business, TranscriptionBusiness>;
+  profiles: Record<Business, BoundTranscriptionProfile>;
   models: TranscriptionModels;
 };
 
@@ -42,17 +39,27 @@ const transcriptionProcedure = <TInput extends z.ZodType<{ business: Business }>
   input: TInput,
 ) => businessPermissionProcedure(input, (business) => transcriptionPermissions[business][kind]);
 
-/** Transcribing goes through the multipart upload route; this router hears that the owning form saved, and serves the read-only review. */
-export function createTranscriptionsRouter({ hintDerivations, businesses, models }: TranscriptionRouterDependencies) {
-  return router({
-    saved: transcriptionProcedure('use', TranscriptionSavedInput).mutation(async ({ ctx, input }) => {
+/**
+ * The owning form reports what it kept. Only the person who recorded a Transcription may save it, and recording it
+ * took that business's `use`, so any business's `use` opens the procedure and the row's owner decides.
+ */
+function createSavedProcedure({ hintDerivations }: Pick<TranscriptionRouterDependencies, 'hintDerivations'>) {
+  return authorizedProcedure(Object.values(transcriptionPermissions).map((permissions) => permissions.use))
+    .input(TranscriptionSavedInput)
+    .mutation(async ({ ctx, input }) => {
       const result = await mapCoreErrors(
         () => recordTranscriptionSaved({ db: ctx.db, actorUserId: ctx.session.user.id, input }),
         transcriptionErrorFamily,
       );
       // After the write; the response never waits on the model.
       if (result.deriveHint) hintDerivations.schedule(result.id);
-    }),
+    });
+}
+
+/** Transcribing goes through the multipart upload route; this router hears that the owning form saved, and serves the read-only review. */
+export function createTranscriptionsRouter({ hintDerivations, profiles, models }: TranscriptionRouterDependencies) {
+  return router({
+    saved: createSavedProcedure({ hintDerivations }),
     list: transcriptionProcedure('read', TranscriptionListInput)
       .output(TranscriptionListResult)
       .query(({ ctx, input }) => listTranscriptionReviews({ db: ctx.db, input })),
@@ -65,9 +72,14 @@ export function createTranscriptionsRouter({ hintDerivations, businesses, models
     prompts: transcriptionProcedure('read', TranscriptionBusinessInput)
       .output(TranscriptionPrompts)
       .query(async ({ ctx, input: { business } }) => {
-        const { setting, keyterms } = businesses[business];
-        const [hints, registry] = await Promise.all([listActiveHints({ db: ctx.db, business }), keyterms()]);
-        return transcriptionPrompts({ hints, keyterms: registry, models, setting });
+        const { setting, vocabulary } = profiles[business];
+        const [hints, terms] = await Promise.all([listActiveHints({ db: ctx.db, business }), vocabulary()]);
+        return transcriptionPrompts({ hints, keyterms: keytermCandidates(hints, terms), models, setting });
       }),
   });
+}
+
+/** The save on its own, for a router that only hears saves: the save names no business, so any mount serves. */
+export function createSavedRouter(dependencies: Pick<TranscriptionRouterDependencies, 'hintDerivations'>) {
+  return router({ saved: createSavedProcedure(dependencies) });
 }

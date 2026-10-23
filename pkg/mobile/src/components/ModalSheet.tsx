@@ -1,34 +1,33 @@
 import { IconX } from '@tabler/icons-react-native';
 import type React from 'react';
-import { useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-
-import { ScrollLockContext } from '@/components/scroll-lock';
+import { ScrollLockScrollView } from '@/components/scroll-lock';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { gluestackConfig } from '@/theme/gluestack-config';
 import { useColorMode } from '@/theme/use-color-mode';
 
 /**
- * The full-screen sheet every feedback form opens in: a title with what the note is about, the fields, and a submit
- * bar pinned above the keyboard.
+ * A full-screen sheet over the current page: a title with what it is about, a scrolling body its fields can hold
+ * still, and a footer pinned above the keyboard. Every in-place form that opens over a page uses it.
  */
-export function FeedbackModalFrame({
-  about,
-  children,
-  error,
+export function ModalSheet({
+  title,
+  subtitle,
+  error = null,
   footer,
   onClose,
+  children,
 }: {
-  about: React.ReactNode;
-  children: React.ReactNode;
-  error: string | null;
+  title: string;
+  subtitle: React.ReactNode;
+  error?: string | null;
   footer: React.ReactNode;
   onClose: () => void;
+  children: React.ReactNode;
 }) {
   const { resolved } = useColorMode();
-  const [scrollLocked, setScrollLocked] = useState(false);
   return (
     <Modal animationType="slide" onRequestClose={onClose} transparent={false} visible>
       {/* RN Modal portals to a native root outside GluestackUIProvider, so re-apply the
@@ -42,10 +41,10 @@ export function FeedbackModalFrame({
             <View className="flex-row items-center justify-between border-b border-border px-4 py-3">
               <View className="min-w-0 flex-1">
                 <Text className="text-lg text-foreground" weight="bold">
-                  Send feedback
+                  {title}
                 </Text>
                 <Text className="text-xs text-muted-foreground" numberOfLines={1}>
-                  {about}
+                  {subtitle}
                 </Text>
               </View>
               <Pressable accessibilityLabel="Close" accessibilityRole="button" className="p-1" onPress={onClose}>
@@ -54,18 +53,17 @@ export function FeedbackModalFrame({
             </View>
 
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1">
-              <ScrollView
+              <ScrollLockScrollView
                 contentContainerClassName="gap-4 px-4 pb-6 pt-4"
                 keyboardShouldPersistTaps="handled"
-                scrollEnabled={!scrollLocked}
               >
                 {error ? (
                   <View className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2.5">
                     <Text className="text-sm text-danger">{error}</Text>
                   </View>
                 ) : null}
-                <ScrollLockContext.Provider value={setScrollLocked}>{children}</ScrollLockContext.Provider>
-              </ScrollView>
+                {children}
+              </ScrollLockScrollView>
               <View className="border-t border-border px-4 py-3">{footer}</View>
             </KeyboardAvoidingView>
           </SafeAreaView>
@@ -75,7 +73,8 @@ export function FeedbackModalFrame({
   );
 }
 
-export function FeedbackSubmitButton({
+/** The sheet's primary action: a spinner while it submits, and held off while `disabled`. */
+export function SheetSubmitButton({
   disabled = false,
   isSubmitting,
   label,
@@ -101,11 +100,4 @@ export function FeedbackSubmitButton({
       </Text>
     </Pressable>
   );
-}
-
-export function feedbackErrorMessage(error: unknown): string {
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-  return 'Unable to submit feedback. Please try again.';
 }

@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   appendTranscript,
+  HINT_KEYTERM_SOURCE,
   isHintDerivationLanguage,
+  keytermCandidates,
+  personKeyterms,
   SPEECH_KEYTERM_CAP,
+  sourcedKeyterms,
   speechKeyterms,
   transcriptionHintStatus,
   transcriptionWasCorrected,
@@ -36,7 +40,7 @@ describe('appendTranscript', () => {
 
 describe('speechKeyterms', () => {
   it('trims, drops blanks, over-long terms and ones the API refuses, and de-duplicates ignoring case', () => {
-    const machine = (keyterm: string) => ({ keyterm, source: 'machine' as const });
+    const machine = (keyterm: string) => ({ keyterm, source: 'Machine' as const });
     expect(
       speechKeyterms([
         machine('  JD   6155M '),
@@ -51,11 +55,11 @@ describe('speechKeyterms', () => {
 
   it('keeps registry order up to the cap and names each one cut off with its source', () => {
     const candidates = [
-      { keyterm: 'Bloemhof', source: 'hint' as const },
-      { keyterm: 'Thabo Nkosi', source: 'person' as const },
+      { keyterm: 'Bloemhof', source: 'Hint keyterm' as const },
+      { keyterm: 'Thabo Nkosi', source: 'Person' as const },
       ...Array.from({ length: SPEECH_KEYTERM_CAP }, (_, index) => ({
         keyterm: `Farm ${index}`,
-        source: 'farm' as const,
+        source: 'Farm' as const,
       })),
     ];
 
@@ -64,8 +68,8 @@ describe('speechKeyterms', () => {
     expect(keyterms).toHaveLength(SPEECH_KEYTERM_CAP);
     expect(keyterms.slice(0, 3)).toEqual(['Bloemhof', 'Thabo Nkosi', 'Farm 0']);
     expect(cutOff).toEqual([
-      { keyterm: `Farm ${SPEECH_KEYTERM_CAP - 2}`, source: 'farm' },
-      { keyterm: `Farm ${SPEECH_KEYTERM_CAP - 1}`, source: 'farm' },
+      { keyterm: `Farm ${SPEECH_KEYTERM_CAP - 2}`, source: 'Farm' },
+      { keyterm: `Farm ${SPEECH_KEYTERM_CAP - 1}`, source: 'Farm' },
     ]);
   });
 });
@@ -102,5 +106,24 @@ describe('transcriptionHintStatus', () => {
       kind: 'hint_added',
       hintIds: ['h1', 'h2'],
     });
+  });
+});
+
+describe('keytermCandidates', () => {
+  it('puts taught hint keyterms first, skips hints with none, then the vocabulary', () => {
+    const vocabulary = [{ keyterm: 'CAT320-1', source: 'Machine' }];
+
+    expect(keytermCandidates([{ keyterm: 'Bloemhof' }, { keyterm: null }], vocabulary)).toEqual([
+      { keyterm: 'Bloemhof', source: HINT_KEYTERM_SOURCE },
+      { keyterm: 'CAT320-1', source: 'Machine' },
+    ]);
+  });
+
+  it('says people by full name and first name, and drops empty values', () => {
+    expect(personKeyterms(['Thabo Nkosi', ''])).toEqual([
+      { keyterm: 'Thabo Nkosi', source: 'Person' },
+      { keyterm: 'Thabo', source: 'Person' },
+    ]);
+    expect(sourcedKeyterms('Machine', ['JD 6155M', null, ''])).toEqual([{ keyterm: 'JD 6155M', source: 'Machine' }]);
   });
 });

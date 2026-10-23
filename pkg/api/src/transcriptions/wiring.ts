@@ -2,19 +2,19 @@ import {
   createOpenAiChatModel,
   createOpenAiTranscriptionModel,
   deriveTranscriptionHint,
+  hearVoiceNote,
   tidyTranscript,
-  transcribeVoiceNote,
 } from '@pkg/ai';
 import {
-  createKeytermCache,
+  type BoundTranscriptionProfile,
+  cacheVocabulary,
   deriveHintFor,
   listTranscriptionsAwaitingHints,
-  loadKeytermCandidates,
   type TranscriptionEngine,
   type TranscriptionProfile,
 } from '@pkg/core';
 import type { Db } from '@pkg/db';
-import { BUSINESSES, type Business } from '@pkg/schema';
+import { type Business, byBusiness } from '@pkg/schema';
 import type { FastifyInstance } from 'fastify';
 import { BackgroundQueue } from '../background-queue.js';
 import type { BusinessWiring } from '../business-wiring.js';
@@ -25,8 +25,8 @@ import { registerTranscriptionHttpRoutes } from '../routes/transcriptions/transc
 import { serializeError } from '../trpc/errors.js';
 
 /**
- * The one Voice Note pipeline both businesses share: the models, one keyterm cache per business, and the hint
- * derivations. Each business's part arrives as its profile, composed by `server.ts`, so nothing here names a business.
+ * The one Voice Note pipeline both businesses share: the models, each business's profile bound with a cached
+ * vocabulary, and the hint derivations. The profiles arrive from `server.ts`, so nothing here names a business.
  */
 export async function registerTranscriptions(
   app: FastifyInstance,
@@ -39,29 +39,23 @@ export async function registerTranscriptions(
   });
   const engine: TranscriptionEngine = {
     transcribe: logged('Voice note transcription failed', (input) =>
-      transcribeVoiceNote({ ...input, model: transcriptionModel }),
+      hearVoiceNote({ ...input, model: transcriptionModel }),
     ),
     tidy: logged('Transcript tidy failed', (input) => tidyTranscript({ ...input, model: chatModel })),
     derive: logged('Transcription hint derivation failed', (input) =>
       deriveTranscriptionHint({ ...input, model: chatModel }),
     ),
   };
-  const caches = perBusiness((business) =>
-    createKeytermCache(() =>
-      loadKeytermCandidates({ db, business, loadVocabulary: () => profiles[business].loadVocabulary({ db }) }),
-    ),
+  const bound = byBusiness(
+    (business): BoundTranscriptionProfile => ({
+      business,
+      setting: profiles[business].setting,
+      vocabulary: cacheVocabulary(() => profiles[business].loadVocabulary({ db })),
+    }),
   );
-  const businesses = perBusiness((business) => ({
-    setting: profiles[business].setting,
-    keyterms: caches[business].current,
-  }));
 
   const hintDerivations = new BackgroundQueue<string>({
-    run: async (id) => {
-      const derived = await deriveHintFor({ db, id, engine });
-      // A new hint keyterm should reach the business's next note, not its next cache refresh.
-      if (derived?.outcome.action === 'add') caches[derived.business].invalidate();
-    },
+    run: (id) => deriveHintFor({ db, id, engine }),
     onError: (error, transcriptionId) => log.ai.error({ error, transcriptionId }, 'Hint derivation failed'),
     concurrency: 1,
     resume: {
@@ -70,20 +64,16 @@ export async function registerTranscriptions(
     },
   });
 
-  await registerTranscriptionHttpRoutes(app, { db, engine, businesses });
+  await registerTranscriptionHttpRoutes(app, { db, engine, profiles: bound });
 
   return {
     routerDependencies: {
       hintDerivations,
-      businesses,
+      profiles: bound,
       models: { chat: config.OPENAI_MODEL, transcription: config.OPENAI_TRANSCRIPTION_MODEL },
     },
     services: [hintDerivations],
   };
-}
-
-function perBusiness<T>(build: (business: Business) => T): Record<Business, T> {
-  return Object.fromEntries(BUSINESSES.map((business) => [business, build(business)])) as Record<Business, T>;
 }
 
 function logged<TInput, TOutput>(label: string, run: (input: TInput) => Promise<TOutput>) {

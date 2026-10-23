@@ -136,17 +136,18 @@ A new Draft Purchase Order line takes its first unit price from the Part's curre
 
 ## Voice
 
-**Voice Note** in Equipment is available on the **Feedback** box of the phone's Job feedback and Purchase Order
-feedback forms, and nowhere else yet, under `equipment_transcription:use`, which every Equipment login role except
-app-store-tester holds. The field behaves as [GLOSSARY-MAP.md](GLOSSARY-MAP.md) describes: online only, English and
-Afrikaans, never translated, the recording never kept.
+**Voice Note**, **Transcription**, **Transcription Hint** and **Keyterm** are the shared Voice Note mechanism
+defined in [GLOSSARY-MAP.md](GLOSSARY-MAP.md). Equipment's part of it:
 
-Equipment's **Keyterms** are, after its taught Transcription Hints: the names of active Users (not a device, not
-banned) holding an Equipment role other than app-store-tester, the Department names, Product and Product Range names, and the Suppliers on Purchase Orders
-updated in the last 90 days — never Customers, serials or part codes. Equipment's Transcription Hints are its own pool,
-learned only from Equipment Voice Notes. The Equipment **Transcriptions** page (Admin) shows every user's Voice Note
-text, hints and prompts under `equipment_transcription:read`, held by super-admin alone because a dictated Corrective
-Feedback appears there (ADR 0010).
+- Only the **Feedback** box of the phone's Job feedback and Purchase Order feedback forms takes a Voice Note.
+- Equipment's **Keyterms**, after its taught Transcription Hints, are the names of active people holding an Equipment
+  role other than app-store-tester, the Department names, Product and Product Range names, and the Suppliers on
+  Purchase Orders updated in the last 90 days; never Customers, serials or part codes.
+- Equipment's notes are tidied as voice notes "from a South African agricultural-equipment manufacturer's workshop and
+  sales floor".
+- `equipment_transcription:use` is held by every Equipment login role except app-store-tester. The Equipment
+  **Transcriptions** page (Admin) needs `equipment_transcription:read`, which super-admin alone holds, because a
+  dictated Corrective Feedback appears there (ADR 0010).
 
 ## Access
 
@@ -162,9 +163,9 @@ the users holding that Business's role — a super-admin in both, and a user hol
 nobody removed from every business drops out of reach — and offers only that Business's roles when creating or
 editing, so a user gains a second slot by script rather than through the app. `user:list` and the role writes
 stay business-blind on the server: the split is the page's, not the permission's. Department Membership is
-Equipment's own addition to that page, descriptive only, and must not be used to scope permissions. Contracting roles live in `GLOSSARY-CONTRACTING.md`. Every Equipment login role except app-store-tester holds `equipment_transcription:use`. The Equipment roles are:
+Equipment's own addition to that page, descriptive only, and must not be used to scope permissions. Contracting roles live in `GLOSSARY-CONTRACTING.md`. The Equipment roles are:
 
-- **super-admin**: everything admin can do, plus the exclusive ability to review Corrective Feedback and Internal Notes through the Feedback inbox, and every user's Voice Note text on the Transcriptions page (`equipment_transcription:read`). The only role that can see Corrective Feedback — admins cannot. Only a super-admin may grant or remove the super-admin role; admins manage every other role but cannot mint a super-admin (which would otherwise be an escalation path to Corrective Feedback).
+- **super-admin**: everything admin can do, plus the exclusive ability to review Corrective Feedback and Internal Notes through the Feedback inbox, and every user's Voice Note text on the Transcriptions page. The only role that can see Corrective Feedback — admins cannot. Only a super-admin may grant or remove the super-admin role; admins manage every other role but cannot mint a super-admin (which would otherwise be an escalation path to Corrective Feedback).
 - **admin**: full operational access; owns Bay scheduling, calendar updates, Job creation and updates, admin Bay configuration, Suppliers, Product Unit identity and Ownership Transfers — recording a Transfer by hand is admin-only, since it asserts ownership with no commercial document behind it. Sees General Feedback on subjects it can read, like any subject reader; cannot see Corrective Feedback.
 - **procurement-manager**: full Purchase Order access except approval, including posting a PO-bound Return to Supplier; inventory read/adjust and cost read/revalue, but no general inventory move; Customer directory and Product, Part, and Supplier management; Quote create/read/update, but not cancelling a Locked Quote; Product Unit and Job reads; no scheduling mutation.
 - **job-manager**: Job updates, including Department Timing stamps, plus Job and Product Unit reads; inventory read/count, so it runs Stocktake Sessions, but no inventory move, adjust, or cost read; cannot create, schedule, calendar-manage, or cancel Jobs.

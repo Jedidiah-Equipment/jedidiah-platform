@@ -18,10 +18,12 @@ import { VoiceTextArea } from './VoiceTextArea';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
+const owner = vi.fn();
+
 const voice: VoiceSession = {
   business: 'contracting',
   purpose: 'field note',
-  value: '',
+  attach: vi.fn(() => () => undefined),
   onChangeText: vi.fn(),
   reportSaved: vi.fn(),
   snapshotSaved: vi.fn(),
@@ -39,7 +41,7 @@ function render(session: VoiceSession = voice, lockScroll = vi.fn()) {
   let renderer!: ReactTestRenderer;
   const tree = (current: VoiceSession) => (
     <ScrollLockContext.Provider value={lockScroll}>
-      <VoiceTextArea voice={current} />
+      <VoiceTextArea value="" onChangeText={owner} voice={current} />
     </ScrollLockContext.Provider>
   );
   act(() => {
@@ -85,14 +87,14 @@ test('lets the page scroll again once a press the recorder could not take ends',
   act(() => {
     renderer.update(
       <ScrollLockContext.Provider value={lockScroll}>
-        <VoiceTextArea voice={{ ...voice, busy: true }} />
+        <VoiceTextArea value="" onChangeText={owner} voice={{ ...voice, busy: true }} />
       </ScrollLockContext.Provider>,
     );
   });
   act(() => {
     renderer.update(
       <ScrollLockContext.Provider value={lockScroll}>
-        <VoiceTextArea voice={{ ...voice, busy: false }} />
+        <VoiceTextArea value="" onChangeText={owner} voice={{ ...voice, busy: false }} />
       </ScrollLockContext.Provider>,
     );
   });
@@ -116,7 +118,7 @@ test('drops a recording whose mic vanished mid-hold, and one whose field unmount
   act(() => {
     renderer.update(
       <ScrollLockContext.Provider value={lockScroll}>
-        <VoiceTextArea voice={{ ...voice, busy: true }} />
+        <VoiceTextArea value="" onChangeText={owner} voice={{ ...voice, busy: true }} />
       </ScrollLockContext.Provider>,
     );
   });
@@ -141,8 +143,33 @@ test('animates the frame while listening or transcribing, and locks typing while
 test("tints the mic's frame when the owning form has an error for the field", () => {
   let renderer!: ReactTestRenderer;
   act(() => {
-    renderer = create(<VoiceTextArea invalid voice={voice} />);
+    renderer = create(<VoiceTextArea invalid value="" onChangeText={owner} voice={voice} />);
   });
 
   expect(renderer.root.findByType('VoiceFrame' as never).props.invalid).toBe(true);
+});
+
+test("hands the session its owner's text and routes edits through the session", () => {
+  let renderer!: ReactTestRenderer;
+  act(() => {
+    renderer = create(<VoiceTextArea maxLength={40} value="Gate open" onChangeText={owner} voice={voice} />);
+  });
+  const input = renderer.root.findByType('TextInput' as never);
+
+  expect(voice.attach).toHaveBeenLastCalledWith(
+    { value: 'Gate open', onChangeText: owner, maxLength: 40 },
+    expect.any(Object),
+  );
+  expect(input.props.value).toBe('Gate open');
+  expect(input.props.onChangeText).toBe(voice.onChangeText);
+});
+
+test('tints the bare input when there is no mic to frame it', () => {
+  state.offline = true;
+  let renderer!: ReactTestRenderer;
+  act(() => {
+    renderer = create(<VoiceTextArea invalid value="" onChangeText={owner} voice={voice} />);
+  });
+
+  expect(renderer.root.findByType('TextInput' as never).props.className).toContain('border-danger');
 });

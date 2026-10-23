@@ -65,15 +65,15 @@ test('names Equipment people, Departments, the catalogue and recent Suppliers, i
     ...roles
       .filter(([role]) => role !== 'app-store-tester')
       .flatMap(([, name]) => [
-        { keyterm: name, source: 'person' },
-        { keyterm: name.split(' ')[0], source: 'person' },
+        { keyterm: name, source: 'Person' },
+        { keyterm: name.split(' ')[0], source: 'Person' },
       ]),
     ...['Procurement', 'Supply', 'Fabrication', 'Paint', 'Assembly', 'Workshop'].map((keyterm) => ({
       keyterm,
-      source: 'department',
+      source: 'Department',
     })),
-    { keyterm: 'Six-ton Tipper', source: 'product' },
-    { keyterm: 'Tippers', source: 'product' },
-    { keyterm: 'Steel Africa', source: 'supplier' },
+    { keyterm: 'Six-ton Tipper', source: 'Product' },
+    { keyterm: 'Tippers', source: 'Product' },
+    { keyterm: 'Steel Africa', source: 'Supplier' },
   ]);
 });

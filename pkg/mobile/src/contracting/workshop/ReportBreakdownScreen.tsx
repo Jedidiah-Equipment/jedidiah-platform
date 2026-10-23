@@ -91,14 +91,7 @@ export default function ReportBreakdownScreen() {
   const [pickerKind, setPickerKind] = useState<BreakdownSubjectKind>('machine');
   const [urgency, setUrgency] = useState<BreakdownUrgency | null>(null);
   const [description, setDescription] = useState('');
-  const voice = useVoiceSession(
-    { business: 'contracting', purpose: 'breakdown description' },
-    {
-      value: description,
-      onChangeText: setDescription,
-      maxLength: BreakdownDescription.maxLength ?? undefined,
-    },
-  );
+  const voice = useVoiceSession({ business: 'contracting', purpose: 'breakdown description' });
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [galleryHint, setGalleryHint] = useState(false);
   const [position, setPosition] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -324,6 +317,9 @@ export default function ReportBreakdownScreen() {
           placeholder="Describe the problem in your own words"
           editable={!busy}
           rows={5}
+          value={description}
+          onChangeText={setDescription}
+          maxLength={BreakdownDescription.maxLength ?? undefined}
           voice={voice}
         />
       </FieldShell>

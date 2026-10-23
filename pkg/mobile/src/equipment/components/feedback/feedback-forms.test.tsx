@@ -2,6 +2,7 @@ import type { AppRouter } from '@pkg/api';
 import { FeedbackPurchaseOrder } from '@pkg/schema/equipment';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createTRPCClient, httpLink } from '@trpc/client';
+import type React from 'react';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { afterEach, expect, test, vi } from 'vitest';
 
@@ -37,7 +38,7 @@ vi.mock('nativewind', () => ({ vars: (value: unknown) => value }));
 vi.mock('@/lib/api-base-url', () => ({ apiBaseUrl: 'http://feedback.test' }));
 vi.mock('@/lib/auth', () => ({ sessionCookieHeader: () => '' }));
 vi.mock('@/lib/observability', () => ({ addBreadcrumb: vi.fn() }));
-// Unused field types contain native pickers; keep the actual form, SelectField and TextareaField.
+// Unused field types contain native pickers; keep the actual form and SelectField.
 vi.mock('@/components/form/fields/CurrencyField', () => ({ CurrencyField: 'CurrencyField' }));
 vi.mock('@/components/form/fields/DateField', () => ({ DateField: 'DateField' }));
 vi.mock('@/components/form/fields/MultiSelectField', () => ({ MultiSelectField: 'MultiSelectField' }));
@@ -45,22 +46,16 @@ vi.mock('@/components/form/fields/NumberField', () => ({ NumberField: 'NumberFie
 vi.mock('@/components/form/fields/SearchSelectField', () => ({ SearchSelectField: 'SearchSelectField' }));
 vi.mock('@/components/form/fields/SegmentedField', () => ({ SegmentedField: 'SegmentedField' }));
 vi.mock('@/components/form/fields/TextField', () => ({ TextField: 'TextField' }));
-// The voice session is mocked at its module boundary; the form's wiring to it is real.
+// The voice session is mocked at its module boundary, and the voice field at its input; the forms' wiring is real.
 const reportSaved = vi.hoisted(() => vi.fn());
 const useVoiceSession = vi.hoisted(() =>
-  vi.fn((_scope: unknown, field: object) => ({ ...field, busy: false, snapshotSaved: () => reportSaved })),
+  vi.fn((_scope: unknown) => ({ busy: false, snapshotSaved: () => reportSaved })),
 );
 vi.mock('@/components/voice/use-voice-session', () => ({ useVoiceSession }));
-// The stub takes the page's scroll lock from context, as the real field does.
-vi.mock('@/components/voice/VoiceTextArea', async () => {
-  const { createElement } = await import('react');
-  const { useScrollLock } = await import('@/components/scroll-lock');
-  return {
-    VoiceTextArea: (props: object) => createElement('TextInput', { ...props, lockScroll: useScrollLock() }),
-  };
-});
+vi.mock('@/components/voice/VoiceTextArea', () => ({ VoiceTextArea: 'TextInput' }));
 
 import { TRPCProvider } from '@/lib/trpc';
+import { GiveFeedbackButton } from './GiveFeedbackButton';
 import { PurchaseOrderFeedbackButton } from './PurchaseOrderFeedbackButton';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -69,28 +64,32 @@ afterEach(async () => {
   for (const cleanup of cleanups.splice(0)) await act(cleanup);
   vi.clearAllMocks();
 });
+const jobId = '00000000-0000-4000-8000-000000000007';
 const order = FeedbackPurchaseOrder.parse({
   id: '00000000-0000-4000-8000-000000000042',
   code: 42,
   supplierName: 'Mount Fifty',
 });
+const jobForm = <GiveFeedbackButton jobCode="JOB-00007" jobId={jobId} />;
+const purchaseOrderForm = <PurchaseOrderFeedbackButton jobCode="JOB-00001" purchaseOrders={[order]} />;
 
 test('hides Send PO Feedback without linked orders', async () => {
-  const renderer = await mount([]);
+  const { renderer } = await mount(<PurchaseOrderFeedbackButton jobCode="JOB-00001" purchaseOrders={[]} />);
   expect(renderer.toJSON()).toBeNull();
 });
 
 test('preselects the only linked PO and submits General Feedback from the full-screen modal', async () => {
-  const sent: unknown[] = [];
-  const renderer = await mount([order], sent);
-  await act(async () => renderer.root.findByProps({ accessibilityRole: 'button' }).props.onPress());
+  const { renderer, sent } = await mount(purchaseOrderForm);
+  await open(renderer);
   expect(renderer.root.findByType('Modal' as never).props.transparent).toBe(false);
   const content = JSON.stringify(renderer.toJSON());
   expect(content).toContain('PO-00042 · Mount Fifty');
   expect(content).not.toContain('Who is this about?');
   expect(content).not.toContain('Public:');
   expect(content).not.toContain('Private:');
+
   await typeAndSubmit(renderer, 'Delivery tomorrow');
+
   await vi.waitFor(() =>
     expect(sent).toEqual([
       {
@@ -100,44 +99,49 @@ test('preselects the only linked PO and submits General Feedback from the full-s
       },
     ]),
   );
-  expect(useVoiceSession).toHaveBeenCalledWith(
-    { business: 'equipment', purpose: 'purchase order feedback' },
-    expect.anything(),
-  );
+});
+
+test.for([
+  ['Job', jobForm, 'job feedback'],
+  ['Purchase Order', purchaseOrderForm, 'purchase order feedback'],
+] as const)('%s feedback reports its Voice Notes as saved once the feedback is accepted', async ([, form, purpose]) => {
+  const { renderer } = await mount(form);
+  await open(renderer);
+
+  await typeAndSubmit(renderer, 'Weld cracked on the drawbar');
+
+  expect(useVoiceSession).toHaveBeenCalledWith({ business: 'equipment', purpose });
   await vi.waitFor(() => expect(reportSaved).toHaveBeenCalledTimes(1));
 });
 
-test('a refused submit reports no Voice Note as saved', async () => {
-  const renderer = await mount([order], [], { refuse: true });
-  await act(async () => renderer.root.findByProps({ accessibilityRole: 'button' }).props.onPress());
-  await typeAndSubmit(renderer, 'Delivery tomorrow');
+test.for([
+  ['Job', jobForm],
+  ['Purchase Order', purchaseOrderForm],
+] as const)('refused %s feedback reports no Voice Note as saved', async ([, form]) => {
+  const { renderer } = await mount(form, { refuse: true });
+  await open(renderer);
 
-  await vi.waitFor(() => expect(JSON.stringify(renderer.toJSON())).toContain('Purchase Order is closed.'));
+  await typeAndSubmit(renderer, 'Weld cracked on the drawbar');
+
+  await vi.waitFor(() => expect(JSON.stringify(renderer.toJSON())).toContain('Refused.'));
   expect(reportSaved).not.toHaveBeenCalled();
 });
 
-test('holding the mic stops the sheet scrolling until it is released', async () => {
-  const renderer = await mount([order]);
-  await act(async () => renderer.root.findByProps({ accessibilityRole: 'button' }).props.onPress());
-  const sheet = () => renderer.root.findByType('ScrollView' as never);
-  const lockScroll = renderer.root.findByType('TextInput' as never).props.lockScroll as (locked: boolean) => void;
-
-  await act(async () => lockScroll(true));
-  expect(sheet().props.scrollEnabled).toBe(false);
-  await act(async () => lockScroll(false));
-  expect(sheet().props.scrollEnabled).toBe(true);
-});
+async function open(renderer: ReactTestRenderer) {
+  await act(async () => renderer.root.findAllByProps({ accessibilityRole: 'button' })[0]?.props.onPress());
+}
 
 async function typeAndSubmit(renderer: ReactTestRenderer, text: string) {
-  await act(async () => renderer.root.findByType('TextInput' as never).props.voice.onChangeText(text));
+  await act(async () => renderer.root.findByType('TextInput' as never).props.onChangeText(text));
   const submit = renderer.root
     .findAllByType('Pressable' as never)
-    .find((node) => node.findAllByType('Text' as never).some((label) => label.children.includes('Submit Feedback')));
+    .find((node) => node.findAllByType('Text' as never).some((label) => String(label.children).startsWith('Submit')));
   expect(submit).toBeDefined();
   await act(async () => submit?.props.onPress());
 }
 
-async function mount(purchaseOrders: FeedbackPurchaseOrder[], sent: unknown[] = [], { refuse = false } = {}) {
+async function mount(element: React.ReactElement, { refuse = false } = {}) {
+  const sent: unknown[] = [];
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const trpcClient = createTRPCClient<AppRouter>({
     links: [
@@ -148,13 +152,7 @@ async function mount(purchaseOrders: FeedbackPurchaseOrder[], sent: unknown[] = 
           sent.push(JSON.parse(String(init?.body)));
           if (refuse)
             return Response.json(
-              {
-                error: {
-                  message: 'Purchase Order is closed.',
-                  code: -32600,
-                  data: { code: 'BAD_REQUEST', httpStatus: 400 },
-                },
-              },
+              { error: { message: 'Refused.', code: -32600, data: { code: 'BAD_REQUEST', httpStatus: 400 } } },
               { status: 400 },
             );
           return Response.json({ result: { data: { id: order.id } } });
@@ -167,7 +165,7 @@ async function mount(purchaseOrders: FeedbackPurchaseOrder[], sent: unknown[] = 
     renderer = create(
       <QueryClientProvider client={client}>
         <TRPCProvider queryClient={client} trpcClient={trpcClient}>
-          <PurchaseOrderFeedbackButton jobCode="JOB-00001" purchaseOrders={purchaseOrders} />
+          {element}
         </TRPCProvider>
       </QueryClientProvider>,
     );
@@ -176,5 +174,5 @@ async function mount(purchaseOrders: FeedbackPurchaseOrder[], sent: unknown[] = 
     renderer.unmount();
     client.clear();
   });
-  return renderer;
+  return { renderer, sent };
 }

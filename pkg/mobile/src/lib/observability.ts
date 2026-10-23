@@ -43,6 +43,7 @@ export type BreadcrumbCategory =
   | 'contracting'
   | 'equipment'
   | 'lifecycle'
+  | 'microphone'
   | 'navigation'
   | 'network'
   | 'ota'

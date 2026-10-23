@@ -1,19 +1,19 @@
 import { getFeedbackVisibilityNotice } from '@pkg/domain/equipment';
 import { type FeedbackPurchaseOrder, FeedbackText } from '@pkg/schema/equipment';
 import { IconShoppingCart } from '@tabler/icons-react-native';
-import { useStore } from '@tanstack/react-form';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { z } from 'zod';
 
 import { useAppForm } from '@/components/form';
 import { VoiceTextareaField } from '@/components/form/fields/VoiceTextareaField';
+import { ModalSheet, SheetSubmitButton } from '@/components/ModalSheet';
 import { AccentButton } from '@/components/ui/accent-button';
 import { Text } from '@/components/ui/text';
 import { useAppToast } from '@/components/ui/toast';
 import { useVoiceSession } from '@/components/voice/use-voice-session';
 import { useTRPC } from '@/lib/trpc';
-import { FeedbackModalFrame, FeedbackSubmitButton, feedbackErrorMessage } from './FeedbackModalFrame';
+import { feedbackErrorMessage } from './feedback-error';
 
 const notice = getFeedbackVisibilityNotice('general', 'purchase-order');
 
@@ -91,15 +91,12 @@ function PurchaseOrderFeedbackModal({
     },
   });
 
-  const text = useStore(form.store, (state) => state.values.text);
-  const voice = useVoiceSession(
-    { business: 'equipment', purpose: 'purchase order feedback' },
-    { value: text, onChangeText: (next) => form.setFieldValue('text', next) },
-  );
+  const voice = useVoiceSession({ business: 'equipment', purpose: 'purchase order feedback' });
 
   return (
-    <FeedbackModalFrame
-      about={
+    <ModalSheet
+      title="Send feedback"
+      subtitle={
         <>
           About a Purchase Order linked to{' '}
           <Text className="text-muted-foreground" mono>
@@ -111,7 +108,7 @@ function PurchaseOrderFeedbackModal({
       footer={
         <form.Subscribe selector={(state) => state.isSubmitting}>
           {(isSubmitting) => (
-            <FeedbackSubmitButton
+            <SheetSubmitButton
               disabled={voice.busy}
               isSubmitting={isSubmitting}
               label={notice.submitLabel}
@@ -137,6 +134,6 @@ function PurchaseOrderFeedbackModal({
       <form.AppField name="text">
         {() => <VoiceTextareaField label="Feedback" placeholder="Describe what you noticed…" rows={5} voice={voice} />}
       </form.AppField>
-    </FeedbackModalFrame>
+    </ModalSheet>
   );
 }

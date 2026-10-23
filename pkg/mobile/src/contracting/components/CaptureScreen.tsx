@@ -107,14 +107,7 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
   // Judged once typing stops, as web does: a half-typed value is not yet below the previous reading.
   const [valueFocused, setValueFocused] = useState(false);
   const [comment, setComment] = useState('');
-  const voice = useVoiceSession(
-    { business: 'contracting', purpose: 'capture comment' },
-    {
-      value: comment,
-      onChangeText: setComment,
-      maxLength: ReadingComment.maxLength ?? undefined,
-    },
-  );
+  const voice = useVoiceSession({ business: 'contracting', purpose: 'capture comment' });
   const [disputedReadingId, setDisputedReadingId] = useState<string | null>(null);
   const overrides = useStintOverrides(target.kind === 'stint' ? target.planned : null);
   const action = useBusyAction();
@@ -277,6 +270,9 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
           placeholder={photo === null ? 'No photo? Say why…' : 'Anything management should know about this reading'}
           editable={!busy}
           rows={COMMENT_ROWS}
+          value={comment}
+          onChangeText={setComment}
+          maxLength={ReadingComment.maxLength ?? undefined}
           voice={voice}
         />
       </FieldShell>

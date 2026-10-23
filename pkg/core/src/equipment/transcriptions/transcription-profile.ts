@@ -1,15 +1,12 @@
 import { type Db, user } from '@pkg/db';
 import { productRanges, products, purchaseOrders, supplier } from '@pkg/db/equipment';
+import { personKeyterms, sourcedKeyterms } from '@pkg/domain';
 import { departmentLabels } from '@pkg/domain/equipment';
 import type { KeytermCandidate } from '@pkg/schema';
 import { subDays } from 'date-fns';
-import { and, eq, gte, isNull, ne } from 'drizzle-orm';
-import {
-  personKeyterms,
-  sourcedKeyterms,
-  type TranscriptionProfile,
-} from '../../transcriptions/transcription-profile.js';
-import { eligibleMovementPersonCondition } from '../inventory/recipient-read.js';
+import { and, eq, gte, isNotNull, isNull, ne } from 'drizzle-orm';
+import type { TranscriptionProfile } from '../../transcriptions/transcription-profile.js';
+import { activePersonCondition } from '../../users/active-person.js';
 
 const RECENT_DAYS = 90;
 
@@ -29,7 +26,7 @@ async function loadEquipmentKeytermCandidates({
     db
       .select({ name: user.name })
       .from(user)
-      .where(and(eligibleMovementPersonCondition(), ne(user.role, 'app-store-tester')))
+      .where(and(isNotNull(user.role), ne(user.role, 'app-store-tester'), activePersonCondition()))
       .orderBy(user.name),
     db.select({ name: products.name }).from(products).where(isNull(products.deletedAt)).orderBy(products.name),
     db
@@ -47,13 +44,13 @@ async function loadEquipmentKeytermCandidates({
 
   return [
     ...personKeyterms(people.map((person) => person.name)),
-    ...sourcedKeyterms('department', Object.values(departmentLabels)),
+    ...sourcedKeyterms('Department', Object.values(departmentLabels)),
     ...sourcedKeyterms(
-      'product',
+      'Product',
       [...productNames, ...rangeNames].map((row) => row.name),
     ),
     ...sourcedKeyterms(
-      'supplier',
+      'Supplier',
       suppliers.map((row) => row.name),
     ),
   ];

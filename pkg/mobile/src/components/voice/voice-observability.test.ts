@@ -52,11 +52,15 @@ test('a Voice Note that got no answer is an exception that says why', () => {
   ]);
 });
 
-test('the breadcrumb is filed under the business the note was spoken in', () => {
+test('the breadcrumb is filed under the microphone and names the business the note was spoken in', () => {
   recordVoiceNoteFailed(
     { ...attempt, business: 'equipment' },
     new UploadRefusedError('transcription.nothing_heard', 'Nothing was heard.', 400),
   );
 
-  expect(observability.addBreadcrumb).toHaveBeenCalledWith('equipment', 'voice note transcribed', expect.anything());
+  expect(observability.addBreadcrumb).toHaveBeenCalledWith(
+    'microphone',
+    'voice note transcribed',
+    expect.objectContaining({ business: 'equipment' }),
+  );
 });

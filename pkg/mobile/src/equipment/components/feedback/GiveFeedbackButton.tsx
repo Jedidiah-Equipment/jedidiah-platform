@@ -9,6 +9,7 @@ import { View } from 'react-native';
 
 import { useAppForm } from '@/components/form';
 import { VoiceTextareaField } from '@/components/form/fields/VoiceTextareaField';
+import { ModalSheet, SheetSubmitButton } from '@/components/ModalSheet';
 import { AccentButton } from '@/components/ui/accent-button';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
@@ -16,7 +17,7 @@ import { useAppToast } from '@/components/ui/toast';
 import { useVoiceSession } from '@/components/voice/use-voice-session';
 import { useTRPC } from '@/lib/trpc';
 import { useColorMode } from '@/theme/use-color-mode';
-import { FeedbackModalFrame, FeedbackSubmitButton, feedbackErrorMessage } from './FeedbackModalFrame';
+import { feedbackErrorMessage } from './feedback-error';
 import { FEEDBACK_DEFAULT_VALUES, FeedbackFormValues, toSubmitInput } from './types';
 
 const KIND_OPTIONS: ReadonlyArray<{ label: string; value: FeedbackKind }> = [
@@ -77,11 +78,7 @@ function FeedbackModal({ jobCode, jobId, onClose }: { jobCode: string; jobId: st
     },
   });
 
-  const text = useStore(form.store, (state) => state.values.text);
-  const voice = useVoiceSession(
-    { business: 'equipment', purpose: 'job feedback' },
-    { value: text, onChangeText: (next) => form.setFieldValue('text', next) },
-  );
+  const voice = useVoiceSession({ business: 'equipment', purpose: 'job feedback' });
 
   // Only fetch the corrective-user target list once that kind is chosen.
   const kind = useStore(form.store, (state) => state.values.kind);
@@ -91,8 +88,9 @@ function FeedbackModal({ jobCode, jobId, onClose }: { jobCode: string; jobId: st
   const userOptions = (targetUsersQuery.data?.users ?? []).map((user) => ({ label: user.name, value: user.id }));
 
   return (
-    <FeedbackModalFrame
-      about={
+    <ModalSheet
+      title="Send feedback"
+      subtitle={
         <>
           About{' '}
           <Text className="text-muted-foreground" mono>
@@ -110,7 +108,7 @@ function FeedbackModal({ jobCode, jobId, onClose }: { jobCode: string; jobId: st
           })}
         >
           {({ isSubmitting, label }) => (
-            <FeedbackSubmitButton
+            <SheetSubmitButton
               disabled={voice.busy}
               isSubmitting={isSubmitting}
               label={label}
@@ -152,7 +150,7 @@ function FeedbackModal({ jobCode, jobId, onClose }: { jobCode: string; jobId: st
       <form.AppField name="text">
         {() => <VoiceTextareaField label="Feedback" placeholder="Describe what you noticed…" rows={5} voice={voice} />}
       </form.AppField>
-    </FeedbackModalFrame>
+    </ModalSheet>
   );
 }
 

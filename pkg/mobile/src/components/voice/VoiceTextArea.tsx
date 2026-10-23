@@ -1,6 +1,6 @@
 import { transcriptionPermissions } from '@pkg/domain';
 import { IconMicrophone } from '@tabler/icons-react-native';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import { Pressable, View } from 'react-native';
 import { textareaStyle } from '@/components/form/fields/TextareaField';
 import { useScrollLock } from '@/components/scroll-lock';
@@ -17,6 +17,9 @@ const FRAMED_INPUT = { borderWidth: 0, backgroundColor: 'transparent' } as const
 const HOLD_RETENTION = 1000;
 
 type Props = Omit<AppTextInputProps, 'value' | 'onChangeText' | 'maxLength' | 'multiline'> & {
+  value: string;
+  onChangeText: (text: string) => void;
+  maxLength?: number | undefined;
   voice: VoiceSession;
   rows?: number;
   /** The owning form has an error for this field. */
@@ -24,11 +27,26 @@ type Props = Omit<AppTextInputProps, 'value' | 'onChangeText' | 'maxLength' | 'm
 };
 
 /**
- * A multi-line text area over a voice session, which owns its text. Online, for a role that may use voice notes in
- * the session's business, it carries a press-and-hold mic whose transcript is appended to the text; offline it is a plain text
- * area. The web build shows the mic, but a press only says it cannot record there.
+ * A multi-line text area that owns nothing: its owner holds the text, and the voice session follows it. Online, for a
+ * role that may use voice notes in the session's business, it carries a press-and-hold mic whose transcript is
+ * appended to the text; offline it is a plain text area. The web build shows the mic, but a press only says it cannot
+ * record there.
  */
-export function VoiceTextArea({ voice, rows = 4, editable = true, invalid = false, style, ...inputProps }: Props) {
+export function VoiceTextArea({
+  value,
+  onChangeText,
+  maxLength,
+  voice,
+  rows = 4,
+  editable = true,
+  invalid = false,
+  className,
+  style,
+  ...inputProps
+}: Props) {
+  const { attach } = voice;
+  const owner = useRef({}).current;
+  useLayoutEffect(() => attach({ value, onChangeText, maxLength }, owner));
   const canUse = useSessionPermission(transcriptionPermissions[voice.business].use);
   const offline = useIsOffline();
   const showMic = canUse && !offline && editable;
@@ -65,9 +83,11 @@ export function VoiceTextArea({ voice, rows = 4, editable = true, invalid = fals
   const input = (
     <TextInput
       {...inputProps}
-      value={voice.value}
+      // Framed, the mic's frame shows the error; bare, the input's own border does.
+      className={`${invalid && !showMic ? 'border-danger' : ''} ${className ?? ''}`.trim() || undefined}
+      value={value}
       onChangeText={voice.onChangeText}
-      maxLength={voice.maxLength}
+      maxLength={maxLength}
       editable={editable && !voice.transcribing}
       multiline
       numberOfLines={rows}

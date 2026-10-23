@@ -2,15 +2,9 @@ import { type Db, transcriptionHints, user } from '@pkg/db';
 import { type Business, type HintDerivation, TranscriptionListInput } from '@pkg/schema';
 import { expect } from 'vitest';
 import { createTester } from '../test/create-tester.js';
+import { M4A_HEADER, stubEngine, testProfile } from './test-fixtures.js';
 import { listTranscriptionHints, listTranscriptionReviews, listTranscriptionUsers } from './transcription-review.js';
-import {
-  deriveHintFor,
-  recordTranscriptionSaved,
-  type TranscriptionEngine,
-  transcribeVoiceNote,
-} from './transcription-service.js';
-
-const M4A = new Uint8Array([0, 0, 0, 32, 0x66, 0x74, 0x79, 0x70, 0x4d, 0x34, 0x41, 0x20]);
+import { deriveHintFor, recordTranscriptionSaved, transcribeVoiceNote } from './transcription-service.js';
 
 const listInput = (input: Partial<TranscriptionListInput>) =>
   TranscriptionListInput.parse({ business: 'contracting', ...input });
@@ -44,26 +38,20 @@ async function note(
   actorUserId = foremanId,
   business: Business = 'contracting',
 ) {
-  const engine: TranscriptionEngine = {
-    transcribe: async () => heard,
-    tidy: async ({ rawText }) => ({ text: `${rawText}.`, language: heard.language }),
-    derive: async () => derivation,
-  };
+  const engine = stubEngine(heard, { derive: async () => derivation });
   const transcription = await transcribeVoiceNote({
     db,
     actorUserId,
-    audio: M4A,
-    business,
+    audio: M4A_HEADER,
     purpose: 'capture comment',
-    setting: 'a test note',
+    profile: testProfile(business),
     engine,
-    keyterms: async () => [],
   });
   if (save !== undefined)
     await recordTranscriptionSaved({
       db,
       actorUserId,
-      input: { business, id: transcription.id, text: save, purpose: 'capture comment' },
+      input: { id: transcription.id, text: save, purpose: 'capture comment' },
     });
   return { id: transcription.id, derive: () => deriveHintFor({ db, id: transcription.id, engine }) };
 }

@@ -28,13 +28,7 @@ export default function NewJobScreen() {
   const canUpdateDirectory = useCan('contracting_directory:update').can;
   const [draft, setDraft] = useState<JobCreateValues>(EMPTY_DRAFT);
   const set = (patch: Partial<JobCreateValues>) => setDraft((current) => ({ ...current, ...patch }));
-  const voice = useVoiceSession(
-    { business: 'contracting', purpose: 'job description' },
-    {
-      value: draft.description,
-      onChangeText: (description) => set({ description }),
-    },
-  );
+  const voice = useVoiceSession({ business: 'contracting', purpose: 'job description' });
   const { busy: saving, error, run } = useBusyAction();
   // A directory create in flight holds the whole form, so neither the Job nor a changed Customer races it.
   const [creatingDirectory, setCreatingDirectory] = useState(false);
@@ -187,6 +181,8 @@ export default function NewJobScreen() {
           placeholder="What the work is"
           editable={!busy}
           rows={4}
+          value={draft.description}
+          onChangeText={(description) => set({ description })}
           voice={voice}
         />
       </FieldShell>

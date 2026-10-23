@@ -15,6 +15,7 @@ import { eq, user } from '@pkg/db';
 import { contractingHourReadings, contractingJobs, contractingMachineAssignments } from '@pkg/db/contracting';
 import { accessForRole } from '@pkg/domain/testing';
 import type { ContractingRole } from '@pkg/schema';
+import { MachineCreateInput } from '@pkg/schema/contracting';
 import { expect } from 'vitest';
 import { createTester } from '@/test/create-tester.js';
 import { mockSession } from '@/test/test-utils.js';
@@ -98,19 +99,12 @@ const test = createTester(async ({ db }) => {
   const machine = await createMachine({
     db,
     actorUserId: managerId,
-    input: {
+    input: MachineCreateInput.parse({
       code: 'CAT320-1',
       make: 'CAT',
       model: '320',
       categoryId: category.id,
-      year: null,
-      registration: null,
-      currentDriverUserId: null,
-      notes: null,
-      serviceIntervalHours: null,
-      nextServiceDueHours: null,
-      serviceAlertHours: null,
-    },
+    }),
   });
   const implementCategory = await createCategory({
     db,
@@ -125,19 +119,12 @@ const test = createTester(async ({ db }) => {
   const otherMachine = await createMachine({
     db,
     actorUserId: managerId,
-    input: {
+    input: MachineCreateInput.parse({
       code: 'CAT320-2',
       make: 'CAT',
       model: '320',
       categoryId: category.id,
-      year: null,
-      registration: null,
-      currentDriverUserId: null,
-      notes: null,
-      serviceIntervalHours: null,
-      nextServiceDueHours: null,
-      serviceAlertHours: null,
-    },
+    }),
   });
   const base = { customerId: customer.id, farmId: farm.id, workTypeId: workType.id, description: null };
   const ownJob = await createJob({

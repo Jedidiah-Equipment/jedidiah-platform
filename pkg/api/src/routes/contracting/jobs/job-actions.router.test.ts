@@ -32,6 +32,7 @@ import {
   type JobActionName,
   type JobActionVerdict,
   type JobStatus,
+  MachineCreateInput,
 } from '@pkg/schema/contracting';
 import { TRPCError } from '@trpc/server';
 import { describe, expect } from 'vitest';
@@ -72,19 +73,12 @@ const test = createTester(async ({ db }) => {
     createMachine({
       db,
       actorUserId: setupId,
-      input: {
+      input: MachineCreateInput.parse({
         code: `EX-${++sequence}`,
         make: 'CAT',
         model: '320',
         categoryId: category.id,
-        year: null,
-        registration: null,
-        currentDriverUserId: null,
-        notes: null,
-        serviceIntervalHours: null,
-        nextServiceDueHours: null,
-        serviceAlertHours: null,
-      },
+      }),
     });
 
   /**

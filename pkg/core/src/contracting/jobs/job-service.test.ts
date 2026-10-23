@@ -3,7 +3,7 @@ import { auditEvents, user } from '@pkg/db';
 import { contractingMachineAssignments, contractingMeasures } from '@pkg/db/contracting';
 import { accessForRole } from '@pkg/domain/testing';
 import { DateOnlyIso } from '@pkg/schema';
-import { JobListInput, type JobQueue } from '@pkg/schema/contracting';
+import { JobListInput, type JobQueue, MachineCreateInput } from '@pkg/schema/contracting';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
@@ -102,19 +102,13 @@ const test = createTester(async ({ db }) => {
   const machine = await createMachine({
     db,
     actorUserId: managerId,
-    input: {
+    input: MachineCreateInput.parse({
       code: 'CAT320-1',
       make: 'CAT',
       model: '320',
       categoryId: category.id,
-      year: null,
-      registration: null,
       currentDriverUserId: driverId,
-      notes: null,
-      serviceIntervalHours: null,
-      nextServiceDueHours: null,
-      serviceAlertHours: null,
-    },
+    }),
   });
   const implementCategory = await createCategory({
     db,

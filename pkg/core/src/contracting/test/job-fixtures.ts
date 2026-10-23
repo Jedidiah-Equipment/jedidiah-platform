@@ -4,6 +4,7 @@ import type { JobActor } from '@pkg/domain/contracting';
 import { accessForRole } from '@pkg/domain/testing';
 import { DateOnlyIso } from '@pkg/schema';
 import type { AssignmentPlanInput, ChargeLineCreateInput } from '@pkg/schema/contracting';
+import { MachineCreateInput } from '@pkg/schema/contracting';
 import { createCustomer } from '../customers/customer-service.js';
 import { createFarm } from '../customers/farm-service.js';
 import { createCategory } from '../fleet/category-service.js';
@@ -56,19 +57,12 @@ export async function seedJobFixtures(db: Db) {
     createMachine({
       db,
       actorUserId: adminId,
-      input: {
+      input: MachineCreateInput.parse({
         code,
         make: 'CAT',
         model: '320',
         categoryId: category.id,
-        year: null,
-        registration: null,
-        currentDriverUserId: null,
-        notes: null,
-        serviceIntervalHours: null,
-        nextServiceDueHours: null,
-        serviceAlertHours: null,
-      },
+      }),
     });
   const excavator = await machine('CAT320-1');
   const tipper = await machine('TIP-7');

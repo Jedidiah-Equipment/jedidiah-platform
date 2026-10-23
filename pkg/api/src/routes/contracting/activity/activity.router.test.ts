@@ -11,6 +11,7 @@ import { eq, user } from '@pkg/db';
 import type { ContractingPushEvent } from '@pkg/domain/contracting';
 import { accessForRole } from '@pkg/domain/testing';
 import { type ContractingRole, DateIso } from '@pkg/schema';
+import { MachineCreateInput } from '@pkg/schema/contracting';
 import { expect } from 'vitest';
 import { createTester } from '@/test/create-tester.js';
 import { mockSession } from '@/test/test-utils.js';
@@ -121,19 +122,12 @@ test('note mutations schedule their committed notes and rejected notes schedule 
   const machine = await createMachine({
     db: context.db,
     actorUserId: 'jed',
-    input: {
+    input: MachineCreateInput.parse({
       code: 'JD6140M-2',
       make: 'John Deere',
       model: '6140M',
       categoryId: category.id,
-      year: null,
-      registration: null,
-      currentDriverUserId: null,
-      notes: null,
-      serviceIntervalHours: null,
-      nextServiceDueHours: null,
-      serviceAlertHours: null,
-    },
+    }),
   });
   const { breakdown } = await reportBreakdown({
     db: context.db,

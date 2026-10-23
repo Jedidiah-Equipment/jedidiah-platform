@@ -13,7 +13,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import { user } from '../auth.js';
-import { quotedList } from './columns.js';
+import { quotedList } from '../columns.js';
 import { contractingMachines } from './fleet.js';
 import { contractingSchema } from './pg-schema.js';
 

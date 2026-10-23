@@ -1,6 +1,8 @@
 import fastifyCors from '@fastify/cors';
 import fastifyMultipart from '@fastify/multipart';
 import type { StorageAdapter } from '@pkg/core';
+import { contractingTranscriptionProfile } from '@pkg/core/contracting';
+import { equipmentTranscriptionProfile } from '@pkg/core/equipment';
 import { db as appDb, type Db } from '@pkg/db';
 import { UPLOAD_STREAM_CEILING_BYTES } from '@pkg/domain';
 import { type FastifyTRPCPluginOptions, fastifyTRPCPlugin } from '@trpc/server/adapters/fastify';
@@ -16,6 +18,7 @@ import { createObservability, type Observability } from './observability.js';
 import { createExpoPushSender } from './push/expo-push-sender.js';
 import { createFileChangelogLoader } from './routes/changelog/changelog-loader.js';
 import { createDocumentStorageAdapter } from './storage/s3-storage-adapter.js';
+import { registerTranscriptions } from './transcriptions/wiring.js';
 import { createContextFactory } from './trpc/context.js';
 import { serializeError, shouldLogTRPCError } from './trpc/errors.js';
 import { type AppRouter, createAppRouter } from './trpc/router.js';
@@ -68,12 +71,18 @@ export async function buildServer(
   const push = createExpoPushSender({ accessToken: config.EXPO_ACCESS_TOKEN });
   const equipment = await registerEquipment(app, { config, db, storage, push });
   const contracting = await registerContracting(app, { config, db, storage, push });
+  const transcriptions = await registerTranscriptions(app, {
+    config,
+    db,
+    profiles: { equipment: equipmentTranscriptionProfile, contracting: contractingTranscriptionProfile },
+  });
   await registerHealthRoutes(app, config);
 
   const trpcOptions = {
     router: createAppRouter({
       contracting: contracting.routerDependencies,
       equipment: equipment.routerDependencies,
+      transcriptions: transcriptions.routerDependencies,
     }),
     createContext: createContextFactory({
       appEnv: config.APP_ENV,
@@ -96,7 +105,7 @@ export async function buildServer(
     trpcOptions,
   });
 
-  const services = [...equipment.services, ...contracting.services];
+  const services = [...equipment.services, ...contracting.services, ...transcriptions.services];
 
   app.addHook('onClose', async () => {
     for (const service of services) await service.dispose();

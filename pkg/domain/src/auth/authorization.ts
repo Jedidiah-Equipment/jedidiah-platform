@@ -104,6 +104,8 @@ export const permissionLabels = {
   'equipment_supplier:update': 'Manage suppliers',
   'equipment_supplier:remove': 'Remove suppliers',
   'equipment_supplier:merge': 'Merge suppliers',
+  'equipment_transcription:read': 'View voice note transcriptions and hints',
+  'equipment_transcription:use': 'Use voice notes',
   'contracting_audit:read': 'View Contracting audit history',
   'contracting_directory:read': 'View Contracting directory',
   'contracting_directory:update': 'Manage Contracting directory',
@@ -207,6 +209,9 @@ export const permissionDescriptions = {
   'equipment_supplier:update': 'Create and edit supplier records.',
   'equipment_supplier:remove': 'Soft-delete supplier records.',
   'equipment_supplier:merge': 'Merge a duplicate supplier into another, moving its parts and purchase orders.',
+  'equipment_transcription:read':
+    "Read every user's voice note text, the transcription hints learned from it, and the prompts sent to the models, for Equipment.",
+  'equipment_transcription:use': 'Turn a recorded voice note into text in an Equipment feedback box.',
   'contracting_audit:read': 'View audit events across Contracting records.',
   'contracting_directory:read': 'View Contracting customers, farms and work types.',
   'contracting_directory:update':
@@ -273,6 +278,7 @@ export const authorizationStatement = {
   equipment_purchase_order: ['read', 'create', 'approve', 'send', 'amend', 'receive', 'close'],
   equipment_quote: ['read', 'create', 'update', 'cancel'],
   equipment_supplier: ['read', 'update', 'remove', 'merge'],
+  equipment_transcription: ['read', 'use'],
   contracting_audit: ['read'],
   contracting_directory: ['read', 'update'],
   contracting_job: [
@@ -453,6 +459,12 @@ export const auditReadPermissions = {
   contracting: 'contracting_audit:read',
   equipment: 'equipment_audit:read',
 } as const satisfies Record<Business, AppPermission>;
+
+/** One Transcription mechanism serves both businesses; each opens it under its own pair of permissions. */
+export const transcriptionPermissions = {
+  contracting: { use: 'contracting_transcription:use', read: 'contracting_transcription:read' },
+  equipment: { use: 'equipment_transcription:use', read: 'equipment_transcription:read' },
+} as const satisfies Record<Business, { use: AppPermission; read: AppPermission }>;
 
 export function hasPermission(
   access: Pick<UserAccessSummary, 'permissions'> | null | undefined,

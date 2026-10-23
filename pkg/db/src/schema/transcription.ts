@@ -1,0 +1,68 @@
+import { BUSINESSES, type Business, transcriptionHintOutcomes } from '@pkg/schema';
+import { sql } from 'drizzle-orm';
+import { type AnyPgColumn, check, index, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { user } from './auth.js';
+import { quotedList } from './columns.js';
+
+// Business-blind mechanism in `public` (ADR 0016, ADR 0024): one Voice Note pipeline, every row keyed by the
+// business it was spoken in, so each business keeps its own Transcriptions and its own hint pool.
+export const transcriptions = pgTable(
+  'transcription',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    business: text('business').$type<Business>().notNull(),
+    createdByUserId: text('created_by_user_id')
+      .notNull()
+      .references(() => user.id),
+    /** The control's label for what the text is for ("breakdown description"); prompt context, never shown. */
+    purpose: text('purpose').notNull(),
+    /** The spoken language tag ("en", "af"), from the speech model or else the tidy pass; null when neither gave one. */
+    language: text('language'),
+    rawText: text('raw_text').notNull(),
+    shownText: text('shown_text').notNull(),
+    savedText: text('saved_text'),
+    savedAt: timestamp('saved_at', { withTimezone: true }),
+    hintDerivedAt: timestamp('hint_derived_at', { withTimezone: true }),
+    /** What the derivation decided: `added` a hint or `none`; null before it ran, and for rows derived before it was kept. */
+    hintOutcome: text('hint_outcome', { enum: transcriptionHintOutcomes }),
+    hintNoneReason: text('hint_none_reason'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('transcription_created_by_idx').on(table.createdByUserId, table.createdAt),
+    index('transcription_business_created_idx').on(table.business, table.createdAt),
+    check('transcription_business', sql`${table.business} IN (${quotedList(BUSINESSES)})`),
+    check('transcription_saved_shape', sql`(${table.savedText} IS NULL) = (${table.savedAt} IS NULL)`),
+    check('transcription_purpose_not_blank', sql`length(btrim(${table.purpose})) > 0`),
+    check(
+      'transcription_hint_outcome_shape',
+      sql`(${table.hintOutcome} IS NULL OR (${table.hintOutcome} IN (${quotedList(transcriptionHintOutcomes)}) AND ${table.hintDerivedAt} IS NOT NULL)) AND (${table.hintNoneReason} IS NULL OR ${table.hintOutcome} = 'none')`,
+    ),
+  ],
+);
+
+export const transcriptionHints = pgTable(
+  'transcription_hint',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    business: text('business').$type<Business>().notNull(),
+    rule: text('rule').notNull(),
+    /** A proper noun the rule is about, fed to the speech service as a keyterm; null for rules about meaning. */
+    keyterm: text('keyterm'),
+    sourceTranscriptionId: uuid('source_transcription_id').references(() => transcriptions.id, {
+      onDelete: 'set null',
+    }),
+    retiredAt: timestamp('retired_at', { withTimezone: true }),
+    supersededByHintId: uuid('superseded_by_hint_id').references((): AnyPgColumn => transcriptionHints.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('transcription_hint_business_active_idx').on(table.business, table.retiredAt, table.createdAt),
+    check('transcription_hint_business', sql`${table.business} IN (${quotedList(BUSINESSES)})`),
+    check('transcription_hint_rule_not_blank', sql`length(btrim(${table.rule})) > 0`),
+    check(
+      'transcription_hint_keyterm_length',
+      sql`${table.keyterm} IS NULL OR length(${table.keyterm}) BETWEEN 1 AND 50`,
+    ),
+  ],
+);

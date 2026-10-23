@@ -7,4 +7,3 @@ export * from '../schema/contracting/jobs.js';
 export * from '../schema/contracting/rate-card.js';
 export * from '../schema/contracting/service-record.js';
 export * from '../schema/contracting/settings.js';
-export * from '../schema/contracting/transcription.js';

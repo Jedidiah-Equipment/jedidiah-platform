@@ -12,6 +12,8 @@
   (`equipment/wiring.ts`, `contracting/wiring.ts`), returning the dependencies its routers close over and a list of
   `RuntimeService`s (`start?`, `dispose`). `server.ts` owns only the Fastify plumbing and starts and disposes that
   list; a new background worker implements `RuntimeService` rather than growing its own lifecycle.
+- A business-blind mechanism with runtime services (Transcriptions) gets its own wiring file,
+  `src/<mechanism>/wiring.ts`, and receives each business's part from `server.ts` rather than importing it.
 - A router that needs a runtime service (the catalog translation scheduler) is a factory, composed in
   `trpc/router.ts` by `createAppRouter({ equipment, contracting })`.
 - Role slots travel as `data.equipmentRole` / `data.contractingRole` on Better Auth create-user and update-user,

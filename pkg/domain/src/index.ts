@@ -25,3 +25,4 @@ export * from './help/help-topics.js';
 export * from './push/push-content.js';
 export * from './push/push-kinds.js';
 export * from './theme/index.js';
+export * from './transcriptions/voice-notes.js';

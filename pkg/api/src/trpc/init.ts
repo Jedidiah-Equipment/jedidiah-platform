@@ -1,6 +1,7 @@
 import { hasBusinessAccess, hasPermission } from '@pkg/domain';
 import type { AppPermission, Business } from '@pkg/schema';
 import { initTRPC } from '@trpc/server';
+import type { z } from 'zod';
 
 import type { Context } from './context.js';
 import { createAuthTRPCError, getTRPCAppCode, getTRPCPublicMessage, getTRPCPublicMetadata } from './errors.js';
@@ -77,6 +78,21 @@ export function requirePermission(access: Context['access'], permission: AppPerm
 export function businessProcedure(business: Business) {
   return protectedProcedure.use(({ ctx, next }) => {
     requireBusinessAccess(ctx.access, business);
+
+    return next({ ctx: { access: ctx.access } });
+  });
+}
+
+/**
+ * For one mechanism serving both businesses (the Audit Log, Transcriptions): the input names the business, and that
+ * business's own permission opens the procedure.
+ */
+export function businessPermissionProcedure<TInput extends z.ZodType<{ business: Business }>>(
+  input: TInput,
+  permissionFor: (business: Business) => AppPermission,
+) {
+  return protectedProcedure.input(input).use(({ ctx, input: { business }, next }) => {
+    requirePermission(ctx.access, permissionFor(business));
 
     return next({ ctx: { access: ctx.access } });
   });

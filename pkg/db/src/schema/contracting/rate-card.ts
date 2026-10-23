@@ -1,7 +1,8 @@
 import { rateBases } from '@pkg/schema/contracting';
 import { sql } from 'drizzle-orm';
 import { boolean, check, index, integer, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
-import { money, quotedList, timestamps } from './columns.js';
+import { quotedList } from '../columns.js';
+import { money, timestamps } from './columns.js';
 import { contractingSchema } from './pg-schema.js';
 
 export const contractingMeasureTypes = contractingSchema.table(

@@ -25,4 +25,5 @@ export * from './domain/logger.js';
 export * from './push/push-data.js';
 export * from './push/push-kinds.js';
 export * from './push/push-token.js';
+export * from './transcriptions/transcription.js';
 export * from './users/user.js';

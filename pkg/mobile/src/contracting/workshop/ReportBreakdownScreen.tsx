@@ -25,6 +25,8 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import type { StatusBadgeClassNames } from '@/components/ui/status-badge';
 import { Text } from '@/components/ui/text';
+import { useVoiceSession } from '@/components/voice/use-voice-session';
+import { VoiceTextArea } from '@/components/voice/VoiceTextArea';
 import { BreakdownStatusBadge, BreakdownUrgencyIcon } from '@/contracting/components/BreakdownSubjectIcons';
 import { CategoryIcon } from '@/contracting/components/CategoryIcon';
 import { implementOption } from '@/contracting/components/implement-option';
@@ -33,8 +35,6 @@ import { useImplements } from '@/contracting/jobs/use-jobs';
 import { newLocalId } from '@/contracting/lib/local-id';
 import { recordBreakdownReported } from '@/contracting/observability';
 import { useFleet } from '@/contracting/readings/use-fleet';
-import { useVoiceSession } from '@/contracting/voice/use-voice-session';
-import { VoiceTextArea } from '@/contracting/voice/VoiceTextArea';
 import { useSessionPermission } from '@/lib/auth-session';
 import { choosePhotos, type PickedPhoto, takePhoto } from '@/lib/photo-picker';
 import { useBusyAction } from '@/lib/use-busy-action';
@@ -91,11 +91,14 @@ export default function ReportBreakdownScreen() {
   const [pickerKind, setPickerKind] = useState<BreakdownSubjectKind>('machine');
   const [urgency, setUrgency] = useState<BreakdownUrgency | null>(null);
   const [description, setDescription] = useState('');
-  const voice = useVoiceSession('breakdown description', {
-    value: description,
-    onChangeText: setDescription,
-    maxLength: BreakdownDescription.maxLength ?? undefined,
-  });
+  const voice = useVoiceSession(
+    { business: 'contracting', purpose: 'breakdown description' },
+    {
+      value: description,
+      onChangeText: setDescription,
+      maxLength: BreakdownDescription.maxLength ?? undefined,
+    },
+  );
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [galleryHint, setGalleryHint] = useState(false);
   const [position, setPosition] = useState<{ latitude: number; longitude: number } | null>(null);

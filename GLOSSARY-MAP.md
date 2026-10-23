@@ -37,6 +37,31 @@ Customer) for different concepts; never treat a same-named term as shared.
   and who the phone asks for notification permission; a User may **mute** any kind that can reach them
   in App Settings, which stops that kind's pushes to them and nothing else — badges, feeds and the
   Dashboard are untouched.
+- **Voice Note** is a recording a user makes into a multi-line text field of the mobile app to fill it
+  by speech instead of typing; the field receives editable text in the language spoken, and the
+  recording itself is never kept. Available only while online; the web app is typed-only. Each
+  business decides which of its fields take one. _Avoid_: dictation, audio note, voice memo.
+- **Transcription** is one Voice Note turned into text, kept in the business it was spoken in: the raw
+  text the speech service heard, the tidied text the user was shown, the detected language, and — once
+  the user saves the field — the text they kept where its tidied text was inserted, not the whole
+  field: typed text and other Voice Notes in the same field are not part of it, deleting the inserted
+  text keeps nothing, and an insert the field's limit cut short reports nothing. The tidied text is a
+  minimal edit of the raw text and is never a translation. _Avoid_: transcript (bare), correction diff.
+- **Transcription Hint** is one short rule about one thing, distilled from one correction in a
+  Transcription whose saved text differs from the shown text — how a name is spelled, what a local word
+  means — kept so the same business's future Transcriptions apply it. Each business has its own pool of
+  at most 100 hints in force, and nothing one business learns reaches the other. A Transcription teaches
+  at most three hints, one per distinct reusable correction, each with at most one keyterm and retired
+  on its own. Derived only when the user corrected rather than rewrote, and only from English
+  Transcriptions for now; applied to Transcriptions in every language. _Avoid_: rule, correction,
+  vocabulary entry.
+- **Keyterm** is one proper noun the speech service is told to expect, sent with every Voice Note as a
+  list: the business's taught hint keyterms first, then the vocabulary its **Transcription Profile**
+  names, cut only past a fixed count. _Avoid_: keyword, vocabulary.
+- **Transcription Profile** is what one business brings to the shared Voice Note pipeline: the sentence
+  saying where its notes are spoken, which opens the tidy prompt, and the sources of its Keyterms.
+  Who may record and who may review is each business's own `<business>_transcription:use` and
+  `:read`. See ADR 0024.
 - **App Settings** is the phone's own settings page, reached from the profile menu in either business:
   the OS permissions the app uses (notifications, camera, microphone, location, photos) with a way to
   ask or to open the phone's settings, and the mute toggles for the Push Kinds that can reach the

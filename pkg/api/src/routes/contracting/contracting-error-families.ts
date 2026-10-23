@@ -12,13 +12,11 @@ import {
   isReadingError,
   isReportError,
   isServiceError,
-  isTranscriptionError,
   type JobError,
   type RateCardError,
   type ReadingError,
   type ReportError,
   type ServiceError,
-  type TranscriptionError,
 } from '@pkg/core/contracting';
 
 import { defineCoreErrorFamily } from '../../trpc/errors.js';
@@ -71,18 +69,6 @@ export const readingErrorFamily = defineCoreErrorFamily<ReadingError>({
   },
   is: isReadingError,
   metadata: (error) => error.refused,
-});
-
-export const transcriptionErrorFamily = defineCoreErrorFamily<TranscriptionError>({
-  codes: {
-    'transcription.already_saved': 'CONFLICT',
-    'transcription.forbidden': 'FORBIDDEN',
-    'transcription.invalid_upload': 'BAD_REQUEST',
-    'transcription.not_found': 'NOT_FOUND',
-    'transcription.nothing_heard': 'BAD_REQUEST',
-    'transcription.unavailable': 'SERVICE_UNAVAILABLE',
-  },
-  is: isTranscriptionError,
 });
 
 export const jobErrorFamily = defineCoreErrorFamily<JobError>({

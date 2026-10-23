@@ -1,7 +1,7 @@
 import { Text } from '@/components/ui/text';
+import type { VoiceSession } from '@/components/voice/use-voice-session';
+import { VoiceTextArea } from '@/components/voice/VoiceTextArea';
 import { PhotoStrip } from '@/contracting/components/PhotoStrip';
-import type { VoiceSession } from '@/contracting/voice/use-voice-session';
-import { VoiceTextArea } from '@/contracting/voice/VoiceTextArea';
 import { fieldNoteFiles } from './files';
 
 /** The photos and the description, as both the new-note draft and a kept note edit them. */

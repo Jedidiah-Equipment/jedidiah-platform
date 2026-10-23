@@ -4,8 +4,10 @@ import {
   isChangelogError,
   isFileError,
   isPushError,
+  isTranscriptionError,
   isUserError,
   type PushError,
+  type TranscriptionError,
   type UserError,
 } from '@pkg/core';
 
@@ -38,4 +40,16 @@ export const fileErrorFamily = defineCoreErrorFamily<FileError>({
 export const pushErrorFamily = defineCoreErrorFamily<PushError>({
   codes: { 'push.device_account': 'FORBIDDEN' },
   is: isPushError,
+});
+
+export const transcriptionErrorFamily = defineCoreErrorFamily<TranscriptionError>({
+  codes: {
+    'transcription.already_saved': 'CONFLICT',
+    'transcription.forbidden': 'FORBIDDEN',
+    'transcription.invalid_upload': 'BAD_REQUEST',
+    'transcription.not_found': 'NOT_FOUND',
+    'transcription.nothing_heard': 'BAD_REQUEST',
+    'transcription.unavailable': 'SERVICE_UNAVAILABLE',
+  },
+  is: isTranscriptionError,
 });

@@ -6,11 +6,11 @@ import { SecondaryToolbar } from '@/components/TopToolbar';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { useAppToast } from '@/components/ui/toast';
+import { useVoiceSession } from '@/components/voice/use-voice-session';
 import { GALLERY_HINT } from '@/contracting/components/PhotoStrip';
 import { CONTRACTING_TAB_HREF } from '@/contracting/lib/app-tabs';
 import { newLocalId } from '@/contracting/lib/local-id';
 import { recordFieldNoteCreated } from '@/contracting/observability';
-import { useVoiceSession } from '@/contracting/voice/use-voice-session';
 import { confirm } from '@/lib/confirm';
 import { choosePhotos, type PickedPhoto, takePhoto } from '@/lib/photo-picker';
 import { FieldNoteFields } from './FieldNoteFields';
@@ -28,11 +28,14 @@ export default function NewFieldNoteScreen() {
   const navigation = useNavigation();
   const showToast = useAppToast();
   const [description, setDescription] = useState('');
-  const voice = useVoiceSession('field note', {
-    value: description,
-    onChangeText: setDescription,
-    maxLength: FIELD_NOTE_DESCRIPTION_MAX,
-  });
+  const voice = useVoiceSession(
+    { business: 'contracting', purpose: 'field note' },
+    {
+      value: description,
+      onChangeText: setDescription,
+      maxLength: FIELD_NOTE_DESCRIPTION_MAX,
+    },
+  );
   const [photos, setPhotos] = useState<(PickedPhoto & { id: string })[]>([]);
   const [saved, setSaved] = useState(false);
   const { busy, error, act } = useFieldNoteAction();

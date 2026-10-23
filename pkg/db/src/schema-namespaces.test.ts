@@ -4,8 +4,18 @@ import { describe, expect, it } from 'vitest';
 
 import { applicationSchemas, schema } from './schema.js';
 
-// Business-blind mechanism stays in `public` (ADR 0016); every other table belongs to a business schema.
-const publicTables = ['account', 'audit_events', 'changelog_view', 'push_token', 'session', 'user', 'verification'];
+// Business-blind mechanism stays in `public` (ADR 0016, ADR 0024); every other table belongs to a business schema.
+const publicTables = [
+  'account',
+  'audit_events',
+  'changelog_view',
+  'push_token',
+  'session',
+  'transcription',
+  'transcription_hint',
+  'user',
+  'verification',
+];
 const businessSchemas = ['equipment', 'contracting'];
 
 const declaredTables = (Object.values(schema) as unknown[])

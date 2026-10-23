@@ -7,9 +7,9 @@ import { FormPage } from '@/components/FormPage';
 import { SecondaryToolbar } from '@/components/TopToolbar';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/status-badge';
+import { useVoiceSession } from '@/components/voice/use-voice-session';
 import { CONTRACTING_TAB_HREF } from '@/contracting/lib/app-tabs';
 import { recordFieldNoteChanged } from '@/contracting/observability';
-import { useVoiceSession } from '@/contracting/voice/use-voice-session';
 import { confirm } from '@/lib/confirm';
 import { choosePhotos, type PickedPhoto, takePhoto } from '@/lib/photo-picker';
 import { FieldNoteFields } from './FieldNoteFields';
@@ -37,11 +37,14 @@ function FieldNoteDetail({ note, onLeave }: { note: FieldNote; onLeave: () => vo
   const [description, setDescription] = useState(note.description);
   const [galleryHint, setGalleryHint] = useState(false);
   const { busy, error, act, report } = useFieldNoteAction();
-  const voice = useVoiceSession('field note', {
-    value: description,
-    onChangeText: setDescription,
-    maxLength: FIELD_NOTE_DESCRIPTION_MAX,
-  });
+  const voice = useVoiceSession(
+    { business: 'contracting', purpose: 'field note' },
+    {
+      value: description,
+      onChangeText: setDescription,
+      maxLength: FIELD_NOTE_DESCRIPTION_MAX,
+    },
+  );
   const { snapshotSaved } = voice;
   const open = note.status === 'open';
 

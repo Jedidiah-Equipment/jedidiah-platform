@@ -26,19 +26,23 @@ export type CallerOverrides = {
   changelogLoader?: ChangelogLoader;
   contracting?: Partial<AppRouterDependencies['contracting']>;
   equipment?: Partial<AppRouterDependencies['equipment']>;
+  transcriptions?: Partial<AppRouterDependencies['transcriptions']>;
 };
 
 export const NOOP_ROUTER_DEPENDENCIES: AppRouterDependencies = {
   contracting: {
     push: { schedule: () => undefined },
-    hintDerivations: { schedule: () => undefined },
     readMeterPhoto: async () => {
       throw new Error('Meter reader not stubbed for this test');
     },
-    keyterms: async () => [],
-    transcriptionModels: { chat: 'test-chat-model', transcription: 'test-transcription-model' },
   },
   equipment: { catalogTranslationScheduler: { mark: () => undefined, markNow: () => undefined } },
+  transcriptions: {
+    hintDerivations: { schedule: () => undefined },
+    keyterms: { equipment: async () => [], contracting: async () => [] },
+    settings: { equipment: 'a test Equipment note', contracting: 'a test Contracting note' },
+    models: { chat: 'test-chat-model', transcription: 'test-transcription-model' },
+  },
 };
 
 export type TesterScope = {
@@ -92,6 +96,7 @@ export function createTester<T extends object = Record<string, never>>(
               return createAppRouterCaller({
                 contracting: { ...NOOP_ROUTER_DEPENDENCIES.contracting, ...overrides.contracting },
                 equipment: { ...NOOP_ROUTER_DEPENDENCIES.equipment, ...overrides.equipment },
+                transcriptions: { ...NOOP_ROUTER_DEPENDENCIES.transcriptions, ...overrides.transcriptions },
               })({
                 access: overrides.access ?? createUserAccessSummaryForUser(session.user),
                 appEnv: overrides.appEnv ?? 'production',

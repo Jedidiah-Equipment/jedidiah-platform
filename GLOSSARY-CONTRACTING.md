@@ -282,31 +282,17 @@ due point on and re-arms it.
 
 ## Voice
 
-**Voice Note** is a recording a user makes into any multi-line text field of the Contracting
-mobile app to fill it by speech instead of typing; the field receives editable text in the
-language spoken, and the recording itself is never kept. Available only while online; the web
-app is typed-only.
-_Avoid_: dictation, audio note, voice memo
+**Voice Note**, **Transcription**, **Transcription Hint** and **Keyterm** are the shared Voice Note
+mechanism defined in [GLOSSARY-MAP.md](GLOSSARY-MAP.md). Contracting's part of it:
 
-**Transcription** is one Voice Note turned into text: the raw text the speech service heard, the
-tidied text the user was shown, the detected language, and — once the user saves the field — the
-text they kept where its tidied text was inserted, not the whole field: typed text and other Voice
-Notes in the same field are not part of it, deleting the inserted text keeps nothing, and an insert
-the field's limit cut short reports nothing. The tidied text is a minimal edit of the raw text and is never a translation.
-_Avoid_: transcript (bare), correction diff
-
-**Transcription Hint** is one short rule about one thing, distilled from one correction in a
-Transcription whose saved text differs from the shown text — how a name is spelled, what a local word
-means — kept so future Transcriptions apply it. A Transcription teaches at most three hints, one per
-distinct reusable correction, each with at most one keyterm and retired on its own. Derived only when
-the user corrected rather than rewrote, and only from English Transcriptions for now; applied to
-Transcriptions in every language.
-_Avoid_: rule, correction, vocabulary entry
-
-**Keyterm** is one proper noun the speech service is told to expect — a Machine code, make or model,
-an Implement code, a Category, a field person's name, a recent Farm or Customer, or a Transcription
-Hint's keyterm — sent with every Voice Note as a list, taught keyterms first, cut only past a fixed count.
-_Avoid_: keyword, vocabulary
+- Every multi-line text field of the Contracting mobile app takes a Voice Note, except Field Notes.
+- Contracting's **Keyterms**, after its taught Transcription Hints, are Machine codes, makes and
+  models, Implement codes, Categories, the names of drivers, mechanics and foremen, and the Farms and
+  Customers on Jobs updated in the last 90 days.
+- Contracting's notes are tidied as voice notes "from a South African farm or workshop".
+- `contracting_transcription:use` is held by contracting-admin, contracting-manager, workshop-manager,
+  foreman and super-admin; the Transcriptions page's `contracting_transcription:read` is described
+  under Access.
 
 ## Access
 

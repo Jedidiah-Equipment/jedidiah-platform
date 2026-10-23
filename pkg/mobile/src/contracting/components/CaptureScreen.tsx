@@ -11,6 +11,8 @@ import { SecondaryToolbar } from '@/components/TopToolbar';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/ui/text-input';
+import { useVoiceSession } from '@/components/voice/use-voice-session';
+import { VoiceTextArea } from '@/components/voice/VoiceTextArea';
 import { type MeterPhoto, MeterPhotoField } from '@/contracting/components/MeterPhotoField';
 import { ReadAtField } from '@/contracting/components/ReadAtField';
 import { type PlannedStint, StintOverrideCard, useStintOverrides } from '@/contracting/components/StintOverrideCard';
@@ -19,8 +21,6 @@ import { type AttemptIdentity, captureAttempt, captureAttemptPayload } from '@/c
 import { capturedAtFor, isBackdated, type ReadAtChoice, readAtAfterPhoto } from '@/contracting/readings/read-at';
 import { CAPTURE_FAILED, captureReading } from '@/contracting/readings/reading-upload';
 import { useFleet, useLatestReading } from '@/contracting/readings/use-fleet';
-import { useVoiceSession } from '@/contracting/voice/use-voice-session';
-import { VoiceTextArea } from '@/contracting/voice/VoiceTextArea';
 import { useSessionPermission } from '@/lib/auth-session';
 import { UploadRefusedError } from '@/lib/multipart-upload';
 import { useTRPC } from '@/lib/trpc';
@@ -101,11 +101,14 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
   // Judged once typing stops, as web does: a half-typed value is not yet below the previous reading.
   const [valueFocused, setValueFocused] = useState(false);
   const [comment, setComment] = useState('');
-  const voice = useVoiceSession('capture comment', {
-    value: comment,
-    onChangeText: setComment,
-    maxLength: ReadingComment.maxLength ?? undefined,
-  });
+  const voice = useVoiceSession(
+    { business: 'contracting', purpose: 'capture comment' },
+    {
+      value: comment,
+      onChangeText: setComment,
+      maxLength: ReadingComment.maxLength ?? undefined,
+    },
+  );
   const [disputedReadingId, setDisputedReadingId] = useState<string | null>(null);
   const overrides = useStintOverrides(target.kind === 'stint' ? target.planned : null);
   const action = useBusyAction();

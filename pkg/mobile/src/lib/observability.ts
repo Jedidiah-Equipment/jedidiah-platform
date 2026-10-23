@@ -1,5 +1,10 @@
 import { appEnv } from './app-env';
-import { type MutationEventCatalog, type ObservabilityProperties, pickStringFields } from './observability-contract';
+import {
+  type MutationEventCatalog,
+  type ObservabilityProperties,
+  pickRecordIds,
+  pickStringFields,
+} from './observability-contract';
 import { isStagingRuntimeApp } from './runtime-app-identity';
 import type { MobileScreen } from './screen-catalog';
 
@@ -21,6 +26,13 @@ export const SHARED_MUTATION_EVENTS = {
   'pushTokens.register': {
     event: 'push token registered',
     properties: (variables) => pickStringFields(variables, [['platform', 'platform']]),
+  },
+  'transcriptions.saved': {
+    event: 'transcription saved',
+    properties: (variables) => ({
+      ...pickRecordIds(variables, ['id']),
+      ...pickStringFields(variables, [['business', 'business']]),
+    }),
   },
 } satisfies MutationEventCatalog;
 

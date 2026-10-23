@@ -11,9 +11,9 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Text } from '@/components/ui/text';
 import { ThemedModal } from '@/components/ui/themed-modal';
+import { useVoiceSession } from '@/components/voice/use-voice-session';
+import { VoiceTextArea } from '@/components/voice/VoiceTextArea';
 import { DetailRow } from '@/contracting/components/DetailRow';
-import { useVoiceSession } from '@/contracting/voice/use-voice-session';
-import { VoiceTextArea } from '@/contracting/voice/VoiceTextArea';
 import { useBusyAction } from '@/lib/use-busy-action';
 import { BREAKDOWN_SAVE_FAILED, useBreakdownMutation, useMechanics } from './use-breakdowns';
 import { VerdictButton, VerdictGroup } from './VerdictButton';
@@ -140,11 +140,14 @@ function CompleteModal({
 }) {
   const solve = useBreakdownMutation((breakdowns) => breakdowns.solve);
   const [note, setNote] = useState('');
-  const voice = useVoiceSession('close-out note', {
-    value: note,
-    onChangeText: setNote,
-    maxLength: CloseOutNote.maxLength ?? undefined,
-  });
+  const voice = useVoiceSession(
+    { business: 'contracting', purpose: 'close-out note' },
+    {
+      value: note,
+      onChangeText: setNote,
+      maxLength: CloseOutNote.maxLength ?? undefined,
+    },
+  );
   const { busy, error, run } = useBusyAction();
   const valid = CloseOutNote.safeParse(note).success;
   const close = () => {

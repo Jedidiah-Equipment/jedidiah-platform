@@ -1,8 +1,8 @@
 import { UUID } from '@pkg/schema';
 import { createFileRoute } from '@tanstack/react-router';
 import { z } from 'zod';
-import { TranscriptionsPage, transcriptionTabs } from '@/contracting/pages/transcriptions/TranscriptionsPage.js';
 import { requireRoutePermission } from '@/lib/route-auth.js';
+import { TranscriptionsPage, transcriptionTabs } from '@/pages/transcriptions/TranscriptionsPage.js';
 
 export const Route = createFileRoute('/_authed/contracting/transcriptions')({
   beforeLoad: ({ context }) => requireRoutePermission(context, 'contracting_transcription:read'),
@@ -20,6 +20,7 @@ function TranscriptionsRoute() {
   const navigate = Route.useNavigate();
   return (
     <TranscriptionsPage
+      business="contracting"
       tab={tab}
       selectedHintId={hint}
       fromTranscriptionId={from}

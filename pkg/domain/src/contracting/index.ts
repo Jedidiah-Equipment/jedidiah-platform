@@ -26,4 +26,3 @@ export * from './service-due.js';
 export * from './settings.js';
 export * from './stints.js';
 export * from './utilisation.js';
-export * from './voice-notes.js';

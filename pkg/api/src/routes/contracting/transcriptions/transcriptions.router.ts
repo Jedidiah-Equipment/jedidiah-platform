@@ -1,61 +1,33 @@
-import { type TranscriptionModels, transcriptionPrompts } from '@pkg/ai/contracting';
-import {
-  listActiveHints,
-  listTranscriptionHints,
-  listTranscriptionReviews,
-  listTranscriptionUsers,
-  recordTranscriptionSaved,
-} from '@pkg/core/contracting';
-import {
-  type KeytermCandidate,
-  TranscriptionHintList,
-  TranscriptionListInput,
-  TranscriptionListResult,
-  TranscriptionPrompts,
-  TranscriptionSavedInput,
-  TranscriptionUser,
-} from '@pkg/schema/contracting';
-import type { Scheduler } from '../../../background-queue.js';
+import { recordTranscriptionSaved } from '@pkg/core';
+import { TranscriptionPurpose, TranscriptionText, UUID } from '@pkg/schema';
+import { z } from 'zod';
 import { mapCoreErrors } from '../../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../../trpc/init.js';
-import { transcriptionErrorFamily } from '../contracting-error-families.js';
+import { transcriptionErrorFamily } from '../../shared-error-families.js';
+import type { HintDerivations } from '../../transcriptions/transcriptions.router.js';
 
-/** Schedules a Transcription Hint derivation once a corrected Transcription has been saved. */
-export type HintDerivations = Scheduler<string>;
+/** The save report phones from before the shared router still send; always a Contracting Transcription. */
+const ContractingSavedInput = z.object({ id: UUID, text: TranscriptionText, purpose: TranscriptionPurpose }).strict();
 
-const reviewer = authorizedProcedure('contracting_transcription:read');
-
-/** Transcribing goes through the multipart upload route; this router hears that the owning form saved, and serves the read-only review. */
-export function createContractingTranscriptionsRouter({
-  hintDerivations,
-  keyterms,
-  models,
-}: {
-  hintDerivations: HintDerivations;
-  /** The keyterm registry the speech calls are biased by, from the same cache. */
-  keyterms: () => Promise<KeytermCandidate[]>;
-  models: TranscriptionModels;
-}) {
+/**
+ * Kept only for phones that have not pulled the OTA moving voice notes to `transcriptions`. Drop it with the
+ * follow-up ticket "Drop the Contracting transcription aliases".
+ */
+export function createContractingTranscriptionsRouter({ hintDerivations }: { hintDerivations: HintDerivations }) {
   return router({
     saved: authorizedProcedure('contracting_transcription:use')
-      .input(TranscriptionSavedInput)
+      .input(ContractingSavedInput)
       .mutation(async ({ ctx, input }) => {
         const result = await mapCoreErrors(
-          () => recordTranscriptionSaved({ db: ctx.db, actorUserId: ctx.session.user.id, input }),
+          () =>
+            recordTranscriptionSaved({
+              db: ctx.db,
+              actorUserId: ctx.session.user.id,
+              input: { ...input, business: 'contracting' },
+            }),
           transcriptionErrorFamily,
         );
-        // After the write; the response never waits on the model.
         if (result.deriveHint) hintDerivations.schedule(result.id);
       }),
-    list: reviewer
-      .input(TranscriptionListInput)
-      .output(TranscriptionListResult)
-      .query(({ ctx, input }) => listTranscriptionReviews({ db: ctx.db, input })),
-    users: reviewer.output(TranscriptionUser.array()).query(({ ctx }) => listTranscriptionUsers({ db: ctx.db })),
-    hints: reviewer.output(TranscriptionHintList).query(({ ctx }) => listTranscriptionHints({ db: ctx.db })),
-    prompts: reviewer.output(TranscriptionPrompts).query(async ({ ctx }) => {
-      const [hints, registry] = await Promise.all([listActiveHints({ db: ctx.db }), keyterms()]);
-      return transcriptionPrompts({ hints, keyterms: registry, models });
-    }),
   });
 }

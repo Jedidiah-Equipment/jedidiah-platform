@@ -1,6 +1,6 @@
 # ai (@pkg/ai)
 
-- Own assistant orchestration, prompts, tool registration, and tool handlers. The Equipment assistant lives under `src/equipment/` and ships from `@pkg/ai/equipment`; the package root exports only the business-blind model client.
+- Own assistant orchestration, prompts, tool registration, and tool handlers. The Equipment assistant lives under `src/equipment/` and ships from `@pkg/ai/equipment`; the package root exports only business-blind code: the model client and the Voice Note transcription calls, whose per-business part arrives as input.
 - Keep HTTP transport, Fastify request parsing, env/config reads, and API-only delivery wiring in `@pkg/api`.
 - Do not import Fastify, `@pkg/api`, API `@/` modules, `getApiConfig`, or direct `process.env` from `src`.
 - Inject API-owned dependencies through `AiContext` instead of reaching back into API modules.

@@ -9,8 +9,8 @@ import { SearchSelect, type SearchSelectCreate } from '@/components/form/fields/
 import { SecondaryToolbar } from '@/components/TopToolbar';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { useVoiceSession } from '@/contracting/voice/use-voice-session';
-import { VoiceTextArea } from '@/contracting/voice/VoiceTextArea';
+import { useVoiceSession } from '@/components/voice/use-voice-session';
+import { VoiceTextArea } from '@/components/voice/VoiceTextArea';
 import { useTRPC } from '@/lib/trpc';
 import { useCan } from '@/lib/use-access';
 import { useBusyAction } from '@/lib/use-busy-action';
@@ -28,10 +28,13 @@ export default function NewJobScreen() {
   const canUpdateDirectory = useCan('contracting_directory:update').can;
   const [draft, setDraft] = useState<JobCreateValues>(EMPTY_DRAFT);
   const set = (patch: Partial<JobCreateValues>) => setDraft((current) => ({ ...current, ...patch }));
-  const voice = useVoiceSession('job description', {
-    value: draft.description,
-    onChangeText: (description) => set({ description }),
-  });
+  const voice = useVoiceSession(
+    { business: 'contracting', purpose: 'job description' },
+    {
+      value: draft.description,
+      onChangeText: (description) => set({ description }),
+    },
+  );
   const { busy: saving, error, run } = useBusyAction();
   // A directory create in flight holds the whole form, so neither the Job nor a changed Customer races it.
   const [creatingDirectory, setCreatingDirectory] = useState(false);

@@ -7,8 +7,8 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
-import { useVoiceSession } from '@/contracting/voice/use-voice-session';
-import { VoiceTextArea } from '@/contracting/voice/VoiceTextArea';
+import { useVoiceSession } from '@/components/voice/use-voice-session';
+import { VoiceTextArea } from '@/components/voice/VoiceTextArea';
 import { VerdictButton } from '@/contracting/workshop/VerdictButton';
 import { gluestackConfig } from '@/theme/gluestack-config';
 import { useColorMode } from '@/theme/use-color-mode';
@@ -30,11 +30,14 @@ function NoteModal({ thread, onClose }: { thread: NoteThreadRef; onClose: () => 
   const { resolved } = useColorMode();
   const [text, setText] = useState('');
   const { busy, error, send, voicePurpose } = useAddNote(thread);
-  const voice = useVoiceSession(voicePurpose, {
-    value: text,
-    onChangeText: setText,
-    maxLength: NoteText.maxLength ?? undefined,
-  });
+  const voice = useVoiceSession(
+    { business: 'contracting', purpose: voicePurpose },
+    {
+      value: text,
+      onChangeText: setText,
+      maxLength: NoteText.maxLength ?? undefined,
+    },
+  );
   const valid = NoteText.safeParse(text).success;
   const onSend = () =>
     void send(text, () => {

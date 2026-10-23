@@ -95,6 +95,8 @@ export const APP_PERMISSIONS = [
   'equipment_supplier:update',
   'equipment_supplier:remove',
   'equipment_supplier:merge',
+  'equipment_transcription:read',
+  'equipment_transcription:use',
   'contracting_audit:read',
   'contracting_directory:read',
   'contracting_directory:update',

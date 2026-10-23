@@ -14,7 +14,6 @@ import * as contractingJobsSchema from './schema/contracting/jobs.js';
 import * as contractingRateCardSchema from './schema/contracting/rate-card.js';
 import * as contractingServiceRecordSchema from './schema/contracting/service-record.js';
 import * as contractingSettingsSchema from './schema/contracting/settings.js';
-import * as contractingTranscriptionSchema from './schema/contracting/transcription.js';
 import * as customerSchema from './schema/equipment/customer.js';
 import * as documentSchema from './schema/equipment/document.js';
 import * as feedbackSchema from './schema/equipment/feedback.js';
@@ -36,6 +35,7 @@ import * as stocktakeSchema from './schema/equipment/stocktake.js';
 import * as supplierSchema from './schema/equipment/supplier.js';
 import * as userDepartmentSchema from './schema/equipment/user-department.js';
 import * as pushTokenSchema from './schema/push-token.js';
+import * as transcriptionSchema from './schema/transcription.js';
 
 export const schema = {
   ...contractingBreakdownSchema,
@@ -46,7 +46,6 @@ export const schema = {
   ...contractingRateCardSchema,
   ...contractingServiceRecordSchema,
   ...contractingSettingsSchema,
-  ...contractingTranscriptionSchema,
   ...auditSchema,
   ...authSchema,
   ...changelogSchema,
@@ -71,6 +70,7 @@ export const schema = {
   ...stockMovementSchema,
   ...stocktakeSchema,
   ...supplierSchema,
+  ...transcriptionSchema,
   ...userDepartmentSchema,
 };
 

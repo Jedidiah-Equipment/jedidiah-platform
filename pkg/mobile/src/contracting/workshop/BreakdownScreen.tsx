@@ -12,12 +12,12 @@ import { SecondaryToolbar } from '@/components/TopToolbar';
 import { Button } from '@/components/ui/button';
 import { Card, CardIconAction } from '@/components/ui/card';
 import { Text } from '@/components/ui/text';
+import { useVoiceSession } from '@/components/voice/use-voice-session';
+import { VoiceTextArea } from '@/components/voice/VoiceTextArea';
 import { AddNoteButton } from '@/contracting/activity/AddNoteButton';
 import { ContractingActivityFeed } from '@/contracting/activity/ContractingActivityFeed';
 import { RecordTabBar, useRecordTab } from '@/contracting/activity/RecordTabs';
 import { BreakdownStatusBadge, BreakdownSubjectIcons } from '@/contracting/components/BreakdownSubjectIcons';
-import { useVoiceSession } from '@/contracting/voice/use-voice-session';
-import { VoiceTextArea } from '@/contracting/voice/VoiceTextArea';
 import { useSessionAccessSummary } from '@/lib/auth-session';
 import { useBusyAction } from '@/lib/use-busy-action';
 import { BreakdownPhotosCard } from './BreakdownPhotosCard';
@@ -170,11 +170,14 @@ function DispatchHints({ breakdown }: { breakdown: BreakdownDetail }) {
 function DescriptionCard({ breakdown }: { breakdown: BreakdownDetail }) {
   const patch = useBreakdownMutation((breakdowns) => breakdowns.patch);
   const [draft, setDraft] = useState<string | null>(null);
-  const voice = useVoiceSession('breakdown description', {
-    value: draft ?? '',
-    onChangeText: setDraft,
-    maxLength: BreakdownDescription.maxLength ?? undefined,
-  });
+  const voice = useVoiceSession(
+    { business: 'contracting', purpose: 'breakdown description' },
+    {
+      value: draft ?? '',
+      onChangeText: setDraft,
+      maxLength: BreakdownDescription.maxLength ?? undefined,
+    },
+  );
   const { busy, error, run } = useBusyAction();
   const valid = draft !== null && BreakdownDescription.safeParse(draft).success;
   const save = () => {

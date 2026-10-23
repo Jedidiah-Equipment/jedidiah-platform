@@ -35,6 +35,10 @@ import { suppliersRouter } from '../routes/equipment/suppliers/suppliers.router.
 import { userDepartmentsRouter } from '../routes/equipment/users/user-departments.router.js';
 import { pushPreferencesRouter } from '../routes/push/push-preferences.router.js';
 import { pushTokensRouter } from '../routes/push/push-tokens.router.js';
+import {
+  createTranscriptionsRouter,
+  type TranscriptionRouterDependencies,
+} from '../routes/transcriptions/transcriptions.router.js';
 import { usersRouter } from '../routes/users/users.router.js';
 import { createCallerFactory, router } from './init.js';
 
@@ -42,6 +46,7 @@ import { createCallerFactory, router } from './init.js';
 export type AppRouterDependencies = {
   contracting: ContractingRouterDependencies;
   equipment: EquipmentRouterDependencies;
+  transcriptions: TranscriptionRouterDependencies;
 };
 
 type AppRouterRootTypes = (typeof authRouter)['_def']['_config']['$types'];
@@ -80,6 +85,7 @@ type AppRouterRecord = {
   pushTokens: (typeof pushTokensRouter)['_def']['record'];
   quotes: (typeof quotesRouter)['_def']['record'];
   suppliers: (typeof suppliersRouter)['_def']['record'];
+  transcriptions: ReturnType<typeof createTranscriptionsRouter>['_def']['record'];
   userDepartments: (typeof userDepartmentsRouter)['_def']['record'];
   users: (typeof usersRouter)['_def']['record'];
 };
@@ -87,7 +93,7 @@ type AppRouterRecord = {
 export type AppRouter = BuiltRouter<AppRouterRootTypes, AppRouterRecord>;
 
 // Naming the router shape keeps declaration emit from serializing the full nested tRPC type.
-export function createAppRouter({ contracting, equipment }: AppRouterDependencies): AppRouter {
+export function createAppRouter({ contracting, equipment, transcriptions }: AppRouterDependencies): AppRouter {
   return router({
     contractingActivity: contractingActivityRouter,
     contractingBreakdowns: createContractingBreakdownsRouter(contracting.push),
@@ -99,10 +105,9 @@ export function createAppRouter({ contracting, equipment }: AppRouterDependencie
     contractingRateCard: contractingRateCardRouter,
     contractingServices: contractingServicesRouter,
     contractingSettings: contractingSettingsRouter,
+    // Alias for phones from before the shared `transcriptions` router; drop once their OTA is out.
     contractingTranscriptions: createContractingTranscriptionsRouter({
-      hintDerivations: contracting.hintDerivations,
-      keyterms: contracting.keyterms,
-      models: contracting.transcriptionModels,
+      hintDerivations: transcriptions.hintDerivations,
     }),
     contractingDirectory: contractingDirectoryRouter,
     audit: auditRouter,
@@ -126,6 +131,7 @@ export function createAppRouter({ contracting, equipment }: AppRouterDependencie
     pushTokens: pushTokensRouter,
     quotes: quotesRouter,
     suppliers: suppliersRouter,
+    transcriptions: createTranscriptionsRouter(transcriptions),
     userDepartments: userDepartmentsRouter,
     users: usersRouter,
   }) as AppRouter;

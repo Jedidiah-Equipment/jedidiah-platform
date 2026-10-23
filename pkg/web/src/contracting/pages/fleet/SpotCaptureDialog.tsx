@@ -4,8 +4,8 @@ import { z } from 'zod';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { MachineDialogTitle, machineDialogSubject } from '@/contracting/components/MachineDialogTitle.js';
-import { ReadingCaptureDetails, ReadingValueCard } from '@/contracting/pages/jobs/ReadingCaptureFields.js';
-import { ConfirmedDispute, useReadingCapture } from '@/contracting/pages/jobs/use-reading-capture.js';
+import { ReadingCaptureDetails, ReadingValueCard } from '@/contracting/components/readings/ReadingCaptureFields.js';
+import { ConfirmedDispute, useReadingCapture } from '@/contracting/components/readings/use-reading-capture.js';
 
 const SpotValues = z.object({
   value: ReadingValue,

@@ -8,10 +8,10 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { DepartureCaptureDialog } from './DepartureCaptureDialog.js';
 
 const capture = vi.hoisted(() => vi.fn(async (..._args: unknown[]) => undefined));
-vi.mock('./capture-reading.js', () => ({ captureReading: capture }));
+vi.mock('@/contracting/components/readings/capture-reading.js', () => ({ captureReading: capture }));
 const latestId = '00000000-0000-4000-8000-000000000009';
 const refetchLatest = vi.hoisted(() => vi.fn(async () => undefined));
-vi.mock('./use-latest-reading.js', () => ({
+vi.mock('@/contracting/components/readings/use-latest-reading.js', () => ({
   useLatestReading: () => ({
     refetch: refetchLatest,
     isSuccess: true,

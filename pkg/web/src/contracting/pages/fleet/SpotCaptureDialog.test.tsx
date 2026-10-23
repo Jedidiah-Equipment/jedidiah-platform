@@ -9,9 +9,9 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { SpotCaptureDialog } from './SpotCaptureDialog.js';
 
 const capture = vi.hoisted(() => vi.fn(async (..._args: unknown[]) => undefined));
-vi.mock('@/contracting/pages/jobs/capture-reading.js', () => ({ captureReading: capture }));
+vi.mock('@/contracting/components/readings/capture-reading.js', () => ({ captureReading: capture }));
 const latestId = '00000000-0000-4000-8000-000000000009';
-vi.mock('@/contracting/pages/jobs/use-latest-reading.js', () => ({
+vi.mock('@/contracting/components/readings/use-latest-reading.js', () => ({
   useLatestReading: () => ({
     refetch: async () => undefined,
     isSuccess: true,

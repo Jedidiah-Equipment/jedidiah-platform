@@ -4,8 +4,8 @@ import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { Separator } from '@/components/ui/separator.js';
 import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
-import { ReadingCaptureDetails, ReadingValueCard } from './ReadingCaptureFields.js';
-import { ConfirmedDispute, useReadingCapture } from './use-reading-capture.js';
+import { ReadingCaptureDetails, ReadingValueCard } from '@/contracting/components/readings/ReadingCaptureFields.js';
+import { ConfirmedDispute, useReadingCapture } from '@/contracting/components/readings/use-reading-capture.js';
 
 const DepartureValues = z.object({
   value: ReadingValue,

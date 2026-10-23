@@ -7,10 +7,10 @@ import { CreateEntityDialog } from '@/components/form/index.js';
 import { emptyStringOr } from '@/components/form/utils/form-schema.js';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
+import { ReadingCaptureDetails, ReadingValueCard } from '@/contracting/components/readings/ReadingCaptureFields.js';
+import { ConfirmedDispute, useReadingCapture } from '@/contracting/components/readings/use-reading-capture.js';
 import { AssignmentEditorDialog, changesAssignment } from './AssignmentEditorDialog.js';
-import { ReadingCaptureDetails, ReadingValueCard } from './ReadingCaptureFields.js';
 import { useAssignmentOptions } from './use-assignment-options.js';
-import { ConfirmedDispute, useReadingCapture } from './use-reading-capture.js';
 
 const ArrivalValues = z.object({
   value: ReadingValue,

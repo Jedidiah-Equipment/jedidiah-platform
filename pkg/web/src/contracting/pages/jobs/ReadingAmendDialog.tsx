@@ -3,7 +3,7 @@ import type React from 'react';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { type MachineDialogSubject, MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
-import { ReadingCaptureCard, ReadingValueField } from './ReadingCaptureFields.js';
+import { ReadingCaptureCard, ReadingValueField } from '@/contracting/components/readings/ReadingCaptureFields.js';
 
 const AmendValues = ReadingAmendInput.omit({ id: true });
 

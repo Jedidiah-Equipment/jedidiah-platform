@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils.js';
 import {
   MACHINE_COLUMN_ID,
   MECHANIC_COLUMN_ID,
+  rowMachine,
   type ServicesTableRow,
   START_COLUMN_ID,
   STATUS_COLUMN_ID,
@@ -57,6 +58,7 @@ export function useServicesColumns({
     () => [
       {
         id: MACHINE_COLUMN_ID,
+        accessorFn: (row) => rowMachine(row).id,
         header: 'Machine',
         enableColumnFilter: true,
         enableSorting: false,
@@ -82,6 +84,7 @@ export function useServicesColumns({
       },
       {
         id: MECHANIC_COLUMN_ID,
+        accessorFn: (row) => (row.kind === 'record' ? row.record.primaryMechanicUserId : null),
         header: 'Mechanic',
         enableColumnFilter: true,
         enableSorting: false,
@@ -93,6 +96,7 @@ export function useServicesColumns({
       },
       {
         id: START_COLUMN_ID,
+        accessorFn: (row) => (row.kind === 'record' ? row.record.startDate : null),
         header: 'Start',
         enableColumnFilter: false,
         enableSorting: true,
@@ -141,6 +145,7 @@ export function useServicesColumns({
       },
       {
         id: STATUS_COLUMN_ID,
+        accessorFn: (row) => (row.kind === 'record' ? row.record.status : null),
         header: 'Status',
         enableColumnFilter: true,
         enableSorting: false,

@@ -16,14 +16,20 @@ export function useQueryInvalidation() {
     () => queryClient.invalidateQueries({ queryKey: trpc.contractingDirectory.pathKey() }),
     [queryClient, trpc],
   );
+  // The Machines Due for Service are derived from the fleet: a Machine's Next Service Due or retirement moves them.
   const invalidateFleet = useCallback(
-    () => queryClient.invalidateQueries({ queryKey: trpc.contractingFleet.pathKey() }),
+    () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: trpc.contractingFleet.pathKey() }),
+        queryClient.invalidateQueries({ queryKey: trpc.contractingServices.pathKey() }),
+      ]),
     [queryClient, trpc],
   );
   const invalidateReadings = useCallback(
     () =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: trpc.contractingReadings.pathKey() }),
+        queryClient.invalidateQueries({ queryKey: trpc.contractingServices.pathKey() }),
         invalidateActivity(),
       ]),
     [queryClient, trpc, invalidateActivity],
@@ -53,6 +59,7 @@ export function useQueryInvalidation() {
         queryClient.invalidateQueries({ queryKey: trpc.contractingJobs.pathKey() }),
         queryClient.invalidateQueries({ queryKey: trpc.contractingFleet.pathKey() }),
         queryClient.invalidateQueries({ queryKey: trpc.contractingBreakdowns.pathKey() }),
+        queryClient.invalidateQueries({ queryKey: trpc.contractingServices.pathKey() }),
       ]),
     [queryClient, trpc],
   );

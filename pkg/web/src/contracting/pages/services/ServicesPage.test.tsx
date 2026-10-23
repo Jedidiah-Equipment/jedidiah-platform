@@ -74,12 +74,13 @@ afterEach(() => {
 
 async function mount() {
   const tableInputs: ServiceRecordTableInput[] = [];
+  const opened: unknown[] = [];
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   const trpcClient = createTRPCClient<AppRouter>({
     links: [
       httpLink({
         url: 'http://services.test/trpc',
-        fetch: async (input) => {
+        fetch: async (input, init) => {
           const url = new URL(String(input));
           const path = url.pathname.slice('/trpc/'.length);
           const data = (() => {
@@ -101,6 +102,9 @@ async function mount() {
                 return { machines: [], mechanics: [] };
               case 'contractingServices.options.mechanics':
                 return [];
+              case 'contractingServices.open':
+                opened.push(JSON.parse(String(init?.body)));
+                return { ...record, machineId: machine.id };
               default:
                 throw new Error(`Unexpected request ${path}`);
             }
@@ -138,11 +142,12 @@ async function mount() {
     if (!found) throw new Error(`Missing button ${name}`);
     return found;
   };
-  return { container, rows, button, tableInputs, root };
+  const labelled = (label: string) => container.querySelector(`[aria-label="${label}"]`);
+  return { container, rows, button, labelled, tableInputs, opened, root };
 }
 
-test('pins the Machines Due for Service above every Service Record, painted, with Record a service on the row', async () => {
-  const { rows, button } = await mount();
+test('pins the Machines Due for Service above every Service Record, painted, booking that Machine in from its row', async () => {
+  const { rows, button, opened } = await mount();
 
   const [pinned, booked] = rows();
   expect(pinned?.textContent).toContain('KOL220-2');
@@ -155,6 +160,20 @@ test('pins the Machines Due for Service above every Service Record, painted, wit
 
   await act(async () => button('Record a service').click());
   expect(document.body.textContent).toContain('Book the Machine in.');
+  const submit = [...document.querySelectorAll<HTMLButtonElement>('button[type="submit"]')].find(
+    (each) => each.textContent?.trim() === 'Record service',
+  );
+  await act(async () => submit?.click());
+  await act(async () => {
+    await vi.waitFor(() => expect(opened).toMatchObject([{ machineId: machine.id }]));
+  });
+});
+
+test('offers the Machine, Mechanic and Status column filters and the Start sort', async () => {
+  const { labelled } = await mount();
+
+  for (const label of ['Filter Machine', 'Filter Mechanic', 'Filter Status', 'Sort Start'])
+    expect(labelled(label), label).not.toBeNull();
 });
 
 test('a status quick filter narrows the Service Records and never the pinned Machines', async () => {

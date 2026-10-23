@@ -103,7 +103,7 @@ export function ServicesPage() {
         onColumnFiltersChange={tableController.setColumnFilters}
       />
       <DataTable
-        emptyMessage="No Service Records yet."
+        emptyMessage="No Service Records found."
         errorMessage={
           getApiQueryErrorMessage(recordsQuery.error, 'Unable to load Service Records.') ??
           getApiQueryErrorMessage(dueQuery.error, 'Unable to load the Machines due for a service.')

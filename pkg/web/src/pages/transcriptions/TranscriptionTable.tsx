@@ -1,7 +1,7 @@
 import { formatNumber, getFirstName } from '@pkg/domain';
 import {
-  BUSINESSES,
   type Business,
+  byBusiness,
   type TranscriptionHintStatus,
   type TranscriptionListInput,
   type TranscriptionReviewItem,
@@ -30,9 +30,7 @@ const transcriptionTableStore = (business: Business) =>
   });
 
 /** One persisted table per business, so filtering one business's Transcriptions leaves the other's alone. */
-const transcriptionTableStores = Object.fromEntries(
-  BUSINESSES.map((business) => [business, transcriptionTableStore(business)]),
-) as Record<Business, ReturnType<typeof transcriptionTableStore>>;
+const transcriptionTableStores = byBusiness(transcriptionTableStore);
 
 const transcriptionSortOptions: SortOptions<TranscriptionListInput> = {
   allowedSortIds: ['createdAt'],

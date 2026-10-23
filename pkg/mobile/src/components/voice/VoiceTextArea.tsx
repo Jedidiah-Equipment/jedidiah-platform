@@ -1,6 +1,6 @@
 import { transcriptionPermissions } from '@pkg/domain';
 import { IconMicrophone } from '@tabler/icons-react-native';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import { Pressable, View } from 'react-native';
 import { textareaStyle } from '@/components/form/fields/TextareaField';
 import { useScrollLock } from '@/components/scroll-lock';
@@ -27,9 +27,10 @@ type Props = Omit<AppTextInputProps, 'value' | 'onChangeText' | 'maxLength' | 'm
 };
 
 /**
- * A multi-line text area that owns nothing: its owner holds the text, and the voice session follows it. Online, for a role that may use voice notes in
- * the session's business, it carries a press-and-hold mic whose transcript is appended to the text; offline it is a plain text
- * area. The web build shows the mic, but a press only says it cannot record there.
+ * A multi-line text area that owns nothing: its owner holds the text, and the voice session follows it. Online, for a
+ * role that may use voice notes in the session's business, it carries a press-and-hold mic whose transcript is
+ * appended to the text; offline it is a plain text area. The web build shows the mic, but a press only says it cannot
+ * record there.
  */
 export function VoiceTextArea({
   value,
@@ -43,7 +44,8 @@ export function VoiceTextArea({
   style,
   ...inputProps
 }: Props) {
-  voice.attach({ value, onChangeText, maxLength });
+  const { attach } = voice;
+  useLayoutEffect(() => attach({ value, onChangeText, maxLength }));
   const canUse = useSessionPermission(transcriptionPermissions[voice.business].use);
   const offline = useIsOffline();
   const showMic = canUse && !offline && editable;

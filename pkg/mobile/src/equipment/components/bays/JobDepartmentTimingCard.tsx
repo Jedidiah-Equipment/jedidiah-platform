@@ -276,18 +276,22 @@ function DoneModal({
   });
 
   return (
-    <StampModal
+    <ModalSheet
+      error={submitError}
+      footer={
+        <SheetSubmitButton
+          isSubmitting={form.state.isSubmitting}
+          label={`${departmentLabel} done`}
+          onPress={() => void form.handleSubmit()}
+        />
+      }
       onClose={onClose}
-      onSubmit={() => void form.handleSubmit()}
       subtitle={
         // Corrections are refused on a completed Job, so this stamp is frozen the moment it lands.
         isCompleted
           ? `${jobCode} · already completed, so this cannot be corrected`
           : `${jobCode} · ${lowerDepartmentLabel} done now`
       }
-      submitLabel={`${departmentLabel} done`}
-      submitting={form.state.isSubmitting}
-      submitError={submitError}
       title={`${departmentLabel} done`}
     >
       <form.AppField name="crewUserIds">
@@ -295,7 +299,7 @@ function DoneModal({
           <field.MultiSelectField emptyMessage="No Bay Operators available." label={crewLabel} options={crewOptions} />
         )}
       </form.AppField>
-    </StampModal>
+    </ModalSheet>
   );
 }
 
@@ -350,13 +354,17 @@ function CorrectionModal({
   });
 
   return (
-    <StampModal
+    <ModalSheet
+      error={submitError}
+      footer={
+        <SheetSubmitButton
+          isSubmitting={form.state.isSubmitting}
+          label={'Save times'}
+          onPress={() => void form.handleSubmit()}
+        />
+      }
       onClose={onClose}
-      onSubmit={() => void form.handleSubmit()}
       subtitle={`${jobCode} · clearing the start date removes the stamps`}
-      submitLabel="Save times"
-      submitting={form.state.isSubmitting}
-      submitError={submitError}
       title={`Edit ${lowerDepartmentLabel} times`}
     >
       <form.AppField name="startedOn">
@@ -370,39 +378,6 @@ function CorrectionModal({
           <field.MultiSelectField emptyMessage="No Bay Operators available." label={crewLabel} options={crewOptions} />
         )}
       </form.AppField>
-    </StampModal>
-  );
-}
-
-/** Both stamp dialogs: the shared sheet with a submit action. */
-function StampModal({
-  children,
-  onClose,
-  onSubmit,
-  submitError,
-  submitLabel,
-  submitting,
-  subtitle,
-  title,
-}: {
-  children: React.ReactNode;
-  onClose: () => void;
-  onSubmit: () => void;
-  submitError: string | null;
-  submitLabel: string;
-  submitting: boolean;
-  subtitle: string;
-  title: string;
-}) {
-  return (
-    <ModalSheet
-      error={submitError}
-      footer={<SheetSubmitButton isSubmitting={submitting} label={submitLabel} onPress={onSubmit} />}
-      onClose={onClose}
-      subtitle={subtitle}
-      title={title}
-    >
-      {children}
     </ModalSheet>
   );
 }

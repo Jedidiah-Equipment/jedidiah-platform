@@ -35,7 +35,7 @@ import { userDepartmentsRouter } from '../routes/equipment/users/user-department
 import { pushPreferencesRouter } from '../routes/push/push-preferences.router.js';
 import { pushTokensRouter } from '../routes/push/push-tokens.router.js';
 import {
-  createLegacyContractingTranscriptionsRouter,
+  createSavedRouter,
   createTranscriptionsRouter,
   type TranscriptionRouterDependencies,
 } from '../routes/transcriptions/transcriptions.router.js';
@@ -63,7 +63,7 @@ type AppRouterRecord = {
   contractingRateCard: (typeof contractingRateCardRouter)['_def']['record'];
   contractingServices: (typeof contractingServicesRouter)['_def']['record'];
   contractingSettings: (typeof contractingSettingsRouter)['_def']['record'];
-  contractingTranscriptions: ReturnType<typeof createLegacyContractingTranscriptionsRouter>['_def']['record'];
+  contractingTranscriptions: ReturnType<typeof createSavedRouter>['_def']['record'];
   audit: (typeof auditRouter)['_def']['record'];
   auth: (typeof authRouter)['_def']['record'];
   catalogTranslations: ReturnType<typeof createCatalogTranslationsRouter>['_def']['record'];
@@ -105,7 +105,8 @@ export function createAppRouter({ contracting, equipment, transcriptions }: AppR
     contractingRateCard: contractingRateCardRouter,
     contractingServices: contractingServicesRouter,
     contractingSettings: contractingSettingsRouter,
-    contractingTranscriptions: createLegacyContractingTranscriptionsRouter(transcriptions),
+    // The save under its pre-#1803 name, for phones still on that build; drop it with #1804.
+    contractingTranscriptions: createSavedRouter(transcriptions),
     contractingDirectory: contractingDirectoryRouter,
     audit: auditRouter,
     auth: authRouter,

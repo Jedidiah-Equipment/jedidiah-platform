@@ -25,8 +25,11 @@ export type VoiceSessionScope = { business: Business; purpose: string };
 export type VoiceSession = {
   business: Business;
   purpose: string;
-  /** Called by the field on every render with its current text, so the session follows it without owning it. */
-  attach: (field: VoiceField) => void;
+  /**
+   * Called by the field after every commit with its current text, so the session follows it without owning it.
+   * Returns the detach the field runs when it goes: a transcript that lands after its field is gone is dropped.
+   */
+  attach: (field: VoiceField) => () => void;
   /** The field's edit handler: the edit is tracked, then written through the attached field. */
   onChangeText: (text: string) => void;
   /** Call after the owning form's save succeeded: each Transcription reports what was kept in its place. Fire-and-forget. */
@@ -63,24 +66,31 @@ export function useVoiceSession({ business, purpose }: VoiceSessionScope): Voice
   const [holding, setHolding] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  // Refs, not state: a save reports what was remembered even when it lands in the same render as the transcript, and
-  // the transcript appends to the text as it is once the request answers, not as it was when the finger lifted.
+  // Refs, not state: a save reports what was remembered even before the field re-renders with a transcript, and the
+  // transcript appends to the text as it is once the request answers, not as it was when the finger lifted.
   const latest = useRef<VoiceField | null>(null);
   const track = useRef<FieldSpans | null>(null);
   const lastSeenValue = useRef('');
   const held = useRef(false);
   const { start, stop } = recorder;
 
+  const attachment = useRef<object | null>(null);
   const attach = useCallback((field: VoiceField) => {
+    const token = {};
+    attachment.current = token;
     latest.current = field;
     if (track.current === null) {
       track.current = { text: field.value, spans: [] };
       lastSeenValue.current = field.value;
     }
+    return () => {
+      if (attachment.current !== token) return;
+      attachment.current = null;
+      latest.current = null;
+    };
   }, []);
-  // The owning form may also set the text itself (a revert, a reload); those edits move the spans too. Every edit the
-  // session makes follows the field first. Only a value the field has newly taken counts: until the form re-renders,
-  // it still holds the text from before our own edit.
+  // The owning form may also set the text itself (a revert, a reload); those edits move the spans too, so every edit
+  // the session makes follows the field first.
   const followField = useCallback((): FieldSpans => {
     let current = track.current ?? { text: '', spans: [] };
     const value = latest.current?.value;
@@ -98,10 +108,14 @@ export function useVoiceSession({ business, purpose }: VoiceSessionScope): Voice
     },
     [followField],
   );
-  // What the session writes is what the field will next hold, so it is not mistaken for the form's own edit.
+  // The session's own write is what the field now holds, before the form re-renders with it, so neither a later
+  // edit in that window nor the re-render is mistaken for the form's own change.
   const write = useCallback((text: string) => {
+    const field = latest.current;
+    if (!field) return;
     lastSeenValue.current = text;
-    latest.current?.onChangeText(text);
+    latest.current = { ...field, value: text };
+    field.onChangeText(text);
   }, []);
   const onChangeText = useCallback(
     (text: string) => write(applyEdit((current) => trackEdit(current, text)).text),

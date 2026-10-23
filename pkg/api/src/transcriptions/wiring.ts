@@ -14,7 +14,7 @@ import {
   type TranscriptionProfile,
 } from '@pkg/core';
 import type { Db } from '@pkg/db';
-import { BUSINESSES, type Business } from '@pkg/schema';
+import { type Business, byBusiness } from '@pkg/schema';
 import type { FastifyInstance } from 'fastify';
 import { BackgroundQueue } from '../background-queue.js';
 import type { BusinessWiring } from '../business-wiring.js';
@@ -46,16 +46,13 @@ export async function registerTranscriptions(
       deriveTranscriptionHint({ ...input, model: chatModel }),
     ),
   };
-  const bound = Object.fromEntries(
-    BUSINESSES.map((business): [Business, BoundTranscriptionProfile] => [
+  const bound = byBusiness(
+    (business): BoundTranscriptionProfile => ({
       business,
-      {
-        business,
-        setting: profiles[business].setting,
-        vocabulary: cacheVocabulary(() => profiles[business].loadVocabulary({ db })),
-      },
-    ]),
-  ) as Record<Business, BoundTranscriptionProfile>;
+      setting: profiles[business].setting,
+      vocabulary: cacheVocabulary(() => profiles[business].loadVocabulary({ db })),
+    }),
+  );
 
   const hintDerivations = new BackgroundQueue<string>({
     run: (id) => deriveHintFor({ db, id, engine }),

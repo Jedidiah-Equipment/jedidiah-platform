@@ -79,12 +79,7 @@ export function createTranscriptionsRouter({ hintDerivations, profiles, models }
   });
 }
 
-/**
- * `contractingTranscriptions.saved`, which phones from before the shared router still call. The save names no
- * business, so it is the same procedure. Drop it with #1804.
- */
-export function createLegacyContractingTranscriptionsRouter(
-  dependencies: Pick<TranscriptionRouterDependencies, 'hintDerivations'>,
-) {
+/** The save on its own, for a router that only hears saves: the save names no business, so any mount serves. */
+export function createSavedRouter(dependencies: Pick<TranscriptionRouterDependencies, 'hintDerivations'>) {
   return router({ saved: createSavedProcedure(dependencies) });
 }

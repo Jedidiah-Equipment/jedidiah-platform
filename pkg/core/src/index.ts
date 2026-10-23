@@ -21,7 +21,6 @@ export * from './transcriptions/transcription-errors.js';
 export * from './transcriptions/transcription-profile.js';
 export * from './transcriptions/transcription-review.js';
 export * from './transcriptions/transcription-service.js';
-export * from './users/active-person.js';
 export * from './users/activity-view-service.js';
 export * from './users/business-role.js';
 export * from './users/user-errors.js';

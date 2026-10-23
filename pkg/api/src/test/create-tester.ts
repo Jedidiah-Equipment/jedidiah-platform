@@ -11,9 +11,9 @@ import pino from 'pino';
 import { type TestAPI, type TestContext, test as testBase } from 'vitest';
 
 import { type Auth, createAuth } from '@/app-auth.js';
+import { testProfiles } from '@/routes/transcriptions/test-fixtures.js';
 import type { ChangelogLoader, Context } from '@/trpc/context.js';
 import { type AppRouter, type AppRouterDependencies, createAppRouterCaller } from '@/trpc/router.js';
-
 import { mockSession } from './test-utils.js';
 
 type Cleanup = () => Promise<void> | void;
@@ -39,10 +39,7 @@ export const NOOP_ROUTER_DEPENDENCIES: AppRouterDependencies = {
   equipment: { catalogTranslationScheduler: { mark: () => undefined, markNow: () => undefined } },
   transcriptions: {
     hintDerivations: { schedule: () => undefined },
-    profiles: {
-      equipment: { business: 'equipment', setting: 'a test Equipment note', vocabulary: async () => [] },
-      contracting: { business: 'contracting', setting: 'a test Contracting note', vocabulary: async () => [] },
-    },
+    profiles: testProfiles(),
     models: { chat: 'test-chat-model', transcription: 'test-transcription-model' },
   },
 };

@@ -4,10 +4,11 @@ import { BreakdownDescription, type BreakdownDetail } from '@pkg/schema/contract
 import { IconMapPin, IconPencil } from '@tabler/icons-react-native';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Linking, Pressable, ScrollView, View } from 'react-native';
+import { Linking, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { DateText } from '@/components/DateText';
 import { SECONDARY_PAGE_CONTENT_STYLE } from '@/components/page-frame';
+import { ScrollLockScrollView } from '@/components/scroll-lock';
 import { SecondaryToolbar } from '@/components/TopToolbar';
 import { Button } from '@/components/ui/button';
 import { Card, CardIconAction } from '@/components/ui/card';
@@ -51,7 +52,7 @@ export default function BreakdownScreen() {
           showControls={false}
         />
       ) : (
-        <ScrollView
+        <ScrollLockScrollView
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ ...SECONDARY_PAGE_CONTENT_STYLE, gap: 16 }}
         >
@@ -68,7 +69,7 @@ export default function BreakdownScreen() {
                     : 'Loading Breakdown…'}
             </Text>
           )}
-        </ScrollView>
+        </ScrollLockScrollView>
       )}
     </SafeAreaView>
   );

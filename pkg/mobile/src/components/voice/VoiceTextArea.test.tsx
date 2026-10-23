@@ -23,7 +23,7 @@ const owner = vi.fn();
 const voice: VoiceSession = {
   business: 'contracting',
   purpose: 'field note',
-  attach: vi.fn(),
+  attach: vi.fn(() => () => undefined),
   onChangeText: vi.fn(),
   reportSaved: vi.fn(),
   snapshotSaved: vi.fn(),

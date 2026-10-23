@@ -58,13 +58,15 @@ function FeedbackModal({ jobCode, jobId, onClose }: { jobCode: string; jobId: st
     validators: { onSubmit: FeedbackFormValues },
     onSubmit: async ({ value }) => {
       setSubmitError(null);
+      // The box stays editable while the save is in flight, so what was saved is taken now.
+      const reportSaved = voice.snapshotSaved();
       try {
         await submitMutation.mutateAsync(toSubmitInput(value, jobId));
       } catch (error) {
         setSubmitError(feedbackErrorMessage(error));
         return;
       }
-      voice.reportSaved();
+      reportSaved();
       onClose();
       showToast('success', 'Feedback submitted');
       // General feedback is also Job Activity, so both subject views must see a new entry immediately.

@@ -48,10 +48,17 @@ vi.mock('@/components/form/fields/TextField', () => ({ TextField: 'TextField' })
 // The voice session is mocked at its module boundary; the form's wiring to it is real.
 const reportSaved = vi.hoisted(() => vi.fn());
 const useVoiceSession = vi.hoisted(() =>
-  vi.fn((_scope: unknown, field: object) => ({ ...field, busy: false, reportSaved })),
+  vi.fn((_scope: unknown, field: object) => ({ ...field, busy: false, snapshotSaved: () => reportSaved })),
 );
 vi.mock('@/components/voice/use-voice-session', () => ({ useVoiceSession }));
-vi.mock('@/components/voice/VoiceTextArea', () => ({ VoiceTextArea: 'TextInput' }));
+// The stub takes the page's scroll lock from context, as the real field does.
+vi.mock('@/components/voice/VoiceTextArea', async () => {
+  const { createElement } = await import('react');
+  const { useScrollLock } = await import('@/components/scroll-lock');
+  return {
+    VoiceTextArea: (props: object) => createElement('TextInput', { ...props, lockScroll: useScrollLock() }),
+  };
+});
 
 import { TRPCProvider } from '@/lib/trpc';
 import { PurchaseOrderFeedbackButton } from './PurchaseOrderFeedbackButton';
@@ -107,6 +114,18 @@ test('a refused submit reports no Voice Note as saved', async () => {
 
   await vi.waitFor(() => expect(JSON.stringify(renderer.toJSON())).toContain('Purchase Order is closed.'));
   expect(reportSaved).not.toHaveBeenCalled();
+});
+
+test('holding the mic stops the sheet scrolling until it is released', async () => {
+  const renderer = await mount([order]);
+  await act(async () => renderer.root.findByProps({ accessibilityRole: 'button' }).props.onPress());
+  const sheet = () => renderer.root.findByType('ScrollView' as never);
+  const lockScroll = renderer.root.findByType('TextInput' as never).props.lockScroll as (locked: boolean) => void;
+
+  await act(async () => lockScroll(true));
+  expect(sheet().props.scrollEnabled).toBe(false);
+  await act(async () => lockScroll(false));
+  expect(sheet().props.scrollEnabled).toBe(true);
 });
 
 async function typeAndSubmit(renderer: ReactTestRenderer, text: string) {

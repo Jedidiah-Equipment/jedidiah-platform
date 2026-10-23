@@ -69,6 +69,8 @@ function PurchaseOrderFeedbackModal({
     },
     onSubmit: async ({ value }) => {
       setSubmitError(null);
+      // The box stays editable while the save is in flight, so what was saved is taken now.
+      const reportSaved = voice.snapshotSaved();
       try {
         await submitMutation.mutateAsync({
           kind: 'general',
@@ -79,7 +81,7 @@ function PurchaseOrderFeedbackModal({
         setSubmitError(feedbackErrorMessage(error));
         return;
       }
-      voice.reportSaved();
+      reportSaved();
       onClose();
       showToast('success', 'Feedback submitted');
       await Promise.all([

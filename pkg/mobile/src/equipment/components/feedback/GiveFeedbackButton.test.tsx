@@ -47,7 +47,7 @@ vi.mock('@/components/form/fields/TextField', () => ({ TextField: 'TextField' })
 // The voice session is mocked at its module boundary; the form's wiring to it is real.
 const reportSaved = vi.hoisted(() => vi.fn());
 const useVoiceSession = vi.hoisted(() =>
-  vi.fn((_scope: unknown, field: object) => ({ ...field, busy: false, reportSaved })),
+  vi.fn((_scope: unknown, field: object) => ({ ...field, busy: false, snapshotSaved: () => reportSaved })),
 );
 vi.mock('@/components/voice/use-voice-session', () => ({ useVoiceSession }));
 vi.mock('@/components/voice/VoiceTextArea', () => ({ VoiceTextArea: 'TextInput' }));

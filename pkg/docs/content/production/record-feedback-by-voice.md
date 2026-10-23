@@ -1,8 +1,8 @@
 # Record feedback by voice
 
-On the phone, the **Feedback** box can be filled by speech instead of typing. The mic is there in **Send Feedback** and **Send PO Feedback** on a Job's **Activity** tab. The recording is sent to be turned into text and is never kept. Typing works exactly as before.
+On the phone, the **Feedback** box can be filled by speech instead of typing. The mic is there in **Send Feedback** and **Send PO Feedback** on a Job. The recording is sent to be turned into text and is never kept. Typing works exactly as before.
 
-1. Hold the microphone in the corner of the **Feedback** box and speak. A Voice Note stops itself at 2 minutes.
+1. Hold the microphone and speak. A Voice Note stops itself at 2 minutes.
 2. Release the microphone. The text is added after anything you already typed.
 3. Read the text and fix any wrong word or name; your corrections teach later Voice Notes how names are spelled. Record again to add more.
 4. Choose **Submit Feedback**. It waits while a Voice Note is still recording or being turned into text.

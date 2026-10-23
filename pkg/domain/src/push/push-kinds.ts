@@ -43,7 +43,7 @@ export const PUSH_KINDS: Record<PushKind, PushKindDefinition> = {
     business: 'contracting',
     label: 'Service due soon',
     description: 'A reading brought a machine within the service threshold.',
-    roles: ['workshop-manager'],
+    roles: ['workshop-manager', 'contracting-manager', 'contracting-admin', 'super-admin'],
     channel: WORKSHOP_PUSH_CHANNEL,
   },
   'contracting.breakdown-note': {

@@ -109,6 +109,7 @@ const test = createTester(async ({ db }) => {
       notes: null,
       serviceIntervalHours: null,
       nextServiceDueHours: null,
+      serviceAlertHours: null,
     },
   });
   const implementCategory = await createCategory({
@@ -135,6 +136,7 @@ const test = createTester(async ({ db }) => {
       notes: null,
       serviceIntervalHours: null,
       nextServiceDueHours: null,
+      serviceAlertHours: null,
     },
   });
   const base = { customerId: customer.id, farmId: farm.id, workTypeId: workType.id, description: null };

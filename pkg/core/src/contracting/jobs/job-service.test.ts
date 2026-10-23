@@ -113,6 +113,7 @@ const test = createTester(async ({ db }) => {
       notes: null,
       serviceIntervalHours: null,
       nextServiceDueHours: null,
+      serviceAlertHours: null,
     },
   });
   const implementCategory = await createCategory({

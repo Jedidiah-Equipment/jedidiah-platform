@@ -5,12 +5,12 @@ which thread they are part of.
 
 ## Who gets which alert
 
-| Role | Code Red Breakdown | Code Green Breakdown | Service Due Soon (the Settings threshold before service, 100 h unless changed) | Breakdown note | Job note |
+| Role | Code Red Breakdown | Code Green Breakdown | Service Due Soon | Breakdown note | Job note |
 | --- | :---: | :---: | :---: | :---: | :---: |
 | Workshop Manager | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Contracting Manager | ✓ | — | — | ✓ | ✓ |
-| Contracting Administrator | ✓ | — | — | ✓ | ✓ |
-| Super Administrator | ✓ | — | — | ✓ | ✓ |
+| Contracting Manager | ✓ | — | ✓ | ✓ | ✓ |
+| Contracting Administrator | ✓ | — | ✓ | ✓ | ✓ |
+| Super Administrator | ✓ | — | ✓ | ✓ | ✓ |
 | Foreman | — | — | — | ✓ | ✓ |
 | Contracting Invoicing | — | — | — | — | — |
 
@@ -28,7 +28,7 @@ Administrator get none either.
 | --- | --- | --- | --- |
 | Code Red | A Code Red Breakdown is reported, from the phone or the web. | The Machine or Implement, the first line of the problem, the Farm and Job, and who reported it. | The Breakdown |
 | Code Green | A Code Green Breakdown is reported, from the phone or the web. | The same as Code Red. | The Breakdown |
-| Service Due Soon | A reading first brings a Machine within the Service Due Soon threshold in **Settings** (100 hours unless changed) of its Next Service Due. | The Machine and the hours left before its service, or how far past it the reading already is. | The Machine |
+| Service Due Soon | A reading first brings a Machine within its **Service alert hours** of its Next Service Due, or within the Service Due Soon threshold in **Settings** (100 hours unless changed) when it has none. | The Machine and the hours left before its service, or how far past it the reading already is. | The Machine |
 | Breakdown note | Someone adds a Breakdown Note. | The Machine or Implement code, the author and a preview of the note’s first line. | The Breakdown’s **Activity** |
 | Job note | Someone adds a Job Note. | The Job Number, the author and a preview of the note’s first line. | The Job’s **Activity** |
 

@@ -15,6 +15,7 @@ describe('fleet form mappers', () => {
       notes: '',
       serviceIntervalHours: NaN,
       nextServiceDueHours: NaN,
+      serviceAlertHours: NaN,
     };
     expect(machinePatchInput(id, values)).toMatchObject({
       currentDriverUserId: null,
@@ -23,6 +24,7 @@ describe('fleet form mappers', () => {
       notes: null,
       serviceIntervalHours: null,
       nextServiceDueHours: null,
+      serviceAlertHours: null,
     });
   });
   it('sends empty implement notes as null', () => {

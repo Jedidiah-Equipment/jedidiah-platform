@@ -17,6 +17,7 @@ import {
   MachinePatchInput,
   MachineYear,
   NEXT_SERVICE_DUE_BELOW_READING_MESSAGE,
+  ServiceDueSoonThresholdHours,
   type ServiceDueStatus,
   ServiceIntervalHours,
   ServiceRecordCloseInput,
@@ -51,6 +52,7 @@ export const MachineFormValues = MachineCreateValues.extend({
   notes: emptyStringOr(FleetOptionalText),
   serviceIntervalHours: optionalNumber(ServiceIntervalHours),
   nextServiceDueHours: optionalNumber(FleetHours),
+  serviceAlertHours: optionalNumber(ServiceDueSoonThresholdHours),
 });
 export type MachineFormValues = z.input<typeof MachineFormValues>;
 export function machineFormValues(machine: Machine): MachineFormValues {
@@ -65,6 +67,7 @@ export function machineFormValues(machine: Machine): MachineFormValues {
     notes: machine.notes ?? '',
     serviceIntervalHours: machine.serviceIntervalHours ?? NaN,
     nextServiceDueHours: machine.nextServiceDueHours ?? NaN,
+    serviceAlertHours: machine.serviceAlertHours ?? NaN,
   };
 }
 export function machinePatchInput(id: string, values: MachineFormValues) {
@@ -75,6 +78,7 @@ export function machinePatchInput(id: string, values: MachineFormValues) {
     currentDriverUserId: values.currentDriverUserId || null,
     serviceIntervalHours: nanToNull(values.serviceIntervalHours),
     nextServiceDueHours: nanToNull(values.nextServiceDueHours),
+    serviceAlertHours: nanToNull(values.serviceAlertHours),
   });
 }
 export const createMachineInput = (values: z.infer<typeof MachineCreateValues>) => MachineCreateInput.parse(values);

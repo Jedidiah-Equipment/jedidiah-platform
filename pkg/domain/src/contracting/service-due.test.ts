@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { statusBadgeColorClassNames } from '../theme/status-badge.js';
 import {
+  effectiveServiceDueThreshold,
   hoursToService,
   hoursToServiceLabel,
   isDueForService,
@@ -117,5 +118,16 @@ describe('machineServiceBadge', () => {
       label: 'Booked in',
       colours: statusBadgeColorClassNames.blue,
     });
+  });
+});
+
+describe('effectiveServiceDueThreshold', () => {
+  test("a Machine's Service Alert Hours win over Settings, and blank falls back to Settings", () => {
+    expect(effectiveServiceDueThreshold({ serviceAlertHours: 50 }, 100)).toBe(50);
+    expect(effectiveServiceDueThreshold({ serviceAlertHours: null }, 100)).toBe(100);
+  });
+
+  test('zero is a real override: due soon only once the meter reaches Next Service Due', () => {
+    expect(effectiveServiceDueThreshold({ serviceAlertHours: 0 }, 100)).toBe(0);
   });
 });

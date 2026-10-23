@@ -18,9 +18,24 @@ describe('Push Kind registry', () => {
         'contracting.breakdown-note',
         'contracting.job-note',
       ],
-      'contracting-manager': ['contracting.breakdown.code-red', 'contracting.breakdown-note', 'contracting.job-note'],
-      'contracting-admin': ['contracting.breakdown.code-red', 'contracting.breakdown-note', 'contracting.job-note'],
-      'super-admin': ['contracting.breakdown.code-red', 'contracting.breakdown-note', 'contracting.job-note'],
+      'contracting-manager': [
+        'contracting.breakdown.code-red',
+        'contracting.service-due-soon',
+        'contracting.breakdown-note',
+        'contracting.job-note',
+      ],
+      'contracting-admin': [
+        'contracting.breakdown.code-red',
+        'contracting.service-due-soon',
+        'contracting.breakdown-note',
+        'contracting.job-note',
+      ],
+      'super-admin': [
+        'contracting.breakdown.code-red',
+        'contracting.service-due-soon',
+        'contracting.breakdown-note',
+        'contracting.job-note',
+      ],
       foreman: ['contracting.breakdown-note', 'contracting.job-note'],
       'contracting-invoicing': [],
     });

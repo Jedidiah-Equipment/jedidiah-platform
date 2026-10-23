@@ -1,0 +1,2 @@
+ALTER TABLE "contracting"."machine" ADD COLUMN "service_alert_hours" integer;--> statement-breakpoint
+ALTER TABLE "contracting"."machine" ADD CONSTRAINT "machine_service_alert_hours_bounds" CHECK ("contracting"."machine"."service_alert_hours" between 0 and 1000);

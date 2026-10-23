@@ -67,6 +67,7 @@ export async function seedJobFixtures(db: Db) {
         notes: null,
         serviceIntervalHours: null,
         nextServiceDueHours: null,
+        serviceAlertHours: null,
       },
     });
   const excavator = await machine('CAT320-1');

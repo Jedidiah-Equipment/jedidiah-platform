@@ -10,7 +10,13 @@ export type ServiceDueFacts = { latestReadingHours: number | null; nextServiceDu
 export const hoursToService = ({ latestReadingHours, nextServiceDueHours }: ServiceDueFacts) =>
   latestReadingHours === null || nextServiceDueHours === null ? null : round1(nextServiceDueHours - latestReadingHours);
 
-/** `threshold` is the Service Due Soon threshold in Settings: within that many hours of Next Service Due is due soon. */
+/** The threshold a Machine is judged with: its own Service Alert Hours, else the Service Due Soon threshold in Settings. */
+export const effectiveServiceDueThreshold = (
+  machine: { serviceAlertHours: number | null },
+  settingsThreshold: number,
+) => machine.serviceAlertHours ?? settingsThreshold;
+
+/** `threshold` is the Machine's effective threshold: within that many hours of Next Service Due is due soon. */
 export function serviceDueStatus(facts: ServiceDueFacts, threshold: number): ServiceDueStatus {
   const remaining = hoursToService(facts);
   if (remaining === null) return 'unknown';

@@ -5,6 +5,7 @@ import { nullableTrimmedTextInput, nullableTrimmedTextInputOptional, requiredTri
 import { UUID } from '../../common/uuid.js';
 import { ReadingValue } from '../readings/reading-value.js';
 import { serviceDueStatuses } from '../services/service-enums.js';
+import { ServiceDueSoonThresholdHours } from '../settings/settings.js';
 import { categoryColours, categoryIconKeys, categoryKinds } from './category-enums.js';
 
 export const FleetCode = requiredTrimmedText('Code is required').transform((value) => value.toUpperCase());
@@ -75,6 +76,8 @@ export const MachineCreateInput = z
     notes: FleetOptionalText,
     serviceIntervalHours: ServiceIntervalHours.nullable().default(null),
     nextServiceDueHours: FleetHours.nullable().default(null),
+    /** Service Alert Hours: this Machine's own Service Due Soon threshold; null uses the one in Settings. */
+    serviceAlertHours: ServiceDueSoonThresholdHours.nullable().default(null),
   })
   .strict();
 export type MachineCreateInput = z.infer<typeof MachineCreateInput>;
@@ -91,6 +94,7 @@ export const MachinePatchInput = z
     notes: nullableTrimmedTextInputOptional(),
     serviceIntervalHours: ServiceIntervalHours.nullable().optional(),
     nextServiceDueHours: FleetHours.nullable().optional(),
+    serviceAlertHours: ServiceDueSoonThresholdHours.nullable().optional(),
   })
   .strict();
 export type MachinePatchInput = z.infer<typeof MachinePatchInput>;
@@ -110,6 +114,8 @@ export const Machine = MachineCreateInput.extend({
   /** When that newest Hour Reading was captured. */
   latestReadingAt: DateIso.nullable(),
   hoursToService: z.number().nullable(),
+  /** The threshold the status was judged with: the Machine's Service Alert Hours, else the one in Settings. */
+  serviceDueThresholdHours: ServiceDueSoonThresholdHours,
   serviceDueStatus: z.enum(serviceDueStatuses),
   /** Booked In: the Machine has an open Service Record. */
   serviceBookedIn: z.boolean(),

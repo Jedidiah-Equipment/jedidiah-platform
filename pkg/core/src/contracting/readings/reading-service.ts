@@ -10,6 +10,7 @@ import {
 import { hasPermission, validateFile } from '@pkg/domain';
 import {
   assignmentState,
+  effectiveServiceDueThreshold,
   FUTURE_READ_AT_TOLERANCE_MS,
   formatJobNumber,
   type JobActor,
@@ -235,7 +236,7 @@ export async function captureReading({
             previousHours: latest?.value ?? null,
             newHours: row.value,
             nextServiceDueHours: machine.nextServiceDueHours,
-            threshold: serviceDueSoonThresholdHours,
+            threshold: effectiveServiceDueThreshold(machine, serviceDueSoonThresholdHours),
           }),
         };
       }),

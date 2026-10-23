@@ -370,6 +370,8 @@ export const snapshotTableDefinitions = [
     tableName: 'contracting_machine',
     timestampColumns: ['createdAt', 'retiredAt', 'updatedAt'],
     optionalReadTable: true,
+    optionalReadColumns: ['serviceAlertHours'],
+    seedRowDefaults: () => ({ serviceAlertHours: null }),
   },
   {
     fileName: 'contracting_implement.json',

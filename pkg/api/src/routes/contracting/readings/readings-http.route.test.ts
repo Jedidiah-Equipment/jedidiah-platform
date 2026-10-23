@@ -224,6 +224,25 @@ test('schedules Service Due Soon for the capture that crosses into the window, o
   }
 });
 
+test("crosses into the window at the Machine's own Service Alert Hours, not the threshold in Settings", async ({
+  context,
+}) => {
+  const { app, db, machineId, pushes } = context;
+  try {
+    await patchMachine({
+      db,
+      actorUserId: 'test-user-id',
+      input: { id: machineId, nextServiceDueHours: 200, serviceAlertHours: 50 },
+    });
+    expect((await app.inject(upload(machineId, null, true, { value: '123.4' }))).statusCode).toBe(201);
+    expect(pushes).toEqual([]);
+    expect((await app.inject(upload(machineId, null, true, { value: '160' }))).statusCode).toBe(201);
+    expect(pushes).toEqual([{ kind: 'machine.service-due-soon', machineId }]);
+  } finally {
+    await app.close();
+  }
+});
+
 test('stores a trimmed capture comment and treats an empty comment field as none', async ({ context }) => {
   const { app, machineId } = context;
   try {

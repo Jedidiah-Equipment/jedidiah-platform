@@ -60,7 +60,7 @@ function SettingsForm({ settings }: { settings: ContractingSettings }) {
                     unit="hours"
                     decimals={0}
                     inputMode="numeric"
-                    description="A Machine is Service Due Soon within this many hours of its Next Service Due. Alerts fire at the next capture that brings a Machine inside the threshold."
+                    description="A Machine is Service Due Soon within this many hours of its Next Service Due, unless the Machine sets its own Service alert hours. Alerts fire at the next capture that brings a Machine inside the threshold."
                   />
                 )}
               </form.AppField>

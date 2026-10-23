@@ -83,6 +83,7 @@ const test = createTester(async ({ db }) => {
         notes: null,
         serviceIntervalHours: null,
         nextServiceDueHours: null,
+        serviceAlertHours: null,
       },
     });
 

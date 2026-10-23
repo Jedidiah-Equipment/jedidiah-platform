@@ -51,6 +51,8 @@ export const contractingMachines = contractingSchema.table(
     notes: text('notes'),
     serviceIntervalHours: decimal2('service_interval_hours'),
     nextServiceDueHours: decimal2('next_service_due_hours'),
+    // Overrides the Service Due Soon threshold in Settings for this Machine; null uses Settings.
+    serviceAlertHours: integer('service_alert_hours'),
     ...retirement(),
     ...timestamps(),
   },
@@ -63,6 +65,7 @@ export const contractingMachines = contractingSchema.table(
     ),
     check('machine_service_interval_positive', sql`${table.serviceIntervalHours} > 0`),
     check('machine_service_due_nonnegative', sql`${table.nextServiceDueHours} >= 0`),
+    check('machine_service_alert_hours_bounds', sql`${table.serviceAlertHours} between 0 and 1000`),
     index('machine_category_idx').on(table.categoryId),
     index('machine_driver_idx').on(table.currentDriverUserId),
   ],

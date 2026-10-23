@@ -298,7 +298,9 @@ describe('Contracting push fan-out', () => {
     expect(recipients(await report(db, excavator.id, 'code-red'))).toContain('ExponentPushToken[wendy-1]');
   });
 
-  test('Service Due Soon reaches the workshop managers with the hours left', async ({ context: { db, excavator } }) => {
+  test('Service Due Soon reaches the workshop managers and management with the hours left', async ({
+    context: { db, excavator },
+  }) => {
     await patchMachine({ db, actorUserId: adminId, input: { id: excavator.id, nextServiceDueHours: 1500 } });
     await captureReading({
       db,
@@ -322,7 +324,15 @@ describe('Contracting push fan-out', () => {
       },
     });
 
-    expect(delivery).toEqual({ sent: 2, pruned: 0, failed: 0, failures: {} });
+    expect(delivery).toEqual({ sent: 5, pruned: 0, failed: 0, failures: {} });
+    // The capturer is not excluded: the contracting-admin who read the meter is told too.
+    expect(recipients(sent)).toEqual([
+      'ExponentPushToken[jed]',
+      'ExponentPushToken[mo]',
+      'ExponentPushToken[sam]',
+      'ExponentPushToken[wendy-1]',
+      'ExponentPushToken[wendy-2]',
+    ]);
     expect(sent[0]).toMatchObject({ title: 'Service due soon · CAT320-1', body: '51.0 h to next service.' });
 
     // A service closed before the queue ran moved the due point on: there is nothing left to say.

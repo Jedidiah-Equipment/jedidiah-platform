@@ -132,6 +132,7 @@ test('note mutations schedule their committed notes and rejected notes schedule 
       notes: null,
       serviceIntervalHours: null,
       nextServiceDueHours: null,
+      serviceAlertHours: null,
     },
   });
   const { breakdown } = await reportBreakdown({

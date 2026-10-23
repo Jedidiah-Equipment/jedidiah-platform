@@ -1,9 +1,10 @@
 import { z } from 'zod';
 import { AuthId } from '../../auth/auth-id.js';
 import { DateIso, DateOnlyIso } from '../../common/date.js';
+import { createCursorQueryResult, createSearchedSortedCursorQueryInput } from '../../common/pagination.js';
 import { nullableTrimmedTextInput, nullableTrimmedTextInputOptional } from '../../common/text.js';
 import { UUID } from '../../common/uuid.js';
-import { FleetHours } from '../fleet/fleet.js';
+import { categoryProjection, FleetHours } from '../fleet/fleet.js';
 import { serviceRecordStatuses } from './service-enums.js';
 
 export const ServiceRecordOpenInput = z
@@ -45,6 +46,8 @@ export const ServiceRecord = z.object({
   id: UUID,
   machineId: UUID,
   machineCode: z.string(),
+  /** The Machine's Category, so a list across Machines can show each one as the fleet does. */
+  ...categoryProjection,
   startDate: DateOnlyIso,
   endDate: DateOnlyIso.nullable(),
   readingAtServiceHours: FleetHours.nullable(),
@@ -61,4 +64,27 @@ export const ServiceRecord = z.object({
 export type ServiceRecord = z.infer<typeof ServiceRecord>;
 export const ServiceRecordListInput = z.object({ machineId: UUID }).strict();
 export type ServiceRecordListInput = z.infer<typeof ServiceRecordListInput>;
+/** The Services table: every Service Record across the fleet, Booked In first. */
+export const ServiceRecordTableInput = createSearchedSortedCursorQueryInput({
+  defaultSortDirection: 'desc',
+  shape: {
+    statuses: z.array(z.enum(serviceRecordStatuses)).default([]),
+    machineIds: z.array(UUID).default([]),
+    mechanicUserIds: z.array(AuthId).default([]),
+  },
+  sortBy: z.enum(['startDate']).default('startDate'),
+});
+export type ServiceRecordTableInput = z.infer<typeof ServiceRecordTableInput>;
+export const ServiceRecordTableResult = createCursorQueryResult(ServiceRecord);
+export type ServiceRecordTableResult = z.infer<typeof ServiceRecordTableResult>;
+export const ServiceRecordSummary = z.object({
+  counts: z.object({ open: z.number().int().nonnegative(), closed: z.number().int().nonnegative() }),
+});
+export type ServiceRecordSummary = z.infer<typeof ServiceRecordSummary>;
+/** What the Services table's column filters offer: only Machines and Mechanics some Service Record names. */
+export const ServiceRecordFilterOptions = z.object({
+  machines: z.object({ id: UUID, code: z.string() }).array(),
+  mechanics: z.object({ id: AuthId, name: z.string() }).array(),
+});
+export type ServiceRecordFilterOptions = z.infer<typeof ServiceRecordFilterOptions>;
 export const ServiceRecordIdInput = z.object({ id: UUID }).strict();

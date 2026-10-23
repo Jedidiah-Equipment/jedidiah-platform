@@ -1,5 +1,5 @@
 import { formatDate, formatHours, getPlantDateNow } from '@pkg/domain';
-import { hoursToServiceLabel, serviceDueStatusColorClassNames, serviceDueStatusLabels } from '@pkg/domain/contracting';
+import { hoursToServiceLabel, machineServiceBadge } from '@pkg/domain/contracting';
 import type { Machine, ServiceRecord } from '@pkg/schema/contracting';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
@@ -7,16 +7,15 @@ import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import type { SearchableComboboxOption } from '@/components/common/SearchableCombobox.js';
 import { AutosaveStatus, CreateEntityDialog, useAutosaveForm } from '@/components/form/index.js';
 import { HelpLink } from '@/components/help/index.js';
-import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { mechanicFieldOptions } from '@/contracting/components/MechanicCombobox.js';
+import { ServiceBadge } from '@/contracting/components/ServiceBadge.js';
 import { useContractingWrite } from '@/contracting/hooks/use-contracting-write.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { cn } from '@/lib/utils.js';
 import { CloseServiceRecordDialog } from './CloseServiceRecordDialog.js';
 import { OpenServiceValues, openServiceFields } from './types.js';
 
@@ -41,7 +40,6 @@ export function MachineServiceCard({ machine }: { machine: Machine }) {
   const [closingId, setClosingId] = useState<string | null>(null);
   const openRecords = (records.data ?? []).filter((record) => record.status === 'open');
   const closing = openRecords.find((record) => record.id === closingId);
-  const colours = serviceDueStatusColorClassNames[machine.serviceDueStatus];
   if (!readsServices) return null;
   return (
     <Card>
@@ -53,9 +51,7 @@ export function MachineServiceCard({ machine }: { machine: Machine }) {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-          <Badge className={cn(colours.chip, colours.text)} variant="outline">
-            {serviceDueStatusLabels[machine.serviceDueStatus]}
-          </Badge>
+          <ServiceBadge {...machineServiceBadge(machine)} />
           <span>Latest reading {hoursOrDash(machine.latestReadingHours)}</span>
           <span>Next service due {hoursOrDash(machine.nextServiceDueHours)}</span>
           {machine.hoursToService !== null ? (
@@ -98,7 +94,8 @@ export function MachineServiceCard({ machine }: { machine: Machine }) {
   );
 }
 
-function RecordServiceDialog({
+/** Books a Machine in: the Machine page's Service card and the Services page's pinned rows both open it. */
+export function RecordServiceDialog({
   machineId,
   open,
   onOpenChange,

@@ -1,16 +1,30 @@
-import type { DatabaseTransaction, Db } from '@pkg/db';
-import { contractingMachines, contractingServiceRecords } from '@pkg/db/contracting';
-import type { AuthId } from '@pkg/schema';
+import {
+  createGlobalSearchCondition,
+  type DatabaseTransaction,
+  type Db,
+  getSortOrder,
+  user,
+  withPagination,
+} from '@pkg/db';
+import { contractingCategories, contractingMachines, contractingServiceRecords } from '@pkg/db/contracting';
+import { type AuthId, getNextCursor } from '@pkg/schema';
 import {
   NEXT_SERVICE_DUE_BELOW_READING_MESSAGE,
   ServiceRecord,
   type ServiceRecordCloseInput,
+  ServiceRecordFilterOptions,
   type ServiceRecordOpenInput,
   type ServiceRecordPatchInput,
+  type ServiceRecordStatus,
+  ServiceRecordSummary,
+  type ServiceRecordTableInput,
+  type ServiceRecordTableResult,
 } from '@pkg/schema/contracting';
-import { desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNotNull, isNull, or, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import { defineAuditDescriptor, recordAuditCreate } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
+import { projectCategory } from '../fleet/fleet-entry.js';
 import { stampNextServiceDue } from '../fleet/machine-service.js';
 import { assertContractingMechanic } from '../mechanics.js';
 import {
@@ -32,29 +46,39 @@ const descriptor = defineAuditDescriptor<Row>({
   }),
 });
 
-const related = {
-  machine: { columns: { code: true } },
-  mechanic: { columns: { name: true } },
-  closedBy: { columns: { name: true } },
-} as const;
-type LoadedRow = Row & {
-  machine: { code: string };
-  mechanic: { name: string } | null;
-  closedBy: { name: string } | null;
-};
-function mapServiceRecord({
-  machine,
-  mechanic,
-  closedBy,
-  closedByUserId: _closedBy,
-  createdByUserId: _createdBy,
-  ...row
-}: LoadedRow) {
+const serviceMechanic = alias(user, 'service_mechanic');
+const serviceCloser = alias(user, 'service_closer');
+/** Every Service Record read: the row with its Machine, the Machine's Category and the people it names. */
+function selectServiceRecords(db: Db | DatabaseTransaction) {
+  return db
+    .select({
+      record: contractingServiceRecords,
+      machineCode: contractingMachines.code,
+      category: {
+        name: contractingCategories.name,
+        icon: contractingCategories.icon,
+        colour: contractingCategories.colour,
+      },
+      mechanicName: serviceMechanic.name,
+      closedByName: serviceCloser.name,
+      total: sql<number>`count(*) over ()`.mapWith(Number),
+    })
+    .from(contractingServiceRecords)
+    .innerJoin(contractingMachines, eq(contractingMachines.id, contractingServiceRecords.machineId))
+    .innerJoin(contractingCategories, eq(contractingCategories.id, contractingMachines.categoryId))
+    .leftJoin(serviceMechanic, eq(serviceMechanic.id, contractingServiceRecords.primaryMechanicUserId))
+    .leftJoin(serviceCloser, eq(serviceCloser.id, contractingServiceRecords.closedByUserId))
+    .$dynamic();
+}
+type LoadedRow = Awaited<ReturnType<typeof selectServiceRecords>>[number];
+function mapServiceRecord({ record, machineCode, category, mechanicName, closedByName }: LoadedRow) {
+  const { closedByUserId: _closedBy, createdByUserId: _createdBy, ...row } = record;
   return ServiceRecord.parse({
     ...row,
-    machineCode: machine.code,
-    mechanicName: mechanic?.name ?? null,
-    closedByName: closedBy?.name ?? null,
+    machineCode,
+    ...projectCategory(category),
+    mechanicName,
+    closedByName,
     status: row.closedAt ? 'closed' : 'open',
     closedAt: row.closedAt?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),
@@ -63,22 +87,82 @@ function mapServiceRecord({
 }
 
 export async function getServiceRecord({ db, id }: { db: Db | DatabaseTransaction; id: string }) {
-  const row = await db.query.contractingServiceRecords.findFirst({
-    where: eq(contractingServiceRecords.id, id),
-    with: related,
-  });
+  const [row] = await selectServiceRecords(db).where(eq(contractingServiceRecords.id, id)).limit(1);
   if (!row) throw serviceRecordNotFound();
   return mapServiceRecord(row);
 }
 
 /** A Machine's Service Records, newest first. */
 export async function listServiceRecords({ db, machineId }: { db: Db; machineId: string }) {
-  const rows = await db.query.contractingServiceRecords.findMany({
-    where: eq(contractingServiceRecords.machineId, machineId),
-    with: related,
-    orderBy: [desc(contractingServiceRecords.startDate), desc(contractingServiceRecords.createdAt)],
-  });
+  const rows = await selectServiceRecords(db)
+    .where(eq(contractingServiceRecords.machineId, machineId))
+    .orderBy(desc(contractingServiceRecords.startDate), desc(contractingServiceRecords.createdAt));
   return rows.map(mapServiceRecord);
+}
+
+const isClosed = sql`${contractingServiceRecords.closedAt} is not null`;
+const statusCondition = (status: ServiceRecordStatus) =>
+  status === 'open' ? isNull(contractingServiceRecords.closedAt) : isNotNull(contractingServiceRecords.closedAt);
+
+/** The Services table: every Service Record across the fleet, Booked In first, then by start date. */
+export async function listServiceRecordTable({
+  db,
+  input,
+}: {
+  db: Db;
+  input: ServiceRecordTableInput;
+}): Promise<ServiceRecordTableResult> {
+  const where = and(
+    input.statuses.length ? or(...input.statuses.map(statusCondition)) : undefined,
+    input.machineIds.length ? inArray(contractingServiceRecords.machineId, input.machineIds) : undefined,
+    input.mechanicUserIds.length
+      ? inArray(contractingServiceRecords.primaryMechanicUserId, input.mechanicUserIds)
+      : undefined,
+    createGlobalSearchCondition(input.search, [sql`${contractingMachines.code}`, sql`${serviceMechanic.name}`]),
+  );
+  const matching = () =>
+    selectServiceRecords(db)
+      .where(where)
+      .orderBy(
+        asc(isClosed),
+        getSortOrder(contractingServiceRecords.startDate, input.sortDirection),
+        desc(contractingServiceRecords.createdAt),
+        asc(contractingServiceRecords.id),
+      );
+  const rows = await withPagination(matching(), input);
+  // Every row carries the full match count; a stale cursor past the end asks for the first row to learn it.
+  const counted = rows[0] ?? (input.cursor > 0 ? (await matching().limit(1))[0] : undefined);
+  const total = counted?.total ?? 0;
+  const items = rows.map(mapServiceRecord);
+  return { items, nextCursor: getNextCursor({ count: items.length, cursor: input.cursor, total }), total };
+}
+
+/** How many Service Records are Booked In and how many are closed, for the Services table's quick filters. */
+export async function summarizeServiceRecords({ db }: { db: Db }): Promise<ServiceRecordSummary> {
+  const [counts] = await db
+    .select({
+      open: sql<number>`count(*) filter (where ${contractingServiceRecords.closedAt} is null)::integer`,
+      closed: sql<number>`count(*) filter (where ${contractingServiceRecords.closedAt} is not null)::integer`,
+    })
+    .from(contractingServiceRecords);
+  return ServiceRecordSummary.parse({ counts: counts ?? { open: 0, closed: 0 } });
+}
+
+/** The Machines and Mechanics some Service Record names, for the Services table's column filters. */
+export async function listServiceRecordFilterOptions({ db }: { db: Db }): Promise<ServiceRecordFilterOptions> {
+  const [machines, mechanics] = await Promise.all([
+    db
+      .selectDistinct({ id: contractingMachines.id, code: contractingMachines.code })
+      .from(contractingServiceRecords)
+      .innerJoin(contractingMachines, eq(contractingMachines.id, contractingServiceRecords.machineId))
+      .orderBy(asc(contractingMachines.code)),
+    db
+      .selectDistinct({ id: serviceMechanic.id, name: serviceMechanic.name })
+      .from(contractingServiceRecords)
+      .innerJoin(serviceMechanic, eq(serviceMechanic.id, contractingServiceRecords.primaryMechanicUserId))
+      .orderBy(asc(serviceMechanic.name)),
+  ]);
+  return ServiceRecordFilterOptions.parse({ machines, mechanics });
 }
 
 /** Locks the Machine first, as every Service Record write that touches it must, and refuses a retired one. */

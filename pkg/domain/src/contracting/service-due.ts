@@ -1,4 +1,4 @@
-import type { ServiceDueStatus } from '@pkg/schema/contracting';
+import type { ServiceDueStatus, ServiceRecordStatus } from '@pkg/schema/contracting';
 import { formatHours } from '../formatting/number.js';
 import { type BadgeColorClassNames, statusBadgeColorClassNames } from '../theme/status-badge.js';
 import { round1 } from './hours.js';
@@ -43,6 +43,15 @@ export const suggestedNextServiceDue = (readingAtServiceHours: number, serviceIn
 /** Due soon or overdue: the statuses a screen paints in their warning colour. */
 export const serviceDueNeedsAttention = (status: ServiceDueStatus) => status === 'due-soon' || status === 'overdue';
 
+type MachineServiceState = { serviceDueStatus: ServiceDueStatus; serviceBookedIn: boolean };
+
+/**
+ * Due for Service: due soon or overdue with no open Service Record. Booking the Machine in takes it off before its
+ * hours change. The Services page's pinned rows, the menu dot and the Dashboard all read this one predicate.
+ */
+export const isDueForService = ({ serviceDueStatus, serviceBookedIn }: MachineServiceState) =>
+  serviceDueNeedsAttention(serviceDueStatus) && !serviceBookedIn;
+
 /** What is left before Next Service Due, in the reader's words, on every surface that shows it. */
 export const hoursToServiceLabel = (hoursToService: number) =>
   hoursToService < 0 ? `Overdue by ${formatHours(-hoursToService)}` : `${formatHours(hoursToService)} to go`;
@@ -70,3 +79,18 @@ export const serviceDueStatusColorClassNames: Record<ServiceDueStatus, BadgeColo
   'due-soon': statusBadgeColorClassNames.orange,
   overdue: statusBadgeColorClassNames.red,
 };
+export const serviceRecordStatusLabels: Record<ServiceRecordStatus, string> = { open: 'Booked in', closed: 'Closed' };
+export const serviceRecordStatusColorClassNames = {
+  open: statusBadgeColorClassNames.blue,
+  closed: statusBadgeColorClassNames.gray,
+} satisfies Record<ServiceRecordStatus, BadgeColorClassNames & { dot: string }>;
+
+/** The service badge every surface shows for a Machine: Booked in while a Service Record is open, else its status. */
+export function machineServiceBadge(machine: MachineServiceState): { label: string; colours: BadgeColorClassNames } {
+  if (machine.serviceBookedIn)
+    return { label: serviceRecordStatusLabels.open, colours: serviceRecordStatusColorClassNames.open };
+  return {
+    label: serviceDueStatusLabels[machine.serviceDueStatus],
+    colours: serviceDueStatusColorClassNames[machine.serviceDueStatus],
+  };
+}

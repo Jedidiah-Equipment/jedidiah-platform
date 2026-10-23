@@ -280,6 +280,15 @@ readings from the field. It notifies the workshop manager by push notification o
 capture that first brings the reading within the threshold; closing a Service Record moves the
 due point on and re-arms it.
 
+**Due for Service** is a derived state: a Machine whose Service Due Soon status is due soon or overdue and
+which has no open Service Record. **Booked In** is a Machine with an open Service Record; booking a Machine
+in takes it off the due list before its hours change, and closing the record with a new Next Service Due
+resets its status. The **Services** page lists every Service Record with the Due for Service Machines
+pinned above them, so no filter can hide one; the same predicate drives its menu dot and the Dashboard's
+Service due block. Nobody reports that a service is due:
+a spot reading that brings the hours within the threshold is the report.
+_Avoid_: service notification, service request, service alert (the push is "Service Due Soon")
+
 ## Voice
 
 **Voice Note** is a recording a user makes into any multi-line text field of the Contracting
@@ -347,7 +356,7 @@ threshold, the Service Due Soon threshold and the Utilisation Target %. Every de
 current value; nothing stored is re-judged.
 
 The **Dashboard** is the web home: counts and lists of what needs a person now — the Jobs needing a look, the
-Breakdowns not yet Fixed, the Machines Service Due Soon or overdue, the Jobs waiting for sign-off, pricing or an
+Breakdowns not yet Fixed, the Machines Due for Service, the Jobs waiting for sign-off, pricing or an
 Invoice Number, and the Reading Exceptions — and two counts of what is under way: the Active Jobs not yet looking
 finished and the Machines On Job. Each block shows only to a role holding the permission that reads what
 it lists, and it refreshes every minute. It never shows anything over a period; that is Reporting's.

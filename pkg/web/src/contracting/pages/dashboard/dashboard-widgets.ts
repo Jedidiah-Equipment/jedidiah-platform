@@ -79,7 +79,7 @@ export const contractingDashboardRows = [
     {
       Component: ServiceDueWidget,
       id: 'service-due',
-      requires: 'contracting_machine:read',
+      requires: 'contracting_service:read',
       size: 'md',
       title: 'Service due',
     },

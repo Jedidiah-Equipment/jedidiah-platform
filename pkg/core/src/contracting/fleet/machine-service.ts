@@ -1,6 +1,12 @@
 import { createEscapedContainsSearchCondition, type DatabaseTransaction, type Db, user } from '@pkg/db';
 import { contractingMachines, contractingServiceRecords } from '@pkg/db/contracting';
-import { fieldReaderSeesJob, formatJobNumber, hoursToService, serviceDueStatus } from '@pkg/domain/contracting';
+import {
+  fieldReaderSeesJob,
+  formatJobNumber,
+  hoursToService,
+  machinesDueForService,
+  serviceDueStatus,
+} from '@pkg/domain/contracting';
 import type { AuthId, ContractingRole, UserAccessSummary } from '@pkg/schema';
 import {
   FieldMachine,
@@ -93,6 +99,12 @@ const latestReading = (machine: typeof contractingMachines._.columns) => ({
     order by arrival.captured_at desc
     limit 1
   )`.as('busy_on_job'),
+  serviceBookedIn: sql<boolean>`exists (
+    select 1
+    from contracting.service_record booked
+    where booked.machine_id = ${machine.id}
+      and booked.closed_at is null
+  )`.as('service_booked_in'),
 });
 function mapMachine(
   row: Row & {
@@ -101,6 +113,7 @@ function mapMachine(
     latestReadingHours: number | null;
     latestReadingAt: string | null;
     busyOnJob: BusyOnJobRow | null;
+    serviceBookedIn: boolean;
   },
   serviceDueSoonThresholdHours: number,
 ) {
@@ -147,6 +160,10 @@ export async function getMachine({ db, id }: { db: Db | DatabaseTransaction; id:
   ]);
   if (!row) throw notFound('Machine');
   return mapMachine(row, serviceDueSoonThresholdHours);
+}
+/** The active Machines Due for Service, overdue first: what the Services page pins and the menu dot counts. */
+export async function listMachinesDueForService({ db }: { db: Db }) {
+  return machinesDueForService(await listMachines({ db, input: { status: 'active', search: '' } }));
 }
 async function assertDriver(tx: DatabaseTransaction, id: string | null | undefined) {
   if (!id) return;

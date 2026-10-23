@@ -2,8 +2,14 @@ import { type Db, user } from '@pkg/db';
 import { productRanges, products, purchaseOrders, supplier } from '@pkg/db/equipment';
 import { departmentLabels } from '@pkg/domain/equipment';
 import type { KeytermCandidate } from '@pkg/schema';
-import { and, eq, gte, isNotNull, isNull, ne, or } from 'drizzle-orm';
-import type { TranscriptionProfile } from '../../transcriptions/transcription-profile.js';
+import { subDays } from 'date-fns';
+import { and, eq, gte, isNull, ne } from 'drizzle-orm';
+import {
+  personKeyterms,
+  sourcedKeyterms,
+  type TranscriptionProfile,
+} from '../../transcriptions/transcription-profile.js';
+import { eligibleMovementPersonCondition } from '../inventory/recipient-read.js';
 
 const RECENT_DAYS = 90;
 
@@ -18,19 +24,12 @@ async function loadEquipmentKeytermCandidates({
   db: Db;
   now?: Date;
 }): Promise<KeytermCandidate[]> {
-  const since = new Date(now.getTime() - RECENT_DAYS * 24 * 60 * 60 * 1000);
+  const since = subDays(now, RECENT_DAYS);
   const [people, productNames, rangeNames, suppliers] = await Promise.all([
     db
       .select({ name: user.name })
       .from(user)
-      .where(
-        and(
-          isNotNull(user.role),
-          ne(user.role, 'app-store-tester'),
-          eq(user.isDevice, false),
-          or(isNull(user.banned), eq(user.banned, false)),
-        ),
-      )
+      .where(and(eligibleMovementPersonCondition(), ne(user.role, 'app-store-tester')))
       .orderBy(user.name),
     db.select({ name: products.name }).from(products).where(isNull(products.deletedAt)).orderBy(products.name),
     db
@@ -46,19 +45,14 @@ async function loadEquipmentKeytermCandidates({
       .orderBy(supplier.companyName),
   ]);
 
-  const sourced = (source: string, keyterms: readonly (string | null)[]) =>
-    keyterms.flatMap((keyterm) => (keyterm === null ? [] : [{ keyterm, source }]));
   return [
-    ...sourced(
-      'person',
-      people.flatMap((person) => [person.name, person.name.trim().split(/\s+/)[0] ?? null]),
-    ),
-    ...sourced('department', Object.values(departmentLabels)),
-    ...sourced(
+    ...personKeyterms(people.map((person) => person.name)),
+    ...sourcedKeyterms('department', Object.values(departmentLabels)),
+    ...sourcedKeyterms(
       'product',
       [...productNames, ...rangeNames].map((row) => row.name),
     ),
-    ...sourced(
+    ...sourcedKeyterms(
       'supplier',
       suppliers.map((row) => row.name),
     ),

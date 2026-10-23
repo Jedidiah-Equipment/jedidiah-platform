@@ -4,7 +4,6 @@ import type { VoiceSession } from '@/components/voice/use-voice-session';
 import { VoiceTextArea } from '@/components/voice/VoiceTextArea';
 import { useFieldContext } from '../hooks/form-context';
 import { getFieldErrors } from '../utils/field-errors';
-import { fieldStateClassNames } from '../utils/field-style';
 import { FieldShell } from './FieldShell';
 
 type VoiceTextareaFieldProps = {
@@ -16,7 +15,7 @@ type VoiceTextareaFieldProps = {
 
 /**
  * `TextareaField` with the press-and-hold mic: the voice session owns the text, this field its label and errors. Render
- * it inside `form.AppField` rather than from the registry, so forms without voice never load the recorder.
+ * it inside `form.AppField` rather than from the registry, so forms without voice never import the recorder.
  */
 export function VoiceTextareaField({ voice, label, rows = 5, className, ...inputProps }: VoiceTextareaFieldProps) {
   const field = useFieldContext<string>();
@@ -25,7 +24,7 @@ export function VoiceTextareaField({ voice, label, rows = 5, className, ...input
   return (
     <FieldShell errors={errors} label={label}>
       <VoiceTextArea
-        className={`${fieldStateClassNames({ disabled: false, hasErrors: errors.length > 0 })} ${className ?? ''}`}
+        className={`${errors.length > 0 ? 'border-danger' : 'border-border'} ${className ?? ''}`}
         onBlur={() => field.handleBlur()}
         rows={rows}
         voice={voice}

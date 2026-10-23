@@ -46,20 +46,13 @@ vi.mock('@/components/form/fields/SearchSelectField', () => ({ SearchSelectField
 vi.mock('@/components/form/fields/SegmentedField', () => ({ SegmentedField: 'SegmentedField' }));
 vi.mock('@/components/form/fields/TextField', () => ({ TextField: 'TextField' }));
 // The session's recorder and upload are covered in components/voice; here the form's wiring to it is real.
-const voice = vi.hoisted(() => ({ reportSaved: vi.fn(), scopes: [] as unknown[] }));
-vi.mock('@/components/voice/use-voice-session', () => ({
-  useVoiceSession: (scope: unknown, field: object) => {
-    voice.scopes.push(scope);
-    return { ...field, ...(scope as object), busy: false, reportSaved: voice.reportSaved };
-  },
-}));
-vi.mock('@/components/voice/VoiceTextArea', () => ({
-  VoiceTextArea: ({ voice: session, ...props }: { voice: { value: string; onChangeText: (text: string) => void } }) => (
-    <TextInputStub {...props} onChangeText={session.onChangeText} value={session.value} />
-  ),
-}));
-
-const TextInputStub = 'TextInput' as unknown as (props: Record<string, unknown>) => null;
+const reportSaved = vi.hoisted(() => vi.fn());
+const useVoiceSession = vi.hoisted(() =>
+  vi.fn((_scope: unknown, field: object) => ({ ...field, busy: false, reportSaved })),
+);
+vi.mock('@/components/voice/use-voice-session', () => ({ useVoiceSession }));
+// The field hands its session to a plain stub, so typing goes through the session to the form.
+vi.mock('@/components/voice/VoiceTextArea', () => ({ VoiceTextArea: 'TextInput' }));
 
 import { TRPCProvider } from '@/lib/trpc';
 import { PurchaseOrderFeedbackButton } from './PurchaseOrderFeedbackButton';
@@ -68,8 +61,7 @@ import { PurchaseOrderFeedbackButton } from './PurchaseOrderFeedbackButton';
 const cleanups: Array<() => void> = [];
 afterEach(async () => {
   for (const cleanup of cleanups.splice(0)) await act(cleanup);
-  voice.reportSaved.mockClear();
-  voice.scopes.length = 0;
+  vi.clearAllMocks();
 });
 const order = FeedbackPurchaseOrder.parse({
   id: '00000000-0000-4000-8000-000000000042',
@@ -92,12 +84,7 @@ test('preselects the only linked PO and submits General Feedback from the full-s
   expect(content).not.toContain('Who is this about?');
   expect(content).not.toContain('Public:');
   expect(content).not.toContain('Private:');
-  await act(async () => renderer.root.findByType('TextInput' as never).props.onChangeText('Delivery tomorrow'));
-  const submit = renderer.root
-    .findAllByType('Pressable' as never)
-    .find((node) => node.findAllByType('Text' as never).some((text) => text.children.includes('Submit Feedback')));
-  expect(submit).toBeDefined();
-  await act(async () => submit?.props.onPress());
+  await typeAndSubmit(renderer, 'Delivery tomorrow');
   await vi.waitFor(() =>
     expect(sent).toEqual([
       {
@@ -107,23 +94,31 @@ test('preselects the only linked PO and submits General Feedback from the full-s
       },
     ]),
   );
-  expect(voice.scopes.at(-1)).toEqual({ business: 'equipment', purpose: 'purchase order feedback' });
+  expect(useVoiceSession).toHaveBeenCalledWith(
+    { business: 'equipment', purpose: 'purchase order feedback' },
+    expect.anything(),
+  );
   // The Voice Notes that fed the text report what was kept only once the feedback itself was accepted.
-  await vi.waitFor(() => expect(voice.reportSaved).toHaveBeenCalledTimes(1));
+  await vi.waitFor(() => expect(reportSaved).toHaveBeenCalledTimes(1));
 });
 
 test('a refused submit reports no Voice Note as saved', async () => {
   const renderer = await mount([order], [], { refuse: true });
   await act(async () => renderer.root.findByProps({ accessibilityRole: 'button' }).props.onPress());
-  await act(async () => renderer.root.findByType('TextInput' as never).props.onChangeText('Delivery tomorrow'));
-  const submit = renderer.root
-    .findAllByType('Pressable' as never)
-    .find((node) => node.findAllByType('Text' as never).some((text) => text.children.includes('Submit Feedback')));
-  await act(async () => submit?.props.onPress());
+  await typeAndSubmit(renderer, 'Delivery tomorrow');
 
   await vi.waitFor(() => expect(JSON.stringify(renderer.toJSON())).toContain('Purchase Order is closed.'));
-  expect(voice.reportSaved).not.toHaveBeenCalled();
+  expect(reportSaved).not.toHaveBeenCalled();
 });
+
+async function typeAndSubmit(renderer: ReactTestRenderer, text: string) {
+  await act(async () => renderer.root.findByType('TextInput' as never).props.voice.onChangeText(text));
+  const submit = renderer.root
+    .findAllByType('Pressable' as never)
+    .find((node) => node.findAllByType('Text' as never).some((label) => label.children.includes('Submit Feedback')));
+  expect(submit).toBeDefined();
+  await act(async () => submit?.props.onPress());
+}
 
 async function mount(purchaseOrders: FeedbackPurchaseOrder[], sent: unknown[] = [], { refuse = false } = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });

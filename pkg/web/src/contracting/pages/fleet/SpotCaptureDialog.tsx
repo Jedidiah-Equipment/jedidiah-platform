@@ -112,7 +112,7 @@ export function SpotCaptureDialog({
                 label="Read At"
                 type="datetime-local"
                 max={readAtInputValue(new Date())}
-                description="When the meter was read. Leave blank for now."
+                description="When the meter was read. Leave blank to use the current time."
               />
             )}
           </form.AppField>

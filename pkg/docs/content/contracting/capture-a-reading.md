@@ -14,7 +14,7 @@ Management can capture a spot reading from the office, from a photo of the meter
 
 1. Open **Fleet → Machines**, open the Machine, and open its **Service** tab.
 2. Choose **Capture reading**. Type the **Current reading**; **Previous reading** is the lowest value allowed, and a lower value offers the same dispute as on the phone.
-3. Set **Read At** to when the photo was taken. Leave it blank for now. It cannot be in the future.
+3. Set **Read At** to when the photo was taken. Leave it blank to use the current time. It cannot be in the future.
 4. Under **Meter photo**, choose the photo. Without one the reading carries **Missing Photo Evidence**.
 5. Add a **Comment** if needed and choose **Capture**.
 

@@ -24,12 +24,13 @@ test('orders unsolved Breakdowns Code Red first, then the longest waiting', () =
   expect(ordered.map((entry) => entry.id)).toEqual(['red-old', 'red-new', 'green-old']);
 });
 
-test('keeps only Machines due soon or overdue, overdue first, then the fewest hours to go', () => {
+test('keeps only Machines Due for Service, overdue first, then the fewest hours to go', () => {
   const machine = (
     code: string,
     serviceDueStatus: 'unknown' | 'ok' | 'due-soon' | 'overdue',
     hoursToService: number | null,
-  ) => ({ code, serviceDueStatus, hoursToService });
+    serviceBookedIn = false,
+  ) => ({ code, serviceDueStatus, hoursToService, serviceBookedIn });
   const due = machinesDueForService([
     machine('TRAC-1', 'ok', 400),
     machine('TRAC-2', 'due-soon', 80),
@@ -37,6 +38,7 @@ test('keeps only Machines due soon or overdue, overdue first, then the fewest ho
     machine('TRAC-4', 'overdue', -5),
     machine('TRAC-5', 'due-soon', 20),
     machine('TRAC-6', 'overdue', -40),
+    machine('TRAC-7', 'overdue', -90, true),
   ]);
   expect(due.map((entry) => entry.code)).toEqual(['TRAC-6', 'TRAC-4', 'TRAC-5', 'TRAC-2']);
 });

@@ -16,17 +16,24 @@ export function useQueryInvalidation() {
     () => queryClient.invalidateQueries({ queryKey: trpc.contractingDirectory.pathKey() }),
     [queryClient, trpc],
   );
+  // The Machines Due for Service are derived from the fleet: a Machine's Next Service Due or retirement moves them.
   const invalidateFleet = useCallback(
-    () => queryClient.invalidateQueries({ queryKey: trpc.contractingFleet.pathKey() }),
+    () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: trpc.contractingFleet.pathKey() }),
+        queryClient.invalidateQueries({ queryKey: trpc.contractingServices.pathKey() }),
+      ]),
     [queryClient, trpc],
   );
+  // A reading moves the Machine's latest hours, so every Machine read refreshes with it.
   const invalidateReadings = useCallback(
     () =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: trpc.contractingReadings.pathKey() }),
+        invalidateFleet(),
         invalidateActivity(),
       ]),
-    [queryClient, trpc, invalidateActivity],
+    [queryClient, trpc, invalidateFleet, invalidateActivity],
   );
   const invalidateJobs = useCallback(
     () => queryClient.invalidateQueries({ queryKey: trpc.contractingJobs.pathKey() }),
@@ -51,10 +58,10 @@ export function useQueryInvalidation() {
       Promise.all([
         queryClient.invalidateQueries({ queryKey: trpc.contractingSettings.pathKey() }),
         queryClient.invalidateQueries({ queryKey: trpc.contractingJobs.pathKey() }),
-        queryClient.invalidateQueries({ queryKey: trpc.contractingFleet.pathKey() }),
         queryClient.invalidateQueries({ queryKey: trpc.contractingBreakdowns.pathKey() }),
+        invalidateFleet(),
       ]),
-    [queryClient, trpc],
+    [queryClient, trpc, invalidateFleet],
   );
   const invalidateWorkshop = useCallback(
     () =>

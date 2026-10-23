@@ -1,6 +1,12 @@
 import { createEscapedContainsSearchCondition, type DatabaseTransaction, type Db, user } from '@pkg/db';
 import { contractingMachines, contractingServiceRecords } from '@pkg/db/contracting';
-import { fieldReaderSeesJob, formatJobNumber, hoursToService, serviceDueStatus } from '@pkg/domain/contracting';
+import {
+  fieldReaderSeesJob,
+  formatJobNumber,
+  hoursToService,
+  machinesDueForService,
+  serviceDueStatus,
+} from '@pkg/domain/contracting';
 import type { AuthId, ContractingRole, UserAccessSummary } from '@pkg/schema';
 import {
   FieldMachine,
@@ -56,8 +62,11 @@ const busyStint = {
   arrivalReadingId: sql`stint.arrival_reading_id`,
   departureReadingId: sql`stint.departure_reading_id`,
 };
-/** The Machine's newest Hour Reading of any role, so a spot reading moves Service Due Soon as much as a stint does. */
-const latestReading = (machine: typeof contractingMachines._.columns) => ({
+/**
+ * What every Machine read derives beside its row: the newest Hour Reading of any role (so a spot reading moves Service
+ * Due Soon as much as a stint does), the Job it is on site on, and whether it is Booked In.
+ */
+const derivedMachineColumns = (machine: typeof contractingMachines._.columns) => ({
   latestReadingHours: sql<number | null>`(
     select latest.value::float8
     from contracting.hour_reading latest
@@ -93,6 +102,12 @@ const latestReading = (machine: typeof contractingMachines._.columns) => ({
     order by arrival.captured_at desc
     limit 1
   )`.as('busy_on_job'),
+  serviceBookedIn: sql<boolean>`exists (
+    select 1
+    from contracting.service_record booked
+    where booked.machine_id = ${machine.id}
+      and booked.closed_at is null
+  )`.as('service_booked_in'),
 });
 function mapMachine(
   row: Row & {
@@ -101,6 +116,7 @@ function mapMachine(
     latestReadingHours: number | null;
     latestReadingAt: string | null;
     busyOnJob: BusyOnJobRow | null;
+    serviceBookedIn: boolean;
   },
   serviceDueSoonThresholdHours: number,
 ) {
@@ -130,7 +146,7 @@ export async function listMachines({ db, input }: { db: Db; input: MachineListIn
         input.search ? createEscapedContainsSearchCondition(sql`${contractingMachines.code}`, input.search) : undefined,
       ),
       with: related,
-      extras: latestReading,
+      extras: derivedMachineColumns,
       orderBy: [asc(contractingMachines.code)],
     }),
   ]);
@@ -141,12 +157,16 @@ export async function getMachine({ db, id }: { db: Db | DatabaseTransaction; id:
     db.query.contractingMachines.findFirst({
       where: eq(contractingMachines.id, id),
       with: related,
-      extras: latestReading,
+      extras: derivedMachineColumns,
     }),
     getContractingSettings({ db }),
   ]);
   if (!row) throw notFound('Machine');
   return mapMachine(row, serviceDueSoonThresholdHours);
+}
+/** The active Machines Due for Service, overdue first: what the Services page pins and the menu dot counts. */
+export async function listMachinesDueForService({ db }: { db: Db }) {
+  return machinesDueForService(await listMachines({ db, input: { status: 'active', search: '' } }));
 }
 async function assertDriver(tx: DatabaseTransaction, id: string | null | undefined) {
   if (!id) return;

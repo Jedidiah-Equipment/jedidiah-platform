@@ -1,6 +1,6 @@
 import type { BreakdownUrgency, NeedsALookLevel, ServiceDueStatus } from '@pkg/schema/contracting';
 import { countedAssignmentAttentionLevel } from './assignment-attention.js';
-import { serviceDueNeedsAttention } from './service-due.js';
+import { isDueForService } from './service-due.js';
 
 const levelRank: Record<NeedsALookLevel, number> = { critical: 0, warning: 1 };
 
@@ -26,13 +26,18 @@ export function orderUnsolvedBreakdowns<T extends { urgency: BreakdownUrgency; r
   );
 }
 
-/** The Dashboard's Machines due for service: overdue first, then the fewest hours left; unknown is not urgency. */
+/** The Machines Due for Service: overdue first, then the fewest hours left; unknown is not urgency. */
 export function machinesDueForService<
-  T extends { code: string; serviceDueStatus: ServiceDueStatus; hoursToService: number | null },
+  T extends {
+    code: string;
+    serviceDueStatus: ServiceDueStatus;
+    serviceBookedIn: boolean;
+    hoursToService: number | null;
+  },
 >(machines: readonly T[]): T[] {
   const rank = (machine: T) => (machine.serviceDueStatus === 'overdue' ? 0 : 1);
   return machines
-    .filter((machine) => serviceDueNeedsAttention(machine.serviceDueStatus))
+    .filter(isDueForService)
     .sort(
       (a, b) => rank(a) - rank(b) || (a.hoursToService ?? 0) - (b.hoursToService ?? 0) || a.code.localeCompare(b.code),
     );

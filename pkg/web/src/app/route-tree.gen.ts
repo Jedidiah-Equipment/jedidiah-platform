@@ -29,6 +29,7 @@ import { Route as AuthedContractingJobsRouteImport } from './../routes/_authed.c
 import { Route as AuthedContractingMeasureTypesRouteImport } from './../routes/_authed.contracting.measure-types'
 import { Route as AuthedContractingRatesRouteImport } from './../routes/_authed.contracting.rates'
 import { Route as AuthedContractingReportsRouteImport } from './../routes/_authed.contracting.reports'
+import { Route as AuthedContractingServicesRouteImport } from './../routes/_authed.contracting.services'
 import { Route as AuthedContractingSettingsRouteImport } from './../routes/_authed.contracting.settings'
 import { Route as AuthedContractingTranscriptionsRouteImport } from './../routes/_authed.contracting.transcriptions'
 import { Route as AuthedContractingUsersRouteImport } from './../routes/_authed.contracting.users'
@@ -213,6 +214,12 @@ const AuthedContractingReportsRoute =
   AuthedContractingReportsRouteImport.update({
     id: '/reports',
     path: '/reports',
+    getParentRoute: () => AuthedContractingRoute,
+  } as any)
+const AuthedContractingServicesRoute =
+  AuthedContractingServicesRouteImport.update({
+    id: '/services',
+    path: '/services',
     getParentRoute: () => AuthedContractingRoute,
   } as any)
 const AuthedContractingSettingsRoute =
@@ -708,6 +715,7 @@ export interface FileRoutesByFullPath {
   '/contracting/measure-types': typeof AuthedContractingMeasureTypesRouteWithChildren
   '/contracting/rates': typeof AuthedContractingRatesRouteWithChildren
   '/contracting/reports': typeof AuthedContractingReportsRouteWithChildren
+  '/contracting/services': typeof AuthedContractingServicesRoute
   '/contracting/settings': typeof AuthedContractingSettingsRoute
   '/contracting/transcriptions': typeof AuthedContractingTranscriptionsRoute
   '/contracting/users': typeof AuthedContractingUsersRoute
@@ -802,6 +810,7 @@ export interface FileRoutesByTo {
   '/equipment': typeof AuthedEquipmentRouteWithChildren
   '/contracting/activity': typeof AuthedContractingActivityRoute
   '/contracting/audit': typeof AuthedContractingAuditRoute
+  '/contracting/services': typeof AuthedContractingServicesRoute
   '/contracting/settings': typeof AuthedContractingSettingsRoute
   '/contracting/transcriptions': typeof AuthedContractingTranscriptionsRoute
   '/contracting/users': typeof AuthedContractingUsersRoute
@@ -890,6 +899,7 @@ export interface FileRoutesById {
   '/_authed/contracting/measure-types': typeof AuthedContractingMeasureTypesRouteWithChildren
   '/_authed/contracting/rates': typeof AuthedContractingRatesRouteWithChildren
   '/_authed/contracting/reports': typeof AuthedContractingReportsRouteWithChildren
+  '/_authed/contracting/services': typeof AuthedContractingServicesRoute
   '/_authed/contracting/settings': typeof AuthedContractingSettingsRoute
   '/_authed/contracting/transcriptions': typeof AuthedContractingTranscriptionsRoute
   '/_authed/contracting/users': typeof AuthedContractingUsersRoute
@@ -994,6 +1004,7 @@ export interface FileRouteTypes {
     | '/contracting/measure-types'
     | '/contracting/rates'
     | '/contracting/reports'
+    | '/contracting/services'
     | '/contracting/settings'
     | '/contracting/transcriptions'
     | '/contracting/users'
@@ -1088,6 +1099,7 @@ export interface FileRouteTypes {
     | '/equipment'
     | '/contracting/activity'
     | '/contracting/audit'
+    | '/contracting/services'
     | '/contracting/settings'
     | '/contracting/transcriptions'
     | '/contracting/users'
@@ -1175,6 +1187,7 @@ export interface FileRouteTypes {
     | '/_authed/contracting/measure-types'
     | '/_authed/contracting/rates'
     | '/_authed/contracting/reports'
+    | '/_authed/contracting/services'
     | '/_authed/contracting/settings'
     | '/_authed/contracting/transcriptions'
     | '/_authed/contracting/users'
@@ -1410,6 +1423,13 @@ declare module '@tanstack/react-router' {
       path: '/reports'
       fullPath: '/contracting/reports'
       preLoaderRoute: typeof AuthedContractingReportsRouteImport
+      parentRoute: typeof AuthedContractingRoute
+    }
+    '/_authed/contracting/services': {
+      id: '/_authed/contracting/services'
+      path: '/services'
+      fullPath: '/contracting/services'
+      preLoaderRoute: typeof AuthedContractingServicesRouteImport
       parentRoute: typeof AuthedContractingRoute
     }
     '/_authed/contracting/settings': {
@@ -2177,6 +2197,7 @@ interface AuthedContractingRouteChildren {
   AuthedContractingMeasureTypesRoute: typeof AuthedContractingMeasureTypesRouteWithChildren
   AuthedContractingRatesRoute: typeof AuthedContractingRatesRouteWithChildren
   AuthedContractingReportsRoute: typeof AuthedContractingReportsRouteWithChildren
+  AuthedContractingServicesRoute: typeof AuthedContractingServicesRoute
   AuthedContractingSettingsRoute: typeof AuthedContractingSettingsRoute
   AuthedContractingTranscriptionsRoute: typeof AuthedContractingTranscriptionsRoute
   AuthedContractingUsersRoute: typeof AuthedContractingUsersRoute
@@ -2197,6 +2218,7 @@ const AuthedContractingRouteChildren: AuthedContractingRouteChildren = {
     AuthedContractingMeasureTypesRouteWithChildren,
   AuthedContractingRatesRoute: AuthedContractingRatesRouteWithChildren,
   AuthedContractingReportsRoute: AuthedContractingReportsRouteWithChildren,
+  AuthedContractingServicesRoute: AuthedContractingServicesRoute,
   AuthedContractingSettingsRoute: AuthedContractingSettingsRoute,
   AuthedContractingTranscriptionsRoute: AuthedContractingTranscriptionsRoute,
   AuthedContractingUsersRoute: AuthedContractingUsersRoute,

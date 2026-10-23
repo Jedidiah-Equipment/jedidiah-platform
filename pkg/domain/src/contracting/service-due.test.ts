@@ -1,8 +1,11 @@
 import { describe, expect, test } from 'vitest';
+import { statusBadgeColorClassNames } from '../theme/status-badge.js';
 import {
   hoursToService,
   hoursToServiceLabel,
+  isDueForService,
   machineBusyWith,
+  machineServiceBadge,
   serviceDueSoonCrossed,
   serviceDueStatus,
   suggestedNextServiceDue,
@@ -82,5 +85,37 @@ describe('serviceDueSoonCrossed', () => {
       serviceDueSoonCrossed({ previousHours: 1300, newHours: 1380, nextServiceDueHours: 1500, threshold });
     expect(at(100)).toBe(false);
     expect(at(150)).toBe(true);
+  });
+});
+
+describe('isDueForService', () => {
+  test('is due soon or overdue with no open Service Record', () => {
+    expect(isDueForService({ serviceDueStatus: 'due-soon', serviceBookedIn: false })).toBe(true);
+    expect(isDueForService({ serviceDueStatus: 'overdue', serviceBookedIn: false })).toBe(true);
+    expect(isDueForService({ serviceDueStatus: 'ok', serviceBookedIn: false })).toBe(false);
+    expect(isDueForService({ serviceDueStatus: 'unknown', serviceBookedIn: false })).toBe(false);
+  });
+
+  test('booking the Machine in takes it off before its hours change', () => {
+    expect(isDueForService({ serviceDueStatus: 'overdue', serviceBookedIn: true })).toBe(false);
+  });
+});
+
+describe('machineServiceBadge', () => {
+  test('names the status in its colour while nothing is booked in', () => {
+    expect(machineServiceBadge({ serviceDueStatus: 'overdue', serviceBookedIn: false })).toEqual({
+      label: 'Service overdue',
+      colours: statusBadgeColorClassNames.red,
+    });
+    expect(machineServiceBadge({ serviceDueStatus: 'due-soon', serviceBookedIn: false }).label).toBe(
+      'Service due soon',
+    );
+  });
+
+  test('reads Booked in, in blue, whatever the hours say, while a Service Record is open', () => {
+    expect(machineServiceBadge({ serviceDueStatus: 'overdue', serviceBookedIn: true })).toEqual({
+      label: 'Booked in',
+      colours: statusBadgeColorClassNames.blue,
+    });
   });
 });

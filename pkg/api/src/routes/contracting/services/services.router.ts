@@ -1,19 +1,28 @@
 import {
   closeServiceRecord,
   getServiceRecord,
+  listMachinesDueForService,
   listMechanics,
+  listServiceRecordFilterOptions,
   listServiceRecords,
+  listServiceRecordTable,
   openServiceRecord,
   patchServiceRecord,
+  summarizeServiceRecords,
 } from '@pkg/core/contracting';
 import {
+  Machine,
   Mechanic,
   ServiceRecord,
   ServiceRecordCloseInput,
+  ServiceRecordFilterOptions,
   ServiceRecordIdInput,
   ServiceRecordListInput,
   ServiceRecordOpenInput,
   ServiceRecordPatchInput,
+  ServiceRecordSummary,
+  ServiceRecordTableInput,
+  ServiceRecordTableResult,
 } from '@pkg/schema/contracting';
 import { mapCoreErrors } from '../../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../../trpc/init.js';
@@ -24,6 +33,16 @@ export const contractingServicesRouter = router({
     .input(ServiceRecordListInput)
     .output(ServiceRecord.array())
     .query(({ ctx, input }) => listServiceRecords({ db: ctx.db, machineId: input.machineId })),
+  table: authorizedProcedure('contracting_service:read')
+    .input(ServiceRecordTableInput)
+    .output(ServiceRecordTableResult)
+    .query(({ ctx, input }) => listServiceRecordTable({ db: ctx.db, input })),
+  summary: authorizedProcedure('contracting_service:read')
+    .output(ServiceRecordSummary)
+    .query(({ ctx }) => summarizeServiceRecords({ db: ctx.db })),
+  dueForService: authorizedProcedure('contracting_service:read')
+    .output(Machine.array())
+    .query(({ ctx }) => listMachinesDueForService({ db: ctx.db })),
   get: authorizedProcedure('contracting_service:read')
     .input(ServiceRecordIdInput)
     .output(ServiceRecord)
@@ -56,6 +75,9 @@ export const contractingServicesRouter = router({
       ),
     ),
   options: router({
+    filters: authorizedProcedure('contracting_service:read')
+      .output(ServiceRecordFilterOptions)
+      .query(({ ctx }) => listServiceRecordFilterOptions({ db: ctx.db })),
     mechanics: authorizedProcedure('contracting_service:update')
       .output(Mechanic.array())
       .query(({ ctx }) => listMechanics({ db: ctx.db })),

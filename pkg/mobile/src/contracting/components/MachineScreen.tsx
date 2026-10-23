@@ -3,10 +3,10 @@ import {
   hoursToServiceLabel,
   MISSING_PHOTO_EVIDENCE,
   machineBusyWith,
+  machineServiceBadge,
   readingRoleLabels,
   serviceDueNeedsAttention,
   serviceDueStatusColorClassNames,
-  serviceDueStatusLabels,
 } from '@pkg/domain/contracting';
 import type { FieldMachine, FieldReading } from '@pkg/schema/contracting';
 
@@ -54,12 +54,13 @@ function SectionTitle({ children }: { children: string }) {
 /** Where the Machine stands against its dash sticker: the due status, the due point, what is left, and the interval. */
 function ServiceCard({ machine }: { machine: FieldMachine }) {
   const colours = serviceDueStatusColorClassNames[machine.serviceDueStatus];
+  const badge = machineServiceBadge(machine);
   const remaining = machine.hoursToService;
   const flagged = serviceDueNeedsAttention(machine.serviceDueStatus);
   return (
     <View className="gap-3 rounded-xl border border-border bg-surface p-4">
       <View className="flex-row">
-        <StatusBadge classNames={colours} label={serviceDueStatusLabels[machine.serviceDueStatus]} />
+        <StatusBadge classNames={badge.colours} label={badge.label} />
       </View>
       <DetailRow label="Next service due">
         <Text className="text-foreground" weight="semibold">

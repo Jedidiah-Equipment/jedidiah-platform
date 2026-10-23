@@ -1,5 +1,5 @@
 import { countPhrase, formatHours } from '@pkg/domain';
-import { hoursToServiceLabel, machinesDueForService, serviceDueStatusColorClassNames } from '@pkg/domain/contracting';
+import { hoursToServiceLabel, serviceDueStatusColorClassNames } from '@pkg/domain/contracting';
 import type { Machine } from '@pkg/schema/contracting';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
@@ -17,9 +17,8 @@ import { cn } from '@/lib/utils.js';
 export function ServiceDueWidget() {
   const trpc = useTRPC();
   const query = useQuery({
-    ...trpc.contractingFleet.machines.list.queryOptions({ status: 'active' }),
+    ...trpc.contractingServices.dueForService.queryOptions(),
     refetchInterval: DASHBOARD_REFETCH_INTERVAL_MS,
-    select: machinesDueForService,
   });
   return (
     <DashboardListBlock
@@ -27,11 +26,7 @@ export function ServiceDueWidget() {
       error={query.error}
       errorMessage="Unable to load the fleet."
       count={(total) => countPhrase(total, 'Machine', 'Machines')}
-      viewAll={
-        <PrimaryLink to="/contracting/fleet" search={{ service: 'attention' }}>
-          View all
-        </PrimaryLink>
-      }
+      viewAll={<PrimaryLink to="/contracting/services">View all</PrimaryLink>}
       empty="No Machine is due for service."
       rowKey={(machine) => machine.id}
       renderRow={(machine) => <ServiceDueRow machine={machine} />}

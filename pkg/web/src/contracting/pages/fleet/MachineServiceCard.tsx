@@ -1,24 +1,25 @@
-import { formatDate, formatHours, getPlantDateNow } from '@pkg/domain';
-import { hoursToServiceLabel, serviceDueStatusColorClassNames, serviceDueStatusLabels } from '@pkg/domain/contracting';
+import { formatDate, formatHours } from '@pkg/domain';
+import { hoursToServiceLabel, machineServiceBadge } from '@pkg/domain/contracting';
 import type { Machine, ServiceRecord } from '@pkg/schema/contracting';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import type { SearchableComboboxOption } from '@/components/common/SearchableCombobox.js';
-import { AutosaveStatus, CreateEntityDialog, useAutosaveForm } from '@/components/form/index.js';
+import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
 import { HelpLink } from '@/components/help/index.js';
-import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { mechanicFieldOptions } from '@/contracting/components/MechanicCombobox.js';
+import { ServiceBadge } from '@/contracting/components/ServiceBadge.js';
 import { useContractingWrite } from '@/contracting/hooks/use-contracting-write.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { cn } from '@/lib/utils.js';
 import { CloseServiceRecordDialog } from './CloseServiceRecordDialog.js';
+import { RecordServiceDialog } from './RecordServiceDialog.js';
 import { OpenServiceValues, openServiceFields } from './types.js';
+import { useServiceMechanicOptions } from './use-service-mechanic-options.js';
 
 const hoursOrDash = (hours: number | null) => (hours === null ? '—' : formatHours(hours));
 
@@ -30,18 +31,12 @@ export function MachineServiceCard({ machine }: { machine: Machine }) {
   const records = useQuery(
     trpc.contractingServices.list.queryOptions({ machineId: machine.id }, { enabled: readsServices && canRecord }),
   );
-  const mechanics = useQuery(
-    trpc.contractingServices.options.mechanics.queryOptions(undefined, { enabled: canRecord }),
-  );
-  const mechanicOptions = useMemo(
-    () => (mechanics.data ?? []).map((person) => ({ value: person.id, label: person.name })),
-    [mechanics.data],
-  );
+  const mechanics = useServiceMechanicOptions(canRecord);
+  const mechanicOptions = mechanics.options;
   const [opening, setOpening] = useState(false);
   const [closingId, setClosingId] = useState<string | null>(null);
   const openRecords = (records.data ?? []).filter((record) => record.status === 'open');
   const closing = openRecords.find((record) => record.id === closingId);
-  const colours = serviceDueStatusColorClassNames[machine.serviceDueStatus];
   if (!readsServices) return null;
   return (
     <Card>
@@ -53,9 +48,7 @@ export function MachineServiceCard({ machine }: { machine: Machine }) {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-          <Badge className={cn(colours.chip, colours.text)} variant="outline">
-            {serviceDueStatusLabels[machine.serviceDueStatus]}
-          </Badge>
+          <ServiceBadge {...machineServiceBadge(machine)} />
           <span>Latest reading {hoursOrDash(machine.latestReadingHours)}</span>
           <span>Next service due {hoursOrDash(machine.nextServiceDueHours)}</span>
           {machine.hoursToService !== null ? (
@@ -95,54 +88,6 @@ export function MachineServiceCard({ machine }: { machine: Machine }) {
         />
       ) : null}
     </Card>
-  );
-}
-
-function RecordServiceDialog({
-  machineId,
-  open,
-  onOpenChange,
-  mechanicOptions,
-}: {
-  machineId: string;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  mechanicOptions: readonly SearchableComboboxOption[];
-}) {
-  const trpc = useTRPC();
-  const write = useContractingWrite(useQueryInvalidation().invalidateServices);
-  const record = useMutation(trpc.contractingServices.open.mutationOptions(write.dialog));
-  const defaultValues: OpenServiceValues = { startDate: getPlantDateNow(), primaryMechanicUserId: '', notes: '' };
-  return (
-    <CreateEntityDialog
-      open={open}
-      onOpenChange={onOpenChange}
-      title="Record a service"
-      description="Book the Machine in. Close the service when it leaves the workshop."
-      submitLabel="Record service"
-      defaultValues={defaultValues}
-      validator={OpenServiceValues}
-      onCreate={(values) => record.mutateAsync({ machineId, ...openServiceFields(values) })}
-      onCreated={() => onOpenChange(false)}
-    >
-      {(form) => (
-        <>
-          <form.AppField name="startDate">{(field) => <field.DatePickerField label="Start date" />}</form.AppField>
-          <form.AppField name="primaryMechanicUserId">
-            {(field) => (
-              <field.ComboboxField
-                label="Mechanic"
-                placeholder="Search mechanics..."
-                emptyMessage="No mechanics found."
-                options={mechanicFieldOptions(mechanicOptions)}
-              />
-            )}
-          </form.AppField>
-          <form.AppField name="notes">{(field) => <field.TextareaField label="Notes" />}</form.AppField>
-          <ErrorMessage error={record.error} fallbackMessage="Unable to record the service." />
-        </>
-      )}
-    </CreateEntityDialog>
   );
 }
 

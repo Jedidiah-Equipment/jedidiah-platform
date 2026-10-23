@@ -18,6 +18,7 @@ import {
 import { IconAlertTriangle } from '@tabler/icons-react';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import type { DataTableColumnDef } from '@/components/data-table/features.js';
+import { PRIORITY_ROW_CLASS_NAME } from '@/components/data-table/priority-row.js';
 import { EntityThumbnail } from '@/components/thumbnail/EntityThumbnail.js';
 import { OfferingThumbnail } from '@/equipment/components/thumbnail/OfferingThumbnail.js';
 import { cn } from '@/lib/utils.js';
@@ -79,9 +80,7 @@ export function createPriorityQuoteTableRow(quote: PriorityQuote): QuoteTableRow
 }
 
 export function getQuoteTableRowClassName(row: QuoteTableRow): string | undefined {
-  return row.kind === 'priority'
-    ? 'border-warning/40 text-warning-foreground dark:border-warning/35 [--table-row-bg:var(--warning-surface)] [--table-row-bg-hover:var(--warning-surface-hover)]'
-    : undefined;
+  return row.kind === 'priority' ? PRIORITY_ROW_CLASS_NAME : undefined;
 }
 
 export function createQuoteTableColumns({

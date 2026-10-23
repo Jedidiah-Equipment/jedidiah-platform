@@ -56,7 +56,12 @@ export const Category = z.object({
 export type Category = z.infer<typeof Category>;
 export const CategoryListInput = z.object({ kind: CategoryKind.optional() });
 export type CategoryListInput = z.infer<typeof CategoryListInput>;
-const categoryProjection = { categoryName: FleetName, categoryIcon: CategoryIconKey, categoryColour: CategoryColour };
+/** A fleet entry's Category as every read names it; a Service Record names its Machine's this way too. */
+export const categoryProjection = {
+  categoryName: FleetName,
+  categoryIcon: CategoryIconKey,
+  categoryColour: CategoryColour,
+};
 
 export const MachineCreateInput = z
   .object({
@@ -106,6 +111,8 @@ export const Machine = MachineCreateInput.extend({
   latestReadingAt: DateIso.nullable(),
   hoursToService: z.number().nullable(),
   serviceDueStatus: z.enum(serviceDueStatuses),
+  /** Booked In: the Machine has an open Service Record. */
+  serviceBookedIn: z.boolean(),
   /** The Job the Machine is on site on now (arrived, not yet departed), or null when it is free. */
   busyOnJob: z
     .object({
@@ -158,6 +165,7 @@ export const FieldMachine = Machine.pick({
   nextServiceDueHours: true,
   hoursToService: true,
   serviceDueStatus: true,
+  serviceBookedIn: true,
   busyOnJob: true,
 })
   .extend({ onSiteJobNumber: z.string().nullable() })

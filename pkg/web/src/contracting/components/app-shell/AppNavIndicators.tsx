@@ -42,6 +42,20 @@ export const WorkshopNavIndicator: React.FC = () => {
   ) : null;
 };
 
+/** How many Machines are Due for Service: the Services page's pinned rows. */
+export const ServicesNavIndicator: React.FC = () => {
+  const trpc = useTRPC();
+  const serviceAccess = useCan('contracting_service:read');
+  const dueQuery = useQuery({
+    ...trpc.contractingServices.dueForService.queryOptions(),
+    enabled: serviceAccess.can,
+    refetchInterval: DASHBOARD_REFETCH_INTERVAL_MS,
+  });
+  const count = dueQuery.data?.length ?? 0;
+
+  return count > 0 ? <NavWarningDot label={`${countPhrase(count, 'Machine', 'Machines')} due for a service`} /> : null;
+};
+
 /** The newest Activity item lies beyond this person's Contracting Activity View; opening Activity on All clears it. */
 export const ActivityUnreadNavIndicator: React.FC = () => {
   const unread = useActivityUnread(useContractingActivityViewClient(), canSeeActivity(useAccess().data));

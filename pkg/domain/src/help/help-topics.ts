@@ -30,6 +30,7 @@ export const HELP_TOPICS = {
   contractingWorkshop: '/contracting/run-the-workshop-queue',
   contractingBreakdown: '/contracting/run-the-workshop-queue',
   contractingMachineService: '/contracting/record-a-service',
+  contractingServices: '/contracting/see-what-is-due-for-a-service',
   contractingHome: '/contracting/start-from-the-dashboard',
   contractingJobs: '/contracting/set-up-a-job',
   contractingJobSignOff: '/contracting/sign-off-a-job',

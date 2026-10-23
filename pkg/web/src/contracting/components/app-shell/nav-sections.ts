@@ -7,6 +7,7 @@ import {
   IconClipboardCheck,
   IconClipboardList,
   IconCoins,
+  IconEngine,
   IconGauge,
   IconMicrophone,
   IconReceipt,
@@ -19,7 +20,12 @@ import {
 } from '@tabler/icons-react';
 import { linkOptions } from '@tanstack/react-router';
 import type { NavSection } from '@/components/app-shell/NavSections.js';
-import { ActivityUnreadNavIndicator, ReadingExceptionsNavIndicator, WorkshopNavIndicator } from './AppNavIndicators.js';
+import {
+  ActivityUnreadNavIndicator,
+  ReadingExceptionsNavIndicator,
+  ServicesNavIndicator,
+  WorkshopNavIndicator,
+} from './AppNavIndicators.js';
 
 const isCategoriesPath = (pathname: string) => pathname.startsWith('/contracting/fleet/categories');
 
@@ -88,6 +94,13 @@ export const contractingNavSections = [
         icon: IconTool,
         isActive: isWorkshopNavPath,
         indicator: WorkshopNavIndicator,
+      },
+      {
+        title: 'Services',
+        permission: 'contracting_service:read',
+        link: linkOptions({ to: '/contracting/services' }),
+        icon: IconEngine,
+        indicator: ServicesNavIndicator,
       },
       {
         title: 'Reading exceptions',

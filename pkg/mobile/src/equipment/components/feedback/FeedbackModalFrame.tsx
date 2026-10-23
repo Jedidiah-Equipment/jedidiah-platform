@@ -69,20 +69,24 @@ export function FeedbackModalFrame({
 }
 
 export function FeedbackSubmitButton({
+  disabled = false,
   isSubmitting,
   label,
   onPress,
 }: {
+  /** Held off while a Voice Note is still recording or landing in the text. */
+  disabled?: boolean;
   isSubmitting: boolean;
   label: string;
   onPress: () => void;
 }) {
+  const inert = isSubmitting || disabled;
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ disabled: isSubmitting }}
-      className={`flex-row items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3.5 ${isSubmitting ? 'opacity-60' : 'active:opacity-90'}`}
-      disabled={isSubmitting}
+      accessibilityState={{ disabled: inert }}
+      className={`flex-row items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3.5 ${inert ? 'opacity-60' : 'active:opacity-90'}`}
+      disabled={inert}
       onPress={onPress}
     >
       {isSubmitting ? <ActivityIndicator color="#0a0a0a" size="small" /> : null}

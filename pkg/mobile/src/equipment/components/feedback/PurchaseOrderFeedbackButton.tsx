@@ -1,14 +1,17 @@
 import { getFeedbackVisibilityNotice } from '@pkg/domain/equipment';
 import { type FeedbackPurchaseOrder, FeedbackText } from '@pkg/schema/equipment';
 import { IconShoppingCart } from '@tabler/icons-react-native';
+import { useStore } from '@tanstack/react-form';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { z } from 'zod';
 
 import { useAppForm } from '@/components/form';
+import { VoiceTextareaField } from '@/components/form/fields/VoiceTextareaField';
 import { AccentButton } from '@/components/ui/accent-button';
 import { Text } from '@/components/ui/text';
 import { useAppToast } from '@/components/ui/toast';
+import { useVoiceSession } from '@/components/voice/use-voice-session';
 import { useTRPC } from '@/lib/trpc';
 import { FeedbackModalFrame, FeedbackSubmitButton, feedbackErrorMessage } from './FeedbackModalFrame';
 
@@ -76,6 +79,7 @@ function PurchaseOrderFeedbackModal({
         setSubmitError(feedbackErrorMessage(error));
         return;
       }
+      voice.reportSaved();
       onClose();
       showToast('success', 'Feedback submitted');
       await Promise.all([
@@ -84,6 +88,12 @@ function PurchaseOrderFeedbackModal({
       ]);
     },
   });
+
+  const text = useStore(form.store, (state) => state.values.text);
+  const voice = useVoiceSession(
+    { business: 'equipment', purpose: 'purchase order feedback' },
+    { value: text, onChangeText: (next) => form.setFieldValue('text', next) },
+  );
 
   return (
     <FeedbackModalFrame
@@ -100,6 +110,7 @@ function PurchaseOrderFeedbackModal({
         <form.Subscribe selector={(state) => state.isSubmitting}>
           {(isSubmitting) => (
             <FeedbackSubmitButton
+              disabled={voice.busy}
               isSubmitting={isSubmitting}
               label={notice.submitLabel}
               onPress={() => void form.handleSubmit()}
@@ -122,7 +133,7 @@ function PurchaseOrderFeedbackModal({
         )}
       </form.AppField>
       <form.AppField name="text">
-        {(field) => <field.TextareaField label="Feedback" placeholder="Describe what you noticed…" rows={5} />}
+        {() => <VoiceTextareaField label="Feedback" placeholder="Describe what you noticed…" rows={5} voice={voice} />}
       </form.AppField>
     </FeedbackModalFrame>
   );

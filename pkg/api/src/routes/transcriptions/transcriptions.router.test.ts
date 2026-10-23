@@ -1,5 +1,5 @@
 import { transcribeVoiceNote } from '@pkg/core';
-import { user } from '@pkg/db';
+import { transcriptionHints, user } from '@pkg/db';
 import { expect } from 'vitest';
 import { createTester } from '@/test/create-tester.js';
 import { mockSession } from '@/test/test-utils.js';
@@ -31,7 +31,7 @@ const test = createTester(async ({ db }) => {
         derive: async () => ({ action: 'none', reason: 'Unused.' }),
       },
     });
-  return { heard };
+  return { heard, db };
 });
 
 test('a saved correction schedules one hint derivation; a kept or non-English note schedules none', async ({
@@ -155,11 +155,43 @@ test("each business's Transcriptions open only under its own permissions", async
       purpose: 'field note',
     }),
   ).rejects.toMatchObject({ code: 'FORBIDDEN' });
-  // No role holds the Equipment pair yet, super-admin included.
-  await expect(context.createCaller(superAdmin).transcriptions.list({ business: 'equipment' })).rejects.toMatchObject({
-    code: 'FORBIDDEN',
-  });
   expect(await context.createCaller(superAdmin).transcriptions.list({ business: 'contracting' })).toMatchObject({
     total: 1,
   });
+});
+
+test('every Equipment role but app-store-tester may record; only super-admin reviews Equipment', async ({
+  context,
+}) => {
+  const as = (role: 'admin' | 'super-admin' | 'job-manager' | 'app-store-tester') => {
+    const session = mockSession(null);
+    session.user.role = role;
+    return context.createCaller(session);
+  };
+  const note = await context.heard('eng', 'equipment');
+  await context.db.insert(transcriptionHints).values([
+    { business: 'equipment', rule: 'Spell it Bossies.', keyterm: 'Bossies' },
+    { business: 'contracting', rule: 'Spell it Rooikraal.', keyterm: 'Rooikraal' },
+  ]);
+
+  await expect(
+    as('app-store-tester').transcriptions.saved({
+      business: 'equipment',
+      id: note.id,
+      text: 'Kept.',
+      purpose: 'job feedback',
+    }),
+  ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  // A dictated Corrective Feedback is readable on the page, so an admin, who cannot read that feedback, is refused.
+  await expect(as('admin').transcriptions.list({ business: 'equipment' })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  await expect(as('job-manager').transcriptions.hints({ business: 'equipment' })).rejects.toMatchObject({
+    code: 'FORBIDDEN',
+  });
+  expect(await as('super-admin').transcriptions.list({ business: 'equipment' })).toMatchObject({
+    total: 1,
+    items: [{ id: note.id }],
+  });
+  expect(
+    (await as('super-admin').transcriptions.hints({ business: 'equipment' })).hints.map((hint) => hint.rule),
+  ).toEqual(['Spell it Bossies.']);
 });

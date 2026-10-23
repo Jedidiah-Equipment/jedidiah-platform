@@ -67,6 +67,7 @@ export const EQUIPMENT_SECTIONS: DocsSection[] = [
       { text: 'Maintain Labor rates', link: '/admin/maintain-labor-rates' },
       { text: 'Maintain Part categories', link: '/admin/maintain-part-categories' },
       { text: 'Merge duplicate Part categories', link: '/admin/merge-duplicate-part-categories' },
+      { text: 'Review Voice Note Transcriptions', link: '/admin/review-voice-note-transcriptions' },
     ],
   },
   {
@@ -88,6 +89,7 @@ export const EQUIPMENT_SECTIONS: DocsSection[] = [
       { text: 'Find a Job', link: '/production/find-a-job' },
       { text: 'Cancel a Job', link: '/production/cancel-a-job' },
       { text: 'Catch up on Job Activity', link: '/production/catch-up-on-job-activity' },
+      { text: 'Record feedback by voice', link: '/production/record-feedback-by-voice' },
       { text: 'Export completed Jobs', link: '/production/export-completed-jobs' },
       { text: 'Export Unit stock', link: '/production/export-unit-stock' },
       { text: 'Stamp Department work times', link: '/production/stamp-fabrication-times' },

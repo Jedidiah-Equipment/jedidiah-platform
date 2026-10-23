@@ -331,6 +331,7 @@ const adminAccess = {
   equipment_purchase_order: ['read', 'create', 'approve', 'send', 'amend', 'receive', 'close'],
   equipment_quote: ['read', 'create', 'update', 'cancel'],
   equipment_supplier: ['read', 'update', 'remove', 'merge'],
+  equipment_transcription: ['use'],
   user: ['list', 'create', 'update', 'set-email', 'set-role', 'set-password'],
 } as const satisfies RoleAccess;
 
@@ -377,6 +378,8 @@ export const appRoleAccess = {
     ...adminAccess,
     ...contractingAdminAccess,
     equipment_feedback: ['read', 'update'],
+    // Reading every Voice Note's text includes dictated Corrective Feedback, so it stays where that feedback does.
+    equipment_transcription: ['read', 'use'],
   },
   'procurement-manager': {
     equipment_customer: ['read', 'create', 'update', 'remove', 'merge'],
@@ -394,10 +397,12 @@ export const appRoleAccess = {
     // with the roles that own the cascade.
     equipment_quote: ['read', 'create', 'update'],
     equipment_supplier: ['read', 'update', 'merge'],
+    equipment_transcription: ['use'],
   },
   'job-viewer': {
     equipment_job: ['read'],
     equipment_product_unit: ['read'],
+    equipment_transcription: ['use'],
   },
   'app-store-tester': {
     equipment_product: ['read'],
@@ -408,16 +413,19 @@ export const appRoleAccess = {
     equipment_inventory: ['read', 'count'],
     equipment_job: ['read', 'update'],
     equipment_product_unit: ['read'],
+    equipment_transcription: ['use'],
   },
   sales: {
     equipment_email: ['send'],
     // Sales reads Units because stock has to be selectable on a Quote.
     equipment_product_unit: ['read'],
     equipment_quote: ['read', 'create', 'update'],
+    equipment_transcription: ['use'],
   },
   stores: {
     equipment_inventory: ['read', 'move', 'adjust', 'count', 'build', 'close-out'],
     equipment_purchase_order: ['read', 'receive'],
+    equipment_transcription: ['use'],
   },
   'bay-operator': {},
   'contracting-admin': contractingAdminAccess,

@@ -94,6 +94,7 @@ describe('getRolePermissions', () => {
       'equipment_supplier:read',
       'equipment_supplier:remove',
       'equipment_supplier:update',
+      'equipment_transcription:use',
       'user:create',
       'user:list',
       'user:set-email',
@@ -191,11 +192,16 @@ describe('getRolePermissions', () => {
       'equipment_supplier:merge',
       'equipment_supplier:read',
       'equipment_supplier:update',
+      'equipment_transcription:use',
     ]);
   });
 
   it('grants read-only job permissions to job viewers', () => {
-    expect(getRolePermissions('job-viewer')).toEqual(['equipment_job:read', 'equipment_product_unit:read']);
+    expect(getRolePermissions('job-viewer')).toEqual([
+      'equipment_job:read',
+      'equipment_product_unit:read',
+      'equipment_transcription:use',
+    ]);
   });
 
   it('limits App Store Tester to Equipment catalog reads', () => {
@@ -217,6 +223,7 @@ describe('getRolePermissions', () => {
       'equipment_job:read',
       'equipment_job:update',
       'equipment_product_unit:read',
+      'equipment_transcription:use',
     ]);
   });
 
@@ -227,6 +234,7 @@ describe('getRolePermissions', () => {
       'equipment_quote:create',
       'equipment_quote:read',
       'equipment_quote:update',
+      'equipment_transcription:use',
     ]);
   });
 
@@ -240,6 +248,7 @@ describe('getRolePermissions', () => {
       'equipment_inventory:read',
       'equipment_purchase_order:read',
       'equipment_purchase_order:receive',
+      'equipment_transcription:use',
     ]);
   });
 
@@ -313,8 +322,17 @@ describe('getRolePermissions', () => {
       'workshop-manager',
     ]);
     expect(holders('contracting_transcription:read')).toEqual(['contracting-admin', 'super-admin']);
-    expect(holders('equipment_transcription:use')).toEqual([]);
-    expect(holders('equipment_transcription:read')).toEqual([]);
+    expect(holders('equipment_transcription:use')).toEqual([
+      'admin',
+      'job-manager',
+      'job-viewer',
+      'procurement-manager',
+      'sales',
+      'stores',
+      'super-admin',
+    ]);
+    // Corrective Feedback can be dictated, so only the role that reads it may read every Voice Note (ADR 0010).
+    expect(holders('equipment_transcription:read')).toEqual(['super-admin']);
     expect(holders('contracting_settings:update')).toEqual(['contracting-admin', 'super-admin']);
   });
 });
@@ -391,6 +409,7 @@ describe('createUserAccessSummary', () => {
         'equipment_quote:create',
         'equipment_quote:read',
         'equipment_quote:update',
+        'equipment_transcription:use',
       ],
       userId: 'user_123',
     });

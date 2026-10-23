@@ -20,6 +20,7 @@ export const helpTopicForPath = createHelpTopicResolver(
     ['/equipment/purchase-orders/receiving', 'purchaseOrderReceiving'],
     ['/equipment/quotes', 'quotes'],
     ['/equipment/suppliers', 'suppliers'],
+    ['/equipment/transcriptions', 'equipmentTranscriptions'],
     ['/equipment/units', 'units'],
     ['/equipment/users', 'users'],
   ],

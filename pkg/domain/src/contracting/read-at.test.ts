@@ -1,5 +1,13 @@
 import { expect, test } from 'vitest';
-import { capturedAtFor, isBackdated, parseExifDateTime, type ReadAtChoice, readAtAfterPhoto } from './read-at';
+import {
+  capturedAtFor,
+  isBackdated,
+  parseExifDateTime,
+  type ReadAtChoice,
+  readAtAfterPhoto,
+  readAtFromInput,
+  readAtInputValue,
+} from './read-at.js';
 
 const now = new Date(2026, 9, 1, 12, 0, 0);
 
@@ -37,4 +45,15 @@ test('a photo’s time replaces Read At, and without one only a hand-set Read At
   expect(readAtAfterPhoto(hand, null)).toBe(hand);
   expect(readAtAfterPhoto({ at: exif, by: 'photo' }, null)).toBeNull();
   expect(readAtAfterPhoto(null, null)).toBeNull();
+});
+
+test('round-trips a local date and time through the datetime-local value', () => {
+  const readAt = new Date(2026, 9, 3, 7, 5);
+  expect(readAtInputValue(readAt)).toBe('2026-10-03T07:05');
+  expect(readAtFromInput('2026-10-03T07:05')).toEqual(readAt);
+});
+
+test('reads a blank or unreadable datetime-local value as no Read At', () => {
+  expect(readAtFromInput('')).toBeNull();
+  expect(readAtFromInput('not a time')).toBeNull();
 });

@@ -167,8 +167,9 @@ the camera allows, taken on the spot or chosen from the phone's gallery, and a r
 one is stamped **Missing Photo Evidence**. Read At defaults to when a chosen photo says it was
 taken, and otherwise to the moment of capture — a photo with no usable time, or one whose time
 lies in the future, is still accepted and defaults to that moment; whoever captures may correct
-it, and it is never in the future. Gallery photos and Read At correction are phone affordances:
-a reading captured on the web takes the moment of capture as its Read At. Read At
+it, and it is never in the future. Gallery photos and Read At correction are phone affordances,
+and the web's spot capture offers both from a photo chosen on disk; a web arrival or departure
+takes the moment of capture as its Read At. Read At
 describes a reading; it never orders them. A Machine's readings are ordered by acceptance: the
 **latest reading** is the one the server accepted last, every capture is judged against that
 reading whatever its Read At, and a late-entered reading takes its place after it. An Hour Gap
@@ -190,8 +191,9 @@ re-interrupted in the field. A reading may carry the Foreman's
 optional **capture comment**, shown wherever management reviews it; the capture screen shows the
 minimum value the meter can now read. A field reading plays one of three roles:
 **arrival** (machine on site) and **departure** (machine leaving) on a Machine Assignment, or
-**spot** — an ad-hoc field capture with no billing effect, existing to keep a Machine's known
-hours current for service tracking; the fourth role, **Baseline Reading**, is defined below. The
+**spot** — an ad-hoc capture with no billing effect, existing to keep a Machine's known
+hours current for service tracking, taken on the phone at the Machine or on the web Machine page from
+a photo of its meter; the fourth role, **Baseline Reading**, is defined below. The
 pre-travel opening is never captured: it is the machine's previous departure reading, so travel
 and work time are derived and no hour can vanish between Jobs. A Machine's readings never go
 backward: a capture strictly below the latest reading is refused (equal is accepted — an idle

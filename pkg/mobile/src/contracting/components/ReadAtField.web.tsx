@@ -1,4 +1,5 @@
 import { formatDate } from '@pkg/domain';
+import { readAtFromInput, readAtInputValue } from '@pkg/domain/contracting';
 import type { ChangeEvent } from 'react';
 import { useRef } from 'react';
 import { DateFieldTrigger } from '@/components/form/fields/DateFieldTrigger';
@@ -30,23 +31,17 @@ export function ReadAtField({ value, onChange, disabled = false }: ReadAtFieldPr
       <input
         aria-hidden
         disabled={disabled}
-        max={toLocalInputValue(new Date())}
+        max={readAtInputValue(new Date())}
         onChange={(event: ChangeEvent<HTMLInputElement>) => {
-          const picked = new Date(event.currentTarget.value);
-          if (!Number.isNaN(picked.getTime())) onChange(picked);
+          const picked = readAtFromInput(event.currentTarget.value);
+          if (picked) onChange(picked);
         }}
         ref={inputRef}
         style={{ height: 1, left: -1000, opacity: 0, pointerEvents: 'none', position: 'fixed', top: -1000, width: 1 }}
         tabIndex={-1}
         type="datetime-local"
-        value={toLocalInputValue(value ?? new Date())}
+        value={readAtInputValue(value ?? new Date())}
       />
     </>
   );
-}
-
-/** `datetime-local` speaks the browser's local wall time as 'YYYY-MM-DDTHH:mm'. */
-function toLocalInputValue(date: Date): string {
-  const pad = (part: number) => String(part).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }

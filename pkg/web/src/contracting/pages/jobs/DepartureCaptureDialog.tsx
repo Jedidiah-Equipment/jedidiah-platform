@@ -1,11 +1,10 @@
 import { type Assignment, ReadingReason, ReadingValue } from '@pkg/schema/contracting';
-import { useState } from 'react';
 import { z } from 'zod';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { Separator } from '@/components/ui/separator.js';
 import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
-import { DisputeField, ReadingCaptureCard, ReadingCaptureDetails, ReadingValueField } from './ReadingCaptureFields.js';
+import { ReadingCaptureDetails, ReadingValueCard } from './ReadingCaptureFields.js';
 import { ConfirmedDispute, useReadingCapture } from './use-reading-capture.js';
 
 const DepartureValues = z.object({
@@ -16,13 +15,12 @@ const DepartureValues = z.object({
 type DepartureValues = z.infer<typeof DepartureValues>;
 
 export function DepartureCaptureDialog({ stint, onClose }: { stint: Assignment | null; onClose: () => void }) {
-  const capture = useReadingCapture('departure', stint);
-  const { latestQuery, latest } = capture;
-  const [readingFocused, setReadingFocused] = useState(false);
-  const judge = (values: DepartureValues) => capture.judge({ ...values, comment: values.reason });
+  const capture = useReadingCapture({ role: 'departure', stint });
+  const { latestQuery } = capture;
+  const captureValues = (values: DepartureValues) => ({ ...values, comment: values.reason });
+  const judge = (values: DepartureValues) => capture.judge(captureValues(values));
   const close = () => {
     capture.reset();
-    setReadingFocused(false);
     onClose();
   };
   return (
@@ -44,9 +42,7 @@ export function DepartureCaptureDialog({ stint, onClose }: { stint: Assignment |
       }}
       onBeforeCreate={(values) => judge(values).request !== null}
       onCreate={async (values) => {
-        const { request } = judge(values);
-        if (!request) throw new Error('This reading cannot be captured yet.');
-        await capture.submit(request);
+        await capture.submit(captureValues(values));
         return true;
       }}
       onCreated={close}
@@ -54,39 +50,11 @@ export function DepartureCaptureDialog({ stint, onClose }: { stint: Assignment |
       {(form) => (
         <>
           <ErrorMessage error={latestQuery.error} fallbackMessage="Unable to load the Machine's previous reading." />
-          <ReadingCaptureCard
-            previousValue={latest === undefined ? undefined : (latest?.value ?? null)}
-            loading={latestQuery.isPending}
-            warning={
-              <form.Subscribe selector={(state) => state.values}>
-                {(values) => {
-                  const verdict = judge(values);
-                  return !readingFocused && latest && verdict.below ? (
-                    <form.AppField name="confirmedDispute">
-                      {(field) => (
-                        <DisputeField
-                          checked={verdict.disputeConfirmed}
-                          id={field.name}
-                          onBlur={field.handleBlur}
-                          onCheckedChange={(checked) =>
-                            field.handleChange(checked ? { value: values.value, previousId: latest.id } : null)
-                          }
-                          previous={latest.value}
-                          value={values.value}
-                        />
-                      )}
-                    </form.AppField>
-                  ) : null;
-                }}
-              </form.Subscribe>
-            }
-          >
-            <div onFocusCapture={() => setReadingFocused(true)} onBlurCapture={() => setReadingFocused(false)}>
-              <form.AppField name="value">
-                {() => <ReadingValueField onInput={() => form.setFieldValue('confirmedDispute', null)} />}
-              </form.AppField>
-            </div>
-          </ReadingCaptureCard>
+          <ReadingValueCard
+            form={form}
+            fields={{ value: 'value', confirmedDispute: 'confirmedDispute' }}
+            capture={capture}
+          />
           <ReadingCaptureDetails id={`departure-photo-${stint?.id ?? 'closed'}`} {...capture.details}>
             <div className="flex items-center gap-3" aria-hidden="true">
               <Separator className="flex-1" />

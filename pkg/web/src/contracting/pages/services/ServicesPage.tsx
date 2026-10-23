@@ -13,7 +13,7 @@ import { createPersistedDataTableStore } from '@/components/data-table/store.js'
 import type { SortOptions } from '@/components/data-table/table-state.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { DASHBOARD_REFETCH_INTERVAL_MS } from '@/contracting/lib/dashboard-refresh.js';
-import { RecordServiceDialog } from '@/contracting/pages/fleet/MachineServiceCard.js';
+import { RecordServiceDialog } from '@/contracting/pages/fleet/RecordServiceDialog.js';
 import { useCan } from '@/hooks/use-access.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';

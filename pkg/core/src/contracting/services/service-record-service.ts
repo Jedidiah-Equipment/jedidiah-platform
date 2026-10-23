@@ -19,6 +19,7 @@ import {
   ServiceRecordSummary,
   type ServiceRecordTableInput,
   type ServiceRecordTableResult,
+  serviceRecordStatuses,
 } from '@pkg/schema/contracting';
 import { and, asc, desc, eq, inArray, isNotNull, isNull, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
@@ -100,7 +101,7 @@ export async function listServiceRecords({ db, machineId }: { db: Db; machineId:
   return rows.map(mapServiceRecord);
 }
 
-const isClosed = sql`${contractingServiceRecords.closedAt} is not null`;
+/** Open is Booked In: no close-out yet. Every Service Record read filters, orders and counts by this one test. */
 const statusCondition = (status: ServiceRecordStatus) =>
   status === 'open' ? isNull(contractingServiceRecords.closedAt) : isNotNull(contractingServiceRecords.closedAt);
 
@@ -124,7 +125,7 @@ export async function listServiceRecordTable({
     selectServiceRecords(db)
       .where(where)
       .orderBy(
-        asc(isClosed),
+        asc(statusCondition('closed')),
         getSortOrder(contractingServiceRecords.startDate, input.sortDirection),
         desc(contractingServiceRecords.createdAt),
         asc(contractingServiceRecords.id),
@@ -140,12 +141,16 @@ export async function listServiceRecordTable({
 /** How many Service Records are Booked In and how many are closed, for the Services table's quick filters. */
 export async function summarizeServiceRecords({ db }: { db: Db }): Promise<ServiceRecordSummary> {
   const [counts] = await db
-    .select({
-      open: sql<number>`count(*) filter (where ${contractingServiceRecords.closedAt} is null)::integer`,
-      closed: sql<number>`count(*) filter (where ${contractingServiceRecords.closedAt} is not null)::integer`,
-    })
+    .select(
+      Object.fromEntries(
+        serviceRecordStatuses.map((status) => [
+          status,
+          sql<number>`count(*) filter (where ${statusCondition(status)})::integer`,
+        ]),
+      ),
+    )
     .from(contractingServiceRecords);
-  return ServiceRecordSummary.parse({ counts: counts ?? { open: 0, closed: 0 } });
+  return ServiceRecordSummary.parse({ counts });
 }
 
 /** The Machines and Mechanics some Service Record names, for the Services table's column filters. */

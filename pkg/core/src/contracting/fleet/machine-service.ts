@@ -62,8 +62,11 @@ const busyStint = {
   arrivalReadingId: sql`stint.arrival_reading_id`,
   departureReadingId: sql`stint.departure_reading_id`,
 };
-/** The Machine's newest Hour Reading of any role, so a spot reading moves Service Due Soon as much as a stint does. */
-const latestReading = (machine: typeof contractingMachines._.columns) => ({
+/**
+ * What every Machine read derives beside its row: the newest Hour Reading of any role (so a spot reading moves Service
+ * Due Soon as much as a stint does), the Job it is on site on, and whether it is Booked In.
+ */
+const derivedMachineColumns = (machine: typeof contractingMachines._.columns) => ({
   latestReadingHours: sql<number | null>`(
     select latest.value::float8
     from contracting.hour_reading latest
@@ -143,7 +146,7 @@ export async function listMachines({ db, input }: { db: Db; input: MachineListIn
         input.search ? createEscapedContainsSearchCondition(sql`${contractingMachines.code}`, input.search) : undefined,
       ),
       with: related,
-      extras: latestReading,
+      extras: derivedMachineColumns,
       orderBy: [asc(contractingMachines.code)],
     }),
   ]);
@@ -154,7 +157,7 @@ export async function getMachine({ db, id }: { db: Db | DatabaseTransaction; id:
     db.query.contractingMachines.findFirst({
       where: eq(contractingMachines.id, id),
       with: related,
-      extras: latestReading,
+      extras: derivedMachineColumns,
     }),
     getContractingSettings({ db }),
   ]);

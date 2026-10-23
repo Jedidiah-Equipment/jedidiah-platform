@@ -1,11 +1,11 @@
-import { formatDate, formatHours, getPlantDateNow } from '@pkg/domain';
+import { formatDate, formatHours } from '@pkg/domain';
 import { hoursToServiceLabel, machineServiceBadge } from '@pkg/domain/contracting';
 import type { Machine, ServiceRecord } from '@pkg/schema/contracting';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import type { SearchableComboboxOption } from '@/components/common/SearchableCombobox.js';
-import { AutosaveStatus, CreateEntityDialog, useAutosaveForm } from '@/components/form/index.js';
+import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
 import { HelpLink } from '@/components/help/index.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
@@ -17,6 +17,7 @@ import { useCan } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { CloseServiceRecordDialog } from './CloseServiceRecordDialog.js';
+import { RecordServiceDialog } from './RecordServiceDialog.js';
 import { OpenServiceValues, openServiceFields } from './types.js';
 
 const hoursOrDash = (hours: number | null) => (hours === null ? '—' : formatHours(hours));
@@ -91,55 +92,6 @@ export function MachineServiceCard({ machine }: { machine: Machine }) {
         />
       ) : null}
     </Card>
-  );
-}
-
-/** Books a Machine in: the Machine page's Service card and the Services page's pinned rows both open it. */
-export function RecordServiceDialog({
-  machineId,
-  open,
-  onOpenChange,
-  mechanicOptions,
-}: {
-  machineId: string;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  mechanicOptions: readonly SearchableComboboxOption[];
-}) {
-  const trpc = useTRPC();
-  const write = useContractingWrite(useQueryInvalidation().invalidateServices);
-  const record = useMutation(trpc.contractingServices.open.mutationOptions(write.dialog));
-  const defaultValues: OpenServiceValues = { startDate: getPlantDateNow(), primaryMechanicUserId: '', notes: '' };
-  return (
-    <CreateEntityDialog
-      open={open}
-      onOpenChange={onOpenChange}
-      title="Record a service"
-      description="Book the Machine in. Close the service when it leaves the workshop."
-      submitLabel="Record service"
-      defaultValues={defaultValues}
-      validator={OpenServiceValues}
-      onCreate={(values) => record.mutateAsync({ machineId, ...openServiceFields(values) })}
-      onCreated={() => onOpenChange(false)}
-    >
-      {(form) => (
-        <>
-          <form.AppField name="startDate">{(field) => <field.DatePickerField label="Start date" />}</form.AppField>
-          <form.AppField name="primaryMechanicUserId">
-            {(field) => (
-              <field.ComboboxField
-                label="Mechanic"
-                placeholder="Search mechanics..."
-                emptyMessage="No mechanics found."
-                options={mechanicFieldOptions(mechanicOptions)}
-              />
-            )}
-          </form.AppField>
-          <form.AppField name="notes">{(field) => <field.TextareaField label="Notes" />}</form.AppField>
-          <ErrorMessage error={record.error} fallbackMessage="Unable to record the service." />
-        </>
-      )}
-    </CreateEntityDialog>
   );
 }
 

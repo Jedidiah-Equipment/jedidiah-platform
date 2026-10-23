@@ -3,7 +3,7 @@ import {
   hoursToServiceLabel,
   machineServiceBadge,
   serviceDueStatusColorClassNames,
-  serviceRecordStatusColorClassNames,
+  serviceRecordBadge,
   serviceRecordStatusLabels,
 } from '@pkg/domain/contracting';
 import { type ServiceRecordFilterOptions, serviceRecordStatuses } from '@pkg/schema/contracting';
@@ -149,10 +149,7 @@ export function useServicesColumns({
           row.original.kind === 'due' ? (
             <ServiceBadge {...machineServiceBadge(row.original.machine)} />
           ) : (
-            <ServiceBadge
-              label={serviceRecordStatusLabels[row.original.record.status]}
-              colours={serviceRecordStatusColorClassNames[row.original.record.status]}
-            />
+            <ServiceBadge {...serviceRecordBadge(row.original.record.status)} />
           ),
       },
       {

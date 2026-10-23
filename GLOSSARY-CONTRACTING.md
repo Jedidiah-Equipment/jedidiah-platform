@@ -283,10 +283,9 @@ due point on and re-arms it.
 **Due for Service** is a derived state: a Machine whose Service Due Soon status is due soon or overdue and
 which has no open Service Record. **Booked In** is a Machine with an open Service Record; booking a Machine
 in takes it off the due list before its hours change, and closing the record with a new Next Service Due
-resets its status. The **Services** page lists every Service Record with the Due for Service Machines
-pinned above them, so no filter can hide one; the same predicate drives its menu dot and the Dashboard's
-Service due block. Nobody reports that a service is due:
-a spot reading that brings the hours within the threshold is the report.
+resets its status. The Services page and the Dashboard read this one predicate, and no filter on the
+Services page can hide a Machine Due for Service. Nobody reports that a service is due: a spot reading
+that brings the hours within the threshold is the report.
 _Avoid_: service notification, service request, service alert (the push is "Service Due Soon")
 
 ## Voice

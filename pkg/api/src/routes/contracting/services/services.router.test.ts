@@ -119,7 +119,11 @@ test('the Machines Due for Service are due soon or overdue, never booked in or r
   const booked = await machineWith('JD-BOOKED', 1400, 1449);
   const retired = await machineWith('JD-GONE', 1400, 1449);
   await retireMachine({ db, actorUserId: 'connor', input: { id: retired.id, reason: 'Sold' } });
-  await connor.contractingServices.open({ machineId: booked.id, startDate: '2026-10-21', notes: null });
+  const bookedIn = await connor.contractingServices.open({
+    machineId: booked.id,
+    startDate: '2026-10-21',
+    notes: null,
+  });
 
   const due = await connor.contractingServices.dueForService();
   expect(due.map((machine) => machine.code)).toEqual(['JD-LATE', 'JD-SOON']);
@@ -128,6 +132,19 @@ test('the Machines Due for Service are due soon or overdue, never booked in or r
     serviceBookedIn: true,
   });
   expect(await connor.contractingFleet.machines.get({ id: soon.id })).toMatchObject({ serviceBookedIn: false });
+
+  await connor.contractingServices.close({
+    id: bookedIn.id,
+    endDate: '2026-10-22',
+    readingAtServiceHours: 1449,
+    primaryMechanicUserId: null,
+    notes: null,
+    nextServiceDueHours: 1949,
+  });
+  expect(await connor.contractingFleet.machines.get({ id: booked.id })).toMatchObject({
+    serviceDueStatus: 'ok',
+    serviceBookedIn: false,
+  });
 });
 
 test('the Services table lists every Service Record Booked In first, then newest, and filters and counts them', async ({

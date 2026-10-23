@@ -85,10 +85,15 @@ export const serviceRecordStatusColorClassNames = {
   closed: statusBadgeColorClassNames.gray,
 } satisfies Record<ServiceRecordStatus, BadgeColorClassNames & { dot: string }>;
 
+/** A Service Record's status as a badge: Booked in while open, Closed once closed out. */
+export const serviceRecordBadge = (status: ServiceRecordStatus) => ({
+  label: serviceRecordStatusLabels[status],
+  colours: serviceRecordStatusColorClassNames[status],
+});
+
 /** The service badge every surface shows for a Machine: Booked in while a Service Record is open, else its status. */
 export function machineServiceBadge(machine: MachineServiceState): { label: string; colours: BadgeColorClassNames } {
-  if (machine.serviceBookedIn)
-    return { label: serviceRecordStatusLabels.open, colours: serviceRecordStatusColorClassNames.open };
+  if (machine.serviceBookedIn) return serviceRecordBadge('open');
   return {
     label: serviceDueStatusLabels[machine.serviceDueStatus],
     colours: serviceDueStatusColorClassNames[machine.serviceDueStatus],

@@ -2,7 +2,7 @@ import { formatDate, formatHours } from '@pkg/domain';
 import { hoursToServiceLabel, machineServiceBadge } from '@pkg/domain/contracting';
 import type { Machine, ServiceRecord } from '@pkg/schema/contracting';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import type { SearchableComboboxOption } from '@/components/common/SearchableCombobox.js';
 import { AutosaveStatus, useAutosaveForm } from '@/components/form/index.js';
@@ -19,6 +19,7 @@ import { useTRPC } from '@/lib/trpc.js';
 import { CloseServiceRecordDialog } from './CloseServiceRecordDialog.js';
 import { RecordServiceDialog } from './RecordServiceDialog.js';
 import { OpenServiceValues, openServiceFields } from './types.js';
+import { useServiceMechanicOptions } from './use-service-mechanic-options.js';
 
 const hoursOrDash = (hours: number | null) => (hours === null ? '—' : formatHours(hours));
 
@@ -30,13 +31,8 @@ export function MachineServiceCard({ machine }: { machine: Machine }) {
   const records = useQuery(
     trpc.contractingServices.list.queryOptions({ machineId: machine.id }, { enabled: readsServices && canRecord }),
   );
-  const mechanics = useQuery(
-    trpc.contractingServices.options.mechanics.queryOptions(undefined, { enabled: canRecord }),
-  );
-  const mechanicOptions = useMemo(
-    () => (mechanics.data ?? []).map((person) => ({ value: person.id, label: person.name })),
-    [mechanics.data],
-  );
+  const mechanics = useServiceMechanicOptions(canRecord);
+  const mechanicOptions = mechanics.options;
   const [opening, setOpening] = useState(false);
   const [closingId, setClosingId] = useState<string | null>(null);
   const openRecords = (records.data ?? []).filter((record) => record.status === 'open');

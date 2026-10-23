@@ -64,10 +64,7 @@ export function useServicesColumns({
         enableSorting: false,
         meta: { filterOptions: filterOptions.machines, filterVariant: 'multi-select' },
         cell: ({ row }) => {
-          const subject =
-            row.original.kind === 'due'
-              ? row.original.machine
-              : { ...row.original.record, code: row.original.record.machineCode };
+          const subject = rowMachine(row.original);
           return (
             <CategoryLabel
               className="min-w-36"

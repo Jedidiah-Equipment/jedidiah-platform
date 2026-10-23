@@ -12,8 +12,8 @@ import { PRIORITY_ROW_CLASS_NAME } from '@/components/data-table/priority-row.js
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
-import { DASHBOARD_REFETCH_INTERVAL_MS } from '@/contracting/lib/dashboard-refresh.js';
 import { RecordServiceDialog } from '@/contracting/pages/fleet/RecordServiceDialog.js';
+import { useServiceMechanicOptions } from '@/contracting/pages/fleet/use-service-mechanic-options.js';
 import { useCan } from '@/hooks/use-access.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -51,18 +51,11 @@ export function ServicesPage() {
       placeholderData: keepPreviousData,
     }),
   );
-  const dueQuery = useQuery(
-    trpc.contractingServices.dueForService.queryOptions(undefined, { refetchInterval: DASHBOARD_REFETCH_INTERVAL_MS }),
-  );
+  // The menu dot polls this query for the whole shell, so the pinned rows stay fresh without a second timer.
+  const dueQuery = useQuery(trpc.contractingServices.dueForService.queryOptions());
   const summary = useQuery(trpc.contractingServices.summary.queryOptions());
   const filters = useQuery(trpc.contractingServices.options.filters.queryOptions());
-  const mechanics = useQuery(
-    trpc.contractingServices.options.mechanics.queryOptions(undefined, { enabled: canRecord }),
-  );
-  const mechanicOptions = useMemo(
-    () => (mechanics.data ?? []).map((person) => ({ value: person.id, label: person.name })),
-    [mechanics.data],
-  );
+  const mechanics = useServiceMechanicOptions(canRecord);
   const { items: records, total } = useCombinedCursorQueryPages(recordsQuery.data?.pages);
   const rows = useMemo<ServicesTableRow[]>(
     () => [...(dueQuery.data ?? []).map(createDueRow), ...records.map(createRecordRow)],
@@ -131,7 +124,7 @@ export function ServicesPage() {
           onOpenChange={(open) => {
             if (!open) setRecordingMachineId(null);
           }}
-          mechanicOptions={mechanicOptions}
+          mechanicOptions={mechanics.options}
         />
       ) : null}
     </PageLayout>

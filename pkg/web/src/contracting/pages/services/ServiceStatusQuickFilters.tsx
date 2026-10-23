@@ -37,7 +37,7 @@ export function ServiceStatusQuickFilters({
         </QuickFilterButton>
       ))}
       <QuickFilterButton
-        count={summary ? summary.counts.open + summary.counts.closed : 0}
+        count={serviceRecordStatuses.reduce((total, status) => total + (summary?.counts[status] ?? 0), 0)}
         pressed={isPickedServiceStatuses(columnFilters, [])}
         onClick={() => onColumnFiltersChange(clearServiceStatuses)}
       >

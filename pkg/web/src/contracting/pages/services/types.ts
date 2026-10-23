@@ -14,11 +14,17 @@ export type ServicesTableRow = { kind: 'due'; machine: Machine } | { kind: 'reco
 export const createDueRow = (machine: Machine): ServicesTableRow => ({ kind: 'due', machine });
 export const createRecordRow = (record: ServiceRecord): ServicesTableRow => ({ kind: 'record', record });
 
-/** The Machine either kind of row is about; a row click opens it. */
-export const rowMachine = (row: ServicesTableRow) =>
-  row.kind === 'due'
-    ? { id: row.machine.id, code: row.machine.code }
-    : { id: row.record.machineId, code: row.record.machineCode };
+/** The Machine either kind of row is about, as its cell shows it; a row click opens it. */
+export function rowMachine(row: ServicesTableRow) {
+  const { categoryName, categoryIcon, categoryColour } = row.kind === 'due' ? row.machine : row.record;
+  return {
+    id: row.kind === 'due' ? row.machine.id : row.record.machineId,
+    code: row.kind === 'due' ? row.machine.code : row.record.machineCode,
+    categoryName,
+    categoryIcon,
+    categoryColour,
+  };
+}
 
 /** Everything the Services table's column filters ask of the Service Record list. */
 export function servicesTableFilters(columnFilters: ColumnFiltersState) {

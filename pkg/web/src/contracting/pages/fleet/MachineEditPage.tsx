@@ -162,7 +162,9 @@ function MachineForm({
                       decimals={0}
                       inputMode="numeric"
                       placeholder={
-                        machine.serviceAlertHours === null ? formatNumber(machine.serviceDueThresholdHours) : undefined
+                        machine.serviceAlertHours === null
+                          ? formatNumber(machine.effectiveServiceAlertHours)
+                          : undefined
                       }
                       description="Service due soon this many hours before the next service. Leave blank to use Settings."
                     />

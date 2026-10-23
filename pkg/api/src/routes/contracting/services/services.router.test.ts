@@ -5,15 +5,7 @@ import type { ContractingRole } from '@pkg/schema';
 import { MachineCreateInput } from '@pkg/schema/contracting';
 import { expect } from 'vitest';
 import { createTester } from '@/test/create-tester.js';
-import { mockSession } from '@/test/test-utils.js';
-
-function sessionAs(id: string, role: ContractingRole) {
-  const session = mockSession(null);
-  session.user.id = id;
-  session.session.userId = id;
-  session.user.contractingRole = role;
-  return session;
-}
+import { sessionAs } from '@/test/test-utils.js';
 
 const test = createTester(async ({ db }) => {
   const now = new Date();
@@ -201,10 +193,10 @@ test("a Machine's Service Alert Hours judge it instead of Settings, and clearing
   const cara = context.createCaller(sessionAs('cara', 'contracting-manager'));
   const machine = await machineWith('JD-ALERT', 1500, 1440);
   const read = () => cara.contractingFleet.machines.get({ id: machine.id });
-  expect(await read()).toMatchObject({ serviceDueStatus: 'due-soon', serviceDueThresholdHours: 100 });
+  expect(await read()).toMatchObject({ serviceDueStatus: 'due-soon', effectiveServiceAlertHours: 100 });
 
   await cara.contractingFleet.machines.patch({ id: machine.id, serviceAlertHours: 50 });
-  expect(await read()).toMatchObject({ serviceAlertHours: 50, serviceDueStatus: 'ok', serviceDueThresholdHours: 50 });
+  expect(await read()).toMatchObject({ serviceAlertHours: 50, serviceDueStatus: 'ok', effectiveServiceAlertHours: 50 });
 
   await cara.contractingFleet.machines.patch({ id: machine.id, serviceAlertHours: null });
   expect(await read()).toMatchObject({ serviceAlertHours: null, serviceDueStatus: 'due-soon' });

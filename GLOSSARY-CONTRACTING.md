@@ -290,7 +290,7 @@ in takes it off the due list before its hours change, and closing the record wit
 resets its status. The Services page and the Dashboard read this one predicate, and no filter on the
 Services page can hide a Machine Due for Service. Nobody reports that a service is due: a spot reading
 that brings the hours within the threshold is the report.
-_Avoid_: service notification, service request, service alert (the push is "Service Due Soon")
+_Avoid_: service notification, service request (the push is "Service Due Soon")
 
 ## Voice
 

@@ -1,7 +1,7 @@
 import { createEscapedContainsSearchCondition, type DatabaseTransaction, type Db, user } from '@pkg/db';
 import { contractingMachines, contractingServiceRecords } from '@pkg/db/contracting';
 import {
-  effectiveServiceDueThreshold,
+  effectiveServiceAlertHours,
   fieldReaderSeesJob,
   formatJobNumber,
   hoursToService,
@@ -122,7 +122,7 @@ function mapMachine(
 ) {
   const { category, currentDriver, busyOnJob, ...fields } = row;
   const facts = { latestReadingHours: row.latestReadingHours, nextServiceDueHours: row.nextServiceDueHours };
-  const threshold = effectiveServiceDueThreshold(row, settingsThresholdHours);
+  const threshold = effectiveServiceAlertHours(row, settingsThresholdHours);
   const busy = (job: BusyOnJobRow) => {
     const { code, ...rest } = job;
     return { ...rest, jobNumber: formatJobNumber(code) };
@@ -133,7 +133,7 @@ function mapMachine(
     ...projectTimestamps(row),
     currentDriverName: currentDriver?.name ?? null,
     hoursToService: hoursToService(facts),
-    serviceDueThresholdHours: threshold,
+    effectiveServiceAlertHours: threshold,
     serviceDueStatus: serviceDueStatus(facts, threshold),
     busyOnJob: busyOnJob ? busy(busyOnJob) : null,
   });

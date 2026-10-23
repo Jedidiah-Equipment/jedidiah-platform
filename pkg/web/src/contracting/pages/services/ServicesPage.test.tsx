@@ -1,13 +1,14 @@
 // @vitest-environment jsdom
 import type { AppRouter } from '@pkg/api';
 import { createUserAccessSummary } from '@pkg/domain';
-import type { Machine, ServiceRecord, ServiceRecordListInput } from '@pkg/schema/contracting';
+import type { ServiceRecordListInput } from '@pkg/schema/contracting';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryHistory, createRootRoute, createRouter, RouterProvider } from '@tanstack/react-router';
 import { createTRPCClient, httpLink } from '@trpc/client';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, expect, test, vi } from 'vitest';
+import { buildMachine, buildServiceRecord } from '@/contracting/test/fleet-fixtures.js';
 import { createTrpcOptions, TRPCProvider } from '@/lib/trpc.js';
 import { ServicesPage } from './ServicesPage.js';
 
@@ -18,54 +19,8 @@ vi.mock('@/hooks/use-api-mutation-error-toast.js', () => ({
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-const machine = {
-  id: '00000000-0000-4000-8000-000000000001',
-  code: 'KOL220-2',
-  make: 'Kobelco',
-  model: '220',
-  categoryId: '00000000-0000-4000-8000-0000000000c1',
-  categoryName: 'Excavator',
-  categoryIcon: 'excavator',
-  categoryColour: 'amber',
-  year: null,
-  registration: null,
-  currentDriverUserId: null,
-  currentDriverName: null,
-  notes: null,
-  serviceIntervalHours: null,
-  nextServiceDueHours: 4850,
-  latestReadingHours: 4862.5,
-  latestReadingAt: '2026-10-21T08:00:00.000Z',
-  hoursToService: -12.5,
-  serviceDueStatus: 'overdue',
-  serviceBookedIn: false,
-  busyOnJob: null,
-  retiredAt: null,
-  retiredReason: null,
-  createdAt: '2026-01-01T00:00:00.000Z',
-  updatedAt: '2026-01-01T00:00:00.000Z',
-} as unknown as Machine;
-
-const record = {
-  id: '00000000-0000-4000-8000-0000000000r1',
-  machineId: '00000000-0000-4000-8000-000000000002',
-  machineCode: 'JD110-1',
-  categoryName: 'Tractor',
-  categoryIcon: 'tractor',
-  categoryColour: 'lime',
-  startDate: '2026-10-20',
-  endDate: null,
-  readingAtServiceHours: null,
-  primaryMechanicUserId: null,
-  mechanicName: 'Mo Mechanic',
-  notes: 'Oil and filters',
-  nextServiceDueHoursSet: null,
-  status: 'open',
-  closedAt: null,
-  closedByName: null,
-  createdAt: '2026-10-20T08:00:00.000Z',
-  updatedAt: '2026-10-20T08:00:00.000Z',
-} as unknown as ServiceRecord;
+const machine = buildMachine();
+const record = buildServiceRecord();
 
 afterEach(() => {
   document.body.replaceChildren();

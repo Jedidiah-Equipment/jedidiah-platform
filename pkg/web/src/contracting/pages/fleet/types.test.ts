@@ -1,5 +1,12 @@
+import type { Machine } from '@pkg/schema/contracting';
 import { describe, expect, it } from 'vitest';
-import { busyFilterMatches, implementPatchInput, machinePatchInput, serviceFilterMatches } from './types.js';
+import {
+  busyFilterMatches,
+  implementPatchInput,
+  machineFormValues,
+  machinePatchInput,
+  serviceFilterMatches,
+} from './types.js';
 
 const id = '00000000-0000-4000-8000-000000000001';
 describe('fleet form mappers', () => {
@@ -26,6 +33,14 @@ describe('fleet form mappers', () => {
       nextServiceDueHours: null,
       serviceAlertHours: null,
     });
+  });
+  it("round-trips a Machine's Service Alert Hours: blank stays blank, a value comes back as itself", () => {
+    const machine = { code: 'JD6140M-1', make: 'Deere', model: '6140M', categoryId: id } as Machine;
+    const roundTrip = (serviceAlertHours: number | null) =>
+      machinePatchInput(id, machineFormValues({ ...machine, serviceAlertHours })).serviceAlertHours;
+    expect(roundTrip(null)).toBeNull();
+    expect(roundTrip(50)).toBe(50);
+    expect(roundTrip(0)).toBe(0);
   });
   it('sends empty implement notes as null', () => {
     expect(implementPatchInput(id, { code: 'DISC-1', categoryId: id, notes: '' })).toMatchObject({ notes: null });

@@ -137,3 +137,12 @@ test('animates the frame while listening or transcribing, and locks typing while
   expect(transcribing.root.findByType('TextInput' as never).props.editable).toBe(false);
   expect(mics(transcribing)[0]?.props.disabled).toBe(true);
 });
+
+test("tints the mic's frame when the owning form has an error for the field", () => {
+  let renderer!: ReactTestRenderer;
+  act(() => {
+    renderer = create(<VoiceTextArea invalid voice={voice} />);
+  });
+
+  expect(renderer.root.findByType('VoiceFrame' as never).props.invalid).toBe(true);
+});

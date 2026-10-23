@@ -15,7 +15,7 @@
 - A business-blind mechanism with runtime services (Transcriptions) gets its own wiring file,
   `src/<mechanism>/wiring.ts`, and receives each business's part from `server.ts` rather than importing it.
 - A router that needs a runtime service (the catalog translation scheduler) is a factory, composed in
-  `trpc/router.ts` by `createAppRouter({ equipment, contracting })`.
+  `trpc/router.ts` by `createAppRouter({ equipment, contracting, transcriptions })`.
 - Role slots travel as `data.equipmentRole` / `data.contractingRole` on Better Auth create-user and update-user,
   and as `role` on set-role; `auth/role-slots.ts` parses them for every hook and remaps them onto the columns.
   Business plugins (`equipment/auth/admin-user-safety.ts`, `contracting/auth/contracting-role-safety.ts`) only add

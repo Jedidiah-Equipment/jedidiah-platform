@@ -193,7 +193,7 @@ describe('userDepartments', () => {
     await expect(caller.auth.access()).resolves.toEqual({
       contractingRole: null,
       equipmentRole: 'job-viewer',
-      permissions: ['equipment_job:read', 'equipment_product_unit:read'],
+      permissions: ['equipment_job:read', 'equipment_product_unit:read', 'equipment_transcription:use'],
       userId: currentDepartmentUserId,
     });
 

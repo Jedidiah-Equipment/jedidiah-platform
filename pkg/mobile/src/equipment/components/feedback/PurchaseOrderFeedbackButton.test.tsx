@@ -45,6 +45,20 @@ vi.mock('@/components/form/fields/NumberField', () => ({ NumberField: 'NumberFie
 vi.mock('@/components/form/fields/SearchSelectField', () => ({ SearchSelectField: 'SearchSelectField' }));
 vi.mock('@/components/form/fields/SegmentedField', () => ({ SegmentedField: 'SegmentedField' }));
 vi.mock('@/components/form/fields/TextField', () => ({ TextField: 'TextField' }));
+// The voice session is mocked at its module boundary; the form's wiring to it is real.
+const reportSaved = vi.hoisted(() => vi.fn());
+const useVoiceSession = vi.hoisted(() =>
+  vi.fn((_scope: unknown, field: object) => ({ ...field, busy: false, snapshotSaved: () => reportSaved })),
+);
+vi.mock('@/components/voice/use-voice-session', () => ({ useVoiceSession }));
+// The stub takes the page's scroll lock from context, as the real field does.
+vi.mock('@/components/voice/VoiceTextArea', async () => {
+  const { createElement } = await import('react');
+  const { useScrollLock } = await import('@/components/scroll-lock');
+  return {
+    VoiceTextArea: (props: object) => createElement('TextInput', { ...props, lockScroll: useScrollLock() }),
+  };
+});
 
 import { TRPCProvider } from '@/lib/trpc';
 import { PurchaseOrderFeedbackButton } from './PurchaseOrderFeedbackButton';
@@ -53,6 +67,7 @@ import { PurchaseOrderFeedbackButton } from './PurchaseOrderFeedbackButton';
 const cleanups: Array<() => void> = [];
 afterEach(async () => {
   for (const cleanup of cleanups.splice(0)) await act(cleanup);
+  vi.clearAllMocks();
 });
 const order = FeedbackPurchaseOrder.parse({
   id: '00000000-0000-4000-8000-000000000042',
@@ -75,12 +90,7 @@ test('preselects the only linked PO and submits General Feedback from the full-s
   expect(content).not.toContain('Who is this about?');
   expect(content).not.toContain('Public:');
   expect(content).not.toContain('Private:');
-  await act(async () => renderer.root.findByType('TextInput' as never).props.onChangeText('Delivery tomorrow'));
-  const submit = renderer.root
-    .findAllByType('Pressable' as never)
-    .find((node) => node.findAllByType('Text' as never).some((text) => text.children.includes('Submit Feedback')));
-  expect(submit).toBeDefined();
-  await act(async () => submit?.props.onPress());
+  await typeAndSubmit(renderer, 'Delivery tomorrow');
   await vi.waitFor(() =>
     expect(sent).toEqual([
       {
@@ -90,9 +100,44 @@ test('preselects the only linked PO and submits General Feedback from the full-s
       },
     ]),
   );
+  expect(useVoiceSession).toHaveBeenCalledWith(
+    { business: 'equipment', purpose: 'purchase order feedback' },
+    expect.anything(),
+  );
+  await vi.waitFor(() => expect(reportSaved).toHaveBeenCalledTimes(1));
 });
 
-async function mount(purchaseOrders: FeedbackPurchaseOrder[], sent: unknown[] = []) {
+test('a refused submit reports no Voice Note as saved', async () => {
+  const renderer = await mount([order], [], { refuse: true });
+  await act(async () => renderer.root.findByProps({ accessibilityRole: 'button' }).props.onPress());
+  await typeAndSubmit(renderer, 'Delivery tomorrow');
+
+  await vi.waitFor(() => expect(JSON.stringify(renderer.toJSON())).toContain('Purchase Order is closed.'));
+  expect(reportSaved).not.toHaveBeenCalled();
+});
+
+test('holding the mic stops the sheet scrolling until it is released', async () => {
+  const renderer = await mount([order]);
+  await act(async () => renderer.root.findByProps({ accessibilityRole: 'button' }).props.onPress());
+  const sheet = () => renderer.root.findByType('ScrollView' as never);
+  const lockScroll = renderer.root.findByType('TextInput' as never).props.lockScroll as (locked: boolean) => void;
+
+  await act(async () => lockScroll(true));
+  expect(sheet().props.scrollEnabled).toBe(false);
+  await act(async () => lockScroll(false));
+  expect(sheet().props.scrollEnabled).toBe(true);
+});
+
+async function typeAndSubmit(renderer: ReactTestRenderer, text: string) {
+  await act(async () => renderer.root.findByType('TextInput' as never).props.voice.onChangeText(text));
+  const submit = renderer.root
+    .findAllByType('Pressable' as never)
+    .find((node) => node.findAllByType('Text' as never).some((label) => label.children.includes('Submit Feedback')));
+  expect(submit).toBeDefined();
+  await act(async () => submit?.props.onPress());
+}
+
+async function mount(purchaseOrders: FeedbackPurchaseOrder[], sent: unknown[] = [], { refuse = false } = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const trpcClient = createTRPCClient<AppRouter>({
     links: [
@@ -101,6 +146,17 @@ async function mount(purchaseOrders: FeedbackPurchaseOrder[], sent: unknown[] = 
         fetch: async (url, init) => {
           if (new URL(String(url)).pathname !== '/trpc/feedback.submit') throw new Error(`Unexpected request ${url}`);
           sent.push(JSON.parse(String(init?.body)));
+          if (refuse)
+            return Response.json(
+              {
+                error: {
+                  message: 'Purchase Order is closed.',
+                  code: -32600,
+                  data: { code: 'BAD_REQUEST', httpStatus: 400 },
+                },
+              },
+              { status: 400 },
+            );
           return Response.json({ result: { data: { id: order.id } } });
         },
       }),

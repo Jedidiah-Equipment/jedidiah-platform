@@ -13,6 +13,7 @@ import {
   IconLanguage,
   IconLayoutKanban,
   IconMessageReport,
+  IconMicrophone,
   IconPackages,
   IconReceipt2,
   IconShoppingCart,
@@ -216,6 +217,12 @@ export const equipmentNavSections = [
         link: linkOptions({ to: '/equipment/feedback' }),
         icon: IconMessageReport,
         indicator: FeedbackOpenNavIndicator,
+      },
+      {
+        title: 'Transcriptions',
+        permission: 'equipment_transcription:read',
+        link: linkOptions({ to: '/equipment/transcriptions' }),
+        icon: IconMicrophone,
       },
       {
         title: 'Audit',

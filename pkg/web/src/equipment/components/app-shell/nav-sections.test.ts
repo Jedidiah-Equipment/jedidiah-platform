@@ -15,6 +15,7 @@ describe('equipmentNavSections', () => {
       'Product Ranges',
       'Translations',
       'Feedback',
+      'Transcriptions',
       'Audit',
     ]);
     const operations = sections.find((section) => section.label === 'Operations');

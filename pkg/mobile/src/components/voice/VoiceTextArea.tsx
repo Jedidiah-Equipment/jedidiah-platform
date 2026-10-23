@@ -19,6 +19,8 @@ const HOLD_RETENTION = 1000;
 type Props = Omit<AppTextInputProps, 'value' | 'onChangeText' | 'maxLength' | 'multiline'> & {
   voice: VoiceSession;
   rows?: number;
+  /** The owning form has an error for this field. */
+  invalid?: boolean;
 };
 
 /**
@@ -26,7 +28,7 @@ type Props = Omit<AppTextInputProps, 'value' | 'onChangeText' | 'maxLength' | 'm
  * the session's business, it carries a press-and-hold mic whose transcript is appended to the text; offline it is a plain text
  * area. The web build shows the mic, but a press only says it cannot record there.
  */
-export function VoiceTextArea({ voice, rows = 4, editable = true, style, ...inputProps }: Props) {
+export function VoiceTextArea({ voice, rows = 4, editable = true, invalid = false, style, ...inputProps }: Props) {
   const canUse = useSessionPermission(transcriptionPermissions[voice.business].use);
   const offline = useIsOffline();
   const showMic = canUse && !offline && editable;
@@ -77,7 +79,7 @@ export function VoiceTextArea({ voice, rows = 4, editable = true, style, ...inpu
 
   // The input drops its own frame so it and the mic row read as one field, mic in the bottom-right corner.
   return (
-    <VoiceFrame animating={voice.listening || voice.transcribing}>
+    <VoiceFrame animating={voice.listening || voice.transcribing} invalid={invalid}>
       {input}
       <View className="flex-row items-center gap-3 pb-2 pl-3 pr-2">
         <Text accessibilityLiveRegion="polite" className="flex-1 text-xs text-muted-foreground">

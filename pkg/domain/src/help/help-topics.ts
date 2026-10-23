@@ -51,6 +51,8 @@ export const HELP_TOPICS = {
   customerCreate: '/sales/choose-a-customer',
   customerMerge: '/sales/merge-duplicate-customers',
   customers: '/sales/remove-a-customer',
+  equipmentTranscriptions: '/admin/review-voice-note-transcriptions',
+  equipmentVoiceNote: '/production/record-feedback-by-voice',
   home: '/',
   inventory: '/inventory/stock-on-hand-and-free-stock',
   inventoryBuyList: '/inventory/raise-purchase-orders-from-the-buy-list',

@@ -51,6 +51,7 @@ import { Route as AuthedEquipmentProductsRouteImport } from './../routes/_authed
 import { Route as AuthedEquipmentPurchaseOrdersRouteImport } from './../routes/_authed.equipment.purchase-orders'
 import { Route as AuthedEquipmentQuotesRouteImport } from './../routes/_authed.equipment.quotes'
 import { Route as AuthedEquipmentSuppliersRouteImport } from './../routes/_authed.equipment.suppliers'
+import { Route as AuthedEquipmentTranscriptionsRouteImport } from './../routes/_authed.equipment.transcriptions'
 import { Route as AuthedEquipmentUnitsRouteImport } from './../routes/_authed.equipment.units'
 import { Route as AuthedEquipmentUsersRouteImport } from './../routes/_authed.equipment.users'
 import { Route as AuthedContractingCustomersIndexRouteImport } from './../routes/_authed.contracting.customers.index'
@@ -338,6 +339,12 @@ const AuthedEquipmentSuppliersRoute =
   AuthedEquipmentSuppliersRouteImport.update({
     id: '/suppliers',
     path: '/suppliers',
+    getParentRoute: () => AuthedEquipmentRoute,
+  } as any)
+const AuthedEquipmentTranscriptionsRoute =
+  AuthedEquipmentTranscriptionsRouteImport.update({
+    id: '/transcriptions',
+    path: '/transcriptions',
     getParentRoute: () => AuthedEquipmentRoute,
   } as any)
 const AuthedEquipmentUnitsRoute = AuthedEquipmentUnitsRouteImport.update({
@@ -737,6 +744,7 @@ export interface FileRoutesByFullPath {
   '/equipment/purchase-orders': typeof AuthedEquipmentPurchaseOrdersRouteWithChildren
   '/equipment/quotes': typeof AuthedEquipmentQuotesRouteWithChildren
   '/equipment/suppliers': typeof AuthedEquipmentSuppliersRouteWithChildren
+  '/equipment/transcriptions': typeof AuthedEquipmentTranscriptionsRoute
   '/equipment/units': typeof AuthedEquipmentUnitsRouteWithChildren
   '/equipment/users': typeof AuthedEquipmentUsersRoute
   '/contracting/': typeof AuthedContractingIndexRoute
@@ -821,6 +829,7 @@ export interface FileRoutesByTo {
   '/equipment/feedback': typeof AuthedEquipmentFeedbackRoute
   '/equipment/labor-rates': typeof AuthedEquipmentLaborRatesRoute
   '/equipment/parts': typeof AuthedEquipmentPartsRoute
+  '/equipment/transcriptions': typeof AuthedEquipmentTranscriptionsRoute
   '/equipment/users': typeof AuthedEquipmentUsersRoute
   '/contracting': typeof AuthedContractingIndexRoute
   '/contracting/jobs/$code': typeof AuthedContractingJobsCodeRoute
@@ -921,6 +930,7 @@ export interface FileRoutesById {
   '/_authed/equipment/purchase-orders': typeof AuthedEquipmentPurchaseOrdersRouteWithChildren
   '/_authed/equipment/quotes': typeof AuthedEquipmentQuotesRouteWithChildren
   '/_authed/equipment/suppliers': typeof AuthedEquipmentSuppliersRouteWithChildren
+  '/_authed/equipment/transcriptions': typeof AuthedEquipmentTranscriptionsRoute
   '/_authed/equipment/units': typeof AuthedEquipmentUnitsRouteWithChildren
   '/_authed/equipment/users': typeof AuthedEquipmentUsersRoute
   '/_authed/contracting/': typeof AuthedContractingIndexRoute
@@ -1026,6 +1036,7 @@ export interface FileRouteTypes {
     | '/equipment/purchase-orders'
     | '/equipment/quotes'
     | '/equipment/suppliers'
+    | '/equipment/transcriptions'
     | '/equipment/units'
     | '/equipment/users'
     | '/contracting/'
@@ -1110,6 +1121,7 @@ export interface FileRouteTypes {
     | '/equipment/feedback'
     | '/equipment/labor-rates'
     | '/equipment/parts'
+    | '/equipment/transcriptions'
     | '/equipment/users'
     | '/contracting'
     | '/contracting/jobs/$code'
@@ -1209,6 +1221,7 @@ export interface FileRouteTypes {
     | '/_authed/equipment/purchase-orders'
     | '/_authed/equipment/quotes'
     | '/_authed/equipment/suppliers'
+    | '/_authed/equipment/transcriptions'
     | '/_authed/equipment/units'
     | '/_authed/equipment/users'
     | '/_authed/contracting/'
@@ -1577,6 +1590,13 @@ declare module '@tanstack/react-router' {
       path: '/suppliers'
       fullPath: '/equipment/suppliers'
       preLoaderRoute: typeof AuthedEquipmentSuppliersRouteImport
+      parentRoute: typeof AuthedEquipmentRoute
+    }
+    '/_authed/equipment/transcriptions': {
+      id: '/_authed/equipment/transcriptions'
+      path: '/transcriptions'
+      fullPath: '/equipment/transcriptions'
+      preLoaderRoute: typeof AuthedEquipmentTranscriptionsRouteImport
       parentRoute: typeof AuthedEquipmentRoute
     }
     '/_authed/equipment/units': {
@@ -2470,6 +2490,7 @@ interface AuthedEquipmentRouteChildren {
   AuthedEquipmentPurchaseOrdersRoute: typeof AuthedEquipmentPurchaseOrdersRouteWithChildren
   AuthedEquipmentQuotesRoute: typeof AuthedEquipmentQuotesRouteWithChildren
   AuthedEquipmentSuppliersRoute: typeof AuthedEquipmentSuppliersRouteWithChildren
+  AuthedEquipmentTranscriptionsRoute: typeof AuthedEquipmentTranscriptionsRoute
   AuthedEquipmentUnitsRoute: typeof AuthedEquipmentUnitsRouteWithChildren
   AuthedEquipmentUsersRoute: typeof AuthedEquipmentUsersRoute
 }
@@ -2495,6 +2516,7 @@ const AuthedEquipmentRouteChildren: AuthedEquipmentRouteChildren = {
     AuthedEquipmentPurchaseOrdersRouteWithChildren,
   AuthedEquipmentQuotesRoute: AuthedEquipmentQuotesRouteWithChildren,
   AuthedEquipmentSuppliersRoute: AuthedEquipmentSuppliersRouteWithChildren,
+  AuthedEquipmentTranscriptionsRoute: AuthedEquipmentTranscriptionsRoute,
   AuthedEquipmentUnitsRoute: AuthedEquipmentUnitsRouteWithChildren,
   AuthedEquipmentUsersRoute: AuthedEquipmentUsersRoute,
 }

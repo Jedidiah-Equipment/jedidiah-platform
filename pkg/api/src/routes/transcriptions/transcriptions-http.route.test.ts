@@ -2,7 +2,7 @@ import multipart from '@fastify/multipart';
 import type { TranscriptionEngine } from '@pkg/core';
 import { transcriptions, user } from '@pkg/db';
 import { fileTooLargeMessage, VOICE_NOTE_POLICY } from '@pkg/domain';
-import type { ContractingRole } from '@pkg/schema';
+import type { ContractingRole, EquipmentRole } from '@pkg/schema';
 import Fastify from 'fastify';
 import { expect, vi } from 'vitest';
 import { createTester } from '@/test/create-tester.js';
@@ -51,6 +51,12 @@ const test = createTester(async ({ db, auth }) => {
 function signInAs(contractingRole: ContractingRole) {
   const session = mockSession(null);
   session.user.contractingRole = contractingRole;
+  state.session = session;
+}
+
+function signInToEquipmentAs(role: EquipmentRole) {
+  const session = mockSession(null);
+  session.user.role = role;
   state.session = session;
 }
 
@@ -215,6 +221,23 @@ test('a foreman may not record an Equipment voice note', async ({ context }) => 
 
     const unknown = await app.inject(upload(M4A, undefined, '/api/transcriptions/lander'));
     expect(unknown.statusCode).toBe(404);
+  } finally {
+    await app.close();
+  }
+});
+
+test('a job manager records an Equipment voice note but not a Contracting one', async ({ context }) => {
+  const app = await context.appWith(engine);
+  try {
+    signInToEquipmentAs('job-manager');
+    const equipment = await app.inject(upload(M4A, { purpose: 'job feedback' }, '/api/transcriptions/equipment'));
+    expect(equipment.statusCode).toBe(201);
+    expect(await context.db.select({ business: transcriptions.business }).from(transcriptions)).toEqual([
+      { business: 'equipment' },
+    ]);
+
+    const contracting = await app.inject(upload(M4A, { purpose: 'capture comment' }));
+    expect(contracting.statusCode).toBe(403);
   } finally {
     await app.close();
   }

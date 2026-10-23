@@ -8,8 +8,13 @@ import {
   contractingMachines,
 } from '@pkg/db/contracting';
 import type { KeytermCandidate } from '@pkg/schema';
+import { subDays } from 'date-fns';
 import { and, eq, gte, inArray, isNull, or } from 'drizzle-orm';
-import type { TranscriptionProfile } from '../../transcriptions/transcription-profile.js';
+import {
+  personKeyterms,
+  sourcedKeyterms,
+  type TranscriptionProfile,
+} from '../../transcriptions/transcription-profile.js';
 
 const RECENT_JOB_DAYS = 90;
 const FIELD_ROLES = ['driver', 'mechanic', 'foreman'] as const;
@@ -25,7 +30,7 @@ async function loadContractingKeytermCandidates({
   db: Db;
   now?: Date;
 }): Promise<KeytermCandidate[]> {
-  const since = new Date(now.getTime() - RECENT_JOB_DAYS * 24 * 60 * 60 * 1000);
+  const since = subDays(now, RECENT_JOB_DAYS);
   const [machines, implementCodes, categories, people, places] = await Promise.all([
     db
       .select({ code: contractingMachines.code, make: contractingMachines.make, model: contractingMachines.model })
@@ -58,26 +63,24 @@ async function loadContractingKeytermCandidates({
       .orderBy(contractingFarms.name, contractingCustomers.name),
   ]);
 
-  const sourced = (source: string, keyterms: readonly (string | null)[]) =>
-    keyterms.flatMap((keyterm) => (keyterm === null ? [] : [{ keyterm, source }]));
   return [
-    ...sourced(
+    ...sourcedKeyterms(
       'machine',
       machines.flatMap((machine) => [machine.code, machine.make, machine.model]),
     ),
-    ...sourced(
+    ...sourcedKeyterms(
       'implement',
       implementCodes.map((implement) => implement.code),
     ),
-    ...sourced(
+    ...sourcedKeyterms(
       'category',
       categories.map((category) => category.name),
     ),
-    ...sourced(
-      'person',
-      people.flatMap((person) => [person.name, person.name.trim().split(/\s+/)[0] ?? null]),
-    ),
-    ...places.flatMap((place) => [...sourced('farm', [place.farm]), ...sourced('customer', [place.customer])]),
+    ...personKeyterms(people.map((person) => person.name)),
+    ...places.flatMap((place) => [
+      ...sourcedKeyterms('farm', [place.farm]),
+      ...sourcedKeyterms('customer', [place.customer]),
+    ]),
   ];
 }
 

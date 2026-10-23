@@ -4,6 +4,7 @@ import type { VoiceSession } from '@/components/voice/use-voice-session';
 import { VoiceTextArea } from '@/components/voice/VoiceTextArea';
 import { useFieldContext } from '../hooks/form-context';
 import { getFieldErrors } from '../utils/field-errors';
+import { fieldStateClassNames } from '../utils/field-style';
 import { FieldShell } from './FieldShell';
 
 type VoiceTextareaFieldProps = {
@@ -24,7 +25,8 @@ export function VoiceTextareaField({ voice, label, rows = 5, className, ...input
   return (
     <FieldShell errors={errors} label={label}>
       <VoiceTextArea
-        className={`${errors.length > 0 ? 'border-danger' : 'border-border'} ${className ?? ''}`}
+        className={`${fieldStateClassNames({ disabled: false, hasErrors: errors.length > 0 })} ${className ?? ''}`}
+        invalid={errors.length > 0}
         onBlur={() => field.handleBlur()}
         rows={rows}
         voice={voice}

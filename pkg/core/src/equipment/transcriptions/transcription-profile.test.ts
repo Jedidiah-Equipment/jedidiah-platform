@@ -19,12 +19,21 @@ test('names Equipment people, Departments, the catalogue and recent Suppliers, i
     role: EquipmentRole | null,
     extra: { isDevice?: boolean; banned?: boolean } = {},
   ) => ({ id, name, email: `${id}@example.com`, emailVerified: true, role, createdAt: now, updatedAt: now, ...extra });
+  const roles: [EquipmentRole, string][] = [
+    ['admin', 'Ada Admin'],
+    ['super-admin', 'Bea Super'],
+    ['procurement-manager', 'Cara Buyer'],
+    ['job-manager', 'Dan Manager'],
+    ['job-viewer', 'Eve Viewer'],
+    ['sales', 'Fay Sales'],
+    ['stores', 'Gus Stores'],
+    ['bay-operator', 'Hal Welder'],
+    ['app-store-tester', 'Ivy Reviewer'],
+  ];
   await db
     .insert(user)
     .values([
-      person('welder', 'Thabo Nkosi', 'bay-operator'),
-      person('manager', 'Anna Botha', 'job-manager'),
-      person('reviewer', 'App Reviewer', 'app-store-tester'),
+      ...roles.map(([role, name]) => person(role, name, role)),
       person('tablet', 'Stores Tablet', 'stores', { isDevice: true }),
       person('gone', 'Banned Person', 'sales', { banned: true }),
       person('contractor', 'Sipho Foreman', null),
@@ -53,10 +62,12 @@ test('names Equipment people, Departments, the catalogue and recent Suppliers, i
   const candidates = await equipmentTranscriptionProfile.loadVocabulary({ db, now });
 
   expect(candidates).toEqual([
-    { keyterm: 'Anna Botha', source: 'person' },
-    { keyterm: 'Anna', source: 'person' },
-    { keyterm: 'Thabo Nkosi', source: 'person' },
-    { keyterm: 'Thabo', source: 'person' },
+    ...roles
+      .filter(([role]) => role !== 'app-store-tester')
+      .flatMap(([, name]) => [
+        { keyterm: name, source: 'person' },
+        { keyterm: name.split(' ')[0], source: 'person' },
+      ]),
     ...['Procurement', 'Supply', 'Fabrication', 'Paint', 'Assembly', 'Workshop'].map((keyterm) => ({
       keyterm,
       source: 'department',

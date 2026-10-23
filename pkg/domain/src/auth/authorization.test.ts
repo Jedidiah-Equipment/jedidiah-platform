@@ -331,7 +331,6 @@ describe('getRolePermissions', () => {
       'stores',
       'super-admin',
     ]);
-    // Corrective Feedback can be dictated, so only the role that reads it may read every Voice Note (ADR 0010).
     expect(holders('equipment_transcription:read')).toEqual(['super-admin']);
     expect(holders('contracting_settings:update')).toEqual(['contracting-admin', 'super-admin']);
   });

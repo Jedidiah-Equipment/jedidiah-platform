@@ -12,7 +12,7 @@ export type TranscriptionProfile = {
   loadVocabulary: (input: { db: Db; now?: Date }) => Promise<KeytermCandidate[]>;
 };
 
-/** Keyterm candidates from one source, in order; a missing value (a Machine with no make) is skipped. */
+/** Keyterm candidates from one source, in order; a missing or empty value is skipped. */
 export const sourcedKeyterms = (source: string, keyterms: readonly (string | null)[]): KeytermCandidate[] =>
   keyterms.flatMap((keyterm) => (keyterm ? [{ keyterm, source }] : []));
 

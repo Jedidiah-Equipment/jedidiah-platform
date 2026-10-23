@@ -74,7 +74,6 @@ export function FeedbackSubmitButton({
   label,
   onPress,
 }: {
-  /** Held off while a Voice Note is still recording or landing in the text. */
   disabled?: boolean;
   isSubmitting: boolean;
   label: string;

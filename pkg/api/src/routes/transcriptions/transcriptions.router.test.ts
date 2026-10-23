@@ -182,7 +182,6 @@ test('every Equipment role but app-store-tester may record; only super-admin rev
       purpose: 'job feedback',
     }),
   ).rejects.toMatchObject({ code: 'FORBIDDEN' });
-  // A dictated Corrective Feedback is readable on the page, so an admin, who cannot read that feedback, is refused.
   await expect(as('admin').transcriptions.list({ business: 'equipment' })).rejects.toMatchObject({ code: 'FORBIDDEN' });
   await expect(as('job-manager').transcriptions.hints({ business: 'equipment' })).rejects.toMatchObject({
     code: 'FORBIDDEN',

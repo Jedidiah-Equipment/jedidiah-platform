@@ -21,12 +21,21 @@ const SEGMENT = 0.2;
 
 const AnimatedRect = Animated.createAnimatedComponent(Rect);
 
-/** The voice text area's frame: while `animating`, primary light runs round its border. */
-export function VoiceFrame({ animating, children }: { animating: boolean; children: ReactNode }) {
+/** The voice text area's frame: while `animating`, primary light runs round its border; `invalid` tints it at rest. */
+export function VoiceFrame({
+  animating,
+  invalid = false,
+  children,
+}: {
+  animating: boolean;
+  invalid?: boolean;
+  children: ReactNode;
+}) {
   const reducedMotion = useReducedMotion();
   const [size, setSize] = useState<{ width: number; height: number } | null>(null);
   const sweep = animating && !reducedMotion;
-  const borderClass = animating ? (sweep ? 'border-primary/30' : 'border-primary') : 'border-border';
+  const idleBorder = invalid ? 'border-danger' : 'border-border';
+  const borderClass = animating ? (sweep ? 'border-primary/30' : 'border-primary') : idleBorder;
   return (
     <View onLayout={({ nativeEvent: { layout } }) => setSize({ width: layout.width, height: layout.height })}>
       <View className={`border bg-surface ${borderClass}`} style={{ borderRadius: RADIUS }}>

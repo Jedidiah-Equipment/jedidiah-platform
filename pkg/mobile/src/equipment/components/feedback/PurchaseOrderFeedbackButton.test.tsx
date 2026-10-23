@@ -45,13 +45,12 @@ vi.mock('@/components/form/fields/NumberField', () => ({ NumberField: 'NumberFie
 vi.mock('@/components/form/fields/SearchSelectField', () => ({ SearchSelectField: 'SearchSelectField' }));
 vi.mock('@/components/form/fields/SegmentedField', () => ({ SegmentedField: 'SegmentedField' }));
 vi.mock('@/components/form/fields/TextField', () => ({ TextField: 'TextField' }));
-// The session's recorder and upload are covered in components/voice; here the form's wiring to it is real.
+// The voice session is mocked at its module boundary; the form's wiring to it is real.
 const reportSaved = vi.hoisted(() => vi.fn());
 const useVoiceSession = vi.hoisted(() =>
   vi.fn((_scope: unknown, field: object) => ({ ...field, busy: false, reportSaved })),
 );
 vi.mock('@/components/voice/use-voice-session', () => ({ useVoiceSession }));
-// The field hands its session to a plain stub, so typing goes through the session to the form.
 vi.mock('@/components/voice/VoiceTextArea', () => ({ VoiceTextArea: 'TextInput' }));
 
 import { TRPCProvider } from '@/lib/trpc';
@@ -98,7 +97,6 @@ test('preselects the only linked PO and submits General Feedback from the full-s
     { business: 'equipment', purpose: 'purchase order feedback' },
     expect.anything(),
   );
-  // The Voice Notes that fed the text report what was kept only once the feedback itself was accepted.
   await vi.waitFor(() => expect(reportSaved).toHaveBeenCalledTimes(1));
 });
 

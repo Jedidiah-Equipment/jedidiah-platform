@@ -8,7 +8,6 @@ import type { KeytermCandidate } from '@pkg/schema';
 export type TranscriptionProfile = {
   /** Completes "You tidy a speech-to-text transcript of …". */
   setting: string;
-  /** The business's own vocabulary, in the order the speech prompt should take it. Taught hint keyterms are not
-   * the profile's to load: the pipeline puts them first. */
-  loadKeytermCandidates: (input: { db: Db; now?: Date }) => Promise<KeytermCandidate[]>;
+  /** The business's own Keyterms in prompt order; the pipeline puts its taught hint keyterms first. */
+  loadVocabulary: (input: { db: Db; now?: Date }) => Promise<KeytermCandidate[]>;
 };

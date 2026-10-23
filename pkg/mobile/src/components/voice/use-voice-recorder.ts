@@ -35,8 +35,7 @@ export type VoiceRecorder = {
   stop: () => Promise<VoiceRecording | null>;
 };
 
-/** Press-and-hold recording through expo-audio, capped at the Voice Note limit. */
-/** `business` only labels the breadcrumbs the recorder leaves. */
+/** Press-and-hold recording through expo-audio, capped at the Voice Note limit; `business` labels its breadcrumbs. */
 export function useVoiceRecorder(business: Business): VoiceRecorder {
   const recorder = useAudioRecorder(RECORDING_OPTIONS);
   const state = useAudioRecorderState(recorder, 500);

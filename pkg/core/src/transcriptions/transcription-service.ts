@@ -82,7 +82,7 @@ export async function loadKeytermCandidates({
 }: {
   db: Db;
   business: Business;
-  profile: Pick<TranscriptionProfile, 'loadKeytermCandidates'>;
+  profile: Pick<TranscriptionProfile, 'loadVocabulary'>;
   now?: Date;
 }): Promise<KeytermCandidate[]> {
   const [taught, vocabulary] = await Promise.all([
@@ -91,7 +91,7 @@ export async function loadKeytermCandidates({
       .from(transcriptionHints)
       .where(and(activeHint(business), isNotNull(transcriptionHints.keyterm)))
       .orderBy(asc(transcriptionHints.createdAt), asc(transcriptionHints.id)),
-    profile.loadKeytermCandidates(now ? { db, now } : { db }),
+    profile.loadVocabulary(now ? { db, now } : { db }),
   ]);
   return [...taught.flatMap(({ keyterm }) => (keyterm === null ? [] : [{ keyterm, source: 'hint' }])), ...vocabulary];
 }

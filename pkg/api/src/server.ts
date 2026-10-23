@@ -71,7 +71,6 @@ export async function buildServer(
   const push = createExpoPushSender({ accessToken: config.EXPO_ACCESS_TOKEN });
   const equipment = await registerEquipment(app, { config, db, storage, push });
   const contracting = await registerContracting(app, { config, db, storage, push });
-  // The one place each business's part of the shared Voice Note pipeline is handed to it.
   const transcriptions = await registerTranscriptions(app, {
     config,
     db,

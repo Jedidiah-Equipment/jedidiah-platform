@@ -67,8 +67,7 @@ function CutOffKeyterms({ cutOff }: { cutOff: KeytermCandidate[] }) {
       {
         accessorKey: 'source',
         header: 'Source',
-        // Each business's profile names its own sources ("machine", "supplier"); the page shows them as sent.
-        cell: ({ row }) => toSentenceCase(row.original.source),
+        cell: ({ row }) => (row.original.source === 'hint' ? 'Hint keyterm' : toSentenceCase(row.original.source)),
       },
     ],
     [],

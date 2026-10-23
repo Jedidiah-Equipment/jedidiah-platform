@@ -1,4 +1,4 @@
-import { type Business, transcriptionHintOutcomes } from '@pkg/schema';
+import { BUSINESSES, type Business, transcriptionHintOutcomes } from '@pkg/schema';
 import { sql } from 'drizzle-orm';
 import { type AnyPgColumn, check, index, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { user } from './auth.js';
@@ -31,7 +31,7 @@ export const transcriptions = pgTable(
   (table) => [
     index('transcription_created_by_idx').on(table.createdByUserId, table.createdAt),
     index('transcription_business_created_idx').on(table.business, table.createdAt),
-    check('transcription_business', sql`${table.business} IN ('equipment', 'contracting')`),
+    check('transcription_business', sql`${table.business} IN (${quotedList(BUSINESSES)})`),
     check('transcription_saved_shape', sql`(${table.savedText} IS NULL) = (${table.savedAt} IS NULL)`),
     check('transcription_purpose_not_blank', sql`length(btrim(${table.purpose})) > 0`),
     check(
@@ -58,7 +58,7 @@ export const transcriptionHints = pgTable(
   },
   (table) => [
     index('transcription_hint_business_active_idx').on(table.business, table.retiredAt, table.createdAt),
-    check('transcription_hint_business', sql`${table.business} IN ('equipment', 'contracting')`),
+    check('transcription_hint_business', sql`${table.business} IN (${quotedList(BUSINESSES)})`),
     check('transcription_hint_rule_not_blank', sql`length(btrim(${table.rule})) > 0`),
     check(
       'transcription_hint_keyterm_length',

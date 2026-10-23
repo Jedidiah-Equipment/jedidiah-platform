@@ -315,7 +315,7 @@ test("a business's keyterms are its taught hint keyterms, then its profile's voc
     { business: 'contracting', rule: 'A meaning, not a name.', keyterm: null },
     { business: 'equipment', rule: 'Spell it Bossies.', keyterm: 'Bossies' },
   ]);
-  const profile = { loadKeytermCandidates: async () => [{ keyterm: 'CAT320-1', source: 'machine' }] };
+  const profile = { loadVocabulary: async () => [{ keyterm: 'CAT320-1', source: 'machine' }] };
 
   expect(await loadKeytermCandidates({ db, business: 'contracting', profile })).toEqual([
     { keyterm: 'Bloemhof', source: 'hint' },

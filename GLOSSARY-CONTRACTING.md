@@ -285,7 +285,7 @@ due point on and re-arms it.
 **Voice Note**, **Transcription**, **Transcription Hint** and **Keyterm** are the shared Voice Note
 mechanism defined in [GLOSSARY-MAP.md](GLOSSARY-MAP.md). Contracting's part of it:
 
-- Every multi-line text field of the Contracting mobile app takes a Voice Note, except Field Notes.
+- Every multi-line text field of the Contracting mobile app takes a Voice Note.
 - Contracting's **Keyterms**, after its taught Transcription Hints, are Machine codes, makes and
   models, Implement codes, Categories, the names of drivers, mechanics and foremen, and the Farms and
   Customers on Jobs updated in the last 90 days.

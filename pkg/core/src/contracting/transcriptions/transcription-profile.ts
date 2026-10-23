@@ -84,5 +84,5 @@ export async function loadContractingKeytermCandidates({
 /** Contracting's part of the Voice Note pipeline. */
 export const contractingTranscriptionProfile: TranscriptionProfile = {
   setting: 'a short voice note from a South African farm or workshop',
-  loadKeytermCandidates: loadContractingKeytermCandidates,
+  loadVocabulary: loadContractingKeytermCandidates,
 };

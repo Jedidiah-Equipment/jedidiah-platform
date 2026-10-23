@@ -3,7 +3,7 @@ import type { Db } from '@pkg/db';
 import { TRANSCRIBE_PATH, transcriptionPermissions, VOICE_NOTE_POLICY } from '@pkg/domain';
 import { type Business, type KeytermCandidate, TranscribeFields, TranscriptionPurpose } from '@pkg/schema';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { z } from 'zod';
+import type { z } from 'zod';
 import {
   type MultipartUploadOptions,
   mapCoreErrorToRoute,
@@ -22,7 +22,7 @@ import { transcriptionErrorFamily } from '../shared-error-families.js';
  * (the follow-up ticket "Drop the Contracting transcription aliases").
  */
 const CONTRACTING_ALIAS_PATH = '/api/contracting/transcriptions';
-const ContractingAliasFields = z.object({ purpose: TranscriptionPurpose }).strict();
+const ContractingAliasFields = TranscribeFields.omit({ business: true });
 
 export type TranscriptionHttpDependencies = {
   db: Db;

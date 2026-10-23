@@ -1,5 +1,5 @@
 import { countPhrase } from '@pkg/domain';
-import type { ServiceRecordTableInput } from '@pkg/schema/contracting';
+import type { ServiceRecordListInput } from '@pkg/schema/contracting';
 import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
@@ -12,6 +12,7 @@ import { PRIORITY_ROW_CLASS_NAME } from '@/components/data-table/priority-row.js
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
+import { useMachinesDueForService } from '@/contracting/hooks/use-machines-due-for-service.js';
 import { RecordServiceDialog } from '@/contracting/pages/fleet/RecordServiceDialog.js';
 import { useServiceMechanicOptions } from '@/contracting/pages/fleet/use-service-mechanic-options.js';
 import { useCan } from '@/hooks/use-access.js';
@@ -26,7 +27,7 @@ const useServicesTableStore = createPersistedDataTableStore({
   persistName: 'contracting-services-table',
 });
 
-const serviceRecordSortOptions: SortOptions<ServiceRecordTableInput> = {
+const serviceRecordSortOptions: SortOptions<ServiceRecordListInput> = {
   allowedSortIds: ['startDate'],
   defaultSort: { id: 'startDate', desc: true },
 };
@@ -46,13 +47,12 @@ export function ServicesPage() {
     getListInputExtras: servicesTableFilters,
   });
   const recordsQuery = useInfiniteQuery(
-    trpc.contractingServices.table.infiniteQueryOptions(tableController.listInput, {
+    trpc.contractingServices.list.infiniteQueryOptions(tableController.listInput, {
       ...cursorInfiniteQueryOptions,
       placeholderData: keepPreviousData,
     }),
   );
-  // The menu dot polls this query for the whole shell, so the pinned rows stay fresh without a second timer.
-  const dueQuery = useQuery(trpc.contractingServices.dueForService.queryOptions());
+  const dueQuery = useMachinesDueForService();
   const summary = useQuery(trpc.contractingServices.summary.queryOptions());
   const filters = useQuery(trpc.contractingServices.options.filters.queryOptions());
   const mechanics = useServiceMechanicOptions(canRecord);

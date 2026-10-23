@@ -19,7 +19,7 @@ const machine = {
 } as unknown as Machine;
 
 vi.mock('@/lib/trpc.js', () => ({
-  useTRPC: () => ({ contractingServices: { dueForService: { queryOptions: () => ({ queryKey: ['due'] }) } } }),
+  useTRPC: () => ({ contractingFleet: { machines: { list: { queryOptions: () => ({ queryKey: ['machines'] }) } } } }),
 }));
 vi.mock('@tanstack/react-query', async (original) => ({
   ...(await original<typeof import('@tanstack/react-query')>()),

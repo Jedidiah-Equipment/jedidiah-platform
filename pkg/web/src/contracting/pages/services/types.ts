@@ -1,4 +1,4 @@
-import type { Machine, ServiceRecord, ServiceRecordStatus, ServiceRecordTableInput } from '@pkg/schema/contracting';
+import type { Machine, ServiceRecord, ServiceRecordListInput, ServiceRecordStatus } from '@pkg/schema/contracting';
 import { serviceRecordStatuses } from '@pkg/schema/contracting';
 import type { ColumnFiltersState } from '@tanstack/react-table';
 import { isPickedExactly, readMultiSelectFilter, togglePick } from '@/components/data-table/column-filter-values.js';
@@ -32,7 +32,7 @@ export function servicesTableFilters(columnFilters: ColumnFiltersState) {
     statuses: listedServiceStatuses(columnFilters),
     machineIds: readMultiSelectFilter(columnFilters, MACHINE_COLUMN_ID),
     mechanicUserIds: readMultiSelectFilter(columnFilters, MECHANIC_COLUMN_ID),
-  } satisfies Partial<ServiceRecordTableInput>;
+  } satisfies Partial<ServiceRecordListInput>;
 }
 
 /** The statuses picked in the Status filter; none picked lists every Service Record. */

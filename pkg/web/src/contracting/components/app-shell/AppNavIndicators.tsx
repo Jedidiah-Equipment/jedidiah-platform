@@ -6,6 +6,7 @@ import type React from 'react';
 import { useActivityUnread } from '@/components/activity/use-activity-view.js';
 import { NavWarningDot } from '@/components/app-shell/NavWarningDot.js';
 import { useContractingActivityViewClient } from '@/contracting/components/activity/activity-view-client.js';
+import { useMachinesDueForService } from '@/contracting/hooks/use-machines-due-for-service.js';
 import { DASHBOARD_REFETCH_INTERVAL_MS } from '@/contracting/lib/dashboard-refresh.js';
 import { useAccess, useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -44,13 +45,7 @@ export const WorkshopNavIndicator: React.FC = () => {
 
 /** How many Machines are Due for Service: the Services page's pinned rows. */
 export const ServicesNavIndicator: React.FC = () => {
-  const trpc = useTRPC();
-  const serviceAccess = useCan('contracting_service:read');
-  const dueQuery = useQuery({
-    ...trpc.contractingServices.dueForService.queryOptions(),
-    enabled: serviceAccess.can,
-    refetchInterval: DASHBOARD_REFETCH_INTERVAL_MS,
-  });
+  const dueQuery = useMachinesDueForService({ enabled: useCan('contracting_service:read').can });
   const count = dueQuery.data?.length ?? 0;
 
   return count > 0 ? <NavWarningDot label={`${countPhrase(count, 'Machine', 'Machines')} due for a service`} /> : null;

@@ -31,14 +31,17 @@ export function MachineServiceCard({ machine }: { machine: Machine }) {
   const canRecord = useCan('contracting_service:update').can && !machine.retiredAt;
   const canCapture = useCan('contracting_reading:capture').can && !machine.retiredAt;
   const records = useQuery(
-    trpc.contractingServices.list.queryOptions({ machineId: machine.id }, { enabled: readsServices && canRecord }),
+    trpc.contractingServices.list.queryOptions(
+      { machineIds: [machine.id], statuses: ['open'], limit: 0 },
+      { enabled: readsServices && canRecord },
+    ),
   );
   const mechanics = useServiceMechanicOptions(canRecord);
   const mechanicOptions = mechanics.options;
   const [opening, setOpening] = useState(false);
   const [capturing, setCapturing] = useState(false);
   const [closingId, setClosingId] = useState<string | null>(null);
-  const openRecords = (records.data ?? []).filter((record) => record.status === 'open');
+  const openRecords = records.data?.items ?? [];
   const closing = openRecords.find((record) => record.id === closingId);
   if (!readsServices) return null;
   return (

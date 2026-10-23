@@ -62,10 +62,8 @@ export const ServiceRecord = z.object({
   updatedAt: DateIso,
 });
 export type ServiceRecord = z.infer<typeof ServiceRecord>;
-export const ServiceRecordListInput = z.object({ machineId: UUID }).strict();
-export type ServiceRecordListInput = z.infer<typeof ServiceRecordListInput>;
-/** The Services table: every Service Record across the fleet, Booked In first. */
-export const ServiceRecordTableInput = createSearchedSortedCursorQueryInput({
+/** Service Records across the fleet, Booked In first: the Services table, or one Machine's with `limit: 0`. */
+export const ServiceRecordListInput = createSearchedSortedCursorQueryInput({
   defaultSortDirection: 'desc',
   shape: {
     statuses: z.array(z.enum(serviceRecordStatuses)).default([]),
@@ -74,9 +72,9 @@ export const ServiceRecordTableInput = createSearchedSortedCursorQueryInput({
   },
   sortBy: z.enum(['startDate']).default('startDate'),
 });
-export type ServiceRecordTableInput = z.infer<typeof ServiceRecordTableInput>;
-export const ServiceRecordTableResult = createCursorQueryResult(ServiceRecord);
-export type ServiceRecordTableResult = z.infer<typeof ServiceRecordTableResult>;
+export type ServiceRecordListInput = z.infer<typeof ServiceRecordListInput>;
+export const ServiceRecordListResult = createCursorQueryResult(ServiceRecord);
+export type ServiceRecordListResult = z.infer<typeof ServiceRecordListResult>;
 export const ServiceRecordStatusCounts = z.record(z.enum(serviceRecordStatuses), z.number().int().nonnegative());
 export type ServiceRecordStatusCounts = z.infer<typeof ServiceRecordStatusCounts>;
 /** Each status's Service Record count, for the Services table's quick filters. */

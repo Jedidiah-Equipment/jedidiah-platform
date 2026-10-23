@@ -1,5 +1,6 @@
 import { auditEvents, user } from '@pkg/db';
 import { DateOnlyIso } from '@pkg/schema';
+import { ServiceRecordListInput } from '@pkg/schema/contracting';
 import { and, eq, inArray } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
@@ -131,7 +132,9 @@ describe('Service Records', () => {
     });
     expect(closed).toMatchObject({ status: 'closed', nextServiceDueHoursSet: 1700, closedByName: 'Jed' });
     expect((await getMachine({ db, id: excavator.id })).nextServiceDueHours).toBe(1700);
-    expect(await listServiceRecords({ db, machineId: excavator.id })).toHaveLength(1);
+    expect(
+      (await listServiceRecords({ db, input: ServiceRecordListInput.parse({ machineIds: [excavator.id] }) })).items,
+    ).toHaveLength(1);
 
     const events = await db
       .select({ entityType: auditEvents.entityType, action: auditEvents.action, summary: auditEvents.summary })

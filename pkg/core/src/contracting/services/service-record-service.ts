@@ -13,12 +13,12 @@ import {
   ServiceRecord,
   type ServiceRecordCloseInput,
   ServiceRecordFilterOptions,
+  type ServiceRecordListInput,
+  type ServiceRecordListResult,
   type ServiceRecordOpenInput,
   type ServiceRecordPatchInput,
   type ServiceRecordStatus,
   ServiceRecordSummary,
-  type ServiceRecordTableInput,
-  type ServiceRecordTableResult,
   serviceRecordStatuses,
 } from '@pkg/schema/contracting';
 import { and, asc, desc, eq, inArray, isNotNull, isNull, or, sql } from 'drizzle-orm';
@@ -93,26 +93,18 @@ export async function getServiceRecord({ db, id }: { db: Db | DatabaseTransactio
   return mapServiceRecord(row);
 }
 
-/** A Machine's Service Records, newest first. */
-export async function listServiceRecords({ db, machineId }: { db: Db; machineId: string }) {
-  const rows = await selectServiceRecords(db)
-    .where(eq(contractingServiceRecords.machineId, machineId))
-    .orderBy(desc(contractingServiceRecords.startDate), desc(contractingServiceRecords.createdAt));
-  return rows.map(mapServiceRecord);
-}
-
 /** Open is Booked In: no close-out yet. Every Service Record read filters, orders and counts by this one test. */
 const statusCondition = (status: ServiceRecordStatus) =>
   status === 'open' ? isNull(contractingServiceRecords.closedAt) : isNotNull(contractingServiceRecords.closedAt);
 
-/** The Services table: every Service Record across the fleet, Booked In first, then by start date. */
-export async function listServiceRecordTable({
+/** Service Records across the fleet, Booked In first, then by start date: the Services table and each Machine's. */
+export async function listServiceRecords({
   db,
   input,
 }: {
   db: Db;
-  input: ServiceRecordTableInput;
-}): Promise<ServiceRecordTableResult> {
+  input: ServiceRecordListInput;
+}): Promise<ServiceRecordListResult> {
   const where = and(
     input.statuses.length ? or(...input.statuses.map(statusCondition)) : undefined,
     input.machineIds.length ? inArray(contractingServiceRecords.machineId, input.machineIds) : undefined,

@@ -1,7 +1,6 @@
 import { countPhrase, formatHours } from '@pkg/domain';
 import { hoursToServiceLabel, serviceDueStatusColorClassNames } from '@pkg/domain/contracting';
 import type { Machine } from '@pkg/schema/contracting';
-import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import {
   DashboardListBlock,
@@ -10,16 +9,11 @@ import {
 } from '@/components/common/dashboard/DashboardListBlock.js';
 import { PrimaryLink } from '@/components/common/PrimaryLink.js';
 import { CategoryLabel } from '@/contracting/components/CategoryIcon.js';
-import { DASHBOARD_REFETCH_INTERVAL_MS } from '@/contracting/lib/dashboard-refresh.js';
-import { useTRPC } from '@/lib/trpc.js';
+import { useMachinesDueForService } from '@/contracting/hooks/use-machines-due-for-service.js';
 import { cn } from '@/lib/utils.js';
 
 export function ServiceDueWidget() {
-  const trpc = useTRPC();
-  const query = useQuery({
-    ...trpc.contractingServices.dueForService.queryOptions(),
-    refetchInterval: DASHBOARD_REFETCH_INTERVAL_MS,
-  });
+  const query = useMachinesDueForService();
   return (
     <DashboardListBlock
       rows={query.data}

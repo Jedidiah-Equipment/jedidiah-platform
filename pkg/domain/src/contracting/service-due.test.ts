@@ -7,6 +7,7 @@ import {
   isDueForService,
   machineBusyWith,
   machineServiceBadge,
+  machinesDueForService,
   serviceDueSoonCrossed,
   serviceDueStatus,
   suggestedNextServiceDue,
@@ -130,4 +131,23 @@ describe('effectiveServiceDueThreshold', () => {
   test('zero is a real override: due soon only once the meter reaches Next Service Due', () => {
     expect(effectiveServiceDueThreshold({ serviceAlertHours: 0 }, 100)).toBe(0);
   });
+});
+
+test('keeps only Machines Due for Service, overdue first, then the fewest hours to go', () => {
+  const machine = (
+    code: string,
+    serviceDueStatus: 'unknown' | 'ok' | 'due-soon' | 'overdue',
+    hoursToService: number | null,
+    serviceBookedIn = false,
+  ) => ({ code, serviceDueStatus, hoursToService, serviceBookedIn });
+  const due = machinesDueForService([
+    machine('TRAC-1', 'ok', 400),
+    machine('TRAC-2', 'due-soon', 80),
+    machine('TRAC-3', 'unknown', null),
+    machine('TRAC-4', 'overdue', -5),
+    machine('TRAC-5', 'due-soon', 20),
+    machine('TRAC-6', 'overdue', -40),
+    machine('TRAC-7', 'overdue', -90, true),
+  ]);
+  expect(due.map((entry) => entry.code)).toEqual(['TRAC-6', 'TRAC-4', 'TRAC-5', 'TRAC-2']);
 });

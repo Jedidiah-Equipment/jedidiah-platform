@@ -5,7 +5,6 @@ import {
   fieldReaderSeesJob,
   formatJobNumber,
   hoursToService,
-  machinesDueForService,
   serviceDueStatus,
 } from '@pkg/domain/contracting';
 import type { AuthId, ContractingRole, UserAccessSummary } from '@pkg/schema';
@@ -166,10 +165,6 @@ export async function getMachine({ db, id }: { db: Db | DatabaseTransaction; id:
   ]);
   if (!row) throw notFound('Machine');
   return mapMachine(row, serviceDueSoonThresholdHours);
-}
-/** The active Machines Due for Service, overdue first: what the Services page pins and the menu dot counts. */
-export async function listMachinesDueForService({ db }: { db: Db }) {
-  return machinesDueForService(await listMachines({ db, input: { status: 'active', search: '' } }));
 }
 async function assertDriver(tx: DatabaseTransaction, id: string | null | undefined) {
   if (!id) return;

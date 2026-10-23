@@ -97,7 +97,9 @@ export function FleetHistoryCard({
     ),
   );
   const services = useQuery(
-    trpc.contractingServices.list.queryOptions(readsServices && machineId ? { machineId } : skipToken),
+    trpc.contractingServices.list.queryOptions(
+      readsServices && machineId ? { machineIds: [machineId], limit: 0 } : skipToken,
+    ),
   );
   const rows = useMemo<HistoryRow[]>(
     () =>
@@ -127,7 +129,7 @@ export function FleetHistoryCard({
           breakdown: { urgency: breakdown.urgency, status: breakdown.status },
           opens: { to: 'breakdown' as const, id: breakdown.id },
         })),
-        ...(services.data ?? []).map((service) => {
+        ...(services.data?.items ?? []).map((service) => {
           const title = [
             'Service',
             service.readingAtServiceHours === null ? 'in the workshop' : formatHours(service.readingAtServiceHours),

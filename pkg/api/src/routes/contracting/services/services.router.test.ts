@@ -1,4 +1,4 @@
-import { captureReading, createCategory, createMachine, retireMachine } from '@pkg/core/contracting';
+import { captureReading, createCategory, createMachine } from '@pkg/core/contracting';
 import { user } from '@pkg/db';
 import { accessForRole } from '@pkg/domain/testing';
 import type { ContractingRole } from '@pkg/schema';
@@ -108,30 +108,20 @@ test('a Foreman cannot record a service', async ({ context }) => {
   ).rejects.toMatchObject({ code: 'FORBIDDEN' });
 });
 
-test('the Machines Due for Service are due soon or overdue, never booked in or retired, overdue first', async ({
-  context,
-}) => {
-  const { db, machineWith } = context;
+test('booking a Machine in serves it as Booked In until its Service Record closes', async ({ context }) => {
+  const { machineWith } = context;
   const connor = context.createCaller(sessionAs('connor', 'workshop-manager'));
-  const soon = await machineWith('JD-SOON', 1500, 1449);
-  await machineWith('JD-LATE', 1400, 1449);
-  await machineWith('JD-OK', 3000, 1449);
   const booked = await machineWith('JD-BOOKED', 1400, 1449);
-  const retired = await machineWith('JD-GONE', 1400, 1449);
-  await retireMachine({ db, actorUserId: 'connor', input: { id: retired.id, reason: 'Sold' } });
   const bookedIn = await connor.contractingServices.open({
     machineId: booked.id,
     startDate: '2026-10-21',
     notes: null,
   });
 
-  const due = await connor.contractingServices.dueForService();
-  expect(due.map((machine) => machine.code)).toEqual(['JD-LATE', 'JD-SOON']);
   expect(await connor.contractingFleet.machines.get({ id: booked.id })).toMatchObject({
     serviceDueStatus: 'overdue',
     serviceBookedIn: true,
   });
-  expect(await connor.contractingFleet.machines.get({ id: soon.id })).toMatchObject({ serviceBookedIn: false });
 
   await connor.contractingServices.close({
     id: bookedIn.id,
@@ -171,10 +161,10 @@ test('the Services table lists every Service Record Booked In first, then newest
   await close((await record(early.id, '2026-09-01')).id, '2026-09-02');
   await close((await record(late.id, '2026-10-01', 'mo')).id, '2026-10-02', 'mo');
   await record(open.id, '2026-08-01');
-  const codes = async (input: Parameters<typeof connor.contractingServices.table>[0]) =>
-    (await connor.contractingServices.table(input)).items.map((item) => item.machineCode);
+  const codes = async (input: Parameters<typeof connor.contractingServices.list>[0]) =>
+    (await connor.contractingServices.list(input)).items.map((item) => item.machineCode);
 
-  const all = await connor.contractingServices.table({});
+  const all = await connor.contractingServices.list({});
   expect(all.items.map((item) => [item.machineCode, item.status])).toEqual([
     ['TLB-OPEN', 'open'],
     ['EXC-LATE', 'closed'],
@@ -199,9 +189,8 @@ test('the Services table lists every Service Record Booked In first, then newest
 
 test('a Foreman reads none of the Services page', async ({ context }) => {
   const sipho = context.createCaller(sessionAs('sipho', 'foreman'));
-  await expect(sipho.contractingServices.table({})).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  await expect(sipho.contractingServices.list({})).rejects.toMatchObject({ code: 'FORBIDDEN' });
   await expect(sipho.contractingServices.summary()).rejects.toMatchObject({ code: 'FORBIDDEN' });
-  await expect(sipho.contractingServices.dueForService()).rejects.toMatchObject({ code: 'FORBIDDEN' });
   await expect(sipho.contractingServices.options.filters()).rejects.toMatchObject({ code: 'FORBIDDEN' });
 });
 
@@ -216,7 +205,6 @@ test("a Machine's Service Alert Hours judge it instead of Settings, and clearing
 
   await cara.contractingFleet.machines.patch({ id: machine.id, serviceAlertHours: 50 });
   expect(await read()).toMatchObject({ serviceAlertHours: 50, serviceDueStatus: 'ok', serviceDueThresholdHours: 50 });
-  expect((await cara.contractingServices.dueForService()).map((due) => due.code)).not.toContain('JD-ALERT');
 
   await cara.contractingFleet.machines.patch({ id: machine.id, serviceAlertHours: null });
   expect(await read()).toMatchObject({ serviceAlertHours: null, serviceDueStatus: 'due-soon' });

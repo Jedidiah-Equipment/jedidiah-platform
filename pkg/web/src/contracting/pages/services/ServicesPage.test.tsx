@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import type { AppRouter } from '@pkg/api';
 import { createUserAccessSummary } from '@pkg/domain';
-import type { Machine, ServiceRecord, ServiceRecordTableInput } from '@pkg/schema/contracting';
+import type { Machine, ServiceRecord, ServiceRecordListInput } from '@pkg/schema/contracting';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryHistory, createRootRoute, createRouter, RouterProvider } from '@tanstack/react-router';
 import { createTRPCClient, httpLink } from '@trpc/client';
@@ -73,7 +73,7 @@ afterEach(() => {
 });
 
 async function mount() {
-  const tableInputs: ServiceRecordTableInput[] = [];
+  const tableInputs: ServiceRecordListInput[] = [];
   const opened: unknown[] = [];
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   const trpcClient = createTRPCClient<AppRouter>({
@@ -91,12 +91,12 @@ async function mount() {
                   contractingRole: 'workshop-manager',
                   userId: 'connor',
                 });
-              case 'contractingServices.table':
+              case 'contractingServices.list':
                 tableInputs.push(JSON.parse(url.searchParams.get('input') ?? '{}'));
                 return { items: [record], nextCursor: null, total: 1 };
               case 'contractingServices.summary':
                 return { counts: { open: 1, closed: 4 } };
-              case 'contractingServices.dueForService':
+              case 'contractingFleet.machines.list':
                 return [machine];
               case 'contractingServices.options.filters':
                 return { machines: [], mechanics: [] };

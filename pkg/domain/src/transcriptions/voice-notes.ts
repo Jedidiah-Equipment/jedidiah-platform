@@ -1,4 +1,4 @@
-import type { KeytermCandidate, TranscriptionHintOutcome, TranscriptionHintStatus } from '@pkg/schema';
+import type { Business, KeytermCandidate, TranscriptionHintOutcome, TranscriptionHintStatus } from '@pkg/schema';
 import { AUDIO_M4A_CONTENT_TYPE } from '../files/file-policy.js';
 
 export { TRANSCRIPTION_HINTS_PER_CORRECTION } from '@pkg/schema';
@@ -8,7 +8,8 @@ export const VOICE_NOTE_POLICY = {
   allowedContentTypes: [AUDIO_M4A_CONTENT_TYPE],
   maxBytes: 5 * 1024 * 1024,
 } as const;
-export const TRANSCRIBE_PATH = '/api/transcriptions';
+/** Where a business's Voice Notes are posted; the business is in the path so the route checks it before reading the upload. */
+export const transcribePath = (business: Business) => `/api/transcriptions/${business}`;
 export const TRANSCRIBE_TIMEOUT_MS = 30_000;
 export const TRANSCRIPTION_HINT_CAP = 100;
 const KEYTERM_MAX_LENGTH = 50;

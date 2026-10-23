@@ -17,7 +17,6 @@ import {
 import { and, asc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 import { filePolicyViolation } from '../files/file-errors.js';
 import { TranscriptionError } from './transcription-errors.js';
-import type { TranscriptionProfile } from './transcription-profile.js';
 
 export type VoiceTranscript = { text: string; language: string | null };
 export type ActiveHint = { id: string; rule: string };
@@ -77,13 +76,12 @@ export async function listActiveHints({
 export async function loadKeytermCandidates({
   db,
   business,
-  profile,
-  now,
+  loadVocabulary,
 }: {
   db: Db;
   business: Business;
-  profile: Pick<TranscriptionProfile, 'loadVocabulary'>;
-  now?: Date;
+  /** The business's own vocabulary, from its profile. */
+  loadVocabulary: () => Promise<KeytermCandidate[]>;
 }): Promise<KeytermCandidate[]> {
   const [taught, vocabulary] = await Promise.all([
     db
@@ -91,7 +89,7 @@ export async function loadKeytermCandidates({
       .from(transcriptionHints)
       .where(and(activeHint(business), isNotNull(transcriptionHints.keyterm)))
       .orderBy(asc(transcriptionHints.createdAt), asc(transcriptionHints.id)),
-    profile.loadVocabulary(now ? { db, now } : { db }),
+    loadVocabulary(),
   ]);
   return [...taught.flatMap(({ keyterm }) => (keyterm === null ? [] : [{ keyterm, source: 'hint' }])), ...vocabulary];
 }

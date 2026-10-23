@@ -92,7 +92,13 @@ test('only a holder of contracting_transcription:read reviews Transcriptions, hi
   );
   const caller = context.createCaller(admin, {
     transcriptions: {
-      keyterms: { contracting: async () => [{ keyterm: 'Rooikraal', source: 'hint' }], equipment: async () => [] },
+      businesses: {
+        contracting: {
+          setting: 'a test Contracting note',
+          keyterms: async () => [{ keyterm: 'Rooikraal', source: 'hint' }],
+        },
+        equipment: { setting: 'a test Equipment note', keyterms: async () => [] },
+      },
     },
   });
   expect(await caller.transcriptions.list({ business: 'contracting' })).toMatchObject({

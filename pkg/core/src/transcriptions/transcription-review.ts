@@ -10,7 +10,7 @@ import {
   TranscriptionReviewItem,
   TranscriptionUser,
 } from '@pkg/schema';
-import { and, asc, desc, eq, exists, inArray, isNull, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, exists, inArray, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 
 /** One business's Transcriptions by every user, or only those the chosen people recorded, with where each one's hint derivation stands. */
@@ -109,10 +109,7 @@ export async function listTranscriptionHints({
       desc(transcriptionHints.createdAt),
       desc(transcriptionHints.id),
     );
-  const activeCount = await db.$count(
-    transcriptionHints,
-    and(eq(transcriptionHints.business, business), isNull(transcriptionHints.retiredAt)),
-  );
+  const activeCount = rows.filter((row) => row.retiredAt === null).length;
   const hints = rows.map((row) =>
     TranscriptionHintRow.parse({
       ...row,

@@ -1,4 +1,4 @@
-import { TRANSCRIBE_PATH, TRANSCRIBE_TIMEOUT_MS } from '@pkg/domain';
+import { TRANSCRIBE_TIMEOUT_MS, transcribePath } from '@pkg/domain';
 import { type Business, Transcription } from '@pkg/schema';
 import { filePart } from '@/lib/file-part';
 import { postMultipart } from '@/lib/multipart-upload';
@@ -14,11 +14,10 @@ export async function transcribeRecording(
 ): Promise<Transcription> {
   const audio = await filePart(uri, RECORDING_MISSING);
   const body = new FormData();
-  body.append('business', business);
   body.append('purpose', purpose);
   body.append('audio', audio, 'voice-note.m4a');
   addBreadcrumb(business, 'voice note upload', { bytes: audio.size });
-  return postMultipart(TRANSCRIBE_PATH, body, {
+  return postMultipart(transcribePath(business), body, {
     timeoutMs: TRANSCRIBE_TIMEOUT_MS,
     failedMessage: TRANSCRIBE_FAILED,
     output: Transcription,

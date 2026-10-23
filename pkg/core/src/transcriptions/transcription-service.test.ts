@@ -315,13 +315,13 @@ test("a business's keyterms are its taught hint keyterms, then its profile's voc
     { business: 'contracting', rule: 'A meaning, not a name.', keyterm: null },
     { business: 'equipment', rule: 'Spell it Bossies.', keyterm: 'Bossies' },
   ]);
-  const profile = { loadVocabulary: async () => [{ keyterm: 'CAT320-1', source: 'machine' }] };
+  const loadVocabulary = async () => [{ keyterm: 'CAT320-1', source: 'machine' }];
 
-  expect(await loadKeytermCandidates({ db, business: 'contracting', profile })).toEqual([
+  expect(await loadKeytermCandidates({ db, business: 'contracting', loadVocabulary })).toEqual([
     { keyterm: 'Bloemhof', source: 'hint' },
     { keyterm: 'CAT320-1', source: 'machine' },
   ]);
-  expect(await loadKeytermCandidates({ db, business: 'equipment', profile })).toEqual([
+  expect(await loadKeytermCandidates({ db, business: 'equipment', loadVocabulary })).toEqual([
     { keyterm: 'Bossies', source: 'hint' },
     { keyterm: 'CAT320-1', source: 'machine' },
   ]);

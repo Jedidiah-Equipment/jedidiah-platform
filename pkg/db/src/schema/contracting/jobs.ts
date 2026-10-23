@@ -13,7 +13,8 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import { user } from '../auth.js';
-import { decimal2, hours, money, quotedList, timestamps } from './columns.js';
+import { quotedList } from '../columns.js';
+import { decimal2, hours, money, timestamps } from './columns.js';
 import { contractingCustomers, contractingFarms, contractingWorkTypes } from './directory.js';
 import { contractingImplements, contractingMachines } from './fleet.js';
 import { contractingHourReadings } from './hour-reading.js';

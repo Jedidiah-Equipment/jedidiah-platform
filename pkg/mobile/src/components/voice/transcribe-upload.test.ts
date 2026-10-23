@@ -13,12 +13,11 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-test('sends the business, purpose and recording with the session cookie and returns the text', async () => {
+test("posts the purpose and recording to the business's path with the session cookie and returns the text", async () => {
   vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
-    expect(url).toBe('https://api.jedidiah.test/api/transcriptions');
+    expect(url).toBe('https://api.jedidiah.test/api/transcriptions/equipment');
     expect(new Headers(init.headers).get('Cookie')).toBe('better-auth.session_token=secret');
     const body = init.body as FormData;
-    expect(body.get('business')).toBe('equipment');
     expect(body.get('purpose')).toBe('capture comment');
     expect(await (body.get('audio') as Blob).text()).toBe('voice');
     return Response.json(transcription, { status: 201 });

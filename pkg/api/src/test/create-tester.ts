@@ -39,8 +39,10 @@ export const NOOP_ROUTER_DEPENDENCIES: AppRouterDependencies = {
   equipment: { catalogTranslationScheduler: { mark: () => undefined, markNow: () => undefined } },
   transcriptions: {
     hintDerivations: { schedule: () => undefined },
-    keyterms: { equipment: async () => [], contracting: async () => [] },
-    settings: { equipment: 'a test Equipment note', contracting: 'a test Contracting note' },
+    businesses: {
+      equipment: { setting: 'a test Equipment note', keyterms: async () => [] },
+      contracting: { setting: 'a test Contracting note', keyterms: async () => [] },
+    },
     models: { chat: 'test-chat-model', transcription: 'test-transcription-model' },
   },
 };

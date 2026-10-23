@@ -18,7 +18,7 @@ const FIELD_ROLES = ['driver', 'mechanic', 'foreman'] as const;
  * Proper nouns a Contracting speech call should expect — fleet, people, places — each with where it came from, in the
  * order the speech prompt takes them. Deterministic; the taught hint keyterms are put before it by the pipeline.
  */
-export async function loadContractingKeytermCandidates({
+async function loadContractingKeytermCandidates({
   db,
   now = new Date(),
 }: {

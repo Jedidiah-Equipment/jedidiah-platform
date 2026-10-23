@@ -14,7 +14,7 @@ import {
   type TranscriptionProfile,
 } from '@pkg/core';
 import type { Db } from '@pkg/db';
-import { BUSINESSES, type Business, type KeytermCandidate } from '@pkg/schema';
+import { BUSINESSES, type Business } from '@pkg/schema';
 import type { FastifyInstance } from 'fastify';
 import { BackgroundQueue } from '../background-queue.js';
 import type { BusinessWiring } from '../business-wiring.js';
@@ -47,10 +47,14 @@ export async function registerTranscriptions(
     ),
   };
   const caches = perBusiness((business) =>
-    createKeytermCache(() => loadKeytermCandidates({ db, business, profile: profiles[business] })),
+    createKeytermCache(() =>
+      loadKeytermCandidates({ db, business, loadVocabulary: () => profiles[business].loadVocabulary({ db }) }),
+    ),
   );
-  const keyterms = perBusiness<() => Promise<KeytermCandidate[]>>((business) => caches[business].current);
-  const settings = perBusiness((business) => profiles[business].setting);
+  const businesses = perBusiness((business) => ({
+    setting: profiles[business].setting,
+    keyterms: caches[business].current,
+  }));
 
   const hintDerivations = new BackgroundQueue<string>({
     run: async (id) => {
@@ -66,13 +70,12 @@ export async function registerTranscriptions(
     },
   });
 
-  await registerTranscriptionHttpRoutes(app, { db, engine, keyterms, settings });
+  await registerTranscriptionHttpRoutes(app, { db, engine, businesses });
 
   return {
     routerDependencies: {
       hintDerivations,
-      keyterms,
-      settings,
+      businesses,
       models: { chat: config.OPENAI_MODEL, transcription: config.OPENAI_TRANSCRIPTION_MODEL },
     },
     services: [hintDerivations],

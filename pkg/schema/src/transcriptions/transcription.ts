@@ -22,7 +22,7 @@ export const transcriptionErrorCodes = [
 export type TranscriptionErrorCode = (typeof transcriptionErrorCodes)[number];
 
 /** Multipart fields that travel beside the `audio` part. */
-export const TranscribeFields = z.object({ business: Business, purpose: TranscriptionPurpose }).strict();
+export const TranscribeFields = z.object({ purpose: TranscriptionPurpose }).strict();
 export type TranscribeFields = z.infer<typeof TranscribeFields>;
 export const Transcription = z.object({
   id: UUID,

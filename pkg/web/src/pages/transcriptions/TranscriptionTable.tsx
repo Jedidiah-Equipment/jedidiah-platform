@@ -1,5 +1,11 @@
 import { formatNumber, getFirstName } from '@pkg/domain';
-import type { Business, TranscriptionHintStatus, TranscriptionListInput, TranscriptionReviewItem } from '@pkg/schema';
+import {
+  BUSINESSES,
+  type Business,
+  type TranscriptionHintStatus,
+  type TranscriptionListInput,
+  type TranscriptionReviewItem,
+} from '@pkg/schema';
 import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import type { ColumnFiltersState } from '@tanstack/react-table';
@@ -17,14 +23,16 @@ import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { TranscriptionTexts } from './TranscriptionTexts.js';
 
-const transcriptionTableStore = (persistName: string) =>
-  createPersistedDataTableStore({ initialState: { sorting: [{ id: 'createdAt', desc: true }] }, persistName });
+const transcriptionTableStore = (business: Business) =>
+  createPersistedDataTableStore({
+    initialState: { sorting: [{ id: 'createdAt', desc: true }] },
+    persistName: `${business}-transcriptions-table`,
+  });
 
 /** One persisted table per business, so filtering one business's Transcriptions leaves the other's alone. */
-const transcriptionTableStores = {
-  contracting: transcriptionTableStore('contracting-transcriptions-table'),
-  equipment: transcriptionTableStore('equipment-transcriptions-table'),
-} as const satisfies Record<Business, ReturnType<typeof transcriptionTableStore>>;
+const transcriptionTableStores = Object.fromEntries(
+  BUSINESSES.map((business) => [business, transcriptionTableStore(business)]),
+) as Record<Business, ReturnType<typeof transcriptionTableStore>>;
 
 const transcriptionSortOptions: SortOptions<TranscriptionListInput> = {
   allowedSortIds: ['createdAt'],

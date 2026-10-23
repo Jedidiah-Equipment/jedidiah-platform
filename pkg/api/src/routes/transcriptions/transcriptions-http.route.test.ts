@@ -38,8 +38,10 @@ const test = createTester(async ({ db, auth }) => {
     await registerTranscriptionHttpRoutes(app, {
       db,
       engine: withEngine,
-      keyterms: { equipment: async () => [], contracting: async () => [] },
-      settings: { equipment: 'an Equipment note', contracting: 'a Contracting note' },
+      businesses: {
+        equipment: { setting: 'an Equipment note', keyterms: async () => [] },
+        contracting: { setting: 'a Contracting note', keyterms: async () => [] },
+      },
     });
     return app;
   };
@@ -57,8 +59,8 @@ const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 function upload(
   audio: Buffer | Buffer[],
-  fields: Record<string, string> = { business: 'contracting', purpose: 'capture comment' },
-  url = '/api/transcriptions',
+  fields: Record<string, string> = { purpose: 'capture comment' },
+  url = '/api/transcriptions/contracting',
 ) {
   const boundary = 'voice-boundary';
   const chunks: Buffer[] = Object.entries(fields).map(([key, value]) =>
@@ -128,10 +130,8 @@ test('refuses roles without voice notes, and tells silence from a failing speech
 });
 
 test.for([
-  ['missing purpose', { business: 'contracting' }],
-  ['blank purpose', { business: 'contracting', purpose: '' }],
-  ['missing business', { purpose: 'capture comment' }],
-  ['unknown business', { business: 'lander', purpose: 'capture comment' }],
+  ['missing purpose', {}],
+  ['blank purpose', { purpose: '' }],
 ] as const)('refuses %s with the Voice Note upload sentence', async ([, fields], { context }) => {
   const app = await context.appWith(engine);
   try {
@@ -160,10 +160,7 @@ test('refuses two audio parts and excess fields without a Transcription or calli
   const app = await context.appWith(refusedEngine);
   try {
     signInAs('foreman');
-    for (const request of [
-      upload([M4A, M4A]),
-      upload(M4A, { business: 'contracting', purpose: 'capture comment', extra: 'x' }),
-    ]) {
+    for (const request of [upload([M4A, M4A]), upload(M4A, { purpose: 'capture comment', extra: 'x' })]) {
       const response = await app.inject(request);
       expect(response.statusCode).toBe(400);
       expect(response.json()).toEqual({
@@ -211,10 +208,13 @@ test('a foreman may not record an Equipment voice note', async ({ context }) => 
   const app = await context.appWith(engine);
   try {
     signInAs('foreman');
-    const response = await app.inject(upload(M4A, { business: 'equipment', purpose: 'job feedback' }));
+    const response = await app.inject(upload(M4A, { purpose: 'job feedback' }, '/api/transcriptions/equipment'));
     expect(response.statusCode).toBe(403);
     expect(response.json()).toMatchObject({ data: { appCode: 'transcription.forbidden' } });
     expect(await context.db.select().from(transcriptions)).toEqual([]);
+
+    const unknown = await app.inject(upload(M4A, undefined, '/api/transcriptions/lander'));
+    expect(unknown.statusCode).toBe(404);
   } finally {
     await app.close();
   }

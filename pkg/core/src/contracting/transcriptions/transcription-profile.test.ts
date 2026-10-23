@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm';
 import { expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
 import { seedJobFixtures } from '../test/job-fixtures.js';
-import { loadContractingKeytermCandidates } from './transcription-profile.js';
+import { contractingTranscriptionProfile } from './transcription-profile.js';
 
 const test = createTester(async ({ db }) => ({ fixtures: await seedJobFixtures(db) }));
 
@@ -28,7 +28,7 @@ test('names the working fleet, field people and recent places', async ({ context
     .set({ retiredAt: now, retiredReason: 'Sold' })
     .where(eq(contractingMachines.id, fixtures.tipper.id));
 
-  const candidates = await loadContractingKeytermCandidates({ db, now });
+  const candidates = await contractingTranscriptionProfile.loadVocabulary({ db, now });
   const keyterms = candidates.map((candidate) => candidate.keyterm);
 
   expect(keyterms).toEqual(expect.arrayContaining(['CAT320-1', 'Thabo Nkosi', 'Thabo', 'Sipho']));

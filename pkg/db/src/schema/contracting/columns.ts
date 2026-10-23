@@ -1,7 +1,5 @@
 import { numeric, timestamp } from 'drizzle-orm/pg-core';
 
-export { quotedList } from '../columns.js';
-
 export const timestamps = () => ({
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),

@@ -1,8 +1,7 @@
 import type { ActionVerdict } from '@pkg/domain/contracting';
 import { NoteText } from '@pkg/schema/contracting';
 import { useState } from 'react';
-import { ModalSheet } from '@/components/ModalSheet';
-import { Button } from '@/components/ui/button';
+import { ModalSheet, SheetSubmitButton } from '@/components/ModalSheet';
 import { Text } from '@/components/ui/text';
 import { useVoiceSession } from '@/components/voice/use-voice-session';
 import { VoiceTextArea } from '@/components/voice/VoiceTextArea';
@@ -41,9 +40,7 @@ function NoteModal({ thread, onClose }: { thread: NoteThreadRef; onClose: () => 
         </Text>
       }
       error={error}
-      footer={
-        <Button primary title={busy ? 'Sending…' : 'Send'} disabled={busy || voice.busy || !valid} onPress={onSend} />
-      }
+      footer={<SheetSubmitButton disabled={voice.busy || !valid} isSubmitting={busy} label="Send" onPress={onSend} />}
       onClose={onClose}
     >
       <VoiceTextArea

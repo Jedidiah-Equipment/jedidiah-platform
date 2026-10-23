@@ -209,30 +209,36 @@ test('a refusal shows the server’s sentence; anything else says to type the no
   expect(observability.recordVoiceNoteFailed).toHaveBeenCalledTimes(2);
 });
 
-test('drops a transcript that lands after its field is gone, instead of reviving the cancelled text', async () => {
+test('drops a transcript that lands after its field is gone, and never attributes later text to it', async () => {
   const onChangeText = vi.fn();
   let session!: VoiceSession;
-  function Field({ voice }: { voice: VoiceSession }) {
+  function Field({ voice, value }: { voice: VoiceSession; value: string }) {
     const { attach } = voice;
-    useLayoutEffect(() => attach({ value: 'Cancelled draft', onChangeText }));
+    useLayoutEffect(() => attach({ value, onChangeText }));
     return null;
   }
   function Screen({ editing }: { editing: boolean }) {
-    session = useVoiceSession({ business: 'contracting', purpose: 'breakdown description' });
-    return editing ? <Field voice={session} /> : null;
+    session = useVoiceSession({ business: 'contracting', purpose: 'close-out note' });
+    return editing ? <Field voice={session} value="" /> : null;
   }
   let renderer!: ReactTestRenderer;
   act(() => {
     renderer = create(<Screen editing />);
   });
   let land!: (value: unknown) => void;
-  transcribe.mockReturnValue(new Promise((resolve) => (land = resolve)));
+  transcribe.mockReturnValueOnce(new Promise((resolve) => (land = resolve)));
   stop.mockResolvedValue(RECORDING);
   await act(async () => session.onPressIn());
   await act(async () => session.onPressOut());
 
+  // Cancelled while transcribing: the field goes, then the transcript lands.
   act(() => renderer.update(<Screen editing={false} />));
   await act(async () => land({ id: 'late', text: 'Late words.', language: 'eng' }));
-
   expect(onChangeText).not.toHaveBeenCalled();
+
+  // Reopened and typed into: the typed note is not the late Transcription's, so nothing is reported for it.
+  act(() => renderer.update(<Screen editing />));
+  act(() => session.onChangeText('A note typed by hand.'));
+  session.reportSaved();
+  expect(mutate).not.toHaveBeenCalled();
 });

@@ -7,7 +7,7 @@ import Fastify from 'fastify';
 import { expect, vi } from 'vitest';
 import { createTester } from '@/test/create-tester.js';
 import { mockSession } from '@/test/test-utils.js';
-import { M4A_HEADER as M4A, stubEngine, testProfiles } from './test-fixtures.js';
+import { M4A_HEADER as M4A, stubEngine, testProfiles } from '@/test/transcription-fixtures.js';
 import { registerTranscriptionHttpRoutes } from './transcriptions-http.route.js';
 
 const state = vi.hoisted(() => ({ session: null as unknown }));

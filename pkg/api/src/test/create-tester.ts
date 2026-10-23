@@ -11,10 +11,10 @@ import pino from 'pino';
 import { type TestAPI, type TestContext, test as testBase } from 'vitest';
 
 import { type Auth, createAuth } from '@/app-auth.js';
-import { testProfiles } from '@/routes/transcriptions/test-fixtures.js';
 import type { ChangelogLoader, Context } from '@/trpc/context.js';
 import { type AppRouter, type AppRouterDependencies, createAppRouterCaller } from '@/trpc/router.js';
 import { mockSession } from './test-utils.js';
+import { testProfiles } from './transcription-fixtures.js';
 
 type Cleanup = () => Promise<void> | void;
 export type AppRouterCaller = ReturnType<AppRouter['createCaller']>;

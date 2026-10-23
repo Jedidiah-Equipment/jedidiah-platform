@@ -4,7 +4,7 @@ import { TRANSCRIPTION_HINT_CAP } from '@pkg/domain';
 import { expect } from 'vitest';
 import { createTester } from '@/test/create-tester.js';
 import { mockSession } from '@/test/test-utils.js';
-import { M4A_HEADER, stubEngine, testProfile, testProfiles } from './test-fixtures.js';
+import { M4A_HEADER, stubEngine, testProfile, testProfiles } from '@/test/transcription-fixtures.js';
 
 const test = createTester(async ({ db }) => {
   await db.insert(user).values({

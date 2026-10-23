@@ -174,11 +174,15 @@ export function useVoiceSession({ business, purpose }: VoiceSessionScope): Voice
       const attempt = () => ({ business, purpose, ...measured, requestMs: Date.now() - sentAt });
       try {
         const transcription = await transcribeRecording(uri, { business, purpose });
+        recordVoiceNoteTranscribed(attempt(), transcription.language);
+        const field = latest.current;
+        // Its field went while the note was transcribed (the form was cancelled): the transcript lands nowhere, and
+        // is not tracked, so nothing a later note or edit does can be attributed to it.
+        if (!field) return;
         const { text } = applyEdit((current) =>
-          insertTranscript(current, transcription.id, transcription.text, latest.current?.maxLength),
+          insertTranscript(current, transcription.id, transcription.text, field.maxLength),
         );
         write(text);
-        recordVoiceNoteTranscribed(attempt(), transcription.language);
       } catch (error) {
         setMessage(error instanceof UploadRefusedError ? error.message : UNAVAILABLE);
         recordVoiceNoteFailed(attempt(), error);

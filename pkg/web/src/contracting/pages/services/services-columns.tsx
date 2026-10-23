@@ -99,7 +99,8 @@ export function useServicesColumns({
         header: 'Next service due',
         enableColumnFilter: false,
         enableSorting: false,
-        cell: ({ row: { original } }) => <NextServiceDue {...original.nextServiceDue} />,
+        cell: ({ row: { original } }) =>
+          original.nextServiceDue.hours === null ? hoursOrDash(null) : <NextServiceDue {...original.nextServiceDue} />,
       },
       {
         id: STATUS_COLUMN_ID,

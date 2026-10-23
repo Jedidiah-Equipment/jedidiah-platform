@@ -161,6 +161,7 @@ async function importMachines(
     const input = machineInput(row, categoryId, driverId ?? null);
     const current = existing.get(key(row.code));
     if (!current) {
+      // The import has no Service Alert Hours: a create takes the schema's default, a patch leaves any set in the app alone.
       await createMachine({ db, actorUserId, input: MachineCreateInput.parse(input) });
       summary.machines.created += 1;
     } else if (current.retiredAt) {

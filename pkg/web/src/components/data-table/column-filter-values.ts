@@ -70,12 +70,14 @@ const sameValues = (left: readonly string[], right: readonly string[]) =>
 export const isPickedExactly = (columnFilters: ColumnFiltersState, id: string, values: readonly string[]) =>
   sameValues(readMultiSelectFilter(columnFilters, id), values);
 
-/** Picks exactly these values, keeping the other filters; picking them again clears the pick. */
+/** Picks exactly these values, keeping the other filters; picking them again, or picking none, clears the pick. */
 export function togglePick(
   columnFilters: ColumnFiltersState,
   id: string,
   values: readonly string[],
 ): ColumnFiltersState {
   const others = columnFilters.filter((filter) => filter.id !== id);
-  return isPickedExactly(columnFilters, id, values) ? others : [...others, { id, value: [...values] }];
+  return values.length === 0 || isPickedExactly(columnFilters, id, values)
+    ? others
+    : [...others, { id, value: [...values] }];
 }

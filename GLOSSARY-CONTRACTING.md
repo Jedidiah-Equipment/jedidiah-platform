@@ -167,8 +167,9 @@ the camera allows, taken on the spot or chosen from the phone's gallery, and a r
 one is stamped **Missing Photo Evidence**. Read At defaults to when a chosen photo says it was
 taken, and otherwise to the moment of capture — a photo with no usable time, or one whose time
 lies in the future, is still accepted and defaults to that moment; whoever captures may correct
-it, and it is never in the future. Gallery photos and Read At correction are phone affordances:
-a reading captured on the web takes the moment of capture as its Read At. Read At
+it, and it is never in the future. Gallery photos and Read At correction are phone affordances,
+and the web's spot capture offers both from a photo chosen on disk; a web arrival or departure
+takes the moment of capture as its Read At. Read At
 describes a reading; it never orders them. A Machine's readings are ordered by acceptance: the
 **latest reading** is the one the server accepted last, every capture is judged against that
 reading whatever its Read At, and a late-entered reading takes its place after it. An Hour Gap

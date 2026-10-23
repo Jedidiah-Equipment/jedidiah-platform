@@ -57,14 +57,16 @@ export function MachineServiceCard({ machine }: { machine: Machine }) {
           {machine.hoursToService !== null ? (
             <span className="font-medium">{hoursToServiceLabel(machine.hoursToService)}</span>
           ) : null}
-          <div className="ml-auto flex gap-2">
-            {canCapture ? (
-              <Button variant="outline" onClick={() => setCapturing(true)}>
-                Capture reading
-              </Button>
-            ) : null}
-            {canRecord ? <Button onClick={() => setOpening(true)}>Record a service</Button> : null}
-          </div>
+          {canCapture || canRecord ? (
+            <div className="ml-auto flex gap-2">
+              {canCapture ? (
+                <Button variant="outline" onClick={() => setCapturing(true)}>
+                  Capture reading
+                </Button>
+              ) : null}
+              {canRecord ? <Button onClick={() => setOpening(true)}>Record a service</Button> : null}
+            </div>
+          ) : null}
         </div>
         <ErrorMessage error={records.error ?? mechanics.error} fallbackMessage="Unable to load Service Records." />
         {canRecord

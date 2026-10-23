@@ -161,7 +161,8 @@ async function importMachines(
     const input = machineInput(row, categoryId, driverId ?? null);
     const current = existing.get(key(row.code));
     if (!current) {
-      await createMachine({ db, actorUserId, input });
+      // The import has no Service Alert Hours; a patch leaves any set in the app alone.
+      await createMachine({ db, actorUserId, input: { ...input, serviceAlertHours: null } });
       summary.machines.created += 1;
     } else if (current.retiredAt) {
       summary.warnings.push(`machines: ${row.code} is retired and was left alone`);

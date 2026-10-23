@@ -204,3 +204,20 @@ test('a Foreman reads none of the Services page', async ({ context }) => {
   await expect(sipho.contractingServices.dueForService()).rejects.toMatchObject({ code: 'FORBIDDEN' });
   await expect(sipho.contractingServices.options.filters()).rejects.toMatchObject({ code: 'FORBIDDEN' });
 });
+
+test("a Machine's Service Alert Hours judge it instead of Settings, and clearing them falls back", async ({
+  context,
+}) => {
+  const { machineWith } = context;
+  const cara = context.createCaller(sessionAs('cara', 'contracting-manager'));
+  const machine = await machineWith('JD-ALERT', 1500, 1440);
+  const read = () => cara.contractingFleet.machines.get({ id: machine.id });
+  expect(await read()).toMatchObject({ serviceDueStatus: 'due-soon', serviceDueThresholdHours: 100 });
+
+  await cara.contractingFleet.machines.patch({ id: machine.id, serviceAlertHours: 50 });
+  expect(await read()).toMatchObject({ serviceAlertHours: 50, serviceDueStatus: 'ok', serviceDueThresholdHours: 50 });
+  expect((await cara.contractingServices.dueForService()).map((due) => due.code)).not.toContain('JD-ALERT');
+
+  await cara.contractingFleet.machines.patch({ id: machine.id, serviceAlertHours: null });
+  expect(await read()).toMatchObject({ serviceAlertHours: null, serviceDueStatus: 'due-soon' });
+});

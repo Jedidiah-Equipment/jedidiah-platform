@@ -275,8 +275,10 @@ service, the primary Mechanic, and free-text notes. A Service is a recurring, ex
 deliberately not a Breakdown. **Closing a Service Record requires setting the Machine's Next
 Service Due** — the number the mechanic prints on the dash sticker at that moment; the Machine's
 optional **Service Interval** only pre-fills it from the reading at service. **Service Due Soon** is the derived flag raised when the Machine's latest
-known Hour Reading comes within the **Service Due Soon threshold** in Settings (100 h unless changed) of Next Service Due — kept honest mid-job by spot
-readings from the field. It notifies the workshop manager by push notification once, at the
+known Hour Reading comes within the Machine's **Service Alert Hours** of Next Service Due — its own value, or the
+**Service Due Soon threshold** in Settings (100 h unless changed) when it has none — kept honest mid-job by spot
+readings from the field. It notifies the workshop-manager, contracting-manager, contracting-admin and super-admin
+roles by push notification once, at the
 capture that first brings the reading within the threshold; closing a Service Record moves the
 due point on and re-arms it.
 
@@ -337,7 +339,8 @@ and the Rate Card deliberately sit with contracting-admin and super-admin alone;
 money-blind by design.
 
 **Settings** is the one row of Contracting-wide values management edits on the web: the Gap Flag
-threshold, the Service Due Soon threshold and the Utilisation Target %. Every derived read takes the
+threshold, the Service Due Soon threshold (which a Machine's Service Alert Hours may override) and the
+Utilisation Target %. Every derived read takes the
 current value; nothing stored is re-judged.
 
 The **Dashboard** is the web home: counts and lists of what needs a person now — the Jobs needing a look, the

@@ -1,6 +1,7 @@
 import { createEscapedContainsSearchCondition, type DatabaseTransaction, type Db, user } from '@pkg/db';
 import { contractingMachines, contractingServiceRecords } from '@pkg/db/contracting';
 import {
+  effectiveServiceDueThreshold,
   fieldReaderSeesJob,
   formatJobNumber,
   hoursToService,
@@ -118,10 +119,11 @@ function mapMachine(
     busyOnJob: BusyOnJobRow | null;
     serviceBookedIn: boolean;
   },
-  serviceDueSoonThresholdHours: number,
+  settingsThresholdHours: number,
 ) {
   const { category, currentDriver, busyOnJob, ...fields } = row;
   const facts = { latestReadingHours: row.latestReadingHours, nextServiceDueHours: row.nextServiceDueHours };
+  const threshold = effectiveServiceDueThreshold(row, settingsThresholdHours);
   const busy = (job: BusyOnJobRow) => {
     const { code, ...rest } = job;
     return { ...rest, jobNumber: formatJobNumber(code) };
@@ -132,7 +134,8 @@ function mapMachine(
     ...projectTimestamps(row),
     currentDriverName: currentDriver?.name ?? null,
     hoursToService: hoursToService(facts),
-    serviceDueStatus: serviceDueStatus(facts, serviceDueSoonThresholdHours),
+    serviceDueThresholdHours: threshold,
+    serviceDueStatus: serviceDueStatus(facts, threshold),
     busyOnJob: busyOnJob ? busy(busyOnJob) : null,
   });
 }
@@ -240,6 +243,7 @@ export async function patchMachine({
           input.serviceIntervalHours === undefined ? before.serviceIntervalHours : input.serviceIntervalHours,
         nextServiceDueHours:
           input.nextServiceDueHours === undefined ? before.nextServiceDueHours : input.nextServiceDueHours,
+        serviceAlertHours: input.serviceAlertHours === undefined ? before.serviceAlertHours : input.serviceAlertHours,
         updatedAt: new Date(),
       }),
       project: (tx, row) => getMachine({ db: tx, id: row.id }),

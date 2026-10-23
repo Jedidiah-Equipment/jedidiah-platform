@@ -1,3 +1,4 @@
+import { formatNumber } from '@pkg/domain';
 import { opensWebJobs } from '@pkg/domain/contracting';
 import type { Machine } from '@pkg/schema/contracting';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -151,6 +152,20 @@ function MachineForm({
                 </form.AppField>
                 <form.AppField name="nextServiceDueHours">
                   {(field) => <field.NumberField label="Next service due" unit="hours" />}
+                </form.AppField>
+                <form.AppField name="serviceAlertHours">
+                  {(field) => (
+                    <field.NumberField
+                      label="Service alert hours"
+                      unit="hours"
+                      decimals={0}
+                      inputMode="numeric"
+                      placeholder={
+                        machine.serviceAlertHours === null ? formatNumber(machine.serviceDueThresholdHours) : undefined
+                      }
+                      description="Service due soon this many hours before the next service. Leave blank to use Settings."
+                    />
+                  )}
                 </form.AppField>
                 <EditFormFullWidth>
                   <form.AppField name="notes">{(field) => <field.TextareaField label="Notes" />}</form.AppField>

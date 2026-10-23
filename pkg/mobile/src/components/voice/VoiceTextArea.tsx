@@ -45,7 +45,8 @@ export function VoiceTextArea({
   ...inputProps
 }: Props) {
   const { attach } = voice;
-  useLayoutEffect(() => attach({ value, onChangeText, maxLength }));
+  const owner = useRef({}).current;
+  useLayoutEffect(() => attach({ value, onChangeText, maxLength }, owner));
   const canUse = useSessionPermission(transcriptionPermissions[voice.business].use);
   const offline = useIsOffline();
   const showMic = canUse && !offline && editable;

@@ -156,7 +156,10 @@ test("hands the session its owner's text and routes edits through the session", 
   });
   const input = renderer.root.findByType('TextInput' as never);
 
-  expect(voice.attach).toHaveBeenLastCalledWith({ value: 'Gate open', onChangeText: owner, maxLength: 40 });
+  expect(voice.attach).toHaveBeenLastCalledWith(
+    { value: 'Gate open', onChangeText: owner, maxLength: 40 },
+    expect.any(Object),
+  );
   expect(input.props.value).toBe('Gate open');
   expect(input.props.onChangeText).toBe(voice.onChangeText);
 });

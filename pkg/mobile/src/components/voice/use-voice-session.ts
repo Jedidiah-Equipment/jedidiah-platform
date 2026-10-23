@@ -26,10 +26,11 @@ export type VoiceSession = {
   business: Business;
   purpose: string;
   /**
-   * Called by the field after every commit with its current text, so the session follows it without owning it.
-   * Returns the detach the field runs when it goes: a transcript that lands after its field is gone is dropped.
+   * Called by the field after every commit with its current text and its own identity (one per mount), so the session
+   * follows it without owning it. Returns the detach the field runs when it goes. A transcript lands only in the field
+   * that recorded it: one that returns after its field is gone, or after another field took its place, is dropped.
    */
-  attach: (field: VoiceField) => () => void;
+  attach: (field: VoiceField, owner: object) => () => void;
   /** The field's edit handler: the edit is tracked, then written through the attached field. */
   onChangeText: (text: string) => void;
   /** Call after the owning form's save succeeded: each Transcription reports what was kept in its place. Fire-and-forget. */
@@ -75,16 +76,15 @@ export function useVoiceSession({ business, purpose }: VoiceSessionScope): Voice
   const { start, stop } = recorder;
 
   const attachment = useRef<object | null>(null);
-  const attach = useCallback((field: VoiceField) => {
-    const token = {};
-    attachment.current = token;
+  const attach = useCallback((field: VoiceField, owner: object) => {
+    attachment.current = owner;
     latest.current = field;
     if (track.current === null) {
       track.current = { text: field.value, spans: [] };
       lastSeenValue.current = field.value;
     }
     return () => {
-      if (attachment.current !== token) return;
+      if (attachment.current !== owner) return;
       attachment.current = null;
       latest.current = null;
     };
@@ -171,14 +171,15 @@ export function useVoiceSession({ business, purpose }: VoiceSessionScope): Voice
       if (!recording) return;
       const { uri, ...measured } = recording;
       const sentAt = Date.now();
+      const recordedIn = attachment.current;
       const attempt = () => ({ business, purpose, ...measured, requestMs: Date.now() - sentAt });
       try {
         const transcription = await transcribeRecording(uri, { business, purpose });
         recordVoiceNoteTranscribed(attempt(), transcription.language);
         const field = latest.current;
-        // Its field went while the note was transcribed (the form was cancelled): the transcript lands nowhere, and
-        // is not tracked, so nothing a later note or edit does can be attributed to it.
-        if (!field) return;
+        // The field that recorded it went while the note was transcribed (the form was cancelled, perhaps reopened):
+        // the transcript lands nowhere and is not tracked, so nothing later can be attributed to it.
+        if (!field || attachment.current !== recordedIn) return;
         const { text } = applyEdit((current) =>
           insertTranscript(current, transcription.id, transcription.text, field.maxLength),
         );

@@ -1,4 +1,4 @@
-import { useLayoutEffect, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { beforeEach, expect, test, vi } from 'vitest';
 
@@ -49,15 +49,19 @@ function renderSession(initial = '') {
     setText = setValue;
     session = useVoiceSession({ business: 'contracting', purpose: 'field note' });
     const { attach } = session;
+    const owner = useRef({}).current;
     useLayoutEffect(() =>
-      attach({
-        value,
-        onChangeText: (next) => {
-          onChangeText(next);
-          setValue(next);
+      attach(
+        {
+          value,
+          onChangeText: (next) => {
+            onChangeText(next);
+            setValue(next);
+          },
+          maxLength: 2000,
         },
-        maxLength: 2000,
-      }),
+        owner,
+      ),
     );
     return null;
   }
@@ -214,7 +218,8 @@ test('drops a transcript that lands after its field is gone, and never attribute
   let session!: VoiceSession;
   function Field({ voice, value }: { voice: VoiceSession; value: string }) {
     const { attach } = voice;
-    useLayoutEffect(() => attach({ value, onChangeText }));
+    const owner = useRef({}).current;
+    useLayoutEffect(() => attach({ value, onChangeText }, owner));
     return null;
   }
   function Screen({ editing }: { editing: boolean }) {
@@ -241,4 +246,35 @@ test('drops a transcript that lands after its field is gone, and never attribute
   act(() => session.onChangeText('A note typed by hand.'));
   session.reportSaved();
   expect(mutate).not.toHaveBeenCalled();
+});
+
+test('a transcript recorded in a cancelled field does not land in the field reopened in its place', async () => {
+  const onChangeText = vi.fn();
+  let session!: VoiceSession;
+  function Field({ voice }: { voice: VoiceSession }) {
+    const { attach } = voice;
+    const owner = useRef({}).current;
+    useLayoutEffect(() => attach({ value: 'Reopened draft', onChangeText }, owner));
+    return null;
+  }
+  function Screen({ editing }: { editing: boolean }) {
+    session = useVoiceSession({ business: 'contracting', purpose: 'breakdown description' });
+    return editing ? <Field key={String(editing)} voice={session} /> : null;
+  }
+  let renderer!: ReactTestRenderer;
+  act(() => {
+    renderer = create(<Screen editing />);
+  });
+  let land!: (value: unknown) => void;
+  transcribe.mockReturnValueOnce(new Promise((resolve) => (land = resolve)));
+  stop.mockResolvedValue(RECORDING);
+  await act(async () => session.onPressIn());
+  await act(async () => session.onPressOut());
+
+  // Cancel, then Edit again before the transcript lands: a new field mounts in the old one's place.
+  act(() => renderer.update(<Screen editing={false} />));
+  act(() => renderer.update(<Screen editing />));
+  await act(async () => land({ id: 'late', text: 'Cancelled words.', language: 'eng' }));
+
+  expect(onChangeText).not.toHaveBeenCalled();
 });

@@ -39,22 +39,23 @@ const RECORDING = { uri: 'file://note.m4a', seconds: 3, durationMs: 3_100, peakD
 function renderSession(initial = '') {
   const onChangeText = vi.fn();
   let session!: VoiceSession;
+  let text = initial;
   let setText!: (text: string) => void;
   let renderer!: ReactTestRenderer;
+  // The field owns its text and attaches it on every render, as VoiceTextArea does.
   function Probe() {
     const [value, setValue] = useState(initial);
+    text = value;
     setText = setValue;
-    session = useVoiceSession(
-      { business: 'contracting', purpose: 'field note' },
-      {
-        value,
-        onChangeText: (text) => {
-          onChangeText(text);
-          setValue(text);
-        },
-        maxLength: 2000,
+    session = useVoiceSession({ business: 'contracting', purpose: 'field note' });
+    session.attach({
+      value,
+      onChangeText: (next) => {
+        onChangeText(next);
+        setValue(next);
       },
-    );
+      maxLength: 2000,
+    });
     return null;
   }
   act(() => {
@@ -64,7 +65,13 @@ function renderSession(initial = '') {
     act(() => {
       renderer.update(<Probe />);
     });
-  return { session: () => session, rerender, onChangeText, setText: (text: string) => act(() => setText(text)) };
+  return {
+    session: () => session,
+    text: () => text,
+    rerender,
+    onChangeText,
+    setText: (next: string) => act(() => setText(next)),
+  };
 }
 
 beforeEach(() => {
@@ -82,17 +89,17 @@ async function record(session: () => VoiceSession, transcription: { id: string; 
 }
 
 test('reports each Transcription once with the text kept in place of its own transcript, then forgets them', async () => {
-  const { session } = renderSession('Fence down.');
+  const { session, text } = renderSession('Fence down.');
   await record(session, { id: 'a', text: 'Gate is open.' });
   await record(session, { id: 'b', text: 'Borehole at Vrede.' });
-  act(() => session().onChangeText(session().value.replace('Vrede', 'Vreede')));
+  act(() => session().onChangeText(text().replace('Vrede', 'Vreede')));
 
   session().reportSaved();
   session().reportSaved();
 
   expect(mutate.mock.calls.map(([variables]) => variables)).toEqual([
-    { business: 'contracting', id: 'a', text: 'Gate is open.', purpose: 'field note' },
-    { business: 'contracting', id: 'b', text: 'Borehole at Vreede.', purpose: 'field note' },
+    { id: 'a', text: 'Gate is open.', purpose: 'field note' },
+    { id: 'b', text: 'Borehole at Vreede.', purpose: 'field note' },
   ]);
 });
 
@@ -106,7 +113,7 @@ test('a snapshot taken as a save begins reports the saved text, not what was typ
   reportSaved();
 
   expect(mutate.mock.calls.map(([variables]) => variables)).toEqual([
-    { business: 'contracting', id: 'a', text: 'Borehole at Vrede.', purpose: 'field note' },
+    { id: 'a', text: 'Borehole at Vrede.', purpose: 'field note' },
   ]);
 });
 
@@ -117,10 +124,7 @@ test('follows text the form sets itself, so a transcript it removed reports empt
 
   session().reportSaved();
 
-  expect(mutate).toHaveBeenCalledWith(
-    { business: 'contracting', id: 'a', text: '', purpose: 'field note' },
-    expect.anything(),
-  );
+  expect(mutate).toHaveBeenCalledWith({ id: 'a', text: '', purpose: 'field note' }, expect.anything());
 });
 
 test('holds the form from the press until the transcript lands, then appends it to the field', async () => {

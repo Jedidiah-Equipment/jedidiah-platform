@@ -31,6 +31,9 @@
   roots also use the shared full-width card from `src/components/CatalogList.tsx`. Do not add per-route catalog card
   variants or responsive card grids there. Detail-page cards are intentionally outside this catalog contract.
 - Icon tiles and avatars for records are rounded squares in both businesses; a circle means a person.
+- A form that opens over the current page is a `src/components/ModalSheet.tsx` (title, subtitle, error, footer with
+  `SheetSubmitButton`); a scrolling form body is a `ScrollLockScrollView` from `src/components/scroll-lock.tsx`, so a
+  press-and-hold field can hold it still. Never hand-roll the Modal, safe-area and keyboard shell again.
 - Pull to refresh is only `RefreshControl` from `src/components/ui/refresh-control.tsx`, which invalidates every
   API query itself. Never pass `onRefresh`/`refreshing` or refetch a single query from a pull.
 - Every page content surface spans the full available width. Horizontal page padding is allowed, but

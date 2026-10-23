@@ -1,9 +1,9 @@
 import type { Db } from '@pkg/db';
-import type { KeytermCandidate } from '@pkg/schema';
+import type { Business, KeytermCandidate } from '@pkg/schema';
 
 /**
  * What one business brings to the shared Voice Note pipeline: where its notes are spoken, for the tidy prompt, and
- * the proper nouns its speech model should expect. Each business exports one; the API composes both.
+ * the proper nouns its speech model should expect. Each business exports one; the API binds both.
  */
 export type TranscriptionProfile = {
   /** Completes "You tidy a speech-to-text transcript of …". */
@@ -12,13 +12,9 @@ export type TranscriptionProfile = {
   loadVocabulary: (input: { db: Db; now?: Date }) => Promise<KeytermCandidate[]>;
 };
 
-/** Keyterm candidates from one source, in order; a missing or empty value is skipped. */
-export const sourcedKeyterms = (source: string, keyterms: readonly (string | null)[]): KeytermCandidate[] =>
-  keyterms.flatMap((keyterm) => (keyterm ? [{ keyterm, source }] : []));
-
-/** People are said by full name and by first name alone. */
-export const personKeyterms = (names: readonly string[]): KeytermCandidate[] =>
-  sourcedKeyterms(
-    'person',
-    names.flatMap((name) => [name, name.trim().split(/\s+/)[0] ?? null]),
-  );
+/** One business's profile as a Voice Note uses it: bound to its business, its vocabulary cached by the API. */
+export type BoundTranscriptionProfile = {
+  business: Business;
+  setting: string;
+  vocabulary: () => Promise<KeytermCandidate[]>;
+};

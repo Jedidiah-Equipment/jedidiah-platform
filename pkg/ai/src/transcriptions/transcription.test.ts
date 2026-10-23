@@ -4,9 +4,9 @@ import { describe, expect, it } from 'vitest';
 import { createOpenAiTranscriptionModel } from '../ai-sdk-model.js';
 import {
   deriveTranscriptionHint,
+  hearVoiceNote,
   tidyPrompt,
   tidyTranscript,
-  transcribeVoiceNote,
   transcriptionPrompts,
 } from './transcription.js';
 
@@ -43,15 +43,15 @@ function speechModel(model: string, reply: unknown = { text: 'heard' }) {
   };
 }
 
-describe('transcribeVoiceNote', () => {
+describe('hearVoiceNote', () => {
   it('sends gpt-transcribe the keyterms as keywords, no prompt, and returns the trimmed text', async () => {
     const { model, requests } = speechModel('gpt-transcribe', { text: ' Die hek by Rooikraal is oop. ' });
 
-    const heard = await transcribeVoiceNote({
+    const heard = await hearVoiceNote({
       audio: M4A,
       keyterms: [
-        { keyterm: 'Rooikraal', source: 'hint' },
-        { keyterm: 'JD 6155M', source: 'machine' },
+        { keyterm: 'Rooikraal', source: 'Hint keyterm' },
+        { keyterm: 'JD 6155M', source: 'Machine' },
       ],
       model,
     });
@@ -69,7 +69,7 @@ describe('transcribeVoiceNote', () => {
   it('sends an older speech model no keywords, which it would refuse', async () => {
     const { model, requests } = speechModel('gpt-4o-transcribe');
 
-    await transcribeVoiceNote({ audio: M4A, keyterms: [{ keyterm: 'Rooikraal', source: 'hint' }], model });
+    await hearVoiceNote({ audio: M4A, keyterms: [{ keyterm: 'Rooikraal', source: 'Hint keyterm' }], model });
 
     expect(requests[0]?.form.has('keywords[]')).toBe(false);
   });
@@ -77,7 +77,7 @@ describe('transcribeVoiceNote', () => {
   it('returns empty text when nothing was heard, so the caller can say so instead of reporting an outage', async () => {
     const { model } = speechModel('gpt-transcribe', { text: '', languages: [] });
 
-    await expect(transcribeVoiceNote({ audio: M4A, keyterms: [], model })).resolves.toEqual({
+    await expect(hearVoiceNote({ audio: M4A, keyterms: [], model })).resolves.toEqual({
       text: '',
       language: null,
     });
@@ -243,10 +243,10 @@ describe('deriveTranscriptionHint', () => {
 describe('transcriptionPrompts', () => {
   const hints = [{ id: HINT_ID, rule: 'The farm is spelled Rooikraal, not Rooi Kraal.' }];
   const keyterms = [
-    { keyterm: 'Rooikraal', source: 'hint' },
+    { keyterm: 'Rooikraal', source: 'Hint keyterm' },
     ...Array.from({ length: SPEECH_KEYTERM_CAP }, (_, index) => ({
       keyterm: `Tractor ${index}`,
-      source: 'machine',
+      source: 'Machine',
     })),
   ];
   const shown = transcriptionPrompts({
@@ -276,14 +276,14 @@ describe('transcriptionPrompts', () => {
 
   it('shows the speech keyterms the call sends, after the cap', async () => {
     const { model, requests } = speechModel('gpt-transcribe');
-    await transcribeVoiceNote({ audio: M4A, keyterms, model });
+    await hearVoiceNote({ audio: M4A, keyterms, model });
 
     expect(shown.speech).toMatchObject({
       model: 'gpt-transcribe',
       keyterms: requests[0]?.form.getAll('keywords[]'),
       maxKeyterms: SPEECH_KEYTERM_CAP,
     });
-    expect(shown.speech.cutOff).toEqual([{ keyterm: `Tractor ${SPEECH_KEYTERM_CAP - 1}`, source: 'machine' }]);
+    expect(shown.speech.cutOff).toEqual([{ keyterm: `Tractor ${SPEECH_KEYTERM_CAP - 1}`, source: 'Machine' }]);
   });
 
   it('shows the tidy and derivation prompts the calls send, with the note in placeholders', async () => {

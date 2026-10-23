@@ -170,14 +170,7 @@ function DispatchHints({ breakdown }: { breakdown: BreakdownDetail }) {
 function DescriptionCard({ breakdown }: { breakdown: BreakdownDetail }) {
   const patch = useBreakdownMutation((breakdowns) => breakdowns.patch);
   const [draft, setDraft] = useState<string | null>(null);
-  const voice = useVoiceSession(
-    { business: 'contracting', purpose: 'breakdown description' },
-    {
-      value: draft ?? '',
-      onChangeText: setDraft,
-      maxLength: BreakdownDescription.maxLength ?? undefined,
-    },
-  );
+  const voice = useVoiceSession({ business: 'contracting', purpose: 'breakdown description' });
   const { busy, error, run } = useBusyAction();
   const valid = draft !== null && BreakdownDescription.safeParse(draft).success;
   const save = () => {
@@ -203,7 +196,15 @@ function DescriptionCard({ breakdown }: { breakdown: BreakdownDetail }) {
         <Text className="text-foreground">{breakdown.description}</Text>
       ) : (
         <>
-          <VoiceTextArea accessibilityLabel="What's wrong" editable={!busy} rows={5} voice={voice} />
+          <VoiceTextArea
+            accessibilityLabel="What's wrong"
+            editable={!busy}
+            rows={5}
+            value={draft ?? ''}
+            onChangeText={setDraft}
+            maxLength={BreakdownDescription.maxLength ?? undefined}
+            voice={voice}
+          />
           {error ? <Text className="text-danger">{error}</Text> : null}
           <View className="flex-row gap-2">
             <View className="flex-1">

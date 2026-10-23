@@ -12,35 +12,23 @@ import {
   JobDepartmentTimingCompleteInput,
   JobDepartmentTimingCorrectionValues,
 } from '@pkg/schema/equipment';
-import { IconCircleCheck, IconPencil, IconPlayerPlay, IconX } from '@tabler/icons-react-native';
+import { IconCircleCheck, IconPencil, IconPlayerPlay } from '@tabler/icons-react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  View,
-} from 'react-native';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { Alert, View } from 'react-native';
 import { z } from 'zod';
 
 import { Avatar } from '@/components/Avatar';
 import { useAppForm } from '@/components/form';
+import { ModalSheet, SheetSubmitButton } from '@/components/ModalSheet';
 import { AccentButton } from '@/components/ui/accent-button';
 import { CardCollapse } from '@/components/ui/card-collapse';
-import { Icon } from '@/components/ui/icon';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Text } from '@/components/ui/text';
 import { useAppToast } from '@/components/ui/toast';
 import { FactField, FactRow } from '@/equipment/components/bays/job-facts';
 import { useTRPC } from '@/lib/trpc';
 import { useCan } from '@/lib/use-access';
-import { gluestackConfig } from '@/theme/gluestack-config';
-import { useColorMode } from '@/theme/use-color-mode';
 
 const DoneFormValues = z.object({ crewUserIds: JobDepartmentTimingCompleteInput.shape.crewUserIds });
 type DoneFormValues = z.infer<typeof DoneFormValues>;
@@ -386,7 +374,7 @@ function CorrectionModal({
   );
 }
 
-/** The full-screen form shell both stamp dialogs share, mirroring the mobile feedback modal. */
+/** Both stamp dialogs: the shared sheet with a submit action. */
 function StampModal({
   children,
   onClose,
@@ -406,58 +394,16 @@ function StampModal({
   subtitle: string;
   title: string;
 }) {
-  const { resolved } = useColorMode();
-
   return (
-    <Modal animationType="slide" onRequestClose={onClose} transparent={false} visible>
-      {/* RN Modal portals outside the provider tree, so the scheme's CSS variables and the safe-area
-          insets are both re-applied here — the same shape the feedback modal uses. */}
-      <SafeAreaProvider>
-        <View className="flex-1" style={gluestackConfig[resolved]}>
-          <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom', 'left', 'right']}>
-            <View className="flex-row items-center justify-between border-b border-border px-4 py-3">
-              <View className="min-w-0 flex-1">
-                <Text className="text-lg text-foreground" weight="bold">
-                  {title}
-                </Text>
-                <Text className="text-xs text-muted-foreground" numberOfLines={1}>
-                  {subtitle}
-                </Text>
-              </View>
-              <Pressable accessibilityLabel="Close" accessibilityRole="button" className="p-1" onPress={onClose}>
-                <Icon className="text-muted-foreground" icon={IconX} size={22} />
-              </Pressable>
-            </View>
-
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1">
-              <ScrollView contentContainerClassName="gap-4 px-4 pb-6 pt-4" keyboardShouldPersistTaps="handled">
-                {submitError ? (
-                  <View className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2.5">
-                    <Text className="text-sm text-danger">{submitError}</Text>
-                  </View>
-                ) : null}
-                {children}
-              </ScrollView>
-
-              <View className="border-t border-border px-4 py-3">
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityState={{ disabled: submitting }}
-                  className={`flex-row items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3.5 ${submitting ? 'opacity-60' : 'active:opacity-90'}`}
-                  disabled={submitting}
-                  onPress={onSubmit}
-                >
-                  {submitting ? <ActivityIndicator color="#0a0a0a" size="small" /> : null}
-                  <Text className="text-sm text-primary-foreground" weight="semibold">
-                    {submitLabel}
-                  </Text>
-                </Pressable>
-              </View>
-            </KeyboardAvoidingView>
-          </SafeAreaView>
-        </View>
-      </SafeAreaProvider>
-    </Modal>
+    <ModalSheet
+      error={submitError}
+      footer={<SheetSubmitButton isSubmitting={submitting} label={submitLabel} onPress={onSubmit} />}
+      onClose={onClose}
+      subtitle={subtitle}
+      title={title}
+    >
+      {children}
+    </ModalSheet>
   );
 }
 

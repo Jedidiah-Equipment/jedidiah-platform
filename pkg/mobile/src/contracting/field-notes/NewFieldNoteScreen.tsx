@@ -15,7 +15,6 @@ import { confirm } from '@/lib/confirm';
 import { choosePhotos, type PickedPhoto, takePhoto } from '@/lib/photo-picker';
 import { FieldNoteFields } from './FieldNoteFields';
 import { fieldNoteFiles } from './files';
-import { FIELD_NOTE_DESCRIPTION_MAX } from './store';
 import { useFieldNoteAction } from './use-field-note-action';
 import { useFieldNotes } from './use-field-notes';
 
@@ -28,14 +27,7 @@ export default function NewFieldNoteScreen() {
   const navigation = useNavigation();
   const showToast = useAppToast();
   const [description, setDescription] = useState('');
-  const voice = useVoiceSession(
-    { business: 'contracting', purpose: 'field note' },
-    {
-      value: description,
-      onChangeText: setDescription,
-      maxLength: FIELD_NOTE_DESCRIPTION_MAX,
-    },
-  );
+  const voice = useVoiceSession({ business: 'contracting', purpose: 'field note' });
   const [photos, setPhotos] = useState<(PickedPhoto & { id: string })[]>([]);
   const [saved, setSaved] = useState(false);
   const { busy, error, act } = useFieldNoteAction();
@@ -108,6 +100,8 @@ export default function NewFieldNoteScreen() {
         onChoose={() => void pick(() => choosePhotos(limit - photos.length))}
         onRemovePhoto={(photoId) => setPhotos((current) => current.filter((photo) => photo.id !== photoId))}
         descriptionEditable={!busy}
+        description={description}
+        onDescriptionChange={setDescription}
         voice={voice}
       />
     </FormPage>

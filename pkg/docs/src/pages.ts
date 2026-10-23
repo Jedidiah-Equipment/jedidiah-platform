@@ -18,7 +18,8 @@ function collectPageLinks(dir: string, prefix: string): string[] {
 
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     if (entry.isDirectory()) {
-      if (prefix === '/' && entry.name === 'public') continue;
+      // `public` holds assets and `_parts` holds fragments other pages include; neither is a page.
+      if (prefix === '/' && (entry.name === 'public' || entry.name === '_parts')) continue;
       links.push(...collectPageLinks(resolve(dir, entry.name), `${posix.join(prefix, entry.name)}/`));
       continue;
     }

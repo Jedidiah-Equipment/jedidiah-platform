@@ -7,6 +7,7 @@ import Fastify from 'fastify';
 import { expect, vi } from 'vitest';
 import { createTester } from '@/test/create-tester.js';
 import { mockSession } from '@/test/test-utils.js';
+import { M4A_HEADER as M4A, stubEngine, testProfiles } from './test-fixtures.js';
 import { registerTranscriptionHttpRoutes } from './transcriptions-http.route.js';
 
 const state = vi.hoisted(() => ({ session: null as unknown }));
@@ -15,11 +16,10 @@ vi.mock('../../auth/session.js', async (original) => ({
   getSessionFromHeaders: async () => state.session,
 }));
 
-const engine: TranscriptionEngine = {
-  transcribe: async () => ({ text: 'die hek is oop', language: null }),
-  tidy: async () => ({ text: 'Die hek is oop.', language: 'af' }),
-  derive: async () => ({ action: 'none', reason: 'Not used here.' }),
-};
+const engine = stubEngine(
+  { text: 'die hek is oop', language: null },
+  { tidy: async () => ({ text: 'Die hek is oop.', language: 'af' }) },
+);
 
 const test = createTester(async ({ db, auth }) => {
   await db.insert(user).values({
@@ -38,10 +38,7 @@ const test = createTester(async ({ db, auth }) => {
     await registerTranscriptionHttpRoutes(app, {
       db,
       engine: withEngine,
-      businesses: {
-        equipment: { setting: 'an Equipment note', keyterms: async () => [] },
-        contracting: { setting: 'a Contracting note', keyterms: async () => [] },
-      },
+      profiles: testProfiles(),
     });
     return app;
   };
@@ -60,7 +57,6 @@ function signInToEquipmentAs(role: EquipmentRole) {
   state.session = session;
 }
 
-const M4A = Buffer.from([0, 0, 0, 32, 0x66, 0x74, 0x79, 0x70, 0x4d, 0x34, 0x41, 0x20]);
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 function upload(

@@ -39,7 +39,7 @@ import { useVoiceRecorder, type VoiceRecorder } from './use-voice-recorder';
 function renderRecorder() {
   const current: { recorder?: VoiceRecorder } = {};
   function Probe() {
-    current.recorder = useVoiceRecorder('contracting');
+    current.recorder = useVoiceRecorder();
     return null;
   }
   act(() => {
@@ -144,7 +144,7 @@ test('hands back the length and loudest level of a note, and leaves both in the 
   });
 
   expect(stopped).toEqual({ uri: 'file:///note.m4a', seconds: 2, durationMs: 2_300, peakDb: -18 });
-  expect(addBreadcrumb).toHaveBeenLastCalledWith('contracting', 'voice recording stopped', {
+  expect(addBreadcrumb).toHaveBeenLastCalledWith('microphone', 'voice recording stopped', {
     durationMs: 2_300,
     peakDb: -18,
     kept: true,
@@ -160,7 +160,7 @@ test('drops a tap too short to be a note, and says so in the trail', async () =>
   });
 
   expect(stopped).toBeNull();
-  expect(addBreadcrumb).toHaveBeenLastCalledWith('contracting', 'voice recording stopped', {
+  expect(addBreadcrumb).toHaveBeenLastCalledWith('microphone', 'voice recording stopped', {
     durationMs: 0,
     peakDb: -160,
     kept: false,

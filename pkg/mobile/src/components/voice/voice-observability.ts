@@ -21,7 +21,7 @@ type VoiceNoteResult = {
 };
 
 function recordVoiceNote(properties: VoiceNoteAttempt & VoiceNoteResult): void {
-  addBreadcrumb(properties.business, 'voice note transcribed', properties);
+  addBreadcrumb('microphone', 'voice note transcribed', properties);
   captureEvent('voice note transcribed', properties);
 }
 
@@ -59,6 +59,6 @@ export function recordVoiceNoteFailed(attempt: VoiceNoteAttempt, error: unknown)
 }
 
 /** The recorder threw while opening or closing the mic; the trail says how far the press got. */
-export function recordVoiceRecorderFailed(error: unknown, stage: 'start' | 'stop', business: Business): void {
-  captureSanitizedException(error, `Voice recorder failed to ${stage}`, { stage, business });
+export function recordVoiceRecorderFailed(error: unknown, stage: 'start' | 'stop'): void {
+  captureSanitizedException(error, `Voice recorder failed to ${stage}`, { stage });
 }

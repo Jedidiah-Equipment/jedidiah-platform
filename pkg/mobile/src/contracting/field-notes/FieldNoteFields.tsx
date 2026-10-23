@@ -3,6 +3,7 @@ import type { VoiceSession } from '@/components/voice/use-voice-session';
 import { VoiceTextArea } from '@/components/voice/VoiceTextArea';
 import { PhotoStrip } from '@/contracting/components/PhotoStrip';
 import { fieldNoteFiles } from './files';
+import { FIELD_NOTE_DESCRIPTION_MAX } from './store';
 
 /** The photos and the description, as both the new-note draft and a kept note edit them. */
 export function FieldNoteFields(props: {
@@ -16,7 +17,9 @@ export function FieldNoteFields(props: {
   onDescriptionBlur?: () => void;
   /** A draft locks while it saves; a kept note stays editable so a blur can commit it. */
   descriptionEditable: boolean;
-  /** The description's voice session, which carries its text. */
+  description: string;
+  onDescriptionChange: (description: string) => void;
+  /** The description's voice session, which follows its text. */
   voice: VoiceSession;
 }) {
   return (
@@ -40,6 +43,9 @@ export function FieldNoteFields(props: {
         editable={props.descriptionEditable}
         rows={5}
         onBlur={props.onDescriptionBlur}
+        value={props.description}
+        onChangeText={props.onDescriptionChange}
+        maxLength={FIELD_NOTE_DESCRIPTION_MAX}
         voice={props.voice}
       />
     </>

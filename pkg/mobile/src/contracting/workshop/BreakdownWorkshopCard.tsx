@@ -140,14 +140,7 @@ function CompleteModal({
 }) {
   const solve = useBreakdownMutation((breakdowns) => breakdowns.solve);
   const [note, setNote] = useState('');
-  const voice = useVoiceSession(
-    { business: 'contracting', purpose: 'close-out note' },
-    {
-      value: note,
-      onChangeText: setNote,
-      maxLength: CloseOutNote.maxLength ?? undefined,
-    },
-  );
+  const voice = useVoiceSession({ business: 'contracting', purpose: 'close-out note' });
   const { busy, error, run } = useBusyAction();
   const valid = CloseOutNote.safeParse(note).success;
   const close = () => {
@@ -168,6 +161,9 @@ function CompleteModal({
             placeholder="What was wrong and what was done"
             editable={!busy}
             rows={4}
+            value={note}
+            onChangeText={setNote}
+            maxLength={CloseOutNote.maxLength ?? undefined}
             voice={voice}
           />
         </FieldShell>

@@ -1,10 +1,10 @@
 import { transcribeVoiceNote } from '@pkg/core';
 import { transcriptionHints, user } from '@pkg/db';
+import { TRANSCRIPTION_HINT_CAP } from '@pkg/domain';
 import { expect } from 'vitest';
 import { createTester } from '@/test/create-tester.js';
 import { mockSession } from '@/test/test-utils.js';
-
-const M4A = new Uint8Array([0, 0, 0, 32, 0x66, 0x74, 0x79, 0x70, 0x4d, 0x34, 0x41, 0x20]);
+import { M4A_HEADER, stubEngine, testProfile, testProfiles } from './test-fixtures.js';
 
 const test = createTester(async ({ db }) => {
   await db.insert(user).values({
@@ -20,16 +20,10 @@ const test = createTester(async ({ db }) => {
     transcribeVoiceNote({
       db,
       actorUserId: 'test-user-id',
-      audio: M4A,
-      business,
+      audio: M4A_HEADER,
       purpose: 'field note',
-      setting: 'a test note',
-      keyterms: async () => [],
-      engine: {
-        transcribe: async () => ({ text: 'the gate at rooi kraal is open', language }),
-        tidy: async ({ rawText }) => ({ text: rawText, language: null }),
-        derive: async () => ({ action: 'none', reason: 'Unused.' }),
-      },
+      profile: testProfile(business),
+      engine: stubEngine({ text: 'the gate at rooi kraal is open', language }),
     });
   return { heard, db };
 });
@@ -48,14 +42,12 @@ test('a saved correction schedules one hint derivation; a kept or non-English no
   const afrikaans = await context.heard('afr');
 
   await caller.transcriptions.saved({
-    business: 'contracting',
     id: corrected.id,
     text: 'The gate at Rooikraal is open.',
     purpose: 'field note',
   });
-  await caller.transcriptions.saved({ business: 'contracting', id: kept.id, text: kept.text, purpose: 'field note' });
+  await caller.transcriptions.saved({ id: kept.id, text: kept.text, purpose: 'field note' });
   await caller.transcriptions.saved({
-    business: 'contracting',
     id: afrikaans.id,
     text: 'Die hek is oop.',
     purpose: 'field note',
@@ -63,7 +55,7 @@ test('a saved correction schedules one hint derivation; a kept or non-English no
 
   expect(scheduled).toEqual([corrected.id]);
   await expect(
-    caller.transcriptions.saved({ business: 'contracting', id: corrected.id, text: 'Again.', purpose: 'field note' }),
+    caller.transcriptions.saved({ id: corrected.id, text: 'Again.', purpose: 'field note' }),
   ).rejects.toMatchObject({ code: 'CONFLICT' });
 });
 
@@ -76,7 +68,6 @@ test('only a holder of contracting_transcription:read reviews Transcriptions, hi
   admin.user.contractingRole = 'contracting-admin';
   const note = await context.heard('eng');
   await context.createCaller(foreman).transcriptions.saved({
-    business: 'contracting',
     id: note.id,
     text: 'The gate at Rooikraal is open.',
     purpose: 'field note',
@@ -92,12 +83,9 @@ test('only a holder of contracting_transcription:read reviews Transcriptions, hi
   );
   const caller = context.createCaller(admin, {
     transcriptions: {
-      businesses: {
-        contracting: {
-          setting: 'a test Contracting note',
-          keyterms: async () => [{ keyterm: 'Rooikraal', source: 'hint' }],
-        },
-        equipment: { setting: 'a test Equipment note', keyterms: async () => [] },
+      profiles: {
+        ...testProfiles(),
+        contracting: testProfile('contracting', [{ keyterm: 'Rooikraal', source: 'Farm' }]),
       },
     },
   });
@@ -106,7 +94,7 @@ test('only a holder of contracting_transcription:read reviews Transcriptions, hi
     items: [{ id: note.id, createdByName: 'Test User', hintStatus: { kind: 'pending' } }],
   });
   expect(await caller.transcriptions.hints({ business: 'contracting' })).toEqual({
-    cap: 100,
+    cap: TRANSCRIPTION_HINT_CAP,
     activeCount: 0,
     hints: [],
   });
@@ -114,7 +102,7 @@ test('only a holder of contracting_transcription:read reviews Transcriptions, hi
     speech: { model: 'test-transcription-model', keyterms: ['Rooikraal'], cutOff: [] },
     tidy: {
       model: 'test-chat-model',
-      system: expect.stringContaining('a test Contracting note'),
+      system: expect.stringContaining('a test contracting note'),
       prompt: expect.stringContaining('{{raw transcript}}'),
     },
     derivation: { model: 'test-chat-model', prompt: expect.stringContaining('{{saved text}}') },
@@ -139,21 +127,17 @@ test('the Contracting alias still hears a save from a phone on the old build', a
   expect(scheduled).toEqual([note.id]);
 });
 
-test("each business's Transcriptions open only under its own permissions", async ({ context }) => {
-  const foreman = mockSession(null);
-  foreman.user.contractingRole = 'foreman';
+test('only the person who recorded a Transcription may save it, whichever business it is in', async ({ context }) => {
+  const stranger = mockSession(null);
+  stranger.user.id = 'someone-else';
+  stranger.user.contractingRole = 'foreman';
   const superAdmin = mockSession(null);
   superAdmin.user.role = 'super-admin';
   const equipmentNote = await context.heard('eng', 'equipment');
   await context.heard('eng');
 
   await expect(
-    context.createCaller(foreman).transcriptions.saved({
-      business: 'equipment',
-      id: equipmentNote.id,
-      text: 'Kept.',
-      purpose: 'field note',
-    }),
+    context.createCaller(stranger).transcriptions.saved({ id: equipmentNote.id, text: 'Kept.', purpose: 'field note' }),
   ).rejects.toMatchObject({ code: 'FORBIDDEN' });
   expect(await context.createCaller(superAdmin).transcriptions.list({ business: 'contracting' })).toMatchObject({
     total: 1,
@@ -176,7 +160,6 @@ test('every Equipment role but app-store-tester may record; only super-admin rev
 
   await expect(
     as('app-store-tester').transcriptions.saved({
-      business: 'equipment',
       id: note.id,
       text: 'Kept.',
       purpose: 'job feedback',

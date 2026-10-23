@@ -1,5 +1,4 @@
 import { VOICE_NOTE_MAX_SECONDS } from '@pkg/domain';
-import type { Business } from '@pkg/schema';
 import {
   getRecordingPermissionsAsync,
   RecordingPresets,
@@ -35,8 +34,8 @@ export type VoiceRecorder = {
   stop: () => Promise<VoiceRecording | null>;
 };
 
-/** Press-and-hold recording through expo-audio, capped at the Voice Note limit; `business` labels its breadcrumbs. */
-export function useVoiceRecorder(business: Business): VoiceRecorder {
+/** Press-and-hold recording through expo-audio, capped at the Voice Note limit. */
+export function useVoiceRecorder(): VoiceRecorder {
   const recorder = useAudioRecorder(RECORDING_OPTIONS);
   const state = useAudioRecorderState(recorder, 500);
   const starting = useRef<Promise<'recording' | 'allowed' | 'denied'> | null>(null);
@@ -57,7 +56,7 @@ export function useVoiceRecorder(business: Business): VoiceRecorder {
       if (!current.granted) {
         // The system prompt takes the press; the next hold records.
         const asked = await requestRecordingPermissionsAsync();
-        addBreadcrumb(business, 'microphone permission asked', { granted: asked.granted });
+        addBreadcrumb('microphone', 'microphone permission asked', { granted: asked.granted });
         return asked.granted ? 'allowed' : 'denied';
       }
       // iOS mutes haptics once the recording audio mode is set, so its tap lands just before the mic opens.
@@ -68,14 +67,14 @@ export function useVoiceRecorder(business: Business): VoiceRecorder {
       startedAt.current = Date.now();
       peakDb.current = null;
       // Words spoken before the mic opens are lost, so a slow start explains a clipped or empty note.
-      addBreadcrumb(business, 'voice recording started', { startMs: startedAt.current - pressedAt });
+      addBreadcrumb('microphone', 'voice recording started', { startMs: startedAt.current - pressedAt });
       capTimer.current = setTimeout(() => setCapped(true), VOICE_NOTE_MAX_SECONDS * 1000);
       // Android has no such mute, so its pulse waits until the mic is actually open.
       if (Platform.OS === 'android') Vibration.vibrate(OPENED_PULSE_MS);
       return 'recording' as const;
     })();
     return starting.current;
-  }, [recorder, business]);
+  }, [recorder]);
 
   const stop = useCallback(async () => {
     clearTimeout(capTimer.current);
@@ -89,10 +88,10 @@ export function useVoiceRecorder(business: Business): VoiceRecorder {
     await setAudioModeAsync({ allowsRecording: false }).catch(() => undefined);
     const peak = peakDb.current === null ? null : Math.round(peakDb.current);
     const uri = durationMs < MIN_RECORDING_MS ? null : recorder.uri || null;
-    addBreadcrumb(business, 'voice recording stopped', { durationMs, peakDb: peak, kept: uri !== null });
+    addBreadcrumb('microphone', 'voice recording stopped', { durationMs, peakDb: peak, kept: uri !== null });
     if (uri === null) return null;
     return { uri, seconds: Math.round(durationMs / 1000), durationMs, peakDb: peak };
-  }, [recorder, business]);
+  }, [recorder]);
 
   // Leaving the screen mid-hold must not leave the microphone live until the cap.
   useEffect(

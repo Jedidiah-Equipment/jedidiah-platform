@@ -16,7 +16,7 @@ export async function transcribeRecording(
   const body = new FormData();
   body.append('purpose', purpose);
   body.append('audio', audio, 'voice-note.m4a');
-  addBreadcrumb(business, 'voice note upload', { bytes: audio.size });
+  addBreadcrumb('microphone', 'voice note upload', { business, bytes: audio.size });
   return postMultipart(transcribePath(business), body, {
     timeoutMs: TRANSCRIBE_TIMEOUT_MS,
     failedMessage: TRANSCRIBE_FAILED,

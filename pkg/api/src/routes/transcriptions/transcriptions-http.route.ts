@@ -1,4 +1,4 @@
-import { type TranscriptionEngine, transcribeVoiceNote } from '@pkg/core';
+import { type BoundTranscriptionProfile, type TranscriptionEngine, transcribeVoiceNote } from '@pkg/core';
 import type { Db } from '@pkg/db';
 import { transcribePath, transcriptionPermissions, VOICE_NOTE_POLICY } from '@pkg/domain';
 import { BUSINESSES, type Business, TranscribeFields, TranscriptionPurpose } from '@pkg/schema';
@@ -14,7 +14,6 @@ import {
   sendUploadHttpError,
 } from '../http-route-helpers.js';
 import { transcriptionErrorFamily } from '../shared-error-families.js';
-import type { TranscriptionBusiness } from './transcriptions.router.js';
 
 /**
  * The path phones from before the shared route still post to, always Contracting's. Drop it once their OTA is out
@@ -41,8 +40,8 @@ export async function registerTranscriptionHttpRoutes(
   {
     db,
     engine,
-    businesses,
-  }: { db: Db; engine: TranscriptionEngine; businesses: Record<Business, TranscriptionBusiness> },
+    profiles,
+  }: { db: Db; engine: TranscriptionEngine; profiles: Record<Business, BoundTranscriptionProfile> },
 ) {
   const transcribe = (business: Business) => async (request: FastifyRequest, reply: FastifyReply) => {
     const auth = await requireRouteAuth(request, reply);
@@ -61,11 +60,9 @@ export async function registerTranscriptionHttpRoutes(
         db,
         actorUserId: auth.access.userId,
         audio,
-        business,
         purpose: input.purpose,
-        setting: businesses[business].setting,
+        profile: profiles[business],
         engine,
-        keyterms: businesses[business].keyterms,
       });
       return reply.status(201).send(transcription);
     } catch (error) {

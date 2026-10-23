@@ -15,7 +15,6 @@ import { createContractingReadingsRouter } from '../routes/contracting/readings/
 import { contractingReportsRouter } from '../routes/contracting/reports/reports.router.js';
 import { contractingServicesRouter } from '../routes/contracting/services/services.router.js';
 import { contractingSettingsRouter } from '../routes/contracting/settings/settings.router.js';
-import { createContractingTranscriptionsRouter } from '../routes/contracting/transcriptions/transcriptions.router.js';
 import { createCatalogTranslationsRouter } from '../routes/equipment/catalog-translations/catalog-translations.router.js';
 import { customersRouter } from '../routes/equipment/customers/customers.router.js';
 import { documentsRouter } from '../routes/equipment/documents/documents.router.js';
@@ -36,6 +35,7 @@ import { userDepartmentsRouter } from '../routes/equipment/users/user-department
 import { pushPreferencesRouter } from '../routes/push/push-preferences.router.js';
 import { pushTokensRouter } from '../routes/push/push-tokens.router.js';
 import {
+  createLegacyContractingTranscriptionsRouter,
   createTranscriptionsRouter,
   type TranscriptionRouterDependencies,
 } from '../routes/transcriptions/transcriptions.router.js';
@@ -63,7 +63,7 @@ type AppRouterRecord = {
   contractingRateCard: (typeof contractingRateCardRouter)['_def']['record'];
   contractingServices: (typeof contractingServicesRouter)['_def']['record'];
   contractingSettings: (typeof contractingSettingsRouter)['_def']['record'];
-  contractingTranscriptions: ReturnType<typeof createContractingTranscriptionsRouter>['_def']['record'];
+  contractingTranscriptions: ReturnType<typeof createLegacyContractingTranscriptionsRouter>['_def']['record'];
   audit: (typeof auditRouter)['_def']['record'];
   auth: (typeof authRouter)['_def']['record'];
   catalogTranslations: ReturnType<typeof createCatalogTranslationsRouter>['_def']['record'];
@@ -105,10 +105,7 @@ export function createAppRouter({ contracting, equipment, transcriptions }: AppR
     contractingRateCard: contractingRateCardRouter,
     contractingServices: contractingServicesRouter,
     contractingSettings: contractingSettingsRouter,
-    // Alias for phones from before the shared `transcriptions` router; drop once their OTA is out.
-    contractingTranscriptions: createContractingTranscriptionsRouter({
-      hintDerivations: transcriptions.hintDerivations,
-    }),
+    contractingTranscriptions: createLegacyContractingTranscriptionsRouter(transcriptions),
     contractingDirectory: contractingDirectoryRouter,
     audit: auditRouter,
     auth: authRouter,

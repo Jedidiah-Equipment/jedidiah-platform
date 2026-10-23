@@ -1,4 +1,4 @@
-import { formatNumber, PROMPT_PLACEHOLDER_PATTERN, toSentenceCase } from '@pkg/domain';
+import { formatNumber, PROMPT_PLACEHOLDER_PATTERN } from '@pkg/domain';
 import type { Business, KeytermCandidate } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
@@ -67,7 +67,6 @@ function CutOffKeyterms({ cutOff }: { cutOff: KeytermCandidate[] }) {
       {
         accessorKey: 'source',
         header: 'Source',
-        cell: ({ row }) => (row.original.source === 'hint' ? 'Hint keyterm' : toSentenceCase(row.original.source)),
       },
     ],
     [],

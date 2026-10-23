@@ -7,14 +7,12 @@ import {
   contractingJobs,
   contractingMachines,
 } from '@pkg/db/contracting';
+import { personKeyterms, sourcedKeyterms } from '@pkg/domain';
 import type { KeytermCandidate } from '@pkg/schema';
 import { subDays } from 'date-fns';
-import { and, eq, gte, inArray, isNull, or } from 'drizzle-orm';
-import {
-  personKeyterms,
-  sourcedKeyterms,
-  type TranscriptionProfile,
-} from '../../transcriptions/transcription-profile.js';
+import { and, eq, gte, inArray, isNull } from 'drizzle-orm';
+import type { TranscriptionProfile } from '../../transcriptions/transcription-profile.js';
+import { activePersonCondition } from '../../users/active-person.js';
 
 const RECENT_JOB_DAYS = 90;
 const FIELD_ROLES = ['driver', 'mechanic', 'foreman'] as const;
@@ -46,13 +44,7 @@ async function loadContractingKeytermCandidates({
     db
       .select({ name: user.name })
       .from(user)
-      .where(
-        and(
-          inArray(user.contractingRole, FIELD_ROLES),
-          eq(user.isDevice, false),
-          or(isNull(user.banned), eq(user.banned, false)),
-        ),
-      )
+      .where(and(inArray(user.contractingRole, FIELD_ROLES), activePersonCondition()))
       .orderBy(user.name),
     db
       .selectDistinct({ farm: contractingFarms.name, customer: contractingCustomers.name })
@@ -65,21 +57,21 @@ async function loadContractingKeytermCandidates({
 
   return [
     ...sourcedKeyterms(
-      'machine',
+      'Machine',
       machines.flatMap((machine) => [machine.code, machine.make, machine.model]),
     ),
     ...sourcedKeyterms(
-      'implement',
+      'Implement',
       implementCodes.map((implement) => implement.code),
     ),
     ...sourcedKeyterms(
-      'category',
+      'Category',
       categories.map((category) => category.name),
     ),
     ...personKeyterms(people.map((person) => person.name)),
     ...places.flatMap((place) => [
-      ...sourcedKeyterms('farm', [place.farm]),
-      ...sourcedKeyterms('customer', [place.customer]),
+      ...sourcedKeyterms('Farm', [place.farm]),
+      ...sourcedKeyterms('Customer', [place.customer]),
     ]),
   ];
 }

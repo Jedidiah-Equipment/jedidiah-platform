@@ -4,31 +4,32 @@ import type { VoiceSession } from '@/components/voice/use-voice-session';
 import { VoiceTextArea } from '@/components/voice/VoiceTextArea';
 import { useFieldContext } from '../hooks/form-context';
 import { getFieldErrors } from '../utils/field-errors';
-import { fieldStateClassNames } from '../utils/field-style';
 import { FieldShell } from './FieldShell';
 
 type VoiceTextareaFieldProps = {
-  /** The field's voice session, built by the form from its store so the form can report what it saved. */
+  /** The field's voice session, held by the form so it can report what it saved. */
   voice: VoiceSession;
   label?: ReactNode;
   rows?: number;
 } & Omit<AppTextInputProps, 'editable' | 'multiline' | 'onBlur' | 'onChangeText' | 'value' | 'maxLength'>;
 
 /**
- * `TextareaField` with the press-and-hold mic: the voice session owns the text, this field its label and errors. Render
- * it inside `form.AppField` rather than from the registry, so forms without voice never import the recorder.
+ * `TextareaField` with the press-and-hold mic, bound to its form field like any other; the voice session only follows
+ * the text. Rendered inside `form.AppField` rather than from the registry, so the reanimated voice frame stays out of
+ * every other form's import graph.
  */
-export function VoiceTextareaField({ voice, label, rows = 5, className, ...inputProps }: VoiceTextareaFieldProps) {
+export function VoiceTextareaField({ voice, label, rows = 5, ...inputProps }: VoiceTextareaFieldProps) {
   const field = useFieldContext<string>();
   const errors = getFieldErrors(field.state.meta.errors);
 
   return (
     <FieldShell errors={errors} label={label}>
       <VoiceTextArea
-        className={`${fieldStateClassNames({ disabled: false, hasErrors: errors.length > 0 })} ${className ?? ''}`}
         invalid={errors.length > 0}
         onBlur={() => field.handleBlur()}
+        onChangeText={field.handleChange}
         rows={rows}
+        value={field.state.value}
         voice={voice}
         {...inputProps}
       />

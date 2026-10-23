@@ -23,7 +23,7 @@ import {
 import { z } from 'zod';
 import { TRANSCRIPTION_KEYWORDS_HEADER } from '../ai-sdk-model.js';
 
-export async function transcribeVoiceNote({
+export async function hearVoiceNote({
   audio,
   keyterms,
   model,

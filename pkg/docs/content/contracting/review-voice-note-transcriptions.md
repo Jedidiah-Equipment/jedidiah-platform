@@ -1,32 +1,6 @@
 # Review Voice Note Transcriptions
 
-The Transcriptions page shows what each Voice Note was turned into, the Transcription Hints learned from
-people's corrections, and what the models are asked. It is read-only.
-
-## Steps
-
-1. Open **Transcriptions** under **Admin**.
-2. On **Transcriptions**, the newest Voice Note appears first, with who it was **Recorded by** and what was
-   **Heard**, what was **Shown**, and what was **Kept**. To see only some people's Voice Notes, filter
-   **Recorded by**; select **When** to show the oldest first.
-3. Read **Kept** to see the correction. Words the person removed are struck through; words they added are
-   highlighted. Kept is only that Voice Note's part of the field, not anything typed around it.
-4. Read **Hint** to see what the correction led to:
-   - **Not saved yet**: the form holding the Voice Note was never saved.
-   - **No correction**: the person kept the text as shown, or deleted it.
-   - **Not English, so skipped**: hints are learned from English Voice Notes only.
-   - **Pending**: the correction is waiting to be read.
-   - **Hint added**: choose **View the hint** to jump to it. A correction that fixed several things can
-     read **2 hints added** or **3 hints added**; choose **View the hints** to open **Hints** with all of
-     them marked.
-   - **No hint**: the correction taught nothing reusable; the reason is shown below it.
-   - **Derived before outcomes were kept**: an older correction whose outcome was not recorded.
-5. Open **Hints** to see every Transcription Hint, those in force first, each beside the correction it was
-   **Learned from**. A retired hint names the hint that replaced it, if any.
-6. Open **Prompts** to see the three model requests as they would be sent now, with the model each uses.
-   The highlighted parts in double braces are filled from each Voice Note. Under **Speech-to-text**, **Keyterms sent**
-   lists the names the speech model is told to expect, taught keyterms first; **Keyterms cut off** lists any past
-   the limit, with where each came from.
+<!--@include: ../_parts/review-voice-note-transcriptions.md-->
 
 The Transcriptions page is available to a Contracting Administrator and a Super Administrator, because it
 shows every user's Voice Note text.

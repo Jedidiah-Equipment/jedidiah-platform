@@ -37,6 +37,35 @@ export function transcriptionWasCorrected(shown: string, saved: string): boolean
   return saved.trim() !== '' && saved.trim() !== shown.trim();
 }
 
+/** Where a taught Transcription Hint's keyterm comes from, as the Prompts tab shows it. */
+export const HINT_KEYTERM_SOURCE = 'Hint keyterm';
+
+/** Keyterm candidates from one source, in order; a missing or empty value is skipped. */
+export const sourcedKeyterms = (source: string, keyterms: readonly (string | null)[]): KeytermCandidate[] =>
+  keyterms.flatMap((keyterm) => (keyterm ? [{ keyterm, source }] : []));
+
+/** People are said by full name and by first name alone. */
+export const personKeyterms = (names: readonly string[]): KeytermCandidate[] =>
+  sourcedKeyterms(
+    'Person',
+    names.flatMap((name) => [name, name.trim().split(/\s+/)[0] ?? null]),
+  );
+
+/**
+ * What one business's speech call is biased by: its taught hint keyterms first, so the cap never crowds out a
+ * correction someone taught, then its profile's vocabulary.
+ */
+export const keytermCandidates = (
+  hints: readonly { keyterm: string | null }[],
+  vocabulary: readonly KeytermCandidate[],
+): KeytermCandidate[] => [
+  ...sourcedKeyterms(
+    HINT_KEYTERM_SOURCE,
+    hints.map((hint) => hint.keyterm),
+  ),
+  ...vocabulary,
+];
+
 /** Keyterm hygiene for the speech service: one line, trimmed, at most 50 characters, no angle brackets (the API refuses them), unique ignoring case. */
 function shapeKeytermCandidates<T extends { keyterm: string | null | undefined }>(candidates: readonly T[]) {
   const seen = new Set<string>();

@@ -11,6 +11,7 @@ export const docsConfig = defineConfig({
   description: 'How to do the work JedidiahOps records.',
   lang: 'en',
   srcDir: 'content',
+  srcExclude: ['_parts/**'],
   outDir: 'dist',
   cleanUrls: true,
   metaChunk: true,

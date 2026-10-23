@@ -30,8 +30,9 @@ export const Transcription = z.object({
   language: transcriptionLanguageTag.nullable(),
 });
 export type Transcription = z.infer<typeof Transcription>;
+/** A save report: the Transcription's owner is the gate, so it names no business. */
 export const TranscriptionSavedInput = z
-  .object({ business: Business, id: UUID, text: TranscriptionText, purpose: TranscriptionPurpose })
+  .object({ id: UUID, text: TranscriptionText, purpose: TranscriptionPurpose })
   .strict();
 export type TranscriptionSavedInput = z.infer<typeof TranscriptionSavedInput>;
 /** Which business's Transcriptions a review read is about; each business keeps its own pool. */
@@ -119,7 +120,7 @@ export const TranscriptionHintList = z.object({
 });
 export type TranscriptionHintList = z.infer<typeof TranscriptionHintList>;
 
-/** Where a keyterm came from: `hint` for a taught one, else a label the business's profile chooses ("machine", "supplier"). */
+/** Where a keyterm came from, as the Prompts tab shows it ("Hint keyterm", "Machine"); each profile names its own. */
 export const KeytermSource = z.string().trim().min(1).max(30);
 export type KeytermSource = z.infer<typeof KeytermSource>;
 export const KeytermCandidate = z.object({ keyterm: z.string(), source: KeytermSource });

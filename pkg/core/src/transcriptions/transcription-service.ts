@@ -1,6 +1,7 @@
 import { type Db, transcriptionHints, transcriptions } from '@pkg/db';
 import {
   isHintDerivationLanguage,
+  keytermCandidates,
   TRANSCRIPTION_HINT_CAP,
   transcriptionWasCorrected,
   VOICE_NOTE_POLICY,
@@ -17,6 +18,7 @@ import {
 import { and, asc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 import { filePolicyViolation } from '../files/file-errors.js';
 import { TranscriptionError } from './transcription-errors.js';
+import type { BoundTranscriptionProfile } from './transcription-profile.js';
 
 export type VoiceTranscript = { text: string; language: string | null };
 export type ActiveHint = { id: string; rule: string };
@@ -69,57 +71,29 @@ export async function listActiveHints({
     .orderBy(asc(transcriptionHints.createdAt), asc(transcriptionHints.id));
 }
 
-/**
- * The keyterms one business's speech calls are biased by: its taught hint keyterms first, so the cap never crowds
- * out a correction someone taught, then its profile's vocabulary.
- */
-export async function loadKeytermCandidates({
-  db,
-  business,
-  loadVocabulary,
-}: {
-  db: Db;
-  business: Business;
-  /** The business's own vocabulary, from its profile. */
-  loadVocabulary: () => Promise<KeytermCandidate[]>;
-}): Promise<KeytermCandidate[]> {
-  const [taught, vocabulary] = await Promise.all([
-    db
-      .select({ keyterm: transcriptionHints.keyterm })
-      .from(transcriptionHints)
-      .where(and(activeHint(business), isNotNull(transcriptionHints.keyterm)))
-      .orderBy(asc(transcriptionHints.createdAt), asc(transcriptionHints.id)),
-    loadVocabulary(),
-  ]);
-  return [...taught.flatMap(({ keyterm }) => (keyterm === null ? [] : [{ keyterm, source: 'hint' }])), ...vocabulary];
-}
-
 /** Turns a Voice Note into text. The recording is never stored; the Transcription row keeps what was heard and shown. */
 export async function transcribeVoiceNote({
   db,
   actorUserId,
   audio,
-  business,
   purpose,
-  setting,
+  profile: { business, setting, vocabulary },
   engine,
-  keyterms,
 }: {
   db: Db;
   actorUserId: AuthId;
   audio: Uint8Array;
-  business: Business;
   purpose: string;
-  setting: string;
+  profile: BoundTranscriptionProfile;
   engine: TranscriptionEngine;
-  keyterms: () => Promise<KeytermCandidate[]>;
 }): Promise<Transcription> {
   const validation = validateFile(audio, VOICE_NOTE_POLICY);
   if (!validation.ok) throw filePolicyViolation(validation);
+  // One read of the hints serves both the tidy prompt's rules and the speech call's taught keyterms.
   const hints = await listActiveHints({ db, business });
   let heard: VoiceTranscript;
   try {
-    heard = await engine.transcribe({ audio, keyterms: await keyterms() });
+    heard = await engine.transcribe({ audio, keyterms: keytermCandidates(hints, await vocabulary()) });
   } catch (error) {
     throw new TranscriptionError(
       'transcription.unavailable',
@@ -161,9 +135,7 @@ export async function recordTranscriptionSaved({
   const input = TranscriptionSavedInput.parse(raw);
   return db.transaction(async (tx) => {
     const [row] = await tx.select().from(transcriptions).where(eq(transcriptions.id, input.id)).for('update');
-    // Another business's Transcription answers as a missing one, so its pool cannot be probed from this one.
-    if (!row || row.business !== input.business)
-      throw new TranscriptionError('transcription.not_found', 'Transcription not found.');
+    if (!row) throw new TranscriptionError('transcription.not_found', 'Transcription not found.');
     if (row.createdByUserId !== actorUserId)
       throw new TranscriptionError('transcription.forbidden', 'This voice note belongs to someone else.');
     if (row.savedAt) throw new TranscriptionError('transcription.already_saved', 'This voice note was already saved.');
@@ -186,7 +158,7 @@ export async function deriveHintFor({
   id: string;
   engine: Pick<TranscriptionEngine, 'derive'>;
   now?: Date;
-}): Promise<{ business: Business; outcome: HintDerivation } | null> {
+}): Promise<HintDerivation | null> {
   return db.transaction(async (tx) => {
     const [row] = await tx.select().from(transcriptions).where(eq(transcriptions.id, id)).for('update');
     if (!row || row.savedText === null || row.hintDerivedAt || !derivationDue(row)) return null;
@@ -246,7 +218,7 @@ export async function deriveHintFor({
         hintNoneReason: outcome.action === 'none' ? outcome.reason : null,
       })
       .where(eq(transcriptions.id, row.id));
-    return { business, outcome };
+    return outcome;
   });
 }
 

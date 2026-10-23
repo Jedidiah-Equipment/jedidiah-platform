@@ -16,7 +16,7 @@ const DepartureValues = z.object({
 type DepartureValues = z.infer<typeof DepartureValues>;
 
 export function DepartureCaptureDialog({ stint, onClose }: { stint: Assignment | null; onClose: () => void }) {
-  const capture = useReadingCapture('departure', stint);
+  const capture = useReadingCapture({ role: 'departure', stint });
   const { latestQuery, latest } = capture;
   const [readingFocused, setReadingFocused] = useState(false);
   const judge = (values: DepartureValues) => capture.judge({ ...values, comment: values.reason });

@@ -153,3 +153,15 @@ export const busyFilterOptions: { label: string; value: BusyFilterValue }[] = [
 ];
 export const busyFilterMatches = (machine: { busyOnJob: object | null; retiredAt: string | null }, value: unknown) =>
   value === 'on-job' ? machine.busyOnJob !== null : !machine.busyOnJob && !machine.retiredAt;
+
+/** A Read At as a `datetime-local` input holds it, in the browser's local time; blank is now. */
+export const readAtInputValue = (date: Date) => {
+  const pad = (part: number) => String(part).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
+/** The Read At a `datetime-local` value names, read as local time; blank or unreadable is now. */
+export function readAtFromInput(value: string): Date | null {
+  const date = value ? new Date(value) : null;
+  return date && !Number.isNaN(date.getTime()) ? date : null;
+}

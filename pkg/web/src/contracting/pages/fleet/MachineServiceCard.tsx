@@ -18,6 +18,7 @@ import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.j
 import { useTRPC } from '@/lib/trpc.js';
 import { CloseServiceRecordDialog } from './CloseServiceRecordDialog.js';
 import { RecordServiceDialog } from './RecordServiceDialog.js';
+import { SpotCaptureDialog } from './SpotCaptureDialog.js';
 import { OpenServiceValues, openServiceFields } from './types.js';
 import { useServiceMechanicOptions } from './use-service-mechanic-options.js';
 
@@ -28,12 +29,14 @@ export function MachineServiceCard({ machine }: { machine: Machine }) {
   const trpc = useTRPC();
   const readsServices = useCan('contracting_service:read').can;
   const canRecord = useCan('contracting_service:update').can && !machine.retiredAt;
+  const canCapture = useCan('contracting_reading:capture').can && !machine.retiredAt;
   const records = useQuery(
     trpc.contractingServices.list.queryOptions({ machineId: machine.id }, { enabled: readsServices && canRecord }),
   );
   const mechanics = useServiceMechanicOptions(canRecord);
   const mechanicOptions = mechanics.options;
   const [opening, setOpening] = useState(false);
+  const [capturing, setCapturing] = useState(false);
   const [closingId, setClosingId] = useState<string | null>(null);
   const openRecords = (records.data ?? []).filter((record) => record.status === 'open');
   const closing = openRecords.find((record) => record.id === closingId);
@@ -54,11 +57,14 @@ export function MachineServiceCard({ machine }: { machine: Machine }) {
           {machine.hoursToService !== null ? (
             <span className="font-medium">{hoursToServiceLabel(machine.hoursToService)}</span>
           ) : null}
-          {canRecord ? (
-            <Button className="ml-auto" onClick={() => setOpening(true)}>
-              Record a service
-            </Button>
-          ) : null}
+          <div className="ml-auto flex gap-2">
+            {canCapture ? (
+              <Button variant="outline" onClick={() => setCapturing(true)}>
+                Capture reading
+              </Button>
+            ) : null}
+            {canRecord ? <Button onClick={() => setOpening(true)}>Record a service</Button> : null}
+          </div>
         </div>
         <ErrorMessage error={records.error ?? mechanics.error} fallbackMessage="Unable to load Service Records." />
         {canRecord
@@ -72,6 +78,7 @@ export function MachineServiceCard({ machine }: { machine: Machine }) {
             ))
           : null}
       </CardContent>
+      <SpotCaptureDialog machine={machine} open={capturing} onOpenChange={setCapturing} />
       <RecordServiceDialog
         machineId={machine.id}
         open={opening}

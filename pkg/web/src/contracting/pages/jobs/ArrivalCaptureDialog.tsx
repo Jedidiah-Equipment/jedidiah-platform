@@ -21,7 +21,7 @@ const ArrivalValues = z.object({
 });
 
 export function ArrivalCaptureDialog({ stint, onClose }: { stint: Assignment | null; onClose: () => void }) {
-  const capture = useReadingCapture('arrival', stint);
+  const capture = useReadingCapture({ role: 'arrival', stint });
   const [readingFocused, setReadingFocused] = useState(false);
   // A refetch can change the live stint mid-capture; the form starts from, and overrides compare against, the opened one.
   const [opened, setOpened] = useState(stint);

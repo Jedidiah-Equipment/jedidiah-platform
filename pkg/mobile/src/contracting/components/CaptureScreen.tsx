@@ -1,5 +1,12 @@
 import { formatHours } from '@pkg/domain';
-import { captureRefusals, deriveCaptureForm } from '@pkg/domain/contracting';
+import {
+  capturedAtFor,
+  captureRefusals,
+  deriveCaptureForm,
+  isBackdated,
+  type ReadAtChoice,
+  readAtAfterPhoto,
+} from '@pkg/domain/contracting';
 import { ReadingComment, type ReadingErrorCode, type ReadingRole } from '@pkg/schema/contracting';
 import { useQueryClient } from '@tanstack/react-query';
 import { type Href, router, useLocalSearchParams, useNavigation } from 'expo-router';
@@ -18,7 +25,6 @@ import { ReadAtField } from '@/contracting/components/ReadAtField';
 import { type PlannedStint, StintOverrideCard, useStintOverrides } from '@/contracting/components/StintOverrideCard';
 import { recordReadingCaptured } from '@/contracting/observability';
 import { type AttemptIdentity, captureAttempt, captureAttemptPayload } from '@/contracting/readings/capture-attempt';
-import { capturedAtFor, isBackdated, type ReadAtChoice, readAtAfterPhoto } from '@/contracting/readings/read-at';
 import { CAPTURE_FAILED, captureReading } from '@/contracting/readings/reading-upload';
 import { useFleet, useLatestReading } from '@/contracting/readings/use-fleet';
 import { useSessionPermission } from '@/lib/auth-session';

@@ -243,6 +243,24 @@ test("crosses into the window at the Machine's own Service Alert Hours, not the 
   }
 });
 
+test('management captures a backdated spot reading on the Machine alone, as the web Machine page posts it', async ({
+  context,
+}) => {
+  const { app, machineId } = context;
+  try {
+    (state.session as ReturnType<typeof mockSession>).user.contractingRole = 'contracting-manager';
+    const response = await app.inject(upload(machineId, null, true, { capturedAt: '2026-09-07T06:30:00.000Z' }));
+    expect(response.statusCode).toBe(201);
+    expect(response.json()).toMatchObject({
+      role: 'spot',
+      value: 123.4,
+      capturedAt: '2026-09-07T06:30:00.000Z',
+    });
+  } finally {
+    await app.close();
+  }
+});
+
 test('stores a trimmed capture comment and treats an empty comment field as none', async ({ context }) => {
   const { app, machineId } = context;
   try {

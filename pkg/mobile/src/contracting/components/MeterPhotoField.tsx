@@ -1,7 +1,7 @@
+import { parseExifDateTime } from '@pkg/domain/contracting';
 import { View } from 'react-native';
 import { PhotoField } from '@/components/PhotoField';
 import { Text } from '@/components/ui/text';
-import { parseExifDateTime } from '@/contracting/readings/read-at';
 import type { PickedPhoto } from '@/lib/photo-picker';
 import type { useBusyAction } from '@/lib/use-busy-action';
 

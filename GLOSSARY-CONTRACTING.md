@@ -190,8 +190,9 @@ re-interrupted in the field. A reading may carry the Foreman's
 optional **capture comment**, shown wherever management reviews it; the capture screen shows the
 minimum value the meter can now read. A field reading plays one of three roles:
 **arrival** (machine on site) and **departure** (machine leaving) on a Machine Assignment, or
-**spot** — an ad-hoc field capture with no billing effect, existing to keep a Machine's known
-hours current for service tracking; the fourth role, **Baseline Reading**, is defined below. The
+**spot** — an ad-hoc capture with no billing effect, existing to keep a Machine's known
+hours current for service tracking, taken on the phone at the Machine or on the web Machine page from
+a photo of its meter; the fourth role, **Baseline Reading**, is defined below. The
 pre-travel opening is never captured: it is the machine's previous departure reading, so travel
 and work time are derived and no hour can vanish between Jobs. A Machine's readings never go
 backward: a capture strictly below the latest reading is refused (equal is accepted — an idle

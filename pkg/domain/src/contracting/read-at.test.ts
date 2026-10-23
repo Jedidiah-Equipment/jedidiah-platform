@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { capturedAtFor, isBackdated, parseExifDateTime, type ReadAtChoice, readAtAfterPhoto } from './read-at';
+import { capturedAtFor, isBackdated, parseExifDateTime, type ReadAtChoice, readAtAfterPhoto } from './read-at.js';
 
 const now = new Date(2026, 9, 1, 12, 0, 0);
 

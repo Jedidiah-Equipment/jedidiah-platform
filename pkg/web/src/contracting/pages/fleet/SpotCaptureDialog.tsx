@@ -1,4 +1,4 @@
-import { captureRefusals, readAtFromInput, readAtInputValue } from '@pkg/domain/contracting';
+import { captureRefusals, readAtFromInput } from '@pkg/domain/contracting';
 import { type Machine, ReadingComment, ReadingValue } from '@pkg/schema/contracting';
 import { z } from 'zod';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
@@ -73,7 +73,6 @@ export function SpotCaptureDialog({
               <field.TextField
                 label="Read At"
                 type="datetime-local"
-                max={readAtInputValue(new Date())}
                 description="When the meter was read. Leave blank to use the current time."
               />
             )}

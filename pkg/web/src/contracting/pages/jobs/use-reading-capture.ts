@@ -92,8 +92,8 @@ export function useReadingCapture(target: CaptureTarget) {
           photo,
           copy[role].failed,
         );
-        // A spot reading moves only the Machine's hours; a stint's reading also moves its Job.
-        await (stint ? Promise.all([invalidateJobs(), invalidateReadings()]) : invalidateReadings());
+        // Any capture can dispute a stint's reading, which moves that Job's warnings.
+        await Promise.all([invalidateJobs(), invalidateReadings()]);
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : copy[role].failed);
         // The ledger may have moved under the dialog: a newer latest re-judges the value and drops a stale dispute.

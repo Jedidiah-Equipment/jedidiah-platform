@@ -29,3 +29,15 @@ export type ReadAtChoice = { at: Date; by: 'hand' | 'photo' };
 /** A photo's EXIF time replaces Read At; without one a hand-set Read At stays and a photo-set one returns to now. */
 export const readAtAfterPhoto = (current: ReadAtChoice | null, takenAt: Date | null): ReadAtChoice | null =>
   takenAt ? { at: takenAt, by: 'photo' } : current?.by === 'hand' ? current : null;
+
+/** A Read At as a `datetime-local` input holds it: the browser's local wall time as 'YYYY-MM-DDTHH:mm'. */
+export const readAtInputValue = (date: Date) => {
+  const pad = (part: number) => String(part).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
+/** The Read At a `datetime-local` value names, read as local time; blank or unreadable is null. */
+export function readAtFromInput(value: string): Date | null {
+  const date = value ? new Date(value) : null;
+  return date && !Number.isNaN(date.getTime()) ? date : null;
+}

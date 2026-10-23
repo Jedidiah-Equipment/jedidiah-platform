@@ -8,7 +8,7 @@ import { emptyStringOr } from '@/components/form/utils/form-schema.js';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
 import { AssignmentEditorDialog, changesAssignment } from './AssignmentEditorDialog.js';
-import { DisputeField, ReadingCaptureCard, ReadingCaptureDetails, ReadingValueField } from './ReadingCaptureFields.js';
+import { ReadingCaptureDetails, ReadingValueCard } from './ReadingCaptureFields.js';
 import { useAssignmentOptions } from './use-assignment-options.js';
 import { ConfirmedDispute, useReadingCapture } from './use-reading-capture.js';
 
@@ -22,7 +22,6 @@ const ArrivalValues = z.object({
 
 export function ArrivalCaptureDialog({ stint, onClose }: { stint: Assignment | null; onClose: () => void }) {
   const capture = useReadingCapture({ role: 'arrival', stint });
-  const [readingFocused, setReadingFocused] = useState(false);
   // A refetch can change the live stint mid-capture; the form starts from, and overrides compare against, the opened one.
   const [opened, setOpened] = useState(stint);
   if (stint?.id !== opened?.id) setOpened(stint);
@@ -33,14 +32,14 @@ export function ArrivalCaptureDialog({ stint, onClose }: { stint: Assignment | n
     noDriverLabel: 'No driver',
     freeImplementsOnly: true,
   });
-  const { latestQuery, latest } = capture;
-  const judge = (values: z.infer<typeof ArrivalValues>) =>
-    capture.judge({
-      ...values,
-      stintOverrides: changesAssignment(opened, values)
-        ? { implementId: values.implementId || null, driverUserId: values.driverUserId || null }
-        : undefined,
-    });
+  const { latestQuery } = capture;
+  const captureValues = (values: z.infer<typeof ArrivalValues>) => ({
+    ...values,
+    stintOverrides: changesAssignment(opened, values)
+      ? { implementId: values.implementId || null, driverUserId: values.driverUserId || null }
+      : undefined,
+  });
+  const judge = (values: z.infer<typeof ArrivalValues>) => capture.judge(captureValues(values));
   const canCapture = (values: z.infer<typeof ArrivalValues>) =>
     latestQuery.isSuccess && (!changesAssignment(opened, values) || options.ready) && judge(values).request !== null;
 
@@ -51,7 +50,6 @@ export function ArrivalCaptureDialog({ stint, onClose }: { stint: Assignment | n
       onOpenChange={(open) => {
         if (!open) {
           capture.reset();
-          setReadingFocused(false);
           onClose();
         }
       }}
@@ -69,53 +67,22 @@ export function ArrivalCaptureDialog({ stint, onClose }: { stint: Assignment | n
       disableSubmitWhenInvalid
       onBeforeCreate={canCapture}
       onCreate={async (values) => {
-        const { request } = judge(values);
-        if (!request) throw new Error('This reading cannot be captured yet.');
-        await capture.submit(request);
+        await capture.submit(captureValues(values));
         return true;
       }}
       onCreated={() => {
         capture.reset();
-        setReadingFocused(false);
         onClose();
       }}
     >
       {(form) => (
         <>
           <ErrorMessage error={latestQuery.error} fallbackMessage="Unable to load the Machine's previous reading." />
-          <ReadingCaptureCard
-            previousValue={latest === undefined ? undefined : (latest?.value ?? null)}
-            loading={latestQuery.isPending}
-            warning={
-              <form.Subscribe selector={(state) => state.values}>
-                {(values) => {
-                  const verdict = judge(values);
-                  return !readingFocused && latest && verdict.below ? (
-                    <form.AppField name="confirmedDispute">
-                      {(field) => (
-                        <DisputeField
-                          checked={verdict.disputeConfirmed}
-                          id={field.name}
-                          onBlur={field.handleBlur}
-                          onCheckedChange={(checked) =>
-                            field.handleChange(checked ? { value: values.value, previousId: latest.id } : null)
-                          }
-                          previous={latest.value}
-                          value={values.value}
-                        />
-                      )}
-                    </form.AppField>
-                  ) : null;
-                }}
-              </form.Subscribe>
-            }
-          >
-            <div onFocusCapture={() => setReadingFocused(true)} onBlurCapture={() => setReadingFocused(false)}>
-              <form.AppField name="value">
-                {() => <ReadingValueField onInput={() => form.setFieldValue('confirmedDispute', null)} />}
-              </form.AppField>
-            </div>
-          </ReadingCaptureCard>
+          <ReadingValueCard
+            form={form}
+            fields={{ value: 'value', confirmedDispute: 'confirmedDispute' }}
+            capture={capture}
+          />
           <form.Subscribe
             selector={(state) => ({ implementId: state.values.implementId, driverUserId: state.values.driverUserId })}
           >

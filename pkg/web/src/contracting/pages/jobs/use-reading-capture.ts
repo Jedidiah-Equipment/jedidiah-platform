@@ -1,4 +1,4 @@
-import { type CaptureRequest, capturedAtFor, deriveCaptureForm } from '@pkg/domain/contracting';
+import { capturedAtFor, deriveCaptureForm } from '@pkg/domain/contracting';
 import { UUID } from '@pkg/schema';
 import { type Assignment, type ReadingCaptureInput, ReadingValue } from '@pkg/schema/contracting';
 import { useState } from 'react';
@@ -38,11 +38,15 @@ export type CaptureFormValues = {
  * A capture dialog's served latest reading, its meter photo and refusal, the domain's judgement of the form, and
  * the submit that posts the request that judgement built.
  */
+export type ReadingCapture = ReturnType<typeof useReadingCapture>;
+
 export function useReadingCapture(target: CaptureTarget) {
   const { role } = target;
   const { invalidateJobs, invalidateReadings } = useQueryInvalidation();
-  const stint = target.role === 'spot' ? null : target.stint;
-  const machineId = target.role === 'spot' ? target.machineId : (stint?.machineId ?? null);
+  const { stint, machineId } =
+    target.role === 'spot'
+      ? { stint: null, machineId: target.machineId }
+      : { stint: target.stint, machineId: target.stint?.machineId ?? null };
   const latestQuery = useLatestReading(machineId);
   const management = useCan('contracting_job:work-any').can;
   const [photo, setPhoto] = useState<File | null>(null);
@@ -72,8 +76,10 @@ export function useReadingCapture(target: CaptureTarget) {
       setPhoto(null);
       setError('');
     },
-    submit: async (request: CaptureRequest, readAt: Date | null = null) => {
-      if (!machineId || (target.role !== 'spot' && !stint)) throw new Error('No Machine selected.');
+    /** Judges the values once more and posts what that judgement built, read when `values.readAt` says. */
+    submit: async (values: CaptureFormValues) => {
+      const { request } = judge(values);
+      if (!machineId || !request) throw new Error('This reading cannot be captured yet.');
       setError('');
       try {
         await captureReading(
@@ -81,7 +87,7 @@ export function useReadingCapture(target: CaptureTarget) {
             ...request,
             machineId,
             ...(stint ? { assignmentId: stint.id } : {}),
-            capturedAt: capturedAtFor(readAt, new Date()),
+            capturedAt: capturedAtFor(values.readAt ?? null, new Date()),
           },
           photo,
           copy[role].failed,

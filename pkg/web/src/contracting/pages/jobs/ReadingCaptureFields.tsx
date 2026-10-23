@@ -2,12 +2,15 @@ import { formatHours } from '@pkg/domain';
 import { READING_PHOTO_POLICY } from '@pkg/domain/contracting';
 import { IconArrowRight } from '@tabler/icons-react';
 import type React from 'react';
+import { useState } from 'react';
 import { NumberField } from '@/components/form/fields/NumberField.js';
+import { withFieldGroup } from '@/components/form/index.js';
 import { Card, CardContent } from '@/components/ui/card.js';
 import { Checkbox } from '@/components/ui/checkbox.js';
 import { Field, FieldContent, FieldDescription, FieldLabel } from '@/components/ui/field.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { PhotoPicker } from '@/contracting/components/PhotoPicker.js';
+import type { ConfirmedDispute, ReadingCapture } from './use-reading-capture.js';
 
 export function ReadingCaptureCard({
   previousValue,
@@ -110,6 +113,56 @@ export function ReadingValueField({
     />
   );
 }
+
+/**
+ * The previous reading beside the value being captured, with the dispute offered once a value below the previous one
+ * loses focus. Every capture dialog mounts it over its `value` and `confirmedDispute` fields; typing clears a dispute,
+ * which belongs to the value it was confirmed for.
+ */
+export const ReadingValueCard = withFieldGroup({
+  defaultValues: { value: Number.NaN, confirmedDispute: null as ConfirmedDispute },
+  props: {} as { capture: Pick<ReadingCapture, 'judge' | 'latest' | 'latestQuery'> },
+  render: function ReadingValueCardGroup({ group, capture }) {
+    const [readingFocused, setReadingFocused] = useState(false);
+    const { latest, latestQuery } = capture;
+    return (
+      <ReadingCaptureCard
+        previousValue={latest === undefined ? undefined : (latest?.value ?? null)}
+        loading={latestQuery.isPending}
+        warning={
+          <group.Subscribe selector={(state) => state.values}>
+            {(values) => {
+              // Below and the dispute read only the value and the latest; the comment plays no part.
+              const verdict = capture.judge({ ...values, comment: '' });
+              return !readingFocused && latest && verdict.below ? (
+                <group.AppField name="confirmedDispute">
+                  {(field) => (
+                    <DisputeField
+                      checked={verdict.disputeConfirmed}
+                      id={field.name}
+                      onBlur={field.handleBlur}
+                      onCheckedChange={(checked) =>
+                        field.handleChange(checked ? { value: values.value, previousId: latest.id } : null)
+                      }
+                      previous={latest.value}
+                      value={values.value}
+                    />
+                  )}
+                </group.AppField>
+              ) : null;
+            }}
+          </group.Subscribe>
+        }
+      >
+        <div onFocusCapture={() => setReadingFocused(true)} onBlurCapture={() => setReadingFocused(false)}>
+          <group.AppField name="value">
+            {() => <ReadingValueField onInput={() => group.setFieldValue('confirmedDispute', null)} />}
+          </group.AppField>
+        </div>
+      </ReadingCaptureCard>
+    );
+  },
+});
 
 export function ReadingCaptureDetails({
   id,

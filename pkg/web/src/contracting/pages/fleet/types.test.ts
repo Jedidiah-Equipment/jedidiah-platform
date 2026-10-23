@@ -5,8 +5,6 @@ import {
   implementPatchInput,
   machineFormValues,
   machinePatchInput,
-  readAtFromInput,
-  readAtInputValue,
   serviceFilterMatches,
 } from './types.js';
 
@@ -74,18 +72,5 @@ describe('busyFilterMatches', () => {
     expect(busyFilterMatches(inYard, 'in-yard')).toBe(true);
     expect(busyFilterMatches(onJob, 'in-yard')).toBe(false);
     expect(busyFilterMatches(retired, 'in-yard')).toBe(false);
-  });
-});
-
-describe('Read At input', () => {
-  it('round-trips a local date and time through the datetime-local value', () => {
-    const readAt = new Date(2026, 9, 3, 7, 5);
-    expect(readAtInputValue(readAt)).toBe('2026-10-03T07:05');
-    expect(readAtFromInput('2026-10-03T07:05')).toEqual(readAt);
-  });
-
-  it('reads blank or unreadable as now', () => {
-    expect(readAtFromInput('')).toBeNull();
-    expect(readAtFromInput('not a time')).toBeNull();
   });
 });

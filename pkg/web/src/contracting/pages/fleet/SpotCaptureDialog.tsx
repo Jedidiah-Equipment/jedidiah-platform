@@ -1,18 +1,11 @@
-import { captureRefusals } from '@pkg/domain/contracting';
+import { captureRefusals, readAtFromInput, readAtInputValue } from '@pkg/domain/contracting';
 import { type Machine, ReadingComment, ReadingValue } from '@pkg/schema/contracting';
-import { useState } from 'react';
 import { z } from 'zod';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
-import {
-  DisputeField,
-  ReadingCaptureCard,
-  ReadingCaptureDetails,
-  ReadingValueField,
-} from '@/contracting/pages/jobs/ReadingCaptureFields.js';
+import { ReadingCaptureDetails, ReadingValueCard } from '@/contracting/pages/jobs/ReadingCaptureFields.js';
 import { ConfirmedDispute, useReadingCapture } from '@/contracting/pages/jobs/use-reading-capture.js';
-import { readAtFromInput, readAtInputValue } from './types.js';
 
 const SpotValues = z.object({
   value: ReadingValue,
@@ -36,13 +29,12 @@ export function SpotCaptureDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const capture = useReadingCapture({ role: 'spot', machineId: open ? machine.id : null });
-  const [readingFocused, setReadingFocused] = useState(false);
-  const { latestQuery, latest } = capture;
-  const judge = (values: SpotValues) => capture.judge({ ...values, readAt: readAtFromInput(values.readAt) });
+  const { latestQuery } = capture;
+  const captureValues = (values: SpotValues) => ({ ...values, readAt: readAtFromInput(values.readAt) });
+  const judge = (values: SpotValues) => capture.judge(captureValues(values));
   const canCapture = (values: SpotValues) => latestQuery.isSuccess && judge(values).request !== null;
   const close = () => {
     capture.reset();
-    setReadingFocused(false);
     onOpenChange(false);
   };
 
@@ -63,9 +55,7 @@ export function SpotCaptureDialog({
       disableSubmitWhenInvalid
       onBeforeCreate={canCapture}
       onCreate={async (values) => {
-        const { request } = judge(values);
-        if (!request) throw new Error('This reading cannot be captured yet.');
-        await capture.submit(request, readAtFromInput(values.readAt));
+        await capture.submit(captureValues(values));
         return true;
       }}
       onCreated={close}
@@ -73,39 +63,11 @@ export function SpotCaptureDialog({
       {(form) => (
         <>
           <ErrorMessage error={latestQuery.error} fallbackMessage="Unable to load the Machine's previous reading." />
-          <ReadingCaptureCard
-            previousValue={latest === undefined ? undefined : (latest?.value ?? null)}
-            loading={latestQuery.isPending}
-            warning={
-              <form.Subscribe selector={(state) => state.values}>
-                {(values) => {
-                  const verdict = judge(values);
-                  return !readingFocused && latest && verdict.below ? (
-                    <form.AppField name="confirmedDispute">
-                      {(field) => (
-                        <DisputeField
-                          checked={verdict.disputeConfirmed}
-                          id={field.name}
-                          onBlur={field.handleBlur}
-                          onCheckedChange={(checked) =>
-                            field.handleChange(checked ? { value: values.value, previousId: latest.id } : null)
-                          }
-                          previous={latest.value}
-                          value={values.value}
-                        />
-                      )}
-                    </form.AppField>
-                  ) : null;
-                }}
-              </form.Subscribe>
-            }
-          >
-            <div onFocusCapture={() => setReadingFocused(true)} onBlurCapture={() => setReadingFocused(false)}>
-              <form.AppField name="value">
-                {() => <ReadingValueField onInput={() => form.setFieldValue('confirmedDispute', null)} />}
-              </form.AppField>
-            </div>
-          </ReadingCaptureCard>
+          <ReadingValueCard
+            form={form}
+            fields={{ value: 'value', confirmedDispute: 'confirmedDispute' }}
+            capture={capture}
+          />
           <form.AppField name="readAt">
             {(field) => (
               <field.TextField

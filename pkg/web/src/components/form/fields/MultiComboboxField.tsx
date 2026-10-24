@@ -47,7 +47,7 @@ export function MultiComboboxField({
       <Combobox
         disabled={disabled}
         items={options.map((option) => option.value)}
-        itemToStringValue={(value) => optionLabels.get(value) ?? value}
+        itemToStringLabel={(value) => optionLabels.get(value) ?? value}
         multiple
         onValueChange={(nextValues) => field.handleChange(nextValues)}
         value={selectedValues}

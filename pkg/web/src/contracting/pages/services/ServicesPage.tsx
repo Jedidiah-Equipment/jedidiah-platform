@@ -120,7 +120,13 @@ export function ServicesPage() {
           loadedCount: records.length,
           onLoadMore: () => void recordsQuery.fetchNextPage(),
         }}
-        onRowClick={(row) => void navigate({ to: '/contracting/fleet/$id/edit', params: { id: row.machine.id } })}
+        onRowClick={(row) =>
+          void navigate({
+            to: '/contracting/fleet/$id/edit',
+            params: { id: row.machine.id },
+            search: { tab: 'service' },
+          })
+        }
         table={table}
         total={total}
         totalLabel={(value) => countPhrase(value, 'Service Record', 'Service Records')}

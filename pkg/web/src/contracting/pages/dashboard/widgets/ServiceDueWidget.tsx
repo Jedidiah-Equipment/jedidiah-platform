@@ -37,7 +37,12 @@ function ServiceDueRow({ machine }: { machine: Machine }) {
           colour={machine.categoryColour}
           size={16}
           name={
-            <Link className={dashboardRowLinkClassName} to="/contracting/fleet/$id/edit" params={{ id: machine.id }}>
+            <Link
+              className={dashboardRowLinkClassName}
+              to="/contracting/fleet/$id/edit"
+              params={{ id: machine.id }}
+              search={{ tab: 'service' }}
+            >
               <span className="font-mono font-semibold">{machine.code}</span> {machine.categoryName}
             </Link>
           }

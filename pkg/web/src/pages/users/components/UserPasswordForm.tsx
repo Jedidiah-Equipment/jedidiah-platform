@@ -1,5 +1,6 @@
 import { UserPassword } from '@pkg/schema';
 import { IconLoader2 } from '@tabler/icons-react';
+import { revalidateLogic } from '@tanstack/react-form';
 import type React from 'react';
 import { z } from 'zod';
 
@@ -22,8 +23,9 @@ export const UserPasswordForm: React.FC<UserPasswordFormProps> = ({ isPending, o
     defaultValues: {
       newPassword: '',
     } satisfies UserPasswordFormValues,
+    validationLogic: revalidateLogic(),
     validators: {
-      onSubmit: UserPasswordFormValues,
+      onDynamic: UserPasswordFormValues,
     },
     onSubmit: async ({ value }) => {
       await onSubmit(value);

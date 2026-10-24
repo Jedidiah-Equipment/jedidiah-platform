@@ -1,6 +1,7 @@
 import { getFeedbackVisibilityNotice } from '@pkg/domain/equipment';
 import { type FeedbackPurchaseOrder, FeedbackText } from '@pkg/schema/equipment';
 import { IconShoppingCart } from '@tabler/icons-react-native';
+import { revalidateLogic } from '@tanstack/react-form';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { z } from 'zod';
@@ -59,8 +60,9 @@ function PurchaseOrderFeedbackModal({
 
   const form = useAppForm({
     defaultValues: { purchaseOrderId: purchaseOrders.length === 1 ? (purchaseOrders[0]?.id ?? '') : '', text: '' },
+    validationLogic: revalidateLogic(),
     validators: {
-      onSubmit: z.object({
+      onDynamic: z.object({
         purchaseOrderId: z
           .string()
           .refine((id) => purchaseOrders.some((order) => order.id === id), 'Select a Purchase Order'),

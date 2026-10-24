@@ -19,6 +19,13 @@ afterEach(async () => {
   document.body.replaceChildren();
 });
 
+function clear(label: string) {
+  const input = document.querySelector<HTMLInputElement>(`input[aria-label="${label}"]`);
+  if (!input) throw new Error(`${label} input missing`);
+  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(input, '');
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
 async function mount({
   disableSubmitWhenInvalid = false,
   name = '',
@@ -99,6 +106,63 @@ describe('CreateEntityDialog', () => {
     await act(async () => render(true, 'second'));
 
     expect(readName?.()).toBe('second');
+  });
+
+  it('clears a cross-field error once the other field fixes it, and then saves', async () => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    roots.push(root);
+    const onCreate = vi.fn(async () => undefined);
+
+    await act(async () =>
+      root.render(
+        <CreateEntityDialog
+          defaultValues={{ completedOn: '2026-10-02', startedOn: '2026-10-01' }}
+          onCreate={onCreate}
+          onCreated={() => undefined}
+          onOpenChange={() => undefined}
+          open
+          title="Edit times"
+          validator={z
+            .object({ completedOn: z.string(), startedOn: z.string() })
+            .refine((value) => value.startedOn !== '' || value.completedOn === '', {
+              message: 'A done date needs a start date.',
+              path: ['startedOn'],
+            })}
+        >
+          {(form) =>
+            (['startedOn', 'completedOn'] as const).map((name) => (
+              <form.Field key={name} name={name}>
+                {(field) => (
+                  <label>
+                    <input
+                      aria-label={name}
+                      onChange={(event) => field.handleChange(event.target.value)}
+                      value={field.state.value}
+                    />
+                    {field.state.meta.errors.map((error) => error?.message).join(' ')}
+                  </label>
+                )}
+              </form.Field>
+            ))
+          }
+        </CreateEntityDialog>,
+      ),
+    );
+    const submit = [...document.querySelectorAll('button')].find((button) => button.textContent === 'Save');
+    if (!submit) throw new Error('Submit button missing');
+
+    await act(async () => clear('startedOn'));
+    await act(async () => submit.click());
+    expect(onCreate).not.toHaveBeenCalled();
+    expect(document.body.textContent).toContain('A done date needs a start date.');
+
+    await act(async () => clear('completedOn'));
+    expect(document.body.textContent).not.toContain('A done date needs a start date.');
+
+    await act(async () => submit.click());
+    expect(onCreate).toHaveBeenCalledWith({ completedOn: '', startedOn: '' });
   });
 
   it('retains a diagnostic trace when creation rejects', async () => {

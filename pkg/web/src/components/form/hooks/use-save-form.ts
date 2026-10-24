@@ -1,10 +1,11 @@
+import { revalidateLogic } from '@tanstack/react-form';
 import type React from 'react';
 import type { z } from 'zod';
 import { useAppForm } from './use-app-form.js';
 
 type UseSaveFormOptions<TValues extends Record<string, unknown>, TInput, TSaved> = {
   defaultValues: TValues;
-  /** The form-value schema, run on submit only, so a half-typed value is never refused mid-keystroke. */
+  /** The form-value schema: a half-typed value is never refused before the first Save, then each change rechecks. */
   schema: z.ZodType<TValues, TValues>;
   save: (input: TInput) => Promise<TSaved>;
   /** The request for validated form values. */
@@ -28,7 +29,8 @@ export function useSaveForm<TValues extends Record<string, unknown>, TInput, TSa
 }: UseSaveFormOptions<TValues, TInput, TSaved>) {
   const form = useAppForm({
     defaultValues,
-    validators: { onSubmit: schema },
+    validationLogic: revalidateLogic(),
+    validators: { onDynamic: schema },
     onSubmit: async ({ value, formApi }) => {
       try {
         const saved = await save(toInput(value));

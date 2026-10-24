@@ -1,4 +1,5 @@
 import { type Business, UserAccount, type UserAccount as UserAccountType } from '@pkg/schema';
+import { revalidateLogic } from '@tanstack/react-form';
 import type React from 'react';
 import type { z } from 'zod';
 
@@ -68,8 +69,9 @@ export const UserEditForm: React.FC<UserEditFormProps> = ({
       equipmentRole: initialUser.equipmentRole,
       thumbnailDataUrl: initialUser.thumbnailDataUrl,
     } satisfies UserEditFormValues,
+    validationLogic: revalidateLogic(),
     validators: {
-      onSubmit: UserEditFormValues,
+      onDynamic: UserEditFormValues,
     },
     onSubmit: async ({ value }) => {
       await onSubmit(value);

@@ -2,6 +2,7 @@ import { formatNumber } from '@pkg/domain';
 import { requiredSelection, UUID } from '@pkg/schema';
 import { type Assignment, Quantity } from '@pkg/schema/contracting';
 import { IconTrash } from '@tabler/icons-react';
+import { revalidateLogic } from '@tanstack/react-form';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useLayoutEffect } from 'react';
 import { z } from 'zod';
@@ -43,7 +44,8 @@ export function AddMeasureDialog({
   useResetOnOpen(remove, open);
   const form = useAppForm({
     defaultValues: { measureTypeId: '', quantity: 1 },
-    validators: { onSubmit: MeasureValues },
+    validationLogic: revalidateLogic(),
+    validators: { onDynamic: MeasureValues },
     onSubmit: async ({ value }) => {
       try {
         const input = MeasureValues.parse(value);

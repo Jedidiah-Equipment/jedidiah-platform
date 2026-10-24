@@ -157,6 +157,57 @@ describe('Contracting Job Actions', () => {
   });
 });
 
+// A form-level `validators` object that checks on submit alone keeps a refused submit's cross-field error on the
+// field it named, so fixing the other field never clears it and every later submit is ignored.
+function stuckSubmitValidation(source: string): string[] {
+  const problems: string[] = [];
+  for (const match of source.matchAll(/validators:\s*\{/g)) {
+    let depth = 1;
+    let end = match.index + match[0].length;
+    while (depth > 0 && end < source.length) {
+      if (source[end] === '{') depth += 1;
+      if (source[end] === '}') depth -= 1;
+      end += 1;
+    }
+    const body = source.slice(match.index + match[0].length, end - 1);
+    if (/\bonSubmit:/.test(body) && !/\bonChange:/.test(body)) problems.push('submit-only validators');
+  }
+  if (/\bonDynamic:/.test(source) && !/revalidateLogic\(/.test(source))
+    problems.push('onDynamic without revalidateLogic');
+
+  return problems;
+}
+
+describe('submitted forms', () => {
+  it.each([
+    ['validators: { onSubmit: Schema }', true],
+    ['validators: {\n  // why\n  onSubmit: Schema,\n}', true],
+    ['validators: { onMount: A, onSubmit: Schema }', true],
+    ['validators: { onDynamic: Schema }', true],
+    ['validationLogic: revalidateLogic(),\nvalidators: { onDynamic: Schema }', false],
+    ['validators: { onBlur: Schema, onChange: Schema, onSubmit: Schema }', false],
+  ])('judges %j stuck: %s', (source, stuck) => {
+    expect(stuckSubmitValidation(source).length > 0).toBe(stuck);
+  });
+
+  it('recheck on change after a refused submit, so a cross-field error cannot outlive its fix', () => {
+    const files = spawnSync('git', ['ls-files', '--', 'pkg/web/src/**/*.ts*', 'pkg/mobile/src/**/*.ts*'], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+    })
+      .stdout.split('\n')
+      .filter((file) => file.length > 0 && !/\.test\.tsx?$/.test(file));
+    const offenders = files.flatMap((file) =>
+      stuckSubmitValidation(readFileSync(join(repoRoot, file), 'utf8')).map((problem) => `${file}: ${problem}`),
+    );
+
+    expect(
+      offenders,
+      'Validate a submitted form with validationLogic: revalidateLogic() and validators: { onDynamic }',
+    ).toEqual([]);
+  });
+});
+
 describe('light-mode primary', () => {
   it('is defined once, in @pkg/domain, and every app surface reads it from there', () => {
     // Today's value, the old #f8d300 primary, and the hand-darkened text accents it replaced, as hex

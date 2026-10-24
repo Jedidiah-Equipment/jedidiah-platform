@@ -1,4 +1,5 @@
 import { IconCircleCheck, IconLoader2, IconMail } from '@tabler/icons-react';
+import { revalidateLogic } from '@tanstack/react-form';
 import { Link } from '@tanstack/react-router';
 import type React from 'react';
 import { useState } from 'react';
@@ -23,7 +24,8 @@ export const ForgotPasswordPage: React.FC = () => {
 
   const form = useAppForm({
     defaultValues: { email: '' } satisfies ForgotPasswordForm,
-    validators: { onSubmit: ForgotPasswordForm },
+    validationLogic: revalidateLogic(),
+    validators: { onDynamic: ForgotPasswordForm },
     onSubmit: async ({ value }) => {
       try {
         await authClient.requestPasswordReset({

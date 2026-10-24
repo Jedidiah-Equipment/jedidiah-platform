@@ -1,4 +1,5 @@
 import { type Business, UserAccount, UserPassword } from '@pkg/schema';
+import { revalidateLogic } from '@tanstack/react-form';
 import type React from 'react';
 import type { z } from 'zod';
 
@@ -49,8 +50,9 @@ export const UserCreateForm: React.FC<UserCreateFormProps> = ({
   };
   const form = useAppForm({
     defaultValues,
+    validationLogic: revalidateLogic(),
     validators: {
-      onSubmit: UserCreateFormValues,
+      onDynamic: UserCreateFormValues,
     },
     onSubmit: async ({ value }) => {
       await onSubmit(value);

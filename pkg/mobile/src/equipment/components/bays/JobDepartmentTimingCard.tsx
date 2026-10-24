@@ -13,6 +13,7 @@ import {
   JobDepartmentTimingCorrectionValues,
 } from '@pkg/schema/equipment';
 import { IconCircleCheck, IconPencil, IconPlayerPlay } from '@tabler/icons-react-native';
+import { revalidateLogic } from '@tanstack/react-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { Alert, View } from 'react-native';
@@ -256,7 +257,8 @@ function DoneModal({
 
   const form = useAppForm({
     defaultValues: { crewUserIds: timing.suggestedCrew.map((member) => member.userId) } satisfies DoneFormValues,
-    validators: { onSubmit: DoneFormValues },
+    validationLogic: revalidateLogic(),
+    validators: { onDynamic: DoneFormValues },
     onSubmit: async ({ value }) => {
       setSubmitError(null);
       try {
@@ -330,7 +332,8 @@ function CorrectionModal({
       crewUserIds: timing.crew.map((member) => member.userId),
       startedOn: timing.startedAt ? toPlantDateOnly(new Date(timing.startedAt)) : '',
     } satisfies CorrectionFormValues,
-    validators: { onSubmit: CorrectionFormValues },
+    validationLogic: revalidateLogic(),
+    validators: { onDynamic: CorrectionFormValues },
     onSubmit: async ({ value }) => {
       setSubmitError(null);
       try {

@@ -1,5 +1,6 @@
 import { UserPassword } from '@pkg/schema';
 import { IconAlertCircle, IconKey, IconLoader2 } from '@tabler/icons-react';
+import { revalidateLogic } from '@tanstack/react-form';
 import { Link, useNavigate } from '@tanstack/react-router';
 import type React from 'react';
 import { useState } from 'react';
@@ -33,7 +34,8 @@ export const ResetPasswordPage: React.FC = () => {
 
   const form = useAppForm({
     defaultValues: { confirmNewPassword: '', newPassword: '' } satisfies ResetPasswordForm,
-    validators: { onSubmit: ResetPasswordForm },
+    validationLogic: revalidateLogic(),
+    validators: { onDynamic: ResetPasswordForm },
     onSubmit: async ({ value }) => {
       setError(null);
 

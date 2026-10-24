@@ -1,7 +1,7 @@
 import { defaultQuoteSalespersonId, quoteOfferingTypeLabels, quoteStatusLabels } from '@pkg/domain/equipment';
 import { QuoteOfferingType } from '@pkg/schema/equipment';
 import { IconX } from '@tabler/icons-react-native';
-import { useStore } from '@tanstack/react-form';
+import { revalidateLogic, useStore } from '@tanstack/react-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -45,7 +45,8 @@ export function NewQuoteModal({ onClose }: { onClose: () => void }) {
 
   const form = useAppForm({
     defaultValues: QUOTE_CREATE_DEFAULT_VALUES,
-    validators: { onSubmit: QuoteCreateFormValues },
+    validationLogic: revalidateLogic(),
+    validators: { onDynamic: QuoteCreateFormValues },
     onSubmit: async ({ value }) => {
       const created = await (async () => {
         const input = toQuoteCreateInput(value);

@@ -98,7 +98,7 @@ async function mount() {
     return found;
   };
   const labelled = (label: string) => container.querySelector(`[aria-label="${label}"]`);
-  return { container, rows, button, labelled, tableInputs, opened, root };
+  return { container, rows, button, labelled, tableInputs, opened, root, router };
 }
 
 test('pins the Machines Due for Service above every Service Record, painted, booking that Machine in from its row', async () => {
@@ -139,4 +139,18 @@ test('a status quick filter narrows the Service Records and never the pinned Mac
     await vi.waitFor(() => expect(tableInputs.at(-1)?.statuses).toEqual(['closed']));
   });
   expect(rows()[0]?.textContent).toContain('KOL220-2');
+});
+
+test('opens a Service Record row on its Machine Service tab', async () => {
+  const { rows, router } = await mount();
+
+  await act(async () => rows()[1]?.click());
+  await act(async () => {
+    await vi.waitFor(() =>
+      expect(router.state.location).toMatchObject({
+        pathname: `/contracting/fleet/${record.machineId}/edit`,
+        search: { tab: 'service' },
+      }),
+    );
+  });
 });

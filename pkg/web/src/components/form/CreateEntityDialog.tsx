@@ -1,4 +1,5 @@
 import { IconLoader2 } from '@tabler/icons-react';
+import { revalidateLogic } from '@tanstack/react-form';
 import type React from 'react';
 import { useLayoutEffect, useRef } from 'react';
 import type { z } from 'zod';
@@ -48,9 +49,9 @@ type CreateEntityFormApi<TValues extends Record<string, unknown>> = ReturnType<
     undefined,
     undefined,
     undefined,
+    undefined,
+    undefined,
     z.ZodType<TValues, TValues>,
-    undefined,
-    undefined,
     undefined,
     undefined,
     unknown
@@ -75,8 +76,9 @@ export function CreateEntityDialog<TValues extends Record<string, unknown>, TRes
 }: CreateEntityDialogProps<TValues, TResult>) {
   const form: CreateEntityFormApi<TValues> = useAppForm({
     defaultValues,
+    validationLogic: revalidateLogic(),
     validators: {
-      onSubmit: validator,
+      onDynamic: validator,
     },
     onSubmit: async ({ value }) => {
       if (onBeforeCreate && !onBeforeCreate(value as TValues)) return;

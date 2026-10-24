@@ -1,4 +1,5 @@
 import { IconAlertCircle, IconLoader2, IconLogin } from '@tabler/icons-react';
+import { revalidateLogic } from '@tanstack/react-form';
 import { Link, useNavigate } from '@tanstack/react-router';
 import type React from 'react';
 import { useState } from 'react';
@@ -22,8 +23,9 @@ export const LoginPage: React.FC = () => {
       email: '',
       password: '',
     } satisfies LoginForm,
+    validationLogic: revalidateLogic(),
     validators: {
-      onSubmit: LoginForm,
+      onDynamic: LoginForm,
     },
     onSubmit: async ({ value }) => {
       setError(null);

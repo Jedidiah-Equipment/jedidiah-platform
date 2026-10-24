@@ -157,6 +157,25 @@ describe('Contracting Job Actions', () => {
   });
 });
 
+describe('submitted forms', () => {
+  it('recheck on change after a refused submit, so a cross-field error cannot outlive its fix', () => {
+    const files = spawnSync('git', ['ls-files', '--', 'pkg/web/src/**/*.ts*', 'pkg/mobile/src/**/*.ts*'], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+    })
+      .stdout.split('\n')
+      .filter((file) => file.length > 0 && !/\.test\.tsx?$/.test(file));
+    const offenders = files.filter((file) =>
+      /validators:\s*\{\s*onSubmit:/.test(readFileSync(join(repoRoot, file), 'utf8')),
+    );
+
+    expect(
+      offenders,
+      'Validate a submitted form with validationLogic: revalidateLogic() and validators: { onDynamic }',
+    ).toEqual([]);
+  });
+});
+
 describe('light-mode primary', () => {
   it('is defined once, in @pkg/domain, and every app surface reads it from there', () => {
     // Today's value, the old #f8d300 primary, and the hand-darkened text accents it replaced, as hex

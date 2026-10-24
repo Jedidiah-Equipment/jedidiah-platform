@@ -2,7 +2,7 @@ import { toSentenceCase } from '@pkg/domain';
 import { departmentLabels, getFeedbackVisibilityNotice } from '@pkg/domain/equipment';
 import { DEPARTMENTS, type FeedbackKind } from '@pkg/schema/equipment';
 import { IconEye, IconLock, IconMessagePlus } from '@tabler/icons-react-native';
-import { useStore } from '@tanstack/react-form';
+import { revalidateLogic, useStore } from '@tanstack/react-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { View } from 'react-native';
@@ -56,7 +56,8 @@ function FeedbackModal({ jobCode, jobId, onClose }: { jobCode: string; jobId: st
 
   const form = useAppForm({
     defaultValues: FEEDBACK_DEFAULT_VALUES,
-    validators: { onSubmit: FeedbackFormValues },
+    validationLogic: revalidateLogic(),
+    validators: { onDynamic: FeedbackFormValues },
     onSubmit: async ({ value }) => {
       setSubmitError(null);
       // The box stays editable while the save is in flight, so what was saved is taken now.

@@ -1,5 +1,6 @@
 import { hasPermission } from '@pkg/domain';
 import { IconLoader2, IconPencil, IconPlus } from '@tabler/icons-react';
+import { revalidateLogic } from '@tanstack/react-form';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
@@ -169,7 +170,8 @@ const CreateProductRangeForm: React.FC<CreateProductRangeFormProps> = ({ onClose
 
   const form = useAppForm({
     defaultValues: { name: '', description: '' } satisfies ProductRangeFormValues,
-    validators: { onSubmit: ProductRangeFormValues },
+    validationLogic: revalidateLogic(),
+    validators: { onDynamic: ProductRangeFormValues },
     onSubmit: async ({ value }) => {
       const created = await createMutation.mutateAsync(toProductRangeCreateInput(value));
       await invalidateProductRanges();

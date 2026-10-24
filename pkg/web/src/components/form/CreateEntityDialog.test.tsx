@@ -101,6 +101,50 @@ describe('CreateEntityDialog', () => {
     expect(readName?.()).toBe('second');
   });
 
+  it('saves once the other field fixes a cross-field error a refused save left behind', async () => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    roots.push(root);
+    const onCreate = vi.fn(async () => undefined);
+    let setField: ((name: 'startedOn' | 'completedOn', value: string) => void) | undefined;
+
+    await act(async () =>
+      root.render(
+        <CreateEntityDialog
+          defaultValues={{ completedOn: '2026-10-02', startedOn: '2026-10-01' }}
+          onCreate={onCreate}
+          onCreated={() => undefined}
+          onOpenChange={() => undefined}
+          open
+          title="Edit times"
+          validator={z
+            .object({ completedOn: z.string(), startedOn: z.string() })
+            .refine((value) => value.startedOn !== '' || value.completedOn === '', {
+              message: 'A done date needs a start date.',
+              path: ['startedOn'],
+            })}
+        >
+          {(form) => {
+            setField = (name, value) => form.setFieldValue(name, value);
+            return null;
+          }}
+        </CreateEntityDialog>,
+      ),
+    );
+    const submit = [...document.querySelectorAll('button')].find((button) => button.textContent === 'Save');
+    if (!submit) throw new Error('Submit button missing');
+
+    await act(async () => setField?.('startedOn', ''));
+    await act(async () => submit.click());
+    expect(onCreate).not.toHaveBeenCalled();
+
+    await act(async () => setField?.('completedOn', ''));
+    await act(async () => submit.click());
+
+    expect(onCreate).toHaveBeenCalledWith({ completedOn: '', startedOn: '' });
+  });
+
   it('retains a diagnostic trace when creation rejects', async () => {
     const error = new Error('unexpected');
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);

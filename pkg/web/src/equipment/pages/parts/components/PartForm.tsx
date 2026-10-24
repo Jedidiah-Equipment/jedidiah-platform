@@ -7,6 +7,7 @@ import {
   unitClassFor,
 } from '@pkg/schema/equipment';
 import { IconLoader2 } from '@tabler/icons-react';
+import { revalidateLogic } from '@tanstack/react-form';
 import type React from 'react';
 
 import { useAppForm } from '@/components/form/index.js';
@@ -39,8 +40,9 @@ export const PartForm: React.FC<PartFormProps> = ({
 
   const form = useAppForm({
     defaultValues: toPartFormValues({ fixedSupplierId: fixedSupplier?.id, initialPart }),
+    validationLogic: revalidateLogic(),
     validators: {
-      onSubmit: PartFormValues,
+      onDynamic: PartFormValues,
     },
     onSubmit: async ({ value }) => {
       await onSubmit(value);

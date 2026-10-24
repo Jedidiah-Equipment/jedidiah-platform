@@ -13,10 +13,11 @@ vi.mock('@tanstack/react-query', async (original) => ({
   useQuery: () => ({ data: [machine], error: null }),
 }));
 
-it('lists the Machines Due for Service and opens the Services page from View all', async () => {
+it('lists the Machines Due for Service on their Service tab and opens the Services page from View all', async () => {
   const html = await renderWithRouter(<ServiceDueWidget />);
 
   expect(html).toContain('KOL220-2');
+  expect(html).toContain(`href="/contracting/fleet/${machine.id}/edit?tab=service"`);
   expect(html).toContain('Overdue by 12.5 h');
   expect(html).toMatch(/href="\/contracting\/services"[^>]*>View all/);
 });

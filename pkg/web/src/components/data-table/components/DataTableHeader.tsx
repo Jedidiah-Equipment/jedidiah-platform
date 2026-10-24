@@ -219,7 +219,7 @@ function DataTableMultiSelectFilter<TData extends RowData>({
       <div className="min-w-0 flex-1">
         <Combobox
           items={options.map((option) => option.value)}
-          itemToStringValue={(value) => optionLabels.get(value) ?? value}
+          itemToStringLabel={(value) => optionLabels.get(value) ?? value}
           multiple
           onValueChange={(nextValues) => column.setFilterValue(nextValues.length > 0 ? nextValues : undefined)}
           value={selectedValues}

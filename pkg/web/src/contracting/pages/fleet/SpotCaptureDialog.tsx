@@ -1,8 +1,10 @@
+import { getPlantDateNow } from '@pkg/domain';
 import { captureRefusals, readAtFromInput } from '@pkg/domain/contracting';
 import { type Machine, ReadingComment, ReadingValue } from '@pkg/schema/contracting';
 import { z } from 'zod';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
+import { localDateTimeValue } from '@/components/form/utils/form-schema.js';
 import { MachineDialogTitle, machineDialogSubject } from '@/contracting/components/MachineDialogTitle.js';
 import { ReadingCaptureDetails, ReadingValueCard } from '@/contracting/components/readings/ReadingCaptureFields.js';
 import { ConfirmedDispute, useReadingCapture } from '@/contracting/components/readings/use-reading-capture.js';
@@ -11,7 +13,7 @@ const SpotValues = z.object({
   value: ReadingValue,
   comment: z.union([z.string().trim().length(0), ReadingComment]),
   confirmedDispute: ConfirmedDispute,
-  readAt: z.string(),
+  readAt: localDateTimeValue,
 });
 type SpotValues = z.infer<typeof SpotValues>;
 
@@ -41,7 +43,7 @@ export function SpotCaptureDialog({
       onOpenChange={(open) => {
         if (!open) onClose();
       }}
-      title={<MachineDialogTitle machine={machineDialogSubject(machine)}>Capture reading</MachineDialogTitle>}
+      title={<MachineDialogTitle machine={machineDialogSubject(machine)}>Capture hours</MachineDialogTitle>}
       contentClassName="sm:max-w-md"
       submitLabel="Capture"
       defaultValues={{ value: Number.NaN, comment: '', confirmedDispute: null, readAt: '' }}
@@ -65,9 +67,9 @@ export function SpotCaptureDialog({
           />
           <form.AppField name="readAt">
             {(field) => (
-              <field.TextField
+              <field.DateTimePickerField
                 label="Read At"
-                type="datetime-local"
+                maxValue={getPlantDateNow()}
                 description="When the meter was read. Leave blank to use the current time."
               />
             )}

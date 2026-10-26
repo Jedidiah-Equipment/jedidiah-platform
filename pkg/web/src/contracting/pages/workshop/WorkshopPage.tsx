@@ -113,7 +113,6 @@ export function WorkshopPage() {
         columnId={STATUS_COLUMN_ID}
         statuses={breakdownStatuses}
         shown={quickFilterStatuses(summary.data?.counts, tableController.columnFilters)}
-        allPicks="every"
         labels={breakdownStatusLabels}
         colours={breakdownStatusColorClassNames}
         counts={summary.data?.counts}

@@ -6,7 +6,6 @@ import {
   listServiceRecords,
   openServiceRecord,
   patchServiceRecord,
-  summarizeServiceRecords,
 } from '@pkg/core/contracting';
 import {
   Mechanic,
@@ -18,7 +17,6 @@ import {
   ServiceRecordListResult,
   ServiceRecordOpenInput,
   ServiceRecordPatchInput,
-  ServiceRecordSummary,
 } from '@pkg/schema/contracting';
 import { mapCoreErrors } from '../../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../../trpc/init.js';
@@ -29,9 +27,6 @@ export const contractingServicesRouter = router({
     .input(ServiceRecordListInput)
     .output(ServiceRecordListResult)
     .query(({ ctx, input }) => listServiceRecords({ db: ctx.db, input })),
-  summary: authorizedProcedure('contracting_service:read')
-    .output(ServiceRecordSummary)
-    .query(({ ctx }) => summarizeServiceRecords({ db: ctx.db })),
   get: authorizedProcedure('contracting_service:read')
     .input(ServiceRecordIdInput)
     .output(ServiceRecord)

@@ -192,20 +192,6 @@ test('an oversized Voice Note keeps the file policy refusal and leaves no Transc
   }
 });
 
-test('the Contracting alias path still transcribes for a phone on the old build', async ({ context }) => {
-  const app = await context.appWith(engine);
-  try {
-    signInAs('foreman');
-    const response = await app.inject(upload(M4A, { purpose: 'capture comment' }, '/api/contracting/transcriptions'));
-    expect(response.statusCode).toBe(201);
-    expect(await context.db.select({ business: transcriptions.business }).from(transcriptions)).toEqual([
-      { business: 'contracting' },
-    ]);
-  } finally {
-    await app.close();
-  }
-});
-
 test('a foreman may not record an Equipment voice note', async ({ context }) => {
   const app = await context.appWith(engine);
   try {

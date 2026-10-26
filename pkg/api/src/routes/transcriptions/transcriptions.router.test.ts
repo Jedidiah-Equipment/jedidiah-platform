@@ -109,24 +109,6 @@ test('only a holder of contracting_transcription:read reviews Transcriptions, hi
   });
 });
 
-test('the Contracting alias still hears a save from a phone on the old build', async ({ context }) => {
-  const scheduled: string[] = [];
-  const session = mockSession(null);
-  session.user.contractingRole = 'foreman';
-  const caller = context.createCaller(session, {
-    transcriptions: { hintDerivations: { schedule: (id) => scheduled.push(id) } },
-  });
-  const note = await context.heard('eng');
-
-  await caller.contractingTranscriptions.saved({
-    id: note.id,
-    text: 'The gate at Rooikraal is open.',
-    purpose: 'field note',
-  });
-
-  expect(scheduled).toEqual([note.id]);
-});
-
 test('only the person who recorded a Transcription may save it, whichever business it is in', async ({ context }) => {
   const stranger = mockSession(null);
   stranger.user.id = 'someone-else';

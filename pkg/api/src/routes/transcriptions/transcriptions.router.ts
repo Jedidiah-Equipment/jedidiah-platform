@@ -39,27 +39,21 @@ const transcriptionProcedure = <TInput extends z.ZodType<{ business: Business }>
   input: TInput,
 ) => businessPermissionProcedure(input, (business) => transcriptionPermissions[business][kind]);
 
-/**
- * The owning form reports what it kept. Only the person who recorded a Transcription may save it, and recording it
- * took that business's `use`, so any business's `use` opens the procedure and the row's owner decides.
- */
-function createSavedProcedure({ hintDerivations }: Pick<TranscriptionRouterDependencies, 'hintDerivations'>) {
-  return authorizedProcedure(Object.values(transcriptionPermissions).map((permissions) => permissions.use))
-    .input(TranscriptionSavedInput)
-    .mutation(async ({ ctx, input }) => {
-      const result = await mapCoreErrors(
-        () => recordTranscriptionSaved({ db: ctx.db, actorUserId: ctx.session.user.id, input }),
-        transcriptionErrorFamily,
-      );
-      // After the write; the response never waits on the model.
-      if (result.deriveHint) hintDerivations.schedule(result.id);
-    });
-}
-
 /** Transcribing goes through the multipart upload route; this router hears that the owning form saved, and serves the read-only review. */
 export function createTranscriptionsRouter({ hintDerivations, profiles, models }: TranscriptionRouterDependencies) {
   return router({
-    saved: createSavedProcedure({ hintDerivations }),
+    // The owning form reports what it kept. Only the person who recorded a Transcription may save it, and recording
+    // it took that business's `use`, so any business's `use` opens the procedure and the row's owner decides.
+    saved: authorizedProcedure(Object.values(transcriptionPermissions).map((permissions) => permissions.use))
+      .input(TranscriptionSavedInput)
+      .mutation(async ({ ctx, input }) => {
+        const result = await mapCoreErrors(
+          () => recordTranscriptionSaved({ db: ctx.db, actorUserId: ctx.session.user.id, input }),
+          transcriptionErrorFamily,
+        );
+        // After the write; the response never waits on the model.
+        if (result.deriveHint) hintDerivations.schedule(result.id);
+      }),
     list: transcriptionProcedure('read', TranscriptionListInput)
       .output(TranscriptionListResult)
       .query(({ ctx, input }) => listTranscriptionReviews({ db: ctx.db, input })),
@@ -77,9 +71,4 @@ export function createTranscriptionsRouter({ hintDerivations, profiles, models }
         return transcriptionPrompts({ hints, keyterms: keytermCandidates(hints, terms), models, setting });
       }),
   });
-}
-
-/** The save on its own, for a router that only hears saves: the save names no business, so any mount serves. */
-export function createSavedRouter(dependencies: Pick<TranscriptionRouterDependencies, 'hintDerivations'>) {
-  return router({ saved: createSavedProcedure(dependencies) });
 }

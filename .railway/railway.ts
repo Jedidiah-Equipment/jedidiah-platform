@@ -5,7 +5,7 @@ import { bucket, defineRailway, github, postgres, preserve, project, service, vo
 const preserveAll = (...names: string[]) => Object.fromEntries(names.map((name) => [name, preserve()]));
 const workspaceRoot = ['package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml', 'turbo.json', 'tsconfig.base.json'];
 const pkg = (...names: string[]) => names.map((name) => `pkg/${name}/**`);
-const apiPackages = pkg('ai', 'api', 'changelog', 'core', 'db', 'domain', 'pdf', 'schema');
+const apiPackages = pkg('ai', 'api', 'changelog', 'core', 'db', 'domain', 'integrations', 'pdf', 'schema');
 const documentStorage = [
   'DOCUMENT_STORAGE_ACCESS_KEY_ID',
   'DOCUMENT_STORAGE_BUCKET',

@@ -70,7 +70,8 @@
         "pkg/schema/src/**/equipment/**",
         "pkg/db/src/**/equipment/**",
         "pkg/pdf/src/**/equipment/**",
-        "pkg/ai/src/**/equipment/**"
+        "pkg/ai/src/**/equipment/**",
+        "pkg/integrations/src/**/equipment/**"
       ],
       "linter": {
         "rules": {
@@ -126,7 +127,8 @@
         "pkg/schema/src/**/contracting/**",
         "pkg/db/src/**/contracting/**",
         "pkg/pdf/src/**/contracting/**",
-        "pkg/ai/src/**/contracting/**"
+        "pkg/ai/src/**/contracting/**",
+        "pkg/integrations/src/**/contracting/**"
       ],
       "linter": {
         "rules": {
@@ -183,6 +185,7 @@
         "pkg/db/src/**",
         "pkg/pdf/src/**",
         "pkg/ai/src/**",
+        "pkg/integrations/src/**",
         "!pkg/core/src/**/equipment/**",
         "!pkg/api/src/**/equipment/**",
         "!pkg/domain/src/**/equipment/**",
@@ -190,6 +193,7 @@
         "!pkg/db/src/**/equipment/**",
         "!pkg/pdf/src/**/equipment/**",
         "!pkg/ai/src/**/equipment/**",
+        "!pkg/integrations/src/**/equipment/**",
         "!pkg/core/src/**/contracting/**",
         "!pkg/api/src/**/contracting/**",
         "!pkg/domain/src/**/contracting/**",
@@ -197,6 +201,7 @@
         "!pkg/db/src/**/contracting/**",
         "!pkg/pdf/src/**/contracting/**",
         "!pkg/ai/src/**/contracting/**",
+        "!pkg/integrations/src/**/contracting/**",
         "!pkg/api/src/app-auth.ts",
         "!pkg/api/src/server.ts",
         "!pkg/api/src/trpc/router.ts",

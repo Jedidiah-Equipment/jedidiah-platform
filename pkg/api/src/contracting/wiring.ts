@@ -7,21 +7,53 @@ import {
   verifyCapturedReading,
 } from '@pkg/core/contracting';
 import type { ContractingPushEvent } from '@pkg/domain/contracting';
+import { JohnDeereClient, JohnDeereConnectionService } from '@pkg/integrations/contracting';
 import { renderJobCardPdf } from '@pkg/pdf/contracting';
 import type { FastifyInstance } from 'fastify';
 import { BackgroundQueue } from '../background-queue.js';
 import type { BusinessWiring, BusinessWiringInput } from '../business-wiring.js';
+import type { ApiConfig } from '../env.js';
 import { log } from '../logger.js';
 import { registerBreakdownHttpRoutes } from '../routes/contracting/breakdowns/breakdowns-http.route.js';
 import type { ContractingPushScheduler } from '../routes/contracting/contracting-push-scheduler.js';
 import { registerJobCardHttpRoutes } from '../routes/contracting/jobs/job-card-http.route.js';
+import type { JohnDeereDependencies } from '../routes/contracting/john-deere/john-deere.router.js';
+import {
+  johnDeereCallbackUris,
+  registerJohnDeereHttpRoutes,
+} from '../routes/contracting/john-deere/john-deere-http.route.js';
 import { registerReadingHttpRoutes } from '../routes/contracting/readings/readings-http.route.js';
 import { serializeError } from '../trpc/errors.js';
 
 export type ContractingRouterDependencies = {
+  johnDeere: JohnDeereDependencies | null;
   push: ContractingPushScheduler;
   readMeterPhoto: ReadMeterPhoto;
 };
+
+/** The John Deere Connection, or null when this environment holds no John Deere keys. */
+function createJohnDeere(config: ApiConfig, db: BusinessWiringInput['db']): JohnDeereDependencies | null {
+  const { JOHN_DEERE_CLIENT_ID: clientId, JOHN_DEERE_CLIENT_SECRET: clientSecret, JOHN_DEERE_TOKEN_KEY } = config;
+  if (!clientId || !clientSecret || !JOHN_DEERE_TOKEN_KEY) return null;
+  const now = () => new Date();
+  const client = new JohnDeereClient({
+    platformBaseUrl: config.JOHN_DEERE_API_BASE_URL,
+    equipmentBaseUrl: config.JOHN_DEERE_EQUIPMENT_API_BASE_URL,
+    issuer: config.JOHN_DEERE_ISSUER,
+    clientId,
+    clientSecret,
+    fetch: globalThis.fetch,
+    now,
+  });
+  const connection = new JohnDeereConnectionService({
+    db,
+    client,
+    tokenKey: Buffer.from(JOHN_DEERE_TOKEN_KEY, 'base64'),
+    ...johnDeereCallbackUris(config.API_BASE_URL),
+    now,
+  });
+  return { connection };
+}
 
 export async function registerContracting(
   app: FastifyInstance,
@@ -53,9 +85,16 @@ export async function registerContracting(
   await registerReadingHttpRoutes(app, { db, storage, verifications: readingVerifications, push: contractingPush });
   await registerBreakdownHttpRoutes(app, { db, storage, push: contractingPush });
   await registerJobCardHttpRoutes(app, { db, pdfRenderer: renderJobCardPdf });
+  const johnDeere = createJohnDeere(config, db);
+  if (johnDeere)
+    await registerJohnDeereHttpRoutes(app, {
+      connection: johnDeere.connection,
+      appBaseUrl: config.APP_BASE_URL,
+      secureCookie: config.API_BASE_URL.startsWith('https:'),
+    });
 
   return {
-    routerDependencies: { push: contractingPush, readMeterPhoto },
+    routerDependencies: { johnDeere, push: contractingPush, readMeterPhoto },
     services: [readingVerifications, contractingPush],
   };
 }

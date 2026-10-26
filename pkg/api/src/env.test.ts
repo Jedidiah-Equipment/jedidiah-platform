@@ -94,3 +94,26 @@ describe('API translation model config', () => {
     ).toBe('gpt-translation');
   });
 });
+
+describe('API config John Deere keys', () => {
+  const key = Buffer.alloc(32, 7).toString('base64');
+  const keys = { JOHN_DEERE_CLIENT_ID: 'id', JOHN_DEERE_CLIENT_SECRET: 'secret', JOHN_DEERE_TOKEN_KEY: key };
+
+  it('runs without them and defaults the Deere URLs to the sandbox', () => {
+    const config = ApiConfig.parse(baseEnv);
+    expect(config.JOHN_DEERE_CLIENT_ID).toBeUndefined();
+    expect(config).toMatchObject({
+      JOHN_DEERE_API_BASE_URL: 'https://sandboxapi.deere.com/platform',
+      JOHN_DEERE_EQUIPMENT_API_BASE_URL: 'https://equipmentapi.deere.com/isg',
+      JOHN_DEERE_ISSUER: 'https://signin.johndeere.com/oauth2/aus78tnlaysMraFhC1t7',
+    });
+    expect(ApiConfig.parse({ ...baseEnv, ...keys })).toMatchObject(keys);
+  });
+
+  it('requires all three together and a 32-byte token key', () => {
+    expect(() => ApiConfig.parse({ ...baseEnv, JOHN_DEERE_CLIENT_ID: 'id' })).toThrow(/set together/);
+    expect(() =>
+      ApiConfig.parse({ ...baseEnv, ...keys, JOHN_DEERE_TOKEN_KEY: Buffer.alloc(16).toString('base64') }),
+    ).toThrow(/32 bytes/);
+  });
+});

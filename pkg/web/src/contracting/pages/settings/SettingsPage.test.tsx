@@ -13,6 +13,11 @@ import { SettingsPage } from './SettingsPage.js';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
+vi.mock('@/hooks/use-api-mutation-error-toast.js', () => ({
+  useApiMutationErrorReport: () => () => undefined,
+  useApiMutationErrorToast: () => () => undefined,
+}));
+
 test('saves only on an explicit Save, resets to the saved row, and keeps a refused draft', async () => {
   let saved: ContractingSettings = {
     gapFlagThresholdHours: 4,
@@ -56,7 +61,11 @@ test('saves only on an explicit Save, resets to the saved row, and keeps a refus
   await queryClient.fetchQuery(trpc.auth.access.queryOptions());
   await queryClient.fetchQuery(trpc.contractingSettings.get.queryOptions());
   const router = createRouter({
-    routeTree: createRootRoute({ component: SettingsPage }),
+    routeTree: createRootRoute({
+      component: () => (
+        <SettingsPage tab="general" onTabChange={() => undefined} result={undefined} onResultShown={() => undefined} />
+      ),
+    }),
     history: createMemoryHistory({ initialEntries: ['/'] }),
   });
   const scroll = vi.spyOn(window, 'scrollTo').mockImplementation(() => undefined);
@@ -148,5 +157,65 @@ test('saves only on an explicit Save, resets to the saved row, and keeps a refus
     queryClient.clear();
     container.remove();
     scroll.mockRestore();
+  }
+});
+
+test('switches between General and the John Deere tab through the URL', async () => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const requested: string[] = [];
+  const trpcClient = createTRPCClient<AppRouter>({
+    links: [
+      httpLink({
+        url: 'http://settings.test/trpc',
+        fetch: async (input) => {
+          const path = new URL(String(input)).pathname.slice('/trpc/'.length);
+          requested.push(path);
+          if (path === 'contractingJohnDeere.status')
+            return Response.json({
+              result: {
+                data: {
+                  configured: false,
+                  status: 'not-connected',
+                  organizations: [],
+                  connectedBy: null,
+                  connectedAt: null,
+                  lastPolledAt: null,
+                  lastError: null,
+                },
+              },
+            });
+          throw new Error(`Unexpected request ${path}`);
+        },
+      }),
+    ],
+  });
+  const onTabChange = vi.fn();
+  const container = document.createElement('div');
+  document.body.append(container);
+  const root = createRoot(container);
+  const render = (tab: 'general' | 'john-deere') =>
+    act(async () => {
+      root.render(
+        <QueryClientProvider client={queryClient}>
+          <TRPCProvider queryClient={queryClient} trpcClient={trpcClient}>
+            <SettingsPage tab={tab} onTabChange={onTabChange} result={undefined} onResultShown={() => undefined} />
+          </TRPCProvider>
+        </QueryClientProvider>,
+      );
+    });
+  try {
+    await render('general');
+    const trigger = [...container.querySelectorAll('[role="tab"]')].find((tab) => tab.textContent === 'John Deere');
+    await act(async () => (trigger as HTMLElement | undefined)?.click());
+    expect(onTabChange).toHaveBeenCalledWith('john-deere');
+
+    await render('john-deere');
+    await vi.waitFor(() => expect(container.textContent).toContain('Not configured'));
+    // Each tab reads only its own data.
+    expect(requested).toEqual(['contractingSettings.get', 'contractingJohnDeere.status']);
+  } finally {
+    await act(async () => root.unmount());
+    queryClient.clear();
+    container.remove();
   }
 });

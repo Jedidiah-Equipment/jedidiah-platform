@@ -16,6 +16,7 @@
     { "path": "../../pkg/changelog" },
     { "path": "../../pkg/schema" },
     { "path": "../../pkg/domain" },
+    { "path": "../../pkg/integrations" },
     { "path": "../../pkg/db" },
     { "path": "../../pkg/pdf" },
     { "path": "../../pkg/core" }

@@ -31,6 +31,7 @@ export const AUDIT_ENTITY_TYPES = {
     'contracting_breakdown',
     'contracting_service_record',
     'contracting_settings',
+    'contracting_john_deere_connection',
   ],
   equipment: [
     'customer',

@@ -51,6 +51,7 @@ export const CONTRACTING_SECTIONS: DocsSection[] = [
       { text: 'Trace a change in the Audit Log', link: '/contracting/trace-a-change-in-the-audit-log' },
       { text: 'Review Voice Note Transcriptions', link: '/contracting/review-voice-note-transcriptions' },
       { text: 'Maintain Contracting Settings', link: '/contracting/maintain-contracting-settings' },
+      { text: 'Connect John Deere', link: '/contracting/connect-john-deere' },
     ],
   },
   {

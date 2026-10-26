@@ -69,6 +69,14 @@ export const ApiConfig = z
     OPENAI_TRANSCRIPTION_MODEL: z.string().min(1).default('gpt-transcribe'),
     // Only needed once the Expo project enforces push security; a secret, so never in the startup log.
     EXPO_ACCESS_TOKEN: OptionalEnvString,
+    // The John Deere application's keys and the refresh-token key; all three or none. Without them the
+    // John Deere tab reads Not configured and nothing reaches Deere.
+    JOHN_DEERE_CLIENT_ID: OptionalEnvString,
+    JOHN_DEERE_CLIENT_SECRET: OptionalEnvString,
+    JOHN_DEERE_TOKEN_KEY: OptionalEnvString,
+    JOHN_DEERE_API_BASE_URL: defaultedEnvUrl('https://sandboxapi.deere.com/platform'),
+    JOHN_DEERE_EQUIPMENT_API_BASE_URL: defaultedEnvUrl('https://equipmentapi.deere.com/isg'),
+    JOHN_DEERE_ISSUER: defaultedEnvUrl('https://signin.johndeere.com/oauth2/aus78tnlaysMraFhC1t7'),
     PORT: z.coerce.number().int().positive().default(7002),
     LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal', 'silent']).default('info'),
     LOG_DOMAINS_DISABLED: z.string().optional(),
@@ -91,6 +99,22 @@ export const ApiConfig = z
         code: z.ZodIssueCode.custom,
         message: 'RESEND_API_KEY is required when EMAIL_PROVIDER is resend',
         path: ['RESEND_API_KEY'],
+      });
+    }
+    const johnDeereKeys = [config.JOHN_DEERE_CLIENT_ID, config.JOHN_DEERE_CLIENT_SECRET, config.JOHN_DEERE_TOKEN_KEY];
+    if (johnDeereKeys.some(Boolean) && !johnDeereKeys.every(Boolean)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          'JOHN_DEERE_CLIENT_ID, JOHN_DEERE_CLIENT_SECRET and JOHN_DEERE_TOKEN_KEY are set together or not at all',
+        path: ['JOHN_DEERE_CLIENT_ID'],
+      });
+    }
+    if (config.JOHN_DEERE_TOKEN_KEY && Buffer.from(config.JOHN_DEERE_TOKEN_KEY, 'base64').byteLength !== 32) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'JOHN_DEERE_TOKEN_KEY must be base64 for 32 bytes (openssl rand -base64 32)',
+        path: ['JOHN_DEERE_TOKEN_KEY'],
       });
     }
   });
@@ -117,6 +141,9 @@ const LOGGABLE_CONFIG_KEYS = [
   'OPENAI_REASONING_EFFORT',
   'OPENAI_TRANSLATION_MODEL',
   'OPENAI_TRANSCRIPTION_MODEL',
+  'JOHN_DEERE_API_BASE_URL',
+  'JOHN_DEERE_EQUIPMENT_API_BASE_URL',
+  'JOHN_DEERE_ISSUER',
   'PORT',
   'LOG_LEVEL',
   'LOG_DOMAINS_DISABLED',

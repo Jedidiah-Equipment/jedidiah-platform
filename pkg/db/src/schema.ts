@@ -11,6 +11,7 @@ import * as contractingFleetSchema from './schema/contracting/fleet.js';
 import * as contractingReadingSchema from './schema/contracting/hour-reading.js';
 import * as contractingJobNoteSchema from './schema/contracting/job-note.js';
 import * as contractingJobsSchema from './schema/contracting/jobs.js';
+import * as contractingJohnDeereSchema from './schema/contracting/john-deere.js';
 import * as contractingRateCardSchema from './schema/contracting/rate-card.js';
 import * as contractingServiceRecordSchema from './schema/contracting/service-record.js';
 import * as contractingSettingsSchema from './schema/contracting/settings.js';
@@ -42,6 +43,7 @@ export const schema = {
   ...contractingDirectorySchema,
   ...contractingJobNoteSchema,
   ...contractingJobsSchema,
+  ...contractingJohnDeereSchema,
   ...contractingReadingSchema,
   ...contractingRateCardSchema,
   ...contractingServiceRecordSchema,

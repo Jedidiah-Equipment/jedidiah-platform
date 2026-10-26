@@ -12,7 +12,7 @@ type AppSidebarProps = React.ComponentProps<typeof Sidebar>;
 
 export const AppSidebar: React.FC<AppSidebarProps> = (props) => {
   const { onSignOut, user } = useAuth();
-  const pathname = useLocation({ select: (location) => location.pathname });
+  const helpTopic = useLocation({ select: ({ pathname, search }) => helpTopicForPath(pathname, search) });
 
   return (
     <Sidebar collapsible="icon" variant="inset" {...props}>
@@ -21,7 +21,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = (props) => {
         <AppNavMain />
       </SidebarContent>
       <SidebarFooter>
-        <AppNavHelp topic={helpTopicForPath(pathname)} />
+        <AppNavHelp topic={helpTopic} />
         <AppNavUser business="contracting" onSignOut={onSignOut} user={user} />
       </SidebarFooter>
     </Sidebar>

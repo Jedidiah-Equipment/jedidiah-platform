@@ -29,6 +29,7 @@
     "@pkg/core": "workspace:*",
     "@pkg/db": "workspace:*",
     "@pkg/domain": "workspace:*",
+    "@pkg/integrations": "workspace:*",
     "@pkg/pdf": "workspace:*",
     "@pkg/schema": "workspace:*",
     "@trpc/server": "^11.19.0",

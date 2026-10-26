@@ -6,8 +6,20 @@ import {
   type ReadingErrorCode,
   type ReadingRole,
   ReadingValue,
+  type readingMethods,
 } from '@pkg/schema/contracting';
+import { formatDate } from '../formatting/date.js';
+import { formatHours } from '../formatting/number.js';
 import { assignmentActionRefusal, assignmentStateAllows } from './assignment-actions.js';
+import { serviceDueSoonCrossed } from './service-due.js';
+
+/** A reading either side of a capture's Read At. `telematics` is a reading the Machine itself reported. */
+export type CaptureNeighbour = {
+  id: string;
+  value: number;
+  capturedAt: Date;
+  method: (typeof readingMethods)[number] | 'telematics';
+};
 
 /**
  * What an Hour Reading capture is judged against: the server's rows under the Machine lock, gathered by core as
@@ -15,8 +27,12 @@ import { assignmentActionRefusal, assignmentStateAllows } from './assignment-act
  * exist, and the two busy rules, which the database's unique constraints raise after the write.
  */
 export type CaptureWorld = {
-  /** The Machine's latest reading, or null while its ledger is empty. */
+  /** The Machine's latest reading by Read At, or null while its ledger is empty. */
   latest: { id: string; value: number } | null;
+  /** The nearest reading at or before the capture's Read At (ties by the latest accepted), or null. */
+  previous: CaptureNeighbour | null;
+  /** The nearest reading after the capture's Read At (ties by the first accepted), or null. */
+  next: CaptureNeighbour | null;
   /** The stint the capture lands on; null for a spot or baseline reading. */
   stint: AssignmentState | null;
   /** The Job's own verdict on `capture`; null when there is no stint. */
@@ -58,15 +74,21 @@ export type CaptureRule =
   | 'already-arrived'
   | 'not-on-site'
   | 'previous-changed'
+  | 'above-next'
+  | 'contradicts-telematics'
+  | 'below-previous'
   | 'below-latest'
   | 'baseline-exists';
+
+/** The refusals whose sentence names the neighbour the capture falls outside. */
+type NeighbourRule = 'above-next' | 'contradicts-telematics' | 'below-previous';
 
 /** The stint constraints' refusals: the database raises these after the write, so the table cannot judge them. */
 export type CaptureConstraintRule = 'machine-busy' | 'implement-busy';
 
 /** The wire code and the one sentence of each refusal; a Job refusal brings its own. */
 export const captureRefusals: Record<
-  Exclude<CaptureRule, 'job-refused'> | CaptureConstraintRule,
+  Exclude<CaptureRule, 'job-refused' | NeighbourRule> | CaptureConstraintRule,
   { code: ReadingErrorCode; message: string }
 > = {
   'baseline-forbidden': {
@@ -113,12 +135,29 @@ export type CaptureRefused = {
 /** `disputes` names the latest reading an accepted capture below it disputes. */
 export type CaptureVerdict = { ok: true; disputes: string | null } | CaptureRefused;
 
-const refuse = (rule: Exclude<CaptureRule, 'job-refused'>): CaptureRefused => ({
+const refuse = (rule: Exclude<CaptureRule, 'job-refused' | NeighbourRule>): CaptureRefused => ({
   ok: false,
   rule,
   reason: captureRefusals[rule].code,
   message: captureRefusals[rule].message,
 });
+
+/** A refusal against a neighbour, naming its value and Read At; the fix is the capture's time or its value. */
+const refuseAgainst = (rule: NeighbourRule, neighbour: CaptureNeighbour): CaptureRefused => {
+  const reading = `${formatHours(neighbour.value)} at ${formatDate(neighbour.capturedAt, 'medium')}`;
+  const said =
+    neighbour.method === 'telematics'
+      ? `John Deere reported ${reading}.`
+      : rule === 'above-next'
+        ? `A later reading of ${reading} is lower.`
+        : `A reading of ${reading} is higher.`;
+  return {
+    ok: false,
+    rule,
+    reason: rule === 'above-next' ? 'reading.above_next' : 'reading.below_latest',
+    message: `${said} Check the time or the value.`,
+  };
+};
 
 /** A Job refusal in Reading terms: a permission or ownership refusal is forbidden, a status refusal wrong status. */
 export const readingCodeForJobRefusal = (
@@ -169,15 +208,31 @@ export function judgeCapture(world: CaptureWorld, capture: CaptureAttempt): Capt
     capture.expectedPreviousId !== (world.latest?.id ?? null)
   )
     return refuse('previous-changed');
-  const below = captureIsBelowLatest(capture.value, world.latest);
+  const { previous, next } = world;
+  if (next && capture.value > next.value) return refuseAgainst('above-next', next);
+  if (previous && capture.value < previous.value) {
+    if (previous.method === 'telematics') return refuseAgainst('contradicts-telematics', previous);
+    if (previous.id !== world.latest?.id) return refuseAgainst('below-previous', previous);
+  }
+  // Only a capture that becomes the latest is judged against it; one dated behind it answers to its neighbours.
+  const below = next === null && captureIsBelowLatest(capture.value, world.latest);
   if (below && !capture.disputePrevious) return refuse('below-latest');
   if (capture.role === 'baseline' && world.latest) return refuse('baseline-exists');
   return { ok: true, disputes: below && world.latest ? world.latest.id : null };
 }
 
+/**
+ * Service Due Soon is crossed only by a capture that becomes the Machine's latest reading: one dated behind the latest
+ * never crosses it.
+ */
+export const captureCrossesServiceDueSoon = (
+  world: Pick<CaptureWorld, 'latest' | 'next'>,
+  service: { newHours: number; nextServiceDueHours: number | null; threshold: number },
+) => world.next === null && serviceDueSoonCrossed({ previousHours: world.latest?.value ?? null, ...service });
+
 /** What a capture form knows: the served latest (undefined while it loads), who is capturing, and the photo. */
 export type CaptureFormWorld = {
-  latest: { id: string; value: number } | null | undefined;
+  latest: { id: string; value: number; capturedAt: string } | null | undefined;
   management: boolean;
   hasPhoto: boolean;
   now: Date;
@@ -217,13 +272,19 @@ export function parseCaptureValue(typed: string): number | null {
   return value?.success ? value.data : null;
 }
 
-/** The value half of a capture form: whether it is below the latest, and whether that dispute is confirmed. */
+/**
+ * The value half of a capture form: whether it is below the latest, and whether that dispute is confirmed. A Read At
+ * before the latest's is never judged here: only the server knows its neighbours, so the form posts and shows its
+ * sentence.
+ */
 export function captureValueVerdict(
   latest: CaptureFormWorld['latest'],
   parsed: number | null,
   disputedReadingId: string | null,
+  readAt: Date | null,
 ) {
-  const below = parsed !== null && captureIsBelowLatest(parsed, latest ?? null);
+  const backdated = !!latest && readAt !== null && readAt.getTime() < Date.parse(latest.capturedAt);
+  const below = parsed !== null && !backdated && captureIsBelowLatest(parsed, latest ?? null);
   return { below, disputeConfirmed: below && disputedReadingId === latest?.id };
 }
 
@@ -234,7 +295,7 @@ export function captureValueVerdict(
 export function deriveCaptureForm(world: CaptureFormWorld, draft: CaptureDraft): CaptureFormVerdict {
   const parsed = parseCaptureValue(draft.value);
   const latest = world.latest ?? null;
-  const { below, disputeConfirmed } = captureValueVerdict(latest, parsed, draft.disputedReadingId);
+  const { below, disputeConfirmed } = captureValueVerdict(latest, parsed, draft.disputedReadingId, draft.readAt);
   const commentRequired = captureNeedsComment(draft.role, world);
   const futureReadAt = draft.readAt !== null && isFutureReadAt(draft.readAt, world.now);
   const passes =

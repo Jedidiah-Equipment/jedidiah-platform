@@ -128,6 +128,27 @@ test('derives day counts and hours by kind from the captured ledger, pro-rated a
   });
 });
 
+test('walks the ledger in Read At order, so a reading entered late splits its stint where it was read', async ({
+  context,
+}) => {
+  const { db, excavator } = context;
+  await captureReading({
+    db,
+    actor: admin,
+    input: {
+      machineId: excavator.id,
+      role: 'spot',
+      value: 4040,
+      capturedAt: '2026-07-01T12:00:00+02:00',
+      disputePrevious: false,
+    },
+  });
+  // 6 of the 18 hours from 30 Jun 18:00 to 1 Jul 12:00 fall in June: 27.4 h + 10 h × 6/18.
+  const [excavators] = (await getUtilisationReport({ db, input: june, today })).categories;
+  expect(excavators?.machines[0]).toMatchObject({ code: 'CAT320-1', workHours: 30.7 });
+  expect((await getUtilisationReport({ db, input: july, today })).fleet).toMatchObject({ workHours: 27.9 });
+});
+
 test('the trend runs twelve months to the window month for its subject and carries the Settings target', async ({
   context,
 }) => {

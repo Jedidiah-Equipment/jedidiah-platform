@@ -1,16 +1,22 @@
+import { readAtFromInput } from '@pkg/domain/contracting';
 import { type Assignment, ReadingReason, ReadingValue } from '@pkg/schema/contracting';
 import { z } from 'zod';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { Separator } from '@/components/ui/separator.js';
 import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
-import { ReadingCaptureDetails, ReadingValueCard } from '@/contracting/components/readings/ReadingCaptureFields.js';
+import {
+  ReadingCaptureDetails,
+  ReadingReadAtField,
+  ReadingValueCard,
+} from '@/contracting/components/readings/ReadingCaptureFields.js';
 import { ConfirmedDispute, useReadingCapture } from '@/contracting/components/readings/use-reading-capture.js';
 
 const DepartureValues = z.object({
   value: ReadingValue,
   reason: z.union([z.string().trim().length(0), ReadingReason]),
   confirmedDispute: ConfirmedDispute,
+  readAt: z.string(),
 });
 type DepartureValues = z.infer<typeof DepartureValues>;
 
@@ -18,7 +24,7 @@ export function DepartureCaptureDialog({ stint, onClose }: { stint: Assignment |
   const capture = useReadingCapture({ role: 'departure', stint }, (values: DepartureValues) => ({
     ...values,
     comment: values.reason,
-    readAt: null,
+    readAt: readAtFromInput(values.readAt),
     stintOverrides: undefined,
   }));
   const { latestQuery } = capture;
@@ -36,7 +42,7 @@ export function DepartureCaptureDialog({ stint, onClose }: { stint: Assignment |
       }}
       title={<MachineDialogTitle machine={stint}>Capture departure</MachineDialogTitle>}
       contentClassName="sm:max-w-md"
-      defaultValues={{ value: Number.NaN, reason: '', confirmedDispute: null }}
+      defaultValues={{ value: Number.NaN, reason: '', confirmedDispute: null, readAt: '' }}
       validator={DepartureValues}
       // Judged once the latest has loaded, and a value below it waits for its dispute; a missing reason or a bad
       // value say so on submit.
@@ -56,9 +62,10 @@ export function DepartureCaptureDialog({ stint, onClose }: { stint: Assignment |
           <ErrorMessage error={latestQuery.error} fallbackMessage="Unable to load the Machine's previous reading." />
           <ReadingValueCard
             form={form}
-            fields={{ value: 'value', confirmedDispute: 'confirmedDispute' }}
+            fields={{ value: 'value', confirmedDispute: 'confirmedDispute', readAt: 'readAt' }}
             capture={capture}
           />
+          <ReadingReadAtField form={form} fields={{ readAt: 'readAt' }} />
           <ReadingCaptureDetails id={`departure-photo-${stint?.id ?? 'closed'}`} {...capture.details}>
             <div className="flex items-center gap-3" aria-hidden="true">
               <Separator className="flex-1" />

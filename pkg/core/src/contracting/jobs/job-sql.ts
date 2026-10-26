@@ -11,22 +11,25 @@ import { readingNeedsALookLevelSql } from '../readings/reading-sql.js';
  * rule changes here and there together.
  */
 
-/** The Machine's last departure before an arrival, as one column of it: where the stint's Hour Gap starts. */
-const previousDeparture = (column: 'id' | 'value', machineId: SQLWrapper, arrivalSequence: SQLWrapper) => sql`(
+/** An arrival's place in its Machine's ledger: Read At, then acceptance. */
+export type LedgerPosition = { capturedAt: SQLWrapper; sequence: SQLWrapper };
+
+/** The Machine's last departure before an arrival's Read At, as one column of it: where the stint's Hour Gap starts. */
+const previousDeparture = (column: 'id' | 'value', machineId: SQLWrapper, arrival: LedgerPosition) => sql`(
   select ${sql.raw(`previous.${column}`)}
   from contracting.hour_reading previous
   where previous.machine_id = ${machineId}
     and previous.role = 'departure'
-    and previous.sequence < ${arrivalSequence}
-  order by previous.sequence desc
+    and (previous.captured_at, previous.sequence) < (${arrival.capturedAt}, ${arrival.sequence})
+  order by previous.captured_at desc, previous.sequence desc
   limit 1
 )`;
 
-export const previousDepartureValue = (machineId: SQLWrapper, arrivalSequence: SQLWrapper) =>
-  previousDeparture('value', machineId, arrivalSequence);
+export const previousDepartureValue = (machineId: SQLWrapper, arrival: LedgerPosition) =>
+  previousDeparture('value', machineId, arrival);
 
-export const previousDepartureId = (machineId: SQLWrapper, arrivalSequence: SQLWrapper) =>
-  previousDeparture('id', machineId, arrivalSequence);
+export const previousDepartureId = (machineId: SQLWrapper, arrival: LedgerPosition) =>
+  previousDeparture('id', machineId, arrival);
 
 /** A Machine Assignment's reading columns, on the table or on an alias of it. */
 type StintColumns = { arrivalReadingId: SQLWrapper; departureReadingId: SQLWrapper };
@@ -59,7 +62,7 @@ export const openGapFlags = sql<number>`(
   cross join contracting.settings
   where summary_assignment.job_id = ${contractingJobs.id}
     and summary_assignment.gap_resolved_at is null
-    and summary_arrival.value - ${previousDepartureValue(sql`summary_assignment.machine_id`, sql`summary_arrival.sequence`)} > contracting.settings.gap_flag_threshold_hours
+    and summary_arrival.value - ${previousDepartureValue(sql`summary_assignment.machine_id`, { capturedAt: sql`summary_arrival.captured_at`, sequence: sql`summary_arrival.sequence` })} > contracting.settings.gap_flag_threshold_hours
 )`;
 
 const summaryReading = alias(contractingHourReadings, 'summary_reading');

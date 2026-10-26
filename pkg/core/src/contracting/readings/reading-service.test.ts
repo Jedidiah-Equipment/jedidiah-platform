@@ -1,11 +1,11 @@
 import { auditEvents, user } from '@pkg/db';
 import { accessForRole } from '@pkg/domain/testing';
-import { MachineCreateInput } from '@pkg/schema/contracting';
+import { MachineCreateInput, type ReadingCaptureInput } from '@pkg/schema/contracting';
 import { and, desc, eq } from 'drizzle-orm';
 import { expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
 import { createCategory } from '../fleet/category-service.js';
-import { createMachine, patchMachine, retireMachine } from '../fleet/machine-service.js';
+import { createMachine, getMachine, patchMachine, retireMachine } from '../fleet/machine-service.js';
 import { createJob } from '../jobs/job-service.js';
 import { getContractingSettings, updateContractingSettings } from '../settings/settings-service.js';
 import { admin, foreman, foremanId, leftStint, seedJobFixtures } from '../test/job-fixtures.js';
@@ -13,6 +13,7 @@ import type { ReadMeterPhoto } from './reading-evidence.js';
 import {
   captureReading,
   getReadingForEvidence,
+  latestReading,
   listReadingsByMachine,
   type ReadingEvidence,
   verifyCapturedReading,
@@ -398,21 +399,35 @@ test('carries the capture comment through to the Reading Exceptions list', async
 });
 
 /**
- * Two phones on one Machine: the one that captured later reaches the server first. The ledger's order
- * is the dispute trail, so the earlier capture is judged against what the ledger already holds — never
- * re-ordered by a device clock.
+ * A Foreman enters yesterday's reading after today's has landed: it takes its place in time, between its neighbours,
+ * and the Machine's latest stays today's. A backdated capture is bounded on both sides, with no dispute path.
  */
-test('judges a late-arriving earlier capture against the ledger’s latest, not its own capture time', async ({
-  context,
-}) => {
-  const { db, actor, machineId } = context;
-  const spot = { machineId, role: 'spot' as const, disputePrevious: false };
-  await captureReading({ db, actor, input: { ...spot, value: 160, capturedAt: '2026-09-08T09:00:00Z' } });
+test('lands a backdated capture between its time neighbours and keeps the Machine’s latest', async ({ context }) => {
+  const { db, actor, actorUserId, machineId } = context;
+  const spot = (value: number, capturedAt: string, dispute: Partial<ReadingCaptureInput> = {}) =>
+    captureReading({
+      db,
+      actor,
+      input: { machineId, role: 'spot', value, capturedAt, disputePrevious: false, ...dispute },
+    });
+  await patchMachine({ db, actorUserId, input: { id: machineId, nextServiceDueHours: 1050 } });
+  await spot(999, '2026-09-07T15:00:00Z');
+  const { reading: today } = await spot(1001, '2026-09-08T10:00:00Z');
 
+  const backdated = await spot(1000.5, '2026-09-07T16:00:00Z');
+  expect(backdated.serviceDueSoonCrossed).toBe(false);
+  expect((await listReadingsByMachine({ db, machineId })).map((row) => row.value)).toEqual([1001, 1000.5, 999]);
+  expect(await latestReading({ db, machineId })).toMatchObject({ id: today.id, value: 1001 });
+  expect(await getMachine({ db, id: machineId })).toMatchObject({
+    latestReadingHours: 1001,
+    latestReadingAt: '2026-09-08T10:00:00+00:00',
+  });
+
+  await expect(spot(1002, '2026-09-07T17:00:00Z')).rejects.toMatchObject({ code: 'reading.above_next' });
   await expect(
-    captureReading({ db, actor, input: { ...spot, value: 150, capturedAt: '2026-09-08T08:00:00Z' } }),
+    spot(1000, '2026-09-07T17:00:00Z', { disputePrevious: true, expectedPreviousId: today.id }),
   ).rejects.toMatchObject({ code: 'reading.below_latest' });
-  expect((await listReadingsByMachine({ db, machineId })).map((row) => row.value)).toEqual([160]);
+  expect(await listReadingsByMachine({ db, machineId })).toHaveLength(3);
 });
 
 test('refuses a reading on a retired Machine with its code', async ({ context }) => {

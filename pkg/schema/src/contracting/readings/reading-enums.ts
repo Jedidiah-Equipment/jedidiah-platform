@@ -22,6 +22,7 @@ export const readingErrorCodes = [
   'reading.capture_id_conflict',
   'reading.previous_changed',
   'reading.below_latest',
+  'reading.above_next',
   'reading.baseline_exists',
   'reading.invalid_amendment',
   'reading.forbidden',

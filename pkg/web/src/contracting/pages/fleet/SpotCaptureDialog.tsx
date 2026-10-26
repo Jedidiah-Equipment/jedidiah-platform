@@ -1,10 +1,14 @@
-import { captureRefusals, readAtFromInput } from '@pkg/domain/contracting';
+import { readAtFromInput } from '@pkg/domain/contracting';
 import { type Machine, ReadingComment, ReadingValue } from '@pkg/schema/contracting';
 import { z } from 'zod';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { MachineDialogTitle, machineDialogSubject } from '@/contracting/components/MachineDialogTitle.js';
-import { ReadingCaptureDetails, ReadingValueCard } from '@/contracting/components/readings/ReadingCaptureFields.js';
+import {
+  ReadingCaptureDetails,
+  ReadingReadAtField,
+  ReadingValueCard,
+} from '@/contracting/components/readings/ReadingCaptureFields.js';
 import { ConfirmedDispute, useReadingCapture } from '@/contracting/components/readings/use-reading-capture.js';
 
 const SpotValues = z.object({
@@ -60,27 +64,10 @@ export function SpotCaptureDialog({
           <ErrorMessage error={latestQuery.error} fallbackMessage="Unable to load the Machine's previous reading." />
           <ReadingValueCard
             form={form}
-            fields={{ value: 'value', confirmedDispute: 'confirmedDispute' }}
+            fields={{ value: 'value', confirmedDispute: 'confirmedDispute', readAt: 'readAt' }}
             capture={capture}
           />
-          <form.AppField name="readAt">
-            {(field) => (
-              <field.TextField
-                label="Read At"
-                type="datetime-local"
-                description="When the meter was read. Leave blank to use the current time."
-              />
-            )}
-          </form.AppField>
-          <form.Subscribe selector={(state) => capture.judge(state.values).futureReadAt}>
-            {(futureReadAt) =>
-              futureReadAt ? (
-                <p className="text-sm text-destructive" role="alert">
-                  {captureRefusals['future-read-at'].message}
-                </p>
-              ) : null
-            }
-          </form.Subscribe>
+          <ReadingReadAtField form={form} fields={{ readAt: 'readAt' }} />
           <ReadingCaptureDetails id={`spot-photo-${machine.id}`} {...capture.details}>
             <form.AppField name="comment">
               {(field) => <field.TextareaField label="Comment (optional)" />}

@@ -1,11 +1,15 @@
 import type { JobActionVerdict } from '@pkg/schema/contracting';
 import { describe, expect, test } from 'vitest';
+import { formatDate } from '../formatting/date.js';
+import { formatHours } from '../formatting/number.js';
 import {
   type CaptureAttempt,
   type CaptureDraft,
   type CaptureFormWorld,
+  type CaptureNeighbour,
   type CaptureRule,
   type CaptureWorld,
+  captureCrossesServiceDueSoon,
   captureIsBelowLatest,
   captureNeedsComment,
   captureRefusals,
@@ -22,8 +26,18 @@ const refusedJob: JobActionVerdict = {
   message: 'This Job is assigned to another Foreman.',
 };
 
+const anHourAgo = new Date('2026-10-09T07:00:00Z');
+const reading = (
+  id: string,
+  value: number,
+  capturedAt: Date,
+  method: CaptureNeighbour['method'] = 'photo',
+): CaptureNeighbour => ({ id, value, capturedAt, method });
+
 const world = (overrides: Partial<CaptureWorld> = {}): CaptureWorld => ({
   latest: { id: 'latest', value: 100 },
+  previous: reading('latest', 100, anHourAgo),
+  next: null,
   stint: 'planned',
   jobVerdict: { allowed: true },
   management: false,
@@ -67,7 +81,7 @@ describe('judgeCapture', () => {
 
   test.each<[string, Partial<CaptureWorld>, Partial<CaptureAttempt>, string | null]>([
     ['an idle Machine reading its latest value', {}, { value: 100 }, null],
-    ['the first reading of an empty ledger', { latest: null }, { value: 3 }, null],
+    ['the first reading of an empty ledger', { latest: null, previous: null }, { value: 3 }, null],
     [
       'a dispute of the latest, naming it',
       {},
@@ -96,12 +110,85 @@ describe('judgeCapture', () => {
     ],
     [
       'a first Baseline Reading by an administrator',
-      { mayBaseline: true, stint: null, latest: null },
+      { mayBaseline: true, stint: null, latest: null, previous: null },
       { role: 'baseline' },
       null,
     ],
   ])('accepts %s', (_name, given, attempt, disputes) => {
     expect(judgeCapture(world(given), capture(attempt))).toEqual({ ok: true, disputes });
+  });
+
+  describe('against its time neighbours', () => {
+    const yesterday = (hour: number) => new Date(`2026-10-08T${String(hour).padStart(2, '0')}:00:00Z`);
+    const departedYesterday = reading('yesterday', 999, yesterday(15));
+    const today = reading('today', 1001, new Date('2026-10-09T06:00:00Z'));
+    const between = world({ latest: { id: 'today', value: 1001 }, previous: departedYesterday, next: today });
+    const backdated = (value: number, overrides: Partial<CaptureAttempt> = {}) =>
+      capture({ role: 'departure', value, readAt: yesterday(16), ...overrides });
+
+    test('lands a day-late departure behind today’s reading', () => {
+      expect(judgeCapture({ ...between, stint: 'on-site' }, backdated(1000.5))).toEqual({ ok: true, disputes: null });
+    });
+
+    test('accepts a value equal to either neighbour', () => {
+      expect(judgeCapture({ ...between, stint: 'on-site' }, backdated(999))).toMatchObject({ ok: true });
+      expect(judgeCapture({ ...between, stint: 'on-site' }, backdated(1001))).toMatchObject({ ok: true });
+    });
+
+    test('refuses a value above the next reading, naming it, with no dispute path', () => {
+      expect(
+        judgeCapture(
+          { ...between, stint: 'on-site' },
+          backdated(1002, { disputePrevious: true, expectedPreviousId: 'today' }),
+        ),
+      ).toEqual({
+        ok: false,
+        rule: 'above-next',
+        reason: 'reading.above_next',
+        message: `A later reading of ${formatHours(1001)} at ${formatDate(today.capturedAt, 'medium')} is lower. Check the time or the value.`,
+      });
+    });
+
+    test('refuses a backdated value below its previous flat, even disputed', () => {
+      expect(
+        judgeCapture(
+          { ...between, stint: 'on-site' },
+          backdated(998, { disputePrevious: true, expectedPreviousId: 'today' }),
+        ),
+      ).toEqual({
+        ok: false,
+        rule: 'below-previous',
+        reason: 'reading.below_latest',
+        message: `A reading of ${formatHours(999)} at ${formatDate(departedYesterday.capturedAt, 'medium')} is higher. Check the time or the value.`,
+      });
+    });
+
+    test('never disputes a Telematics Reading on either side', () => {
+      const reported = reading('deere', 1000, anHourAgo, 'telematics');
+      const reportedLater = reading('deere-later', 1010, now);
+      const telematics = { ...reportedLater, method: 'telematics' as const };
+      expect(
+        judgeCapture(
+          world({ latest: { id: 'deere', value: 1000 }, previous: reported }),
+          capture({ value: 990, disputePrevious: true, expectedPreviousId: 'deere' }),
+        ),
+      ).toEqual({
+        ok: false,
+        rule: 'contradicts-telematics',
+        reason: 'reading.below_latest',
+        message: `John Deere reported ${formatHours(1000)} at ${formatDate(anHourAgo, 'medium')}. Check the time or the value.`,
+      });
+      expect(
+        judgeCapture(
+          world({ latest: { id: 'deere-later', value: 1010 }, previous: reported, next: telematics }),
+          capture({ value: 1020, readAt: new Date('2026-10-09T07:30:00Z') }),
+        ),
+      ).toMatchObject({
+        rule: 'above-next',
+        reason: 'reading.above_next',
+        message: `John Deere reported ${formatHours(1010)} at ${formatDate(now, 'medium')}. Check the time or the value.`,
+      });
+    });
   });
 
   test('judges in the stated order', () => {
@@ -180,9 +267,22 @@ describe('captureRefusals', () => {
   });
 });
 
+describe('captureCrossesServiceDueSoon', () => {
+  const service = { newHours: 1460, nextServiceDueHours: 1500, threshold: 50 };
+
+  test('crosses only when the capture becomes the latest reading', () => {
+    expect(captureCrossesServiceDueSoon({ latest: { id: 'latest', value: 1400 }, next: null }, service)).toBe(true);
+  });
+
+  test('never crosses for a capture dated behind the latest', () => {
+    const next = reading('latest', 1470, now);
+    expect(captureCrossesServiceDueSoon({ latest: { id: 'latest', value: 1470 }, next }, service)).toBe(false);
+  });
+});
+
 describe('deriveCaptureForm', () => {
   const formWorld = (overrides: Partial<CaptureFormWorld> = {}): CaptureFormWorld => ({
-    latest: { id: 'latest', value: 100 },
+    latest: { id: 'latest', value: 100, capturedAt: anHourAgo.toISOString() },
     management: false,
     hasPhoto: true,
     now,
@@ -225,6 +325,19 @@ describe('deriveCaptureForm', () => {
       request: { disputePrevious: true, expectedPreviousId: 'latest' },
     });
     expect(deriveCaptureForm(formWorld(), draft({ value: '90', disputedReadingId: 'older' })).request).toBeNull();
+  });
+
+  test('leaves a Read At before the latest to the server, and pre-judges one at or after it', () => {
+    expect(
+      deriveCaptureForm(formWorld(), draft({ value: '90', readAt: new Date('2026-10-09T06:59:00Z') })),
+    ).toMatchObject({
+      below: false,
+      request: { value: 90, disputePrevious: false },
+    });
+    expect(deriveCaptureForm(formWorld(), draft({ value: '90', readAt: anHourAgo }))).toMatchObject({
+      below: true,
+      request: null,
+    });
   });
 
   test('withholds a manager’s photo-less departure until it says why', () => {

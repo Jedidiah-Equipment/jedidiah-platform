@@ -414,7 +414,13 @@ async function lockJobsMovedBy(tx: DatabaseTransaction, reading: Row) {
           .where(
             and(
               eq(contractingHourReadings.machineId, reading.machineId),
-              sql`(${contractingHourReadings.capturedAt}, ${contractingHourReadings.sequence}) > (${reading.capturedAt}, ${reading.sequence})`,
+              or(
+                gt(contractingHourReadings.capturedAt, reading.capturedAt),
+                and(
+                  eq(contractingHourReadings.capturedAt, reading.capturedAt),
+                  gt(contractingHourReadings.sequence, reading.sequence),
+                ),
+              ),
             ),
           )
           .orderBy(...oldestFirst)

@@ -12,9 +12,10 @@
       "computedHash": "61f8e282d380f77c027447055bb40d23933fc3cc1dbb118c0199bffe118a1e9e"
     },
     "claude-code-pr-review": {
-      "source": "./.agents/skills",
-      "sourceType": "local",
-      "computedHash": "e76032c93c499ff495e81e3803cc2300a2e28c36d541eda454a179e84fffb705"
+      "source": "deanvanniekerk/skills",
+      "sourceType": "github",
+      "skillPath": "skills/claude-code-pr-review/SKILL.md",
+      "computedHash": "07512e91eeb5b1bfaf90cdc784376f68ef68dd545e4f8b49b0acff00a4e80d2e"
     },
     "code-review": {
       "source": "./.agents/skills",
@@ -110,7 +111,7 @@
       "source": "deanvanniekerk/skills",
       "sourceType": "github",
       "skillPath": "skills/tackle-issue/SKILL.md",
-      "computedHash": "77e67f08185d616eb5f9ad33388aad9b2f3f2466caddb0bde62f994fbb9f0c32"
+      "computedHash": "6bbe3b4d56b510a0d0e5c6289837883e94f7d6cc8bdbe97b0e7198ce45d6766f"
     },
     "tdd": {
       "source": "./.agents/skills",

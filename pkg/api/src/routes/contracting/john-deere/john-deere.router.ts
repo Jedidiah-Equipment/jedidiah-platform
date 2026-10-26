@@ -50,7 +50,6 @@ export function createContractingJohnDeereRouter(deps: JohnDeereDependencies | n
     }),
     equipment: router({
       list: settingsProcedure.query(() => run(({ links }) => links.listUnlinkedMachines())),
-      refresh: settingsProcedure.mutation(() => run(({ links }) => links.refresh())),
     }),
     links: router({
       list: settingsProcedure.query(() => run(({ links }) => links.listLinks())),

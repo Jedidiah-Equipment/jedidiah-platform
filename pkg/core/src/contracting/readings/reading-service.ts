@@ -4,7 +4,6 @@ import {
   contractingCategories,
   contractingHourReadings,
   contractingJobs,
-  contractingJohnDeereLinks,
   contractingMachineAssignments,
   contractingMachines,
 } from '@pkg/db/contracting';
@@ -17,17 +16,14 @@ import {
   contradictingTelematics,
   effectiveServiceAlertHours,
   FUTURE_READ_AT_TOLERANCE_MS,
-  floorToTenth,
   formatJobNumber,
   type JobActor,
   jobReadStatuses,
   judgeCapture,
-  meterDisagreementHint,
   READING_PHOTO_POLICY,
   readingExceptionTypes,
   readingVerification,
   resolveReadingAmendment,
-  serviceDueSoonCrossed,
   telematicsDisputeReason,
 } from '@pkg/domain/contracting';
 import { type AuthId, getNextCursor } from '@pkg/schema';
@@ -37,42 +33,29 @@ import {
   LatestReading,
   ReadingAmendInput,
   ReadingCaptureInput,
-  type TelematicsProvider,
 } from '@pkg/schema/contracting';
-import { and, asc, eq, getTableColumns, gt, inArray, isNull, lt, lte, ne, or, sql } from 'drizzle-orm';
+import { and, asc, eq, getTableColumns, gt, inArray, lte, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
-import { defineAuditDescriptor, recordAuditCreate } from '../../audit/audit-writer.js';
-import { mutateEntity } from '../../audit/mutate-entity.js';
+import { recordAuditCreate } from '../../audit/audit-writer.js';
 import { filePolicyViolation } from '../../files/file-errors.js';
 import { readStoredObject, type StorageAdapter } from '../../storage/storage-adapter.js';
 import { reopenPricingWithin } from '../jobs/pricing-service.js';
 import { getContractingSettings } from '../settings/settings-service.js';
 import { attachReadingToStint, resolveCaptureStint } from './capture-stint.js';
+import {
+  readingNotFound as notFound,
+  type ReadingRow as Row,
+  readingDescriptor,
+  updateAudited,
+  withHint,
+} from './reading-audit.js';
 import { assertAmendReadings, ReadingError, withCaptureConstraints } from './reading-errors.js';
 import { type MeterMeasurement, measureMeterPhoto, type ReadMeterPhoto } from './reading-evidence.js';
 import { newestFirst, oldestFirst, readingNeedsALookSql } from './reading-sql.js';
 import { readingToWire } from './reading-wire.js';
 
-const notFound = () => new ReadingError('reading.not_found', 'Hour Reading not found.');
 const isTelematics = eq(contractingHourReadings.method, 'telematics');
-type Row = typeof contractingHourReadings.$inferSelect;
 
-function withHint<T extends Row>(row: T) {
-  return { ...row, aiHint: meterDisagreementHint(row) };
-}
-const descriptor = defineAuditDescriptor<Row>({
-  entityType: 'contracting_reading',
-  noun: 'Hour Reading',
-  primaryLabelField: 'id',
-  entityId: (row) => row.id,
-  // Acceptance time never changes, so it stays out of the record like any row's own stamp.
-  toRecord: ({ createdAt: _createdAt, ...row }) => ({
-    ...row,
-    capturedAt: row.capturedAt.toISOString(),
-    amendedAt: row.amendedAt?.toISOString() ?? null,
-    evidenceReviewedAt: row.evidenceReviewedAt?.toISOString() ?? null,
-  }),
-});
 export async function listReadingsByMachine({ db, machineId }: { db: Db; machineId: string }) {
   const opensStint = eq(contractingMachineAssignments.arrivalReadingId, contractingHourReadings.id);
   const rows = await db
@@ -283,7 +266,7 @@ export async function captureReading({
           })
           .returning();
         if (!row) throw new Error('Reading insert returned no row');
-        await recordAuditCreate({ db: tx, actorUserId, descriptor, input: row });
+        await recordAuditCreate({ db: tx, actorUserId, descriptor: readingDescriptor, input: row });
         if (stint)
           await attachReadingToStint(tx, {
             ...stint,
@@ -320,176 +303,12 @@ export async function captureReading({
   }
 }
 
-export type TelematicsReadingResult =
-  | {
-      outcome: 'unchanged';
-      reason: 'future-report-time' | 'not-newer' | 'machine-retired' | 'machine-not-found' | 'link-not-active';
-    }
-  | {
-      outcome: 'stored' | 'moved';
-      reading: ReturnType<typeof withHint>;
-      /** True when this write took the Machine into Service Due Soon; the caller schedules the push after commit. */
-      serviceDueSoonCrossed: boolean;
-      /** Captured readings the Telematics Reading contradicts, now Disputed for management. */
-      disputedReadingIds: string[];
-    };
-
-/**
- * Writes what a Machine's telematics reported into its ledger: a new Telematics Reading, or the last one's Read At
- * moved forward when the same value is reported again and nothing else was read in between. A captured reading the
- * report leaves out of sequence becomes Disputed for management; the report itself is beyond dispute.
- */
-export async function recordTelematicsReading({
-  db,
-  machineId,
-  linkId,
-  provider,
-  hours,
-  reportTime,
-  now = new Date(),
-}: {
-  db: Db;
-  machineId: string;
-  linkId: string;
-  provider: TelematicsProvider;
-  hours: number;
-  reportTime: Date;
-  now?: Date;
-}): Promise<TelematicsReadingResult> {
-  if (reportTime.getTime() > now.getTime() + FUTURE_READ_AT_TOLERANCE_MS)
-    return { outcome: 'unchanged', reason: 'future-report-time' };
-  const value = floorToTenth(hours);
-  const onMachine = eq(contractingHourReadings.machineId, machineId);
-  return db.transaction(async (tx): Promise<TelematicsReadingResult> => {
-    const [machine] = await tx
-      .select()
-      .from(contractingMachines)
-      .where(eq(contractingMachines.id, machineId))
-      .for('update');
-    if (!machine) return { outcome: 'unchanged', reason: 'machine-not-found' };
-    if (machine.retiredAt) return { outcome: 'unchanged', reason: 'machine-retired' };
-    // An administrator may unlink while Deere's answer was in flight; Unlink locks the Link row, so this waits or sees it.
-    const [link] = await tx
-      .select({ id: contractingJohnDeereLinks.id })
-      .from(contractingJohnDeereLinks)
-      .where(and(eq(contractingJohnDeereLinks.id, linkId), isNull(contractingJohnDeereLinks.unlinkedAt)))
-      .for('share');
-    if (!link) return { outcome: 'unchanged', reason: 'link-not-active' };
-    const [[last], [latest]] = await Promise.all([
-      tx
-        .select()
-        .from(contractingHourReadings)
-        .where(and(onMachine, eq(contractingHourReadings.method, 'telematics')))
-        .orderBy(...newestFirst)
-        .limit(1),
-      tx
-        .select()
-        .from(contractingHourReadings)
-        .where(onMachine)
-        .orderBy(...newestFirst)
-        .limit(1),
-    ]);
-    if (last && reportTime.getTime() <= last.capturedAt.getTime()) return { outcome: 'unchanged', reason: 'not-newer' };
-
-    // The same value again, with nothing read since, is the same hours still standing: the Read At moves on.
-    const [between] =
-      last?.value === value
-        ? await tx
-            .select({ id: contractingHourReadings.id })
-            .from(contractingHourReadings)
-            .where(
-              and(
-                onMachine,
-                gt(contractingHourReadings.capturedAt, last.capturedAt),
-                lte(contractingHourReadings.capturedAt, reportTime),
-              ),
-            )
-            .limit(1)
-        : [undefined];
-    const moving = last?.value === value && !between ? last : null;
-    const reading = moving
-      ? await updateAudited(tx, null, moving, { capturedAt: reportTime }, 'Report time moved')
-      : await insertTelematicsReading(tx, { machineId, linkId, provider, value, reportTime });
-
-    const contradicted = await tx
-      .select()
-      .from(contractingHourReadings)
-      .where(
-        and(
-          onMachine,
-          ne(contractingHourReadings.method, 'telematics'),
-          eq(contractingHourReadings.disputed, false),
-          or(
-            // A captured reading at the report's own Read At was accepted first, so it sits before the report.
-            and(lte(contractingHourReadings.capturedAt, reportTime), gt(contractingHourReadings.value, value)),
-            and(gt(contractingHourReadings.capturedAt, reportTime), lt(contractingHourReadings.value, value)),
-          ),
-        ),
-      )
-      .orderBy(...oldestFirst);
-    for (const row of contradicted)
-      await updateAudited(tx, null, row, {
-        disputed: true,
-        disputeReason: telematicsDisputeReason({ value, capturedAt: reportTime }),
-      });
-
-    // Only a report that becomes the Machine's latest reading can bring it into Service Due Soon.
-    const becameLatest = !latest || reportTime.getTime() >= latest.capturedAt.getTime();
-    const crossed =
-      becameLatest &&
-      serviceDueSoonCrossed({
-        previousHours: latest?.value ?? null,
-        newHours: value,
-        nextServiceDueHours: machine.nextServiceDueHours,
-        threshold: effectiveServiceAlertHours(
-          machine,
-          (await getContractingSettings({ db: tx })).serviceDueSoonThresholdHours,
-        ),
-      });
-    return {
-      outcome: moving ? 'moved' : 'stored',
-      reading,
-      serviceDueSoonCrossed: crossed,
-      disputedReadingIds: contradicted.map((row) => row.id),
-    };
-  });
-}
-
-async function insertTelematicsReading(
-  tx: DatabaseTransaction,
-  {
-    machineId,
-    linkId,
-    provider,
-    value,
-    reportTime,
-  }: { machineId: string; linkId: string; provider: TelematicsProvider; value: number; reportTime: Date },
-) {
-  const [row] = await tx
-    .insert(contractingHourReadings)
-    .values({
-      machineId,
-      role: 'spot',
-      value,
-      capturedAt: reportTime,
-      capturedByUserId: null,
-      method: 'telematics',
-      telematicsProvider: provider,
-      telematicsLinkId: linkId,
-      aiVerification: 'not-applicable',
-    })
-    .returning();
-  if (!row) throw new Error('Telematics reading insert returned no row');
-  await recordAuditCreate({ db: tx, actorUserId: null, descriptor, input: row });
-  return withHint(row);
-}
-
-const toNeighbour = ({ id, role, value, capturedAt, method }: Row): CaptureNeighbour => ({
+const toNeighbour = ({ id, role, value, capturedAt, telematicsProvider }: Row): CaptureNeighbour => ({
   id,
   role,
   value,
   capturedAt,
-  method,
+  telematicsProvider,
 });
 
 const capturer = alias(user, 'exception_capturer');
@@ -518,27 +337,6 @@ export async function listReadingExceptions({ db }: { db: Db }) {
     photoBacked: row.photo !== null,
   }));
 }
-// The machine lock serializes captures and amendments. Pair resolution changes multiple rows in
-// the same transaction, so each resulting row is diffed and audited after that resolution.
-async function updateAudited(
-  tx: DatabaseTransaction,
-  actorUserId: AuthId | null,
-  before: Row,
-  patch: Partial<Omit<Row, 'sequence'>>,
-  summary?: string,
-) {
-  return mutateEntity({
-    db: tx,
-    actorUserId,
-    descriptor,
-    table: contractingHourReadings,
-    id: before.id,
-    notFound,
-    set: () => patch,
-    ...(summary ? { summary } : {}),
-    project: (_tx, row) => withHint(row),
-  });
-}
 export async function amendReading({ db, actor, input: raw }: { db: Db; actor: JobActor; input: ReadingAmendInput }) {
   const actorUserId = actor.userId;
   const input = ReadingAmendInput.parse(raw);
@@ -546,7 +344,7 @@ export async function amendReading({ db, actor, input: raw }: { db: Db; actor: J
     const owner = await tx.query.contractingHourReadings.findFirst({ where: eq(contractingHourReadings.id, input.id) });
     if (!owner) throw notFound();
     if (owner.method === 'telematics')
-      throw new ReadingError('reading.invalid_amendment', 'A John Deere reading cannot be amended.');
+      throw new ReadingError('reading.invalid_amendment', 'A Telematics Reading cannot be amended.');
     const [machine] = await tx
       .select()
       .from(contractingMachines)
@@ -570,7 +368,7 @@ export async function amendReading({ db, actor, input: raw }: { db: Db; actor: J
     for (const { id, ...settled } of resolution.changes) {
       const before = byId.get(id);
       if (!before) continue;
-      // A pair settling must not clear a reading John Deere still contradicts.
+      // A pair settling must not clear a reading a Telematics Reading still contradicts.
       const reported = settled.disputed ? null : contradictingTelematics(afterAmendment, id);
       const dispute = reported
         ? { ...settled, disputed: true, disputeReason: telematicsDisputeReason(reported) }

@@ -5,7 +5,7 @@ import type { DomainLogger } from '@pkg/schema';
 import type { JohnDeerePollSummary } from '@pkg/schema/contracting';
 import type { JohnDeereClient } from './client.js';
 import type { JohnDeereConnectionService } from './connection-service.js';
-import { isJohnDeereError, type JohnDeereError } from './john-deere-errors.js';
+import { isJohnDeereError, type JohnDeereError, type JohnDeereErrorCode } from './john-deere-errors.js';
 import type { JohnDeereLinkService, PollableLink } from './link-service.js';
 
 export type JohnDeerePollerConfig = {
@@ -39,20 +39,25 @@ const emptySummary = (skipped: 'not-connected' | 'no-links' | null): JohnDeerePo
   endedBy: null,
 });
 
-/**
- * The run ends here: the rest of the Links wait for the next hour. `recorded` is true when the connection row
- * already carries why, as when John Deere refused the sign-in.
- */
-class RunEnded extends Error {
-  constructor(
-    message: string,
-    readonly recorded: boolean,
-  ) {
-    super(message);
+/** A shutdown ends the run between Links rather than waiting out every Retry-After; nothing is recorded. */
+class RunStopped extends Error {
+  constructor() {
+    super('John Deere polling stopped as the API shut down.');
   }
 }
 
-const isCode = (error: unknown, code: JohnDeereError['code']): error is JohnDeereError =>
+/**
+ * A Deere refusal the rest of the Links would meet too, so the run ends and the connection records it: the sign-in
+ * is gone (the connection row already says so, and the record is skipped), or Deere is unavailable or limiting us.
+ */
+const RUN_ENDING: ReadonlySet<JohnDeereErrorCode> = new Set<JohnDeereErrorCode>([
+  'john_deere.unauthorized',
+  'john_deere.not_connected',
+  'john_deere.unavailable',
+  'john_deere.rate_limited',
+]);
+
+const isCode = (error: unknown, code: JohnDeereErrorCode): error is JohnDeereError =>
   isJohnDeereError(error) && error.code === code;
 
 /**
@@ -112,17 +117,15 @@ export class JohnDeerePoller {
 
     const summary = emptySummary(null);
     try {
-      for (const link of await this.checkListed(pollable, summary)) await this.pollLink(link, summary);
-      await connection.markPolled();
-    } catch (error) {
-      const ended =
-        error instanceof RunEnded ? error : isJohnDeereError(error) ? new RunEnded(error.message, false) : null;
-      if (!ended) throw error;
-      summary.endedBy = ended.message;
-      if (!ended.recorded) {
-        await connection.markPolled();
-        await connection.markError({ message: ended.message });
+      for (const link of await this.checkListed(pollable, summary)) {
+        this.stopIfDisposed();
+        await this.pollLink(link, summary);
       }
+      await connection.recordPoll({ error: null });
+    } catch (error) {
+      if (!(error instanceof RunStopped || isJohnDeereError(error))) throw error;
+      summary.endedBy = error.message;
+      if (!(error instanceof RunStopped)) await connection.recordPoll({ error: error.message });
     }
     logger.info({ ...summary }, 'John Deere poll finished');
     return summary;
@@ -130,17 +133,14 @@ export class JohnDeerePoller {
 
   /** Marks Links whose Deere machine is gone, or back, and returns the ones still listed. */
   private async checkListed(pollable: PollableLink[], summary: JohnDeerePollSummary): Promise<PollableLink[]> {
-    const { client, links, now } = this.config;
-    const listed = new Map(
-      (
-        await this.withAccessToken((token) =>
-          client.equipmentByIds(
-            token,
-            pollable.map((link) => link.equipmentId),
-          ),
-        )
-      ).map((machine) => [machine.id, machine]),
+    const { client, connection, links, now } = this.config;
+    const machines = await connection.withAccessToken((token) =>
+      client.equipmentByIds(
+        token,
+        pollable.map((link) => link.equipmentId),
+      ),
     );
+    const listed = new Map(machines.map((machine) => [machine.id, machine]));
     const present: PollableLink[] = [];
     for (const link of pollable) {
       const machine = listed.get(link.equipmentId);
@@ -159,11 +159,10 @@ export class JohnDeerePoller {
   }
 
   private async pollLink(link: PollableLink, summary: JohnDeerePollSummary): Promise<void> {
-    const { client, links, push, logger, now } = this.config;
-    this.stopIfDisposed();
+    const { client, connection, links, push, logger, now } = this.config;
     try {
       const report = await this.withRetryAfter(() =>
-        this.withAccessToken((token) => client.engineHours(token, link.principalId)),
+        connection.withAccessToken((token) => client.engineHours(token, link.principalId)),
       );
       summary.polled += 1;
       if (!report) {
@@ -196,15 +195,12 @@ export class JohnDeerePoller {
         lastErrorAt: null,
       });
     } catch (error) {
-      if (error instanceof RunEnded) throw error;
+      if (error instanceof RunStopped || (isJohnDeereError(error) && RUN_ENDING.has(error.code))) throw error;
       if (isCode(error, 'john_deere.not_found')) {
         await links.recordPoll(link.id, { lostAt: now(), lastPolledAt: now() });
         summary.lost += 1;
         return;
       }
-      // Deere is unavailable or still limiting us: the rest of the Links would meet the same wall.
-      if (isCode(error, 'john_deere.unavailable') || isCode(error, 'john_deere.rate_limited'))
-        throw new RunEnded(error.message, false);
       const message = error instanceof Error ? error.message : String(error);
       logger.warn({ linkId: link.id, error: message }, 'John Deere poll failed for a Link');
       summary.errors += 1;
@@ -212,41 +208,20 @@ export class JohnDeerePoller {
     }
   }
 
-  /**
-   * A call with the current access token; a 401 renews it once and retries. A renewal Deere refuses has left the
-   * connection Needs reconnecting, so the run ends.
-   */
-  private async withAccessToken<T>(call: (accessToken: string) => Promise<T>): Promise<T> {
-    const { connection } = this.config;
-    try {
-      return await call(await this.signedIn(() => connection.accessToken()));
-    } catch (error) {
-      if (!isCode(error, 'john_deere.unauthorized')) throw error;
-    }
-    const renewed = await this.signedIn(() => connection.renewAccessToken());
-    try {
-      return await call(renewed);
-    } catch (error) {
-      if (isCode(error, 'john_deere.unauthorized')) throw new RunEnded(error.message, false);
-      throw error;
-    }
-  }
-
-  /** A token from the connection; no token means the sign-in is gone, which the connection already says. */
-  private async signedIn(token: () => Promise<string>): Promise<string> {
-    try {
-      return await token();
-    } catch (error) {
-      if (isCode(error, 'john_deere.unauthorized') || isCode(error, 'john_deere.not_connected'))
-        throw new RunEnded(error.message, true);
-      throw error;
-    }
-  }
-
   /** One retry after the wait Deere named; a second refusal ends the run. */
-  /** A shutdown ends the run between Links rather than waiting out every Retry-After. */
+  private async withRetryAfter<T>(call: () => Promise<T>): Promise<T> {
+    try {
+      return await call();
+    } catch (error) {
+      if (!isCode(error, 'john_deere.rate_limited')) throw error;
+      await this.sleep(retryAfterMs(error));
+      this.stopIfDisposed();
+      return call();
+    }
+  }
+
   private stopIfDisposed(): void {
-    if (this.disposed) throw new RunEnded('John Deere polling stopped as the API shut down.', true);
+    if (this.disposed) throw new RunStopped();
   }
 
   private sleepUnlessStopping(ms: number): Promise<void> {
@@ -261,17 +236,6 @@ export class JohnDeerePoller {
         { once: true },
       );
     });
-  }
-
-  private async withRetryAfter<T>(call: () => Promise<T>): Promise<T> {
-    try {
-      return await call();
-    } catch (error) {
-      if (!isCode(error, 'john_deere.rate_limited')) throw error;
-      await this.sleep(retryAfterMs(error));
-      this.stopIfDisposed();
-      return call();
-    }
   }
 }
 

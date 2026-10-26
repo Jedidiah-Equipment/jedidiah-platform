@@ -11,6 +11,7 @@ import {
   readingNeedsALook,
   readingNeedsALookLevel,
   readingPhotoPath,
+  readingsContradictedBy,
   readingVerification,
   resolveReadingAmendment,
   type SequencedReading,
@@ -46,9 +47,9 @@ describe('contradictingTelematics', () => {
     sequence: number,
     hour: number,
     value: number,
-    method: SequencedReading['method'] = 'manual',
-  ) => ({ id, sequence, capturedAt: at(hour), value, method }) satisfies SequencedReading;
-  const deere = ledger('deere', 2, 9, 1000, 'telematics');
+    telematicsProvider: SequencedReading['telematicsProvider'] = null,
+  ) => ({ id, sequence, capturedAt: at(hour), value, telematicsProvider }) satisfies SequencedReading;
+  const deere = ledger('deere', 2, 9, 1000, 'john-deere');
 
   it('finds the report a captured reading sits out of sequence with, on either side', () => {
     expect(contradictingTelematics([ledger('early', 1, 6, 1010), deere], 'early')).toEqual(deere);
@@ -65,6 +66,13 @@ describe('contradictingTelematics', () => {
   it('breaks a Read At tie by acceptance order', () => {
     expect(contradictingTelematics([ledger('same', 1, 9, 1010), deere], 'same')).toEqual(deere);
     expect(contradictingTelematics([deere, ledger('same', 3, 9, 1010)], 'same')).toBeNull();
+  });
+
+  it('lists the captured readings a report leaves out of sequence, in ledger order, by the same rule', () => {
+    const readings = [ledger('late', 4, 12, 990), ledger('early', 1, 6, 1010), deere, ledger('fine', 3, 10, 1005)];
+    expect(readingsContradictedBy(readings, 'deere').map((reading) => reading.id)).toEqual(['early', 'late']);
+    expect(readingsContradictedBy(readings, 'early')).toEqual([]);
+    expect(readingsContradictedBy(readings, 'missing')).toEqual([]);
   });
 });
 

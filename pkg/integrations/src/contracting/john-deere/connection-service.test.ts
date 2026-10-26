@@ -280,21 +280,24 @@ describe('JohnDeereConnectionService', () => {
     await expect(service.accessToken()).rejects.toMatchObject({ code: 'john_deere.not_connected' });
   });
 
-  test('disconnect forgets the tokens and organizations; poll marks record without auditing the timestamp', async ({
+  test('disconnect forgets the tokens and organizations; a poll records only on a Connected row, unaudited', async ({
     db,
   }) => {
     const { state, service, row, audit, connect } = await setUp(db);
     await connect();
 
-    await service.markPolled();
-    await service.markError({ message: 'John Deere is unavailable right now.' });
+    await service.recordPoll({ error: 'John Deere is unavailable right now.' });
     expect(await service.getConnection()).toMatchObject({
       lastPolledAt: state.now.toISOString(),
       lastError: 'John Deere is unavailable right now.',
     });
+    await service.recordPoll({ error: null });
+    expect(await service.getConnection()).toMatchObject({ lastPolledAt: state.now.toISOString(), lastError: null });
     const beforeDisconnect = (await audit()).length;
 
     await service.disconnect({ actorUserId: adminId });
+    // A poll that ends after a Disconnect, or a refused renewal, records nothing: the row already says why.
+    await service.recordPoll({ error: 'John Deere refused the sign-in.' });
     expect(await row()).toMatchObject({
       status: 'not-connected',
       refreshTokenCiphertext: null,

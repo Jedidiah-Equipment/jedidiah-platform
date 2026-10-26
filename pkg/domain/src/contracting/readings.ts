@@ -4,7 +4,6 @@ import {
   type JobReadingAttentionKind,
   type NeedsALookLevel,
   type ReadingExceptionType,
-  type ReadingMethod,
   type ReadingRole,
   type ReadingVerification,
   type TelematicsProvider,
@@ -157,28 +156,62 @@ export function meterDisagreementHint({
 }
 
 /** Why a captured reading is Disputed against a Telematics Reading. */
-export const telematicsDisputeReason = (reported: { value: number; capturedAt: Date }) =>
-  `John Deere reported ${formatHours(reported.value)} at ${formatDate(reported.capturedAt, 'medium')}.`;
+export const telematicsDisputeReason = (reported: {
+  telematicsProvider: TelematicsProvider;
+  value: number;
+  capturedAt: Date;
+}) =>
+  `${telematicsProviderLabels[reported.telematicsProvider]} reported ${formatHours(reported.value)} at ${formatDate(reported.capturedAt, 'medium')}.`;
 
-export type SequencedReading = { id: string; method: ReadingMethod; value: number; capturedAt: Date; sequence: number };
+/** A reading at its place in the ledger: Read At, then acceptance. */
+export type SequencedReading = {
+  id: string;
+  telematicsProvider: TelematicsProvider | null;
+  value: number;
+  capturedAt: Date;
+  sequence: number;
+};
+
+/** A Telematics Reading as the ledger holds it: one with a provider. */
+export type ReportedReading<T extends SequencedReading = SequencedReading> = T & {
+  telematicsProvider: TelematicsProvider;
+};
+
+const isReported = <T extends SequencedReading>(reading: T): reading is ReportedReading<T> =>
+  reading.telematicsProvider !== null;
+
+const ledgerOrder = (left: SequencedReading, right: SequencedReading) =>
+  left.capturedAt.getTime() - right.capturedAt.getTime() || left.sequence - right.sequence;
 
 /**
- * The Telematics Reading a reading is out of sequence with, or null: one earlier in the ledger (Read At, then
- * acceptance) that reads higher, or one later that reads lower. Telematics Readings are never out of sequence.
+ * The one rule a Telematics Reading holds a captured reading to: the earlier of the two in the ledger may not read
+ * higher. A captured reading that does is out of sequence, and the report is the one beyond dispute.
  */
-export function contradictingTelematics(readings: readonly SequencedReading[], id: string): SequencedReading | null {
-  const reading = readings.find((candidate) => candidate.id === id);
-  if (!reading || reading.method === 'telematics') return null;
-  const order = (left: SequencedReading, right: SequencedReading) =>
-    left.capturedAt.getTime() - right.capturedAt.getTime() || left.sequence - right.sequence;
-  const contradicted = readings.filter(
-    (reported) =>
-      reported.method === 'telematics' &&
-      (order(reading, reported) < 0 ? reading.value > reported.value : reading.value < reported.value),
-  );
+const contradicts = (captured: SequencedReading, reported: SequencedReading) =>
+  ledgerOrder(captured, reported) < 0 ? captured.value > reported.value : captured.value < reported.value;
+
+/** The captured readings a Telematics Reading leaves out of sequence, in ledger order. */
+export function readingsContradictedBy<T extends SequencedReading>(readings: readonly T[], reportedId: string): T[] {
+  const reported = readings.find((candidate) => candidate.id === reportedId);
+  if (!reported || !isReported(reported)) return [];
+  return readings.filter((captured) => !isReported(captured) && contradicts(captured, reported)).sort(ledgerOrder);
+}
+
+/** The nearest Telematics Reading a captured reading is out of sequence with, or null. */
+export function contradictingTelematics<T extends SequencedReading>(
+  readings: readonly T[],
+  id: string,
+): ReportedReading<T> | null {
+  const captured = readings.find((candidate) => candidate.id === id);
+  if (!captured || isReported(captured)) return null;
   const distance = (reported: SequencedReading) =>
-    Math.abs(reported.capturedAt.getTime() - reading.capturedAt.getTime());
-  return contradicted.sort((left, right) => distance(left) - distance(right))[0] ?? null;
+    Math.abs(reported.capturedAt.getTime() - captured.capturedAt.getTime());
+  return (
+    readings
+      .filter(isReported)
+      .filter((reported) => contradicts(captured, reported))
+      .sort((left, right) => distance(left) - distance(right))[0] ?? null
+  );
 }
 
 export type ReadingDisputeState = {

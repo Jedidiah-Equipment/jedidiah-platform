@@ -31,9 +31,9 @@ const reading = (
   id: string,
   value: number,
   capturedAt: Date,
-  method: CaptureNeighbour['method'] = 'photo',
+  telematicsProvider: CaptureNeighbour['telematicsProvider'] = null,
   role: CaptureNeighbour['role'] = 'spot',
-): CaptureNeighbour => ({ id, role, value, capturedAt, method });
+): CaptureNeighbour => ({ id, role, value, capturedAt, telematicsProvider });
 
 const world = (overrides: Partial<CaptureWorld> = {}): CaptureWorld => ({
   latest: { id: 'latest', value: 100 },
@@ -84,7 +84,7 @@ describe('judgeCapture', () => {
     ['baseline-exists', { mayBaseline: true, stint: null }, { role: 'baseline' }],
     [
       'baseline-exists',
-      { previous: null, next: reading('latest', 100, now, 'manual', 'baseline') },
+      { previous: null, next: reading('latest', 100, now, null, 'baseline') },
       { value: 90, readAt: anHourAgo },
     ],
   ])('refuses %s', (rule, given, attempt) => {
@@ -181,9 +181,9 @@ describe('judgeCapture', () => {
     });
 
     test('never disputes a Telematics Reading on either side', () => {
-      const reported = reading('deere', 1000, anHourAgo, 'telematics');
+      const reported = reading('deere', 1000, anHourAgo, 'john-deere');
       const reportedLater = reading('deere-later', 1010, now);
-      const telematics = { ...reportedLater, method: 'telematics' as const };
+      const telematics = { ...reportedLater, telematicsProvider: 'john-deere' as const };
       expect(
         judgeCapture(
           world({ latest: { id: 'deere', value: 1000 }, previous: reported, previousTelematics: reported }),
@@ -216,8 +216,8 @@ describe('judgeCapture', () => {
 
   test('answers to the nearest Telematics Reading even past a captured reading in between', () => {
     // John Deere said 1200 at 07:00; a Foreman's 1100 at 07:30 was left Disputed; a later 1150 is above that reading.
-    const reported = reading('deere', 1200, new Date('2026-10-09T07:00:00Z'), 'telematics');
-    const disputed = reading('human', 1100, new Date('2026-10-09T07:30:00Z'), 'manual');
+    const reported = reading('deere', 1200, new Date('2026-10-09T07:00:00Z'), 'john-deere');
+    const disputed = reading('human', 1100, new Date('2026-10-09T07:30:00Z'), null);
     expect(
       judgeCapture(
         world({ latest: { id: 'human', value: 1100 }, previous: disputed, previousTelematics: reported }),
@@ -229,13 +229,13 @@ describe('judgeCapture', () => {
       reason: 'reading.below_latest',
       message: `John Deere reported ${formatHours(1200)} at ${formatDate(reported.capturedAt, 'medium')}. Check the time or the value.`,
     });
-    const later = reading('deere-later', 1300, now, 'telematics');
+    const later = reading('deere-later', 1300, now, 'john-deere');
     expect(
       judgeCapture(
         world({
           latest: { id: 'deere-later', value: 1300 },
           previous: disputed,
-          next: reading('human-later', 1250, new Date('2026-10-09T07:45:00Z'), 'manual'),
+          next: reading('human-later', 1250, new Date('2026-10-09T07:45:00Z'), null),
           nextTelematics: later,
         }),
         capture({ value: 1310, readAt: new Date('2026-10-09T07:40:00Z') }),

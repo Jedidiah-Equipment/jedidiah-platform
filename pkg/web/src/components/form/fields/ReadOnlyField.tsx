@@ -7,32 +7,43 @@ export type ReadOnlyFieldProps = {
   className?: string;
   label: React.ReactNode;
   valueClassName?: string;
+  /** A control drawn to the right of the value box, on the same row, so the box stays level with its neighbours. */
+  action?: React.ReactNode;
 } & (
   | { unit?: undefined; value: React.ReactNode }
   /** A unit shown inside the box on the right, drawn as `NumberField` draws its `unit`. */
   | { unit: string; value: string | null }
 );
 
-export function ReadOnlyField({ className, label, unit, value, valueClassName }: ReadOnlyFieldProps) {
+export function ReadOnlyField({ action, className, label, unit, value, valueClassName }: ReadOnlyFieldProps) {
+  const box =
+    unit === undefined ? (
+      <div
+        className={cn(
+          'flex h-8 min-w-0 flex-1 items-center rounded-lg border border-input bg-muted/40 px-2.5 py-1 font-normal text-foreground',
+          valueClassName,
+        )}
+      >
+        {value}
+      </div>
+    ) : (
+      <InputGroup className={cn('flex-1 bg-muted/40', valueClassName)}>
+        <InputGroupInput readOnly tabIndex={-1} value={value ?? ''} />
+        <InputGroupAddon align="inline-end">
+          <InputGroupText>{unit}</InputGroupText>
+        </InputGroupAddon>
+      </InputGroup>
+    );
   return (
     <div className={cn('grid gap-1.5 text-sm font-medium', className)}>
       <span>{label}</span>
-      {unit === undefined ? (
-        <div
-          className={cn(
-            'flex h-8 min-w-0 items-center rounded-lg border border-input bg-muted/40 px-2.5 py-1 font-normal text-foreground',
-            valueClassName,
-          )}
-        >
-          {value}
+      {action ? (
+        <div className="flex min-w-0 items-center gap-2">
+          {box}
+          {action}
         </div>
       ) : (
-        <InputGroup className={cn('bg-muted/40', valueClassName)}>
-          <InputGroupInput readOnly tabIndex={-1} value={value ?? ''} />
-          <InputGroupAddon align="inline-end">
-            <InputGroupText>{unit}</InputGroupText>
-          </InputGroupAddon>
-        </InputGroup>
+        box
       )}
     </div>
   );

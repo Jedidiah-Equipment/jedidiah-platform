@@ -156,7 +156,7 @@ export class JohnDeereClient {
 
   async organizations(accessToken: string): Promise<JohnDeereOrganizationListing[]> {
     const listings: JohnDeereOrganizationListing[] = [];
-    // No `showLinks` filter: the list is short, and the filter has dropped `manage_connections` in practice.
+    // No `showLinks` filter: the list is short, and the connected link is not named as the docs say.
     let next: string | null = `${this.config.platformBaseUrl}/organizations`;
     while (next) {
       const page = OrganizationsPage.safeParse(await this.getJson(next, accessToken, AXIOM_JSON));
@@ -168,7 +168,9 @@ export class JohnDeereClient {
           type: organization.type ?? null,
           member: organization.member ?? false,
           connectionsUrl: linkTo(organization.links, 'connections'),
-          manageConnectionsUrl: linkTo(organization.links, 'manage_connections'),
+          // Deere sends `manage_connection` (seen on staging, 2026-10-26); its docs say `manage_connections`.
+          manageConnectionsUrl:
+            linkTo(organization.links, 'manage_connection') ?? linkTo(organization.links, 'manage_connections'),
           linkRels: organization.links?.map((link) => link.rel) ?? [],
         });
       }

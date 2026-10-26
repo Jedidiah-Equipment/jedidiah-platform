@@ -1,4 +1,4 @@
-import { formatHours } from '@pkg/domain';
+import { formatHours, getPlantDateNow } from '@pkg/domain';
 import { captureRefusals, isFutureReadAt, READING_PHOTO_POLICY, readAtFromInput } from '@pkg/domain/contracting';
 import { IconArrowRight } from '@tabler/icons-react';
 import type React from 'react';
@@ -171,9 +171,9 @@ export const ReadingReadAtField = withFieldGroup({
       <>
         <group.AppField name="readAt">
           {(field) => (
-            <field.TextField
+            <field.DateTimePickerField
               label="Read At"
-              type="datetime-local"
+              maxValue={getPlantDateNow()}
               description="When the meter was read. Leave blank to use the current time."
             />
           )}

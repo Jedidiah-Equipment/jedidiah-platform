@@ -23,11 +23,11 @@ The issue number resolves against the current repository; use a full issue URL t
 ## The sequence
 
 ```text
-issue → implement → prune → verify/commit → local review
+issue → implement → simplify → prune → verify/commit → local review
       → publish ready PR → Claude review → follow reviews and CI
 ```
 
-Local review runs after the relevant changes are committed because the upstream reviewer compares committed history. `blast-it` then reuses those commits. The flow chooses routine details autonomously and records them; it stops for material ambiguity, missing access, failed verification, or an action beyond scope.
+Simplification is a behavior-preserving cleanup of the changed code (Claude Code's `simplify` skill where available, the skill's own brief elsewhere), so local review and reviewers see the cleaned diff. Local review runs after the relevant changes are committed because the upstream reviewer compares committed history. `blast-it` then reuses those commits. The flow chooses routine details autonomously and records them; it stops for material ambiguity, missing access, failed verification, or an action beyond scope.
 
 It creates commits, pushes, posts review findings, and fixes verified review issues. It never merges as part of this workflow. Follow-up ends when the PR meets the criteria, closes/merges externally, requires human action, or remains blocked after two attempted remedies. Continuing later requires a supported monitor and authorization.
 

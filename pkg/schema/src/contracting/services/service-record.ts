@@ -75,11 +75,6 @@ export const ServiceRecordListInput = createSearchedSortedCursorQueryInput({
 export type ServiceRecordListInput = z.infer<typeof ServiceRecordListInput>;
 export const ServiceRecordListResult = createCursorQueryResult(ServiceRecord);
 export type ServiceRecordListResult = z.infer<typeof ServiceRecordListResult>;
-export const ServiceRecordStatusCounts = z.record(z.enum(serviceRecordStatuses), z.number().int().nonnegative());
-export type ServiceRecordStatusCounts = z.infer<typeof ServiceRecordStatusCounts>;
-/** Each status's Service Record count, for the Services table's quick filters. */
-export const ServiceRecordSummary = z.object({ counts: ServiceRecordStatusCounts });
-export type ServiceRecordSummary = z.infer<typeof ServiceRecordSummary>;
 /** What the Services table's column filters offer: only Machines and Mechanics some Service Record names. */
 export const ServiceRecordFilterOptions = z.object({
   machines: z.object({ id: UUID, code: z.string() }).array(),

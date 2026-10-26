@@ -87,6 +87,18 @@ async function enter(name: string, value: string) {
   });
 }
 
+async function enterReadAt(date: string, time: string) {
+  for (const [name, value] of [
+    ['readAt', date],
+    ['readAt-time', time],
+  ] as const) {
+    await enter(name, value);
+    await act(async () => {
+      document.querySelector(`[name="${name}"]`)?.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
+    });
+  }
+}
+
 function button(label: string) {
   const result = [...document.querySelectorAll('button')].find((item) => item.getAttribute('aria-label') === label);
   if (!result) throw new Error(`Button missing: ${label}`);
@@ -177,7 +189,7 @@ it('offers the dispute for a departure below the latest reading and posts the ha
 it('posts a departure read before the latest reading, leaving its neighbours to the server', async () => {
   const { save } = await mount();
   await enter('value', '126');
-  await enter('readAt', '2026-09-16T16:00');
+  await enterReadAt('2026-09-16', '16:00');
   await act(async () => document.querySelector<HTMLTextAreaElement>('[name="reason"]')?.focus());
   await enter('reason', 'Entered a day late');
   expect(document.querySelector('#confirmedDispute')).toBeNull();

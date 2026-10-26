@@ -49,8 +49,6 @@ async function mount() {
               case 'contractingServices.list':
                 tableInputs.push(JSON.parse(url.searchParams.get('input') ?? '{}'));
                 return { items: [record], nextCursor: null, total: 1 };
-              case 'contractingServices.summary':
-                return { counts: { open: 1, closed: 4 } };
               case 'contractingFleet.machines.list':
                 return [machine];
               case 'contractingServices.options.filters':
@@ -102,7 +100,7 @@ async function mount() {
 }
 
 test('pins the Machines Due for Service above every Service Record, painted, booking that Machine in from its row', async () => {
-  const { rows, button, opened } = await mount();
+  const { rows, opened } = await mount();
 
   const [pinned, booked] = rows();
   expect(pinned?.textContent).toContain('KOL220-2');
@@ -113,15 +111,25 @@ test('pins the Machines Due for Service above every Service Record, painted, boo
   expect(booked?.textContent).toContain('Booked in');
   expect(booked?.className).not.toContain('--warning-surface');
 
-  await act(async () => button('Record a service').click());
+  await act(async () => pinned?.querySelector('button')?.click());
   expect(document.body.textContent).toContain('Book the Machine in.');
+  expect(document.querySelector('[role="dialog"]')?.textContent).not.toContain('Search machines');
   const submit = [...document.querySelectorAll<HTMLButtonElement>('button[type="submit"]')].find(
-    (each) => each.textContent?.trim() === 'Record service',
+    (each) => each.textContent?.trim() === 'Book service',
   );
   await act(async () => submit?.click());
   await act(async () => {
     await vi.waitFor(() => expect(opened).toMatchObject([{ machineId: machine.id }]));
   });
+});
+
+test('books a service from the page header, picking the Machine in the dialog', async () => {
+  const { button } = await mount();
+
+  await act(async () => button('Book a service').click());
+  const dialog = document.querySelector('[role="dialog"]');
+  expect(dialog?.textContent).toContain('Machine');
+  expect(dialog?.querySelector('#machineId')).not.toBeNull();
 });
 
 test('offers the Machine, Mechanic and Status column filters and the Start sort', async () => {
@@ -131,17 +139,15 @@ test('offers the Machine, Mechanic and Status column filters and the Start sort'
     expect(labelled(label), label).not.toBeNull();
 });
 
-test('a status quick filter narrows the Service Records and never the pinned Machines', async () => {
-  const { rows, button, tableInputs } = await mount();
+test('shows only Booked In Service Records until the Status filter asks for more, with no quick filters', async () => {
+  const { rows, tableInputs, labelled } = await mount();
 
-  await act(async () => button('Closed').click());
-  await act(async () => {
-    await vi.waitFor(() => expect(tableInputs.at(-1)?.statuses).toEqual(['closed']));
-  });
+  expect(tableInputs.at(-1)?.statuses).toEqual(['open']);
+  expect(labelled('Service Record statuses')).toBeNull();
   expect(rows()[0]?.textContent).toContain('KOL220-2');
 });
 
-test('opens a Service Record row on its Machine Service tab', async () => {
+test('opens a Service Record row on its Machine', async () => {
   const { rows, router } = await mount();
 
   await act(async () => rows()[1]?.click());
@@ -149,7 +155,6 @@ test('opens a Service Record row on its Machine Service tab', async () => {
     await vi.waitFor(() =>
       expect(router.state.location).toMatchObject({
         pathname: `/contracting/fleet/${record.machineId}/edit`,
-        search: { tab: 'service' },
       }),
     );
   });

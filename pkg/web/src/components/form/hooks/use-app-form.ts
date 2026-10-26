@@ -4,6 +4,7 @@ import { ComboboxField } from '../fields/ComboboxField.js';
 import { CreatableComboboxField } from '../fields/CreatableComboboxField.js';
 import { CurrencyField } from '../fields/CurrencyField.js';
 import { DatePickerField } from '../fields/DatePickerField.js';
+import { DateTimePickerField } from '../fields/DateTimePickerField.js';
 import { ImageField } from '../fields/ImageField.js';
 import { MultiComboboxField } from '../fields/MultiComboboxField.js';
 import { NumberField } from '../fields/NumberField.js';
@@ -24,6 +25,7 @@ export const { useAppForm, useTypedAppFormContext, withFieldGroup, withForm } = 
     CreatableComboboxField,
     CurrencyField,
     DatePickerField,
+    DateTimePickerField,
     ImageField,
     MultiComboboxField,
     NumberField,

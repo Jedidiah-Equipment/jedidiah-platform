@@ -3,6 +3,7 @@ import { type Assignment, ReadingReason, ReadingValue } from '@pkg/schema/contra
 import { z } from 'zod';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
+import { localDateTimeValue } from '@/components/form/utils/form-schema.js';
 import { Separator } from '@/components/ui/separator.js';
 import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
 import {
@@ -16,7 +17,7 @@ const DepartureValues = z.object({
   value: ReadingValue,
   reason: z.union([z.string().trim().length(0), ReadingReason]),
   confirmedDispute: ConfirmedDispute,
-  readAt: z.string(),
+  readAt: localDateTimeValue,
 });
 type DepartureValues = z.infer<typeof DepartureValues>;
 

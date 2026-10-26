@@ -73,6 +73,18 @@ async function enter(name: string, value: string) {
   });
 }
 
+async function enterReadAt(date: string, time: string) {
+  for (const [name, value] of [
+    ['readAt', date],
+    ['readAt-time', time],
+  ] as const) {
+    await enter(name, value);
+    await act(async () => {
+      document.querySelector(`[name="${name}"]`)?.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
+    });
+  }
+}
+
 it('posts an arrival read before the latest reading, leaving its neighbours to the server', async () => {
   const container = document.createElement('div');
   document.body.append(container);
@@ -83,7 +95,7 @@ it('posts an arrival read before the latest reading, leaving its neighbours to t
   if (!save) throw new Error('Save action missing');
 
   await enter('value', '126');
-  await enter('readAt', '2026-09-16T16:00');
+  await enterReadAt('2026-09-16', '16:00');
   await act(async () => document.querySelector<HTMLTextAreaElement>('[name="comment"]')?.focus());
   expect(document.querySelector('#confirmedDispute')).toBeNull();
   await act(async () => save.click());

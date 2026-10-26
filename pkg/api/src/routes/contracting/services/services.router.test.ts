@@ -129,7 +129,7 @@ test('booking a Machine in serves it as Booked In until its Service Record close
   });
 });
 
-test('the Services table lists every Service Record Booked In first, then newest, and filters and counts them', async ({
+test('the Services table lists every Service Record Booked In first, then newest, and filters them', async ({
   context,
 }) => {
   const { machineWith } = context;
@@ -168,7 +168,6 @@ test('the Services table lists every Service Record Booked In first, then newest
   expect(await codes({ search: 'exc-e' })).toEqual(['EXC-EARLY']);
   expect(await codes({ mechanicUserIds: ['mo'] })).toEqual(['EXC-LATE']);
   expect(await codes({ machineIds: [open.id] })).toEqual(['TLB-OPEN']);
-  expect(await connor.contractingServices.summary()).toEqual({ counts: { open: 1, closed: 2 } });
   expect(await connor.contractingServices.options.filters()).toEqual({
     machines: [
       { id: early.id, code: 'EXC-EARLY' },
@@ -182,7 +181,6 @@ test('the Services table lists every Service Record Booked In first, then newest
 test('a Foreman reads none of the Services page', async ({ context }) => {
   const sipho = context.createCaller(sessionAs('sipho', 'foreman'));
   await expect(sipho.contractingServices.list({})).rejects.toMatchObject({ code: 'FORBIDDEN' });
-  await expect(sipho.contractingServices.summary()).rejects.toMatchObject({ code: 'FORBIDDEN' });
   await expect(sipho.contractingServices.options.filters()).rejects.toMatchObject({ code: 'FORBIDDEN' });
 });
 

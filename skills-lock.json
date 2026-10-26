@@ -107,9 +107,10 @@
       "computedHash": "61508216ede38d8cfa712879197a76f75f4896615dbf7abc3f62571f8f5923cc"
     },
     "tackle-issue": {
-      "source": "./.agents/skills",
-      "sourceType": "local",
-      "computedHash": "ca66f6f7481fe06b03f408a0af9314610c39a946078e018cdbf67d2d8fd348ff"
+      "source": "deanvanniekerk/skills",
+      "sourceType": "github",
+      "skillPath": "skills/tackle-issue/SKILL.md",
+      "computedHash": "77e67f08185d616eb5f9ad33388aad9b2f3f2466caddb0bde62f994fbb9f0c32"
     },
     "tdd": {
       "source": "./.agents/skills",

@@ -3,6 +3,7 @@ import { type Machine, ReadingComment, ReadingValue } from '@pkg/schema/contract
 import { z } from 'zod';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
+import { localDateTimeValue } from '@/components/form/utils/form-schema.js';
 import { MachineDialogTitle, machineDialogSubject } from '@/contracting/components/MachineDialogTitle.js';
 import {
   ReadingCaptureDetails,
@@ -15,7 +16,7 @@ const SpotValues = z.object({
   value: ReadingValue,
   comment: z.union([z.string().trim().length(0), ReadingComment]),
   confirmedDispute: ConfirmedDispute,
-  readAt: z.string(),
+  readAt: localDateTimeValue,
 });
 type SpotValues = z.infer<typeof SpotValues>;
 
@@ -45,7 +46,7 @@ export function SpotCaptureDialog({
       onOpenChange={(open) => {
         if (!open) onClose();
       }}
-      title={<MachineDialogTitle machine={machineDialogSubject(machine)}>Capture reading</MachineDialogTitle>}
+      title={<MachineDialogTitle machine={machineDialogSubject(machine)}>Capture hours</MachineDialogTitle>}
       contentClassName="sm:max-w-md"
       submitLabel="Capture"
       defaultValues={{ value: Number.NaN, comment: '', confirmedDispute: null, readAt: '' }}

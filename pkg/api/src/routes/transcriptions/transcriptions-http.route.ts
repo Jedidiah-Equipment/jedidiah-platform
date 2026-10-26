@@ -15,12 +15,6 @@ import {
 } from '../http-route-helpers.js';
 import { transcriptionErrorFamily } from '../shared-error-families.js';
 
-/**
- * The path phones from before the shared route still post to, always Contracting's. Drop it once their OTA is out
- * (#1804).
- */
-const CONTRACTING_ALIAS_PATH = '/api/contracting/transcriptions';
-
 const upload: MultipartUploadOptions = {
   fileField: 'audio',
   maxFiles: 1,
@@ -71,7 +65,6 @@ export async function registerTranscriptionHttpRoutes(
   };
 
   for (const business of BUSINESSES) app.post(transcribePath(business), transcribe(business));
-  app.post(CONTRACTING_ALIAS_PATH, transcribe('contracting'));
 }
 
 function sendTranscriptionError(reply: FastifyReply, error: unknown) {

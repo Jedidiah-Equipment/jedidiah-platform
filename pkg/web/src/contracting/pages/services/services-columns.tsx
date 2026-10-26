@@ -21,13 +21,18 @@ const statusFilterOptions = serviceRecordStatuses.map((status) => ({
   label: serviceRecordStatusLabels[status],
 }));
 
-/** The Services table's columns, read straight off the row model; the Record a service column shows only to those who may. */
+/**
+ * The Services table's columns, read straight off the row model; the Book a service column shows only to those who
+ * may, and the Machine filter only where the table spans more than one Machine.
+ */
 export function useServicesColumns({
   filters,
-  onRecordService,
+  hasMachineFilter,
+  onBookService,
 }: {
   filters: ServiceRecordFilterOptions | undefined;
-  onRecordService: ((machineId: string) => void) | undefined;
+  hasMachineFilter: boolean;
+  onBookService: ((machineId: string) => void) | undefined;
 }) {
   const filterOptions = useMemo(
     () => ({
@@ -42,7 +47,7 @@ export function useServicesColumns({
         id: MACHINE_COLUMN_ID,
         accessorFn: (row) => row.machine.id,
         header: 'Machine',
-        enableColumnFilter: true,
+        enableColumnFilter: hasMachineFilter,
         enableSorting: false,
         meta: { filterOptions: filterOptions.machines, filterVariant: 'multi-select' },
         cell: ({ row: { original } }) => (
@@ -122,29 +127,30 @@ export function useServicesColumns({
           </div>
         ),
       },
-      ...(onRecordService
+      ...(onBookService
         ? [
             {
               id: 'actions',
               header: '',
               enableColumnFilter: false,
               enableSorting: false,
+              meta: { cellClassName: 'text-right', headerClassName: 'text-right' },
               cell: ({ row: { original } }) =>
                 original.pinned ? (
                   <Button
                     size="sm"
                     onClick={(event) => {
                       event.stopPropagation();
-                      onRecordService(original.machine.id);
+                      onBookService(original.machine.id);
                     }}
                   >
-                    Record a service
+                    Book a service
                   </Button>
                 ) : null,
             } satisfies DataTableColumnDef<ServicesTableRow>,
           ]
         : []),
     ],
-    [filterOptions, onRecordService],
+    [filterOptions, hasMachineFilter, onBookService],
   );
 }

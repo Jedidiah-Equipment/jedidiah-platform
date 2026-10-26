@@ -1,4 +1,5 @@
 import { formatHours, getFirstName } from '@pkg/domain';
+import { readingProviderSuffix } from '@pkg/domain/contracting';
 import type { FleetListInput, Machine } from '@pkg/schema/contracting';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
@@ -159,6 +160,7 @@ export function MachinesPage({
               {row.original.latestReadingAt ? (
                 <span className="text-xs text-muted-foreground">
                   <DateDisplay date={row.original.latestReadingAt} format="medium" />
+                  {readingProviderSuffix(row.original.latestReadingProvider)}
                 </span>
               ) : null}
             </span>

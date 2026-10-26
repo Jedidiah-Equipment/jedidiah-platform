@@ -73,6 +73,14 @@ const linkConstraints = <T>(action: () => Promise<T>) =>
     action,
   );
 
+/** A Link the poll reads, with whether Deere stopped listing its machine. */
+export type PollableLink = { id: string; machineId: string; equipmentId: string; principalId: number; lost: boolean };
+
+/** What one poll saw of a Link; a field left out is left as it was. */
+export type LinkObservation = Partial<
+  Pick<LinkRow, 'lostAt' | 'lastPolledAt' | 'lastReportTime' | 'lastValue' | 'lastError' | 'lastErrorAt'>
+>;
+
 /** John Deere Links: which Deere machine feeds which Machine, made and ended on the John Deere tab. */
 export class JohnDeereLinkService {
   // Promises, so two tabs opening at once share one set of Deere calls; a failed call is forgotten. The list is
@@ -232,6 +240,30 @@ export class JohnDeereLinkService {
           await stampSerialNumber({ db: tx, actorUserId, machineId, serialNumber: deere.serialNumber });
       }),
     );
+  }
+
+  /** Active Links whose Machine is still in service: the ones the poll reads. */
+  async listPollable(): Promise<PollableLink[]> {
+    return this.config.db
+      .select({
+        id: contractingJohnDeereLinks.id,
+        machineId: contractingJohnDeereLinks.machineId,
+        equipmentId: contractingJohnDeereLinks.equipmentId,
+        principalId: contractingJohnDeereLinks.principalId,
+        lost: sql<boolean>`${contractingJohnDeereLinks.lostAt} is not null`,
+      })
+      .from(contractingJohnDeereLinks)
+      .innerJoin(contractingMachines, eq(contractingMachines.id, contractingJohnDeereLinks.machineId))
+      .where(and(activeLink, isNull(contractingMachines.retiredAt)))
+      .orderBy(asc(contractingMachines.code));
+  }
+
+  /** Writes what the poll learned about a Link. Unaudited: the poll moves these every hour. */
+  async recordPoll(linkId: string, observed: LinkObservation): Promise<void> {
+    await this.config.db
+      .update(contractingJohnDeereLinks)
+      .set({ ...observed, updatedAt: this.config.now() })
+      .where(and(eq(contractingJohnDeereLinks.id, linkId), activeLink));
   }
 
   /** Ends a Link; the row stays, so the readings it fed keep their provenance. */

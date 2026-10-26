@@ -3,6 +3,7 @@ import { AuthId } from '../../auth/auth-id.js';
 import { DateIso } from '../../common/date.js';
 import { nullableTrimmedTextInput, nullableTrimmedTextInputOptional, requiredTrimmedText } from '../../common/text.js';
 import { UUID } from '../../common/uuid.js';
+import { telematicsProviders } from '../readings/reading-enums.js';
 import { ReadingValue } from '../readings/reading-value.js';
 import { serviceDueStatuses } from '../services/service-enums.js';
 import { ServiceDueSoonThresholdHours } from '../settings/settings.js';
@@ -113,6 +114,8 @@ export const Machine = MachineCreateInput.extend({
   latestReadingHours: ReadingValue.nullable(),
   /** When that newest Hour Reading was captured. */
   latestReadingAt: DateIso.nullable(),
+  /** Who that reading came from when the Machine's telematics reported it; null for a captured reading. */
+  latestReadingProvider: z.enum(telematicsProviders).nullable(),
   hoursToService: z.number().nullable(),
   /** The threshold the status was judged with: the Machine's Service Alert Hours, else the one in Settings. */
   effectiveServiceAlertHours: ServiceDueSoonThresholdHours,
@@ -181,6 +184,7 @@ export const FieldMachine = Machine.pick({
   serialNumber: true,
   latestReadingHours: true,
   latestReadingAt: true,
+  latestReadingProvider: true,
   serviceIntervalHours: true,
   nextServiceDueHours: true,
   hoursToService: true,

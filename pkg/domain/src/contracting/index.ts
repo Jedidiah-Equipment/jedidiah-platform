@@ -15,6 +15,7 @@ export * from './job-card.js';
 export * from './job-sheet.js';
 export * from './job-transitions.js';
 export * from './jobs.js';
+export * from './john-deere.js';
 export * from './mechanic-performance.js';
 export * from './note-threads.js';
 export * from './notifications.js';

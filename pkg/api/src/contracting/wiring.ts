@@ -7,7 +7,12 @@ import {
   verifyCapturedReading,
 } from '@pkg/core/contracting';
 import type { ContractingPushEvent } from '@pkg/domain/contracting';
-import { JohnDeereClient, JohnDeereConnectionService, JohnDeereLinkService } from '@pkg/integrations/contracting';
+import {
+  JohnDeereClient,
+  JohnDeereConnectionService,
+  JohnDeereLinkService,
+  JohnDeerePoller,
+} from '@pkg/integrations/contracting';
 import { renderJobCardPdf } from '@pkg/pdf/contracting';
 import type { FastifyInstance } from 'fastify';
 import { BackgroundQueue } from '../background-queue.js';
@@ -31,8 +36,12 @@ export type ContractingRouterDependencies = {
   readMeterPhoto: ReadMeterPhoto;
 };
 
-/** The John Deere Connection and Links, or null when this environment holds no John Deere keys. */
-function createJohnDeere(config: ApiConfig, db: BusinessWiringInput['db']): JohnDeereDependencies | null {
+/** The John Deere Connection, Links and hourly poller, or null when this environment holds no John Deere keys. */
+function createJohnDeere(
+  config: ApiConfig,
+  db: BusinessWiringInput['db'],
+  push: ContractingPushScheduler,
+): JohnDeereDependencies | null {
   const { JOHN_DEERE_CLIENT_ID: clientId, JOHN_DEERE_CLIENT_SECRET: clientSecret, JOHN_DEERE_TOKEN_KEY } = config;
   if (!clientId || !clientSecret || !JOHN_DEERE_TOKEN_KEY) return null;
   const now = () => new Date();
@@ -52,7 +61,18 @@ function createJohnDeere(config: ApiConfig, db: BusinessWiringInput['db']): John
     ...johnDeereCallbackUris(config.API_BASE_URL),
     now,
   });
-  return { connection, links: new JohnDeereLinkService({ db, client, connection, now }) };
+  const links = new JohnDeereLinkService({ db, client, connection, now });
+  const poller = new JohnDeerePoller({
+    db,
+    client,
+    connection,
+    links,
+    push,
+    logger: log.service,
+    now,
+    intervalMs: config.JOHN_DEERE_POLL_INTERVAL_MS,
+  });
+  return { connection, links, poller };
 }
 
 export async function registerContracting(
@@ -85,7 +105,7 @@ export async function registerContracting(
   await registerReadingHttpRoutes(app, { db, storage, verifications: readingVerifications, push: contractingPush });
   await registerBreakdownHttpRoutes(app, { db, storage, push: contractingPush });
   await registerJobCardHttpRoutes(app, { db, pdfRenderer: renderJobCardPdf });
-  const johnDeere = createJohnDeere(config, db);
+  const johnDeere = createJohnDeere(config, db, contractingPush);
   if (johnDeere)
     await registerJohnDeereHttpRoutes(app, {
       connection: johnDeere.connection,
@@ -95,6 +115,6 @@ export async function registerContracting(
 
   return {
     routerDependencies: { johnDeere, push: contractingPush, readMeterPhoto },
-    services: [readingVerifications, contractingPush],
+    services: [readingVerifications, contractingPush, ...(johnDeere ? [johnDeere.poller] : [])],
   };
 }

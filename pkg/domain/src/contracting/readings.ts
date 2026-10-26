@@ -6,6 +6,7 @@ import {
   type ReadingExceptionType,
   type ReadingRole,
   type ReadingVerification,
+  type TelematicsProvider,
 } from '@pkg/schema/contracting';
 import {
   aiVerificationLevel,
@@ -28,6 +29,23 @@ export const AI_VERDICT_POLL_LIMIT_MS = 120_000;
 
 /** The stamp on a reading captured without a photo. */
 export const MISSING_PHOTO_EVIDENCE = 'Missing Photo Evidence';
+
+export const telematicsProviderLabels: Record<TelematicsProvider, string> = { 'john-deere': 'John Deere' };
+
+/** What follows a reading on a line when its source is a machine's telematics: `' · John Deere'`, else nothing. */
+export const readingProviderSuffix = (provider: TelematicsProvider | null): string =>
+  provider ? ` · ${telematicsProviderLabels[provider]}` : '';
+
+/** What a ledger row says about its evidence: the provider for a Telematics Reading, which has no photo to miss. */
+export const readingEvidenceCaption = (reading: {
+  telematicsProvider: TelematicsProvider | null;
+  photoBacked: boolean;
+}): string =>
+  reading.telematicsProvider
+    ? telematicsProviderLabels[reading.telematicsProvider]
+    : reading.photoBacked
+      ? 'Photo-backed'
+      : MISSING_PHOTO_EVIDENCE;
 
 export const readingExceptionTypeLabels = {
   'ai-flagged': 'AI flagged',
@@ -161,8 +179,12 @@ export function resolveReadingAmendment(
   if (!before) return { ok: false, reason: 'not_found' };
   const previous = readings[index - 1];
   const next = readings[index + 1];
+  // A reading John Deere contradicted is disputed with no pair: only a value back in sequence settles it.
+  const disputedTargets = new Set(readings.flatMap((reading) => reading.disputedPreviousId ?? []));
+  const standalone = (reading: AmendableReading) =>
+    reading.disputed && !reading.disputedPreviousId && !disputedTargets.has(reading.id);
   if (
-    amendment.value !== before.value &&
+    (amendment.value !== before.value || standalone(before)) &&
     ((previous && amendment.value < previous.value) || (next && amendment.value > next.value))
   )
     return { ok: false, reason: 'out_of_range' };
@@ -170,7 +192,9 @@ export function resolveReadingAmendment(
   const values = new Map(
     readings.map((reading) => [reading.id, reading.id === amendment.id ? amendment.value : reading.value]),
   );
-  const stillDisputed = new Set<string>();
+  const stillDisputed = new Set(
+    readings.filter((reading) => reading.id !== amendment.id && standalone(reading)).map((reading) => reading.id),
+  );
   const settledLinks = new Set<string>();
   for (const reading of readings) {
     if (!reading.disputedPreviousId) continue;

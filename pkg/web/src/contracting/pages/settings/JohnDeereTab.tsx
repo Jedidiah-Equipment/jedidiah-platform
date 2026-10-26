@@ -1,6 +1,7 @@
 import { formatDate, getFirstName } from '@pkg/domain';
+import { johnDeerePollMessage } from '@pkg/domain/contracting';
 import type { JohnDeereConnectionView, JohnDeereConnectResult } from '@pkg/schema/contracting';
-import { IconLoader2, IconPlugConnectedX } from '@tabler/icons-react';
+import { IconLoader2, IconPlugConnectedX, IconRefresh } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { toast } from 'sonner';
@@ -126,10 +127,38 @@ function ConnectedCard({ connection }: { connection: JohnDeereConnectionView }) 
         </p>
       </CardContent>
       <CardFooter className="justify-end gap-2">
+        <RefreshNowButton />
         <DisconnectButton />
         <ConnectButton label="Reconnect" />
       </CardFooter>
     </Card>
+  );
+}
+
+/** Runs the hourly poll now and says what it did. */
+function RefreshNowButton() {
+  const trpc = useTRPC();
+  const { invalidateJohnDeerePoll } = useQueryInvalidation();
+  const showError = useApiMutationErrorToast();
+  const poll = useMutation(
+    trpc.contractingJohnDeere.poll.now.mutationOptions({
+      onSuccess: async (summary) => {
+        await invalidateJohnDeerePoll();
+        const trouble = summary.skipped !== null || summary.errors > 0 || summary.endedBy !== null;
+        (trouble ? toast.warning : toast.success)(johnDeerePollMessage(summary));
+      },
+      onError: (error) => showError(error, 'Unable to refresh from John Deere.'),
+    }),
+  );
+  return (
+    <Button disabled={poll.isPending} onClick={() => poll.mutate()} type="button" variant="outline">
+      {poll.isPending ? (
+        <IconLoader2 className="animate-spin" data-icon="inline-start" />
+      ) : (
+        <IconRefresh data-icon="inline-start" />
+      )}
+      Refresh now
+    </Button>
   );
 }
 

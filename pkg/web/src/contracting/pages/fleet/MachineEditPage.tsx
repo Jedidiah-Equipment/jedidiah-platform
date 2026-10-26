@@ -1,5 +1,5 @@
 import { formatNumber } from '@pkg/domain';
-import { opensWebJobs } from '@pkg/domain/contracting';
+import { opensWebJobs, readingProviderSuffix } from '@pkg/domain/contracting';
 import type { Machine } from '@pkg/schema/contracting';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
@@ -160,7 +160,7 @@ function MachineForm({
               <MachineServiceCard machine={machine}>
                 <AutosaveFormFields formProps={formProps} disabled={!canEdit}>
                   <ReadOnlyField
-                    label="Current hours"
+                    label={`Current hours${readingProviderSuffix(machine.latestReadingProvider)}`}
                     unit="hours"
                     value={
                       machine.latestReadingHours === null

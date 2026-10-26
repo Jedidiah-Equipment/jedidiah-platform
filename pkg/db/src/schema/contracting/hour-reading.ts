@@ -1,4 +1,4 @@
-import { readingMethods, readingRoles, readingVerifications } from '@pkg/schema/contracting';
+import { readingMethods, readingRoles, readingVerifications, telematicsProviders } from '@pkg/schema/contracting';
 import { sql } from 'drizzle-orm';
 import {
   type AnyPgColumn,
@@ -15,6 +15,7 @@ import {
 import { user } from '../auth.js';
 import { quotedList } from '../columns.js';
 import { contractingMachines } from './fleet.js';
+import { contractingJohnDeereLinks } from './john-deere.js';
 import { contractingSchema } from './pg-schema.js';
 
 export const contractingHourReadings = contractingSchema.table(
@@ -28,10 +29,14 @@ export const contractingHourReadings = contractingSchema.table(
     role: text('role', { enum: readingRoles }).notNull(),
     value: numeric('value', { precision: 10, scale: 1, mode: 'number' }).notNull(),
     capturedAt: timestamp('captured_at', { withTimezone: true }).notNull(),
-    capturedByUserId: text('captured_by_user_id')
-      .notNull()
-      .references(() => user.id),
+    /** Null for a Telematics Reading: nobody captured it. */
+    capturedByUserId: text('captured_by_user_id').references(() => user.id),
     method: text('method', { enum: readingMethods }).notNull(),
+    telematicsProvider: text('telematics_provider', { enum: telematicsProviders }),
+    /** The Link that fed a Telematics Reading, so the reading says which Deere machine reported it. */
+    telematicsLinkId: uuid('telematics_link_id').references(() => contractingJohnDeereLinks.id, {
+      onDelete: 'set null',
+    }),
     comment: text('comment'),
     photo: jsonb('photo').$type<{ byteSize: number; contentType: string; storageKey: string; updatedAt: string }>(),
     aiValue: numeric('ai_value', { precision: 10, scale: 1, mode: 'number' }),
@@ -54,8 +59,12 @@ export const contractingHourReadings = contractingSchema.table(
     check('hour_reading_value', sql`${table.value} >= 0 AND (${table.aiValue} IS NULL OR ${table.aiValue} >= 0)`),
     check('hour_reading_confidence', sql`${table.aiConfidence} BETWEEN 0 AND 1`),
     check(
+      'hour_reading_telematics_provider',
+      sql`${table.telematicsProvider} IS NULL OR ${table.telematicsProvider} IN (${quotedList(telematicsProviders)})`,
+    ),
+    check(
       'hour_reading_method',
-      sql`(${table.method} = 'manual' AND ${table.photo} IS NULL) OR (${table.method} = 'photo' AND ${table.photo} IS NOT NULL)`,
+      sql`(${table.method} = 'manual' AND ${table.photo} IS NULL AND ${table.capturedByUserId} IS NOT NULL AND ${table.telematicsProvider} IS NULL) OR (${table.method} = 'photo' AND ${table.photo} IS NOT NULL AND ${table.capturedByUserId} IS NOT NULL AND ${table.telematicsProvider} IS NULL) OR (${table.method} = 'telematics' AND ${table.photo} IS NULL AND ${table.capturedByUserId} IS NULL AND ${table.telematicsProvider} IS NOT NULL AND ${table.role} = 'spot' AND ${table.comment} IS NULL AND ${table.disputed} = false AND ${table.amendedBy} IS NULL)`,
     ),
     check('hour_reading_verification', sql`${table.aiVerification} IN (${quotedList(readingVerifications)})`),
     check(

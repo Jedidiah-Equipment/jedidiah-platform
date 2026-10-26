@@ -16,6 +16,7 @@ import {
   type MachineCreateInput,
   type MachineListInput,
   type MachinePatchInput,
+  type TelematicsProvider,
 } from '@pkg/schema/contracting';
 import { and, asc, eq, isNull, sql } from 'drizzle-orm';
 import { defineAuditDescriptor, recordAuditCreate } from '../../audit/audit-writer.js';
@@ -70,22 +71,28 @@ type JohnDeereRow = {
   lastReportTime: string | null;
   lastValue: number | null;
 };
+/** One field of the Machine's newest Hour Reading, as a correlated subselect. */
+const latestReadingField = <T>(machine: typeof contractingMachines._.columns, expression: string, alias: string) =>
+  sql<T>`(
+    select ${sql.raw(expression)}
+    from contracting.hour_reading latest
+    where latest.machine_id = ${machine.id}
+    order by latest.captured_at desc, latest.sequence desc
+    limit 1
+  )`.as(alias);
 /** The Machine's latest Hour Reading, of any role, and its Read At; a John Deere Link names its Machine's too. */
 export const latestReadingColumns = (machine: typeof contractingMachines._.columns) => ({
-  latestReadingHours: sql<number | null>`(
-    select latest.value::float8
-    from contracting.hour_reading latest
-    where latest.machine_id = ${machine.id}
-    order by latest.captured_at desc, latest.sequence desc
-    limit 1
-  )`.as('latest_reading_hours'),
-  latestReadingAt: sql<string | null>`(
-    select to_json(latest.captured_at) #>> '{}'
-    from contracting.hour_reading latest
-    where latest.machine_id = ${machine.id}
-    order by latest.captured_at desc, latest.sequence desc
-    limit 1
-  )`.as('latest_reading_at'),
+  latestReadingHours: latestReadingField<number | null>(machine, 'latest.value::float8', 'latest_reading_hours'),
+  latestReadingAt: latestReadingField<string | null>(
+    machine,
+    "to_json(latest.captured_at) #>> '{}'",
+    'latest_reading_at',
+  ),
+  latestReadingProvider: latestReadingField<TelematicsProvider | null>(
+    machine,
+    'latest.telematics_provider',
+    'latest_reading_provider',
+  ),
 });
 /**
  * What every Machine read derives beside its row: the newest Hour Reading of any role (so a spot reading moves Service
@@ -140,6 +147,7 @@ function mapMachine(
     currentDriver: { name: string } | null;
     latestReadingHours: number | null;
     latestReadingAt: string | null;
+    latestReadingProvider: TelematicsProvider | null;
     busyOnJob: BusyOnJobRow | null;
     serviceBookedIn: boolean;
     johnDeere: JohnDeereRow | null;

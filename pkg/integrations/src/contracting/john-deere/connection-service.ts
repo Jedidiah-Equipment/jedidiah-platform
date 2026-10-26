@@ -210,6 +210,12 @@ export class JohnDeereConnectionService {
     return this.refreshing;
   }
 
+  /** A new access token for one Deere refused, such as a token the owner revoked before its 12 hours ran out. */
+  renewAccessToken(): Promise<string> {
+    this.cachedAccessToken = null;
+    return this.accessToken();
+  }
+
   async markError({ message }: { message: string }): Promise<void> {
     await this.write({ actorUserId: null, set: () => ({ lastError: message, lastErrorAt: this.config.now() }) });
   }

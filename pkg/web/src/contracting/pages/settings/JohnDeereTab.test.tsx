@@ -3,6 +3,7 @@ import type { AppRouter } from '@pkg/api';
 import type {
   JohnDeereConnectionView,
   JohnDeereLinkView,
+  JohnDeerePollSummary,
   JohnDeereUnlinkedMachine,
   Machine,
 } from '@pkg/schema/contracting';
@@ -40,7 +41,12 @@ afterEach(async () => {
   vi.clearAllMocks();
 });
 
-type Served = { unlinked?: JohnDeereUnlinkedMachine[]; links?: JohnDeereLinkView[]; machines?: Machine[] };
+type Served = {
+  unlinked?: JohnDeereUnlinkedMachine[];
+  links?: JohnDeereLinkView[];
+  machines?: Machine[];
+  poll?: JohnDeerePollSummary;
+};
 
 async function renderTab(
   connection: JohnDeereConnectionView,
@@ -64,6 +70,7 @@ async function renderTab(
             'contractingJohnDeere.links.list': served.links ?? [],
             'contractingFleet.machines.list': served.machines ?? [],
             'contractingJohnDeere.links.create': null,
+            'contractingJohnDeere.poll.now': served.poll,
           };
           if (path in data) return Response.json({ result: { data: data[path] } });
           if (path === 'contractingJohnDeere.connect.start')
@@ -135,7 +142,52 @@ test('Connected names the organizations, who connected and when, with Disconnect
   expect(container.textContent).toContain('Jedidiah Boerdery');
   expect(container.textContent).toMatch(/Connected by Jed on 26 Oct 2026/);
   expect(container.textContent).toContain('Last poll: not yet');
-  expect(buttons()).toEqual(['Disconnect', 'Reconnect', 'Refresh']);
+  expect(buttons()).toEqual(['Refresh now', 'Disconnect', 'Reconnect', 'Refresh']);
+});
+
+const pollSummary = (overrides: Partial<JohnDeerePollSummary> = {}): JohnDeerePollSummary => ({
+  skipped: null,
+  polled: 3,
+  stored: 1,
+  moved: 1,
+  unchanged: 1,
+  lost: 0,
+  errors: 0,
+  endedBy: null,
+  ...overrides,
+});
+
+test('Refresh now runs the poll and says what it did', async () => {
+  const { press, requests } = await renderTab(connected, undefined, { poll: pollSummary() });
+  const statusReads = () => requests.filter((path) => path === 'contractingJohnDeere.status').length;
+  const before = statusReads();
+  await press('Refresh now');
+  await vi.waitFor(() =>
+    expect(toast.success).toHaveBeenCalledWith('Polled 3 machines: 1 new reading, 1 moved forward, 1 unchanged.'),
+  );
+  expect(requests).toContain('contractingJohnDeere.poll.now');
+  // The Links and the connection card read the poll's result afresh.
+  await vi.waitFor(() => expect(statusReads()).toBeGreaterThan(before));
+});
+
+test('Refresh now warns when the run failed a Link or stopped early', async () => {
+  const { press } = await renderTab(connected, undefined, {
+    poll: pollSummary({
+      polled: 2,
+      stored: 0,
+      moved: 0,
+      unchanged: 1,
+      errors: 1,
+      endedBy: 'John Deere is unavailable.',
+    }),
+  });
+  await press('Refresh now');
+  await vi.waitFor(() =>
+    expect(toast.warning).toHaveBeenCalledWith(
+      'Polled 2 machines: 1 unchanged, 1 failure. The run stopped early: John Deere is unavailable.',
+    ),
+  );
+  expect(toast.success).not.toHaveBeenCalled();
 });
 
 test('Needs reconnecting shows the error with Disconnect and Reconnect', async () => {

@@ -77,6 +77,12 @@ export const ApiConfig = z
     JOHN_DEERE_API_BASE_URL: defaultedEnvUrl('https://sandboxapi.deere.com/platform'),
     JOHN_DEERE_EQUIPMENT_API_BASE_URL: defaultedEnvUrl('https://equipmentapi.deere.com/isg'),
     JOHN_DEERE_ISSUER: defaultedEnvUrl('https://signin.johndeere.com/oauth2/aus78tnlaysMraFhC1t7'),
+    // Hourly in production; shorten it for a local run.
+    JOHN_DEERE_POLL_INTERVAL_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(60 * 60 * 1000),
     PORT: z.coerce.number().int().positive().default(7002),
     LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal', 'silent']).default('info'),
     LOG_DOMAINS_DISABLED: z.string().optional(),
@@ -144,6 +150,7 @@ const LOGGABLE_CONFIG_KEYS = [
   'JOHN_DEERE_API_BASE_URL',
   'JOHN_DEERE_EQUIPMENT_API_BASE_URL',
   'JOHN_DEERE_ISSUER',
+  'JOHN_DEERE_POLL_INTERVAL_MS',
   'PORT',
   'LOG_LEVEL',
   'LOG_DOMAINS_DISABLED',

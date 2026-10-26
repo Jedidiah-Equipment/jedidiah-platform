@@ -21,6 +21,7 @@ export function buildMachine(overrides: Partial<Record<keyof Machine, unknown>> 
     serviceAlertHours: null,
     latestReadingHours: 4862.5,
     latestReadingAt: '2026-10-21T08:00:00.000Z',
+    latestReadingProvider: null,
     hoursToService: -12.5,
     effectiveServiceAlertHours: 100,
     serviceDueStatus: 'overdue',

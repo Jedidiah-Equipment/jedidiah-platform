@@ -4,9 +4,9 @@ import {
   type JobActionVerdict,
   type ReadingCaptureInput,
   type ReadingErrorCode,
+  type ReadingMethod,
   type ReadingRole,
   ReadingValue,
-  type readingMethods,
 } from '@pkg/schema/contracting';
 import { formatDate } from '../formatting/date.js';
 import { formatHours } from '../formatting/number.js';
@@ -19,7 +19,7 @@ export type CaptureNeighbour = {
   role: ReadingRole;
   value: number;
   capturedAt: Date;
-  method: (typeof readingMethods)[number] | 'telematics';
+  method: ReadingMethod;
 };
 
 /**

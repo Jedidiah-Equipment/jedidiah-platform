@@ -125,6 +125,11 @@ export const OpenServiceValues = z.object({
   notes: z.string(),
 });
 export type OpenServiceValues = z.input<typeof OpenServiceValues>;
+/** The Book a service dialog: a service in the workshop, on the Machine it was opened for or the one picked. */
+export const BookServiceValues = OpenServiceValues.extend({
+  machineId: requiredSelection(UUID, 'Choose the Machine'),
+});
+export type BookServiceValues = z.input<typeof BookServiceValues>;
 export const openServiceFields = (values: OpenServiceValues) => ({
   startDate: DateOnlyIso.parse(values.startDate),
   primaryMechanicUserId: values.primaryMechanicUserId || null,

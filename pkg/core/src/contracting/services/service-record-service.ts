@@ -18,8 +18,6 @@ import {
   type ServiceRecordOpenInput,
   type ServiceRecordPatchInput,
   type ServiceRecordStatus,
-  ServiceRecordSummary,
-  serviceRecordStatuses,
 } from '@pkg/schema/contracting';
 import { and, asc, desc, eq, inArray, isNotNull, isNull, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
@@ -125,21 +123,6 @@ export async function listServiceRecords({
   const { rows, total, nextCursor } = await paginateWithWindowTotal(matching, input);
   const items = rows.map(mapServiceRecord);
   return { items, nextCursor, total };
-}
-
-/** How many Service Records are Booked In and how many are closed, for the Services table's quick filters. */
-export async function summarizeServiceRecords({ db }: { db: Db }): Promise<ServiceRecordSummary> {
-  const [counts] = await db
-    .select(
-      Object.fromEntries(
-        serviceRecordStatuses.map((status) => [
-          status,
-          sql<number>`count(*) filter (where ${statusCondition(status)})::integer`,
-        ]),
-      ),
-    )
-    .from(contractingServiceRecords);
-  return ServiceRecordSummary.parse({ counts });
 }
 
 /** The Machines and Mechanics some Service Record names, for the Services table's column filters. */

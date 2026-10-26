@@ -5,7 +5,8 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { QueryContent } from '@/components/common/QueryContent.js';
 import { withCurrentOption } from '@/components/common/SearchableCombobox.js';
-import { AutosaveFormCard } from '@/components/form/AutosaveFormCard.js';
+import { AutosaveFormCard, AutosaveFormFields } from '@/components/form/AutosaveFormCard.js';
+import { ReadOnlyField } from '@/components/form/fields/ReadOnlyField.js';
 import { useAutosaveForm } from '@/components/form/index.js';
 import { DetailAsideGrid } from '@/components/page-layout/DetailAsideGrid.js';
 import { EditFormFullWidth } from '@/components/page-layout/EditFormLayout.js';
@@ -15,6 +16,7 @@ import { CategoryLabel } from '@/contracting/components/CategoryIcon.js';
 import { machineDialogSubject } from '@/contracting/components/MachineDialogTitle.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { JobsTable } from '@/contracting/pages/jobs/JobsPage.js';
+import { ServicesTable } from '@/contracting/pages/services/ServicesPage.js';
 import { useAccess, useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { CategoryPickerField } from './CategoryFields.js';
@@ -99,7 +101,7 @@ function MachineForm({
       >
         <TabsList variant="default">
           <TabsTrigger value="details">Details</TabsTrigger>
-          {readsServices ? <TabsTrigger value="service">Service</TabsTrigger> : null}
+          {readsServices ? <TabsTrigger value="service">Services</TabsTrigger> : null}
           {readsJobs ? <TabsTrigger value="jobs">Jobs</TabsTrigger> : null}
         </TabsList>
         <TabsContent className="pt-4" value="details" keepMounted>
@@ -148,32 +150,45 @@ function MachineForm({
                     />
                   )}
                 </form.AppField>
-                <form.AppField name="serviceIntervalHours">
-                  {(field) => <field.NumberField label="Service interval" unit="hours" />}
-                </form.AppField>
-                <form.AppField name="nextServiceDueHours">
-                  {(field) => <field.NumberField label="Next service due" unit="hours" />}
-                </form.AppField>
-                <form.AppField name="serviceAlertHours">
-                  {(field) => (
-                    <field.NumberField
-                      label="Service alert hours"
-                      unit="hours"
-                      decimals={0}
-                      inputMode="numeric"
-                      placeholder={
-                        machine.serviceAlertHours === null
-                          ? formatNumber(machine.effectiveServiceAlertHours)
-                          : undefined
-                      }
-                      description="Service due soon this many hours before the next service. Leave blank to use Settings."
-                    />
-                  )}
-                </form.AppField>
                 <EditFormFullWidth>
                   <form.AppField name="notes">{(field) => <field.TextareaField label="Notes" />}</form.AppField>
                 </EditFormFullWidth>
               </AutosaveFormCard>
+              <MachineServiceCard machine={machine}>
+                <AutosaveFormFields formProps={formProps} disabled={!canEdit}>
+                  <ReadOnlyField
+                    label="Current hours"
+                    unit="hours"
+                    value={
+                      machine.latestReadingHours === null
+                        ? null
+                        : formatNumber(machine.latestReadingHours, { decimals: 1 })
+                    }
+                  />
+                  <form.AppField name="serviceIntervalHours">
+                    {(field) => <field.NumberField label="Service interval" unit="hours" />}
+                  </form.AppField>
+                  <form.AppField name="nextServiceDueHours">
+                    {(field) => <field.NumberField label="Next service due" unit="hours" />}
+                  </form.AppField>
+                  <form.AppField name="serviceAlertHours">
+                    {(field) => (
+                      <field.NumberField
+                        label="Service alert hours"
+                        unit="hours"
+                        decimals={0}
+                        inputMode="numeric"
+                        placeholder={
+                          machine.serviceAlertHours === null
+                            ? formatNumber(machine.effectiveServiceAlertHours)
+                            : undefined
+                        }
+                        description="Service due soon this many hours before the next service. Leave blank to use Settings."
+                      />
+                    )}
+                  </form.AppField>
+                </AutosaveFormFields>
+              </MachineServiceCard>
               {canEdit ? (
                 <FleetRetirement
                   machine={machineDialogSubject(machine)}
@@ -190,7 +205,7 @@ function MachineForm({
         </TabsContent>
         {readsServices ? (
           <TabsContent className="pt-4" value="service">
-            <MachineServiceCard machine={machine} />
+            <ServicesTable machineId={machine.id} />
           </TabsContent>
         ) : null}
         {readsJobs ? (

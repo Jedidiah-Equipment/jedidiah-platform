@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { emptyStringOr } from '@/components/form/utils/form-schema.js';
-import { CategoryIcon } from '@/contracting/components/CategoryIcon.js';
+import { MachinePickerField } from '@/contracting/components/MachinePickerField.js';
 import { useResetOnOpen } from '@/contracting/hooks/use-contracting-write.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { useAssignmentOptions } from './use-assignment-options.js';
@@ -15,6 +15,9 @@ const PlanValues = z.object({
   implementId: emptyStringOr(UUID),
   driverUserId: emptyStringOr(z.string()),
 });
+
+const onJobNote = (machine: { onSiteJobNumber: string | null }) =>
+  machine.onSiteJobNumber ? `On Job ${machine.onSiteJobNumber}` : null;
 
 export function PlanMachineDialog({
   jobId,
@@ -55,16 +58,7 @@ export function PlanMachineDialog({
       {(form) => (
         <>
           <form.AppField name="machineId">
-            {(field) => (
-              <field.ComboboxField
-                label="Machine"
-                options={(machines.data ?? []).map((row) => ({
-                  value: row.id,
-                  icon: <CategoryIcon icon={row.categoryIcon} colour={row.categoryColour} size={14} />,
-                  label: `${row.code} · ${row.make} ${row.model}${row.onSiteJobNumber ? ` · On Job ${row.onSiteJobNumber}` : ''}`,
-                }))}
-              />
-            )}
+            {() => <MachinePickerField machines={machines.data ?? []} note={onJobNote} />}
           </form.AppField>
           <form.AppField name="implementId">
             {(field) => <field.ComboboxField label="Implement" options={options.implementOptions} />}

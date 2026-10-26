@@ -240,7 +240,7 @@ export const permissionDescriptions = {
   'contracting_breakdown:report': 'Report a Contracting machine breakdown.',
   'contracting_breakdown:update': 'Assign mechanics and transition Contracting breakdowns.',
   'contracting_service:read': 'View Contracting service records and due state.',
-  'contracting_service:update': 'Record services and manage service intervals.',
+  'contracting_service:update': 'Book services and manage service intervals.',
   'contracting_rate:read': 'View the Contracting Rate Card and Measure Types.',
   'contracting_rate:update': 'Create, edit, reorder, and remove Contracting Rates and Measure Types.',
   'contracting_report:read': 'View Contracting utilisation and mechanic-performance reports.',

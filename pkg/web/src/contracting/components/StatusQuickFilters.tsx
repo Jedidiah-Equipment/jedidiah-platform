@@ -5,15 +5,13 @@ import { cn } from '@/lib/utils.js';
 
 /**
  * The quick filters over one status column: a chip per status in `shown`, then All. A chip presses only while exactly
- * its statuses are picked, and pressing it again clears the pick. All picks every status, or nothing where no pick
- * already lists every record.
+ * its statuses are picked, and pressing it again clears the pick. All picks every status.
  */
 export function StatusQuickFilters<TStatus extends string>({
   label,
   columnId,
   statuses,
   shown,
-  allPicks,
   labels,
   colours,
   counts,
@@ -25,7 +23,6 @@ export function StatusQuickFilters<TStatus extends string>({
   /** Every status, which All counts. */
   statuses: readonly TStatus[];
   shown: readonly TStatus[];
-  allPicks: 'every' | 'none';
   labels: Record<TStatus, string>;
   colours: Record<TStatus, { dot: string }>;
   counts: Partial<Record<TStatus, number>> | undefined;
@@ -34,7 +31,6 @@ export function StatusQuickFilters<TStatus extends string>({
 }) {
   const pick = (picked: readonly TStatus[]) =>
     onColumnFiltersChange((current) => togglePick(current, columnId, picked));
-  const all = allPicks === 'every' ? statuses : [];
   return (
     <fieldset className="scrollbar-none flex gap-1.5 overflow-x-auto" aria-label={label}>
       {shown.map((status) => (
@@ -50,8 +46,8 @@ export function StatusQuickFilters<TStatus extends string>({
       ))}
       <QuickFilterButton
         count={statuses.reduce((total, status) => total + (counts?.[status] ?? 0), 0)}
-        pressed={isPickedExactly(columnFilters, columnId, all)}
-        onClick={() => pick(all)}
+        pressed={isPickedExactly(columnFilters, columnId, statuses)}
+        onClick={() => pick(statuses)}
       >
         <span>All</span>
       </QuickFilterButton>

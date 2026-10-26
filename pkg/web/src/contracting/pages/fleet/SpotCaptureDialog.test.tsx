@@ -80,10 +80,22 @@ async function enter(name: string, value: string) {
   });
 }
 
+async function enterReadAt(date: string, time: string) {
+  for (const [name, value] of [
+    ['readAt', date],
+    ['readAt-time', time],
+  ] as const) {
+    await enter(name, value);
+    await act(async () => {
+      document.querySelector(`[name="${name}"]`)?.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
+    });
+  }
+}
+
 it('posts a spot reading for the Machine, on no Assignment, read when the meter was read', async () => {
   const { save, onClose } = await mount();
   await enter('value', '140');
-  await enter('readAt', '2026-10-20T09:30');
+  await enterReadAt('2026-10-20', '09:30');
   await act(async () => save.click());
 
   expect(capture).toHaveBeenCalledOnce();
@@ -121,10 +133,16 @@ it('offers the dispute for a reading below the latest one', async () => {
 });
 
 it('refuses a Read At still to come', async () => {
-  const { save } = await mount();
-  await enter('value', '140');
-  await enter('readAt', '2099-01-01T08:00');
-  expect(document.body.textContent).toContain(captureRefusals['future-read-at'].message);
-  expect(save.disabled).toBe(true);
-  expect(capture).not.toHaveBeenCalled();
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date(2026, 9, 20, 12, 0));
+  try {
+    const { save } = await mount();
+    await enter('value', '140');
+    await enterReadAt('2026-10-20', '18:00');
+    expect(document.body.textContent).toContain(captureRefusals['future-read-at'].message);
+    expect(save.disabled).toBe(true);
+    expect(capture).not.toHaveBeenCalled();
+  } finally {
+    vi.useRealTimers();
+  }
 });

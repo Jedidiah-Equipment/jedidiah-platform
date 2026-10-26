@@ -1,3 +1,4 @@
+import { getPlantDateNow } from '@pkg/domain';
 import { captureRefusals, readAtFromInput } from '@pkg/domain/contracting';
 import { type Machine, ReadingComment, ReadingValue } from '@pkg/schema/contracting';
 import { z } from 'zod';
@@ -41,7 +42,7 @@ export function SpotCaptureDialog({
       onOpenChange={(open) => {
         if (!open) onClose();
       }}
-      title={<MachineDialogTitle machine={machineDialogSubject(machine)}>Capture reading</MachineDialogTitle>}
+      title={<MachineDialogTitle machine={machineDialogSubject(machine)}>Capture hours</MachineDialogTitle>}
       contentClassName="sm:max-w-md"
       submitLabel="Capture"
       defaultValues={{ value: Number.NaN, comment: '', confirmedDispute: null, readAt: '' }}
@@ -65,9 +66,9 @@ export function SpotCaptureDialog({
           />
           <form.AppField name="readAt">
             {(field) => (
-              <field.TextField
+              <field.DateTimePickerField
                 label="Read At"
-                type="datetime-local"
+                maxValue={getPlantDateNow()}
                 description="When the meter was read. Leave blank to use the current time."
               />
             )}

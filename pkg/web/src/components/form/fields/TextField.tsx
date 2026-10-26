@@ -10,10 +10,11 @@ type TextFieldInputProps = Omit<
   'aria-invalid' | 'id' | 'name' | 'onBlur' | 'onChange' | 'type' | 'value'
 >;
 
+/** Text-like types only: dates and times use `DatePickerField` / `DateTimePickerField`, never a native picker. */
 export type TextFieldProps = {
   description?: React.ReactNode;
   label: React.ReactNode;
-  type?: React.HTMLInputTypeAttribute;
+  type?: 'email' | 'password' | 'search' | 'tel' | 'text' | 'url';
 } & TextFieldInputProps;
 
 export function TextField({ description, label, type = 'text', ...inputProps }: TextFieldProps) {

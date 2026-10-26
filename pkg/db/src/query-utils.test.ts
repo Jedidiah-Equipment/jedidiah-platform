@@ -80,7 +80,7 @@ describe('isUniqueViolation', () => {
 });
 
 describe('paginateWithWindowTotal', () => {
-  it('reads the total off the page, or off the unpaged match once the cursor is past the last row', async () => {
+  it('pages a window-total select, unpaged at limit 0, and still learns the total past the last row', async () => {
     const { databaseName, databaseUrl } = await createEphemeralTestDatabase();
     const { db, close } = createDatabaseClient(databaseUrl, { max: 1 });
 
@@ -102,6 +102,15 @@ describe('paginateWithWindowTotal', () => {
       });
       await expect(paginateWithWindowTotal(matching, { cursor: 5, limit: 2 })).resolves.toEqual({
         rows: [],
+        total: 3,
+        nextCursor: null,
+      });
+      await expect(paginateWithWindowTotal(matching, { cursor: 0, limit: 0 })).resolves.toEqual({
+        rows: [
+          { n: 1, total: 3 },
+          { n: 2, total: 3 },
+          { n: 3, total: 3 },
+        ],
         total: 3,
         nextCursor: null,
       });

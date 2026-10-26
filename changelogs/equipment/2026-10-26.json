@@ -1,0 +1,40 @@
+{
+  "business": "equipment",
+  "releasedAt": "2026-10-26T05:16:29.730Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Review feedback transcriptions",
+          "description": "Super admins can review dictated feedback on the new Transcriptions page."
+        },
+        {
+          "title": "Find options by their displayed names",
+          "description": "Search multi-select filters and form fields using the names shown in the list."
+        },
+        {
+          "title": "Correct validation errors and save again",
+          "description": "After a save is blocked by validation, errors now update as you edit related fields so you can correct the form and save again."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Dictate job and purchase order feedback",
+          "description": "Press and hold the microphone to turn spoken feedback into text. Review and edit it before saving."
+        },
+        {
+          "title": "Correct validation errors and save again",
+          "description": "After a save is blocked by validation, errors now update as you edit related fields so you can correct the form and save again."
+        },
+        {
+          "title": "Dictate notes more reliably",
+          "description": "Holding the microphone keeps the form from scrolling and cutting your recording short. Transcripts arriving after you cancel a draft no longer appear when you reopen it."
+        }
+      ]
+    }
+  ]
+}

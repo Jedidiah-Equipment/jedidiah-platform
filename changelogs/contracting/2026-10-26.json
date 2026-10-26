@@ -1,0 +1,48 @@
+{
+  "business": "contracting",
+  "releasedAt": "2026-10-26T05:16:29.730Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Manage servicing from one page",
+          "description": "Open Workshop’s new Services page to see service records, with machines needing service pinned above them regardless of filters or sorting. Book machines in from the pinned list and open records directly on the machine’s Service tab."
+        },
+        {
+          "title": "Set service alerts for each machine",
+          "description": "Choose how many hours before its next service a machine should show as due soon. Leave Service Alert Hours blank to use the default in Settings."
+        },
+        {
+          "title": "Capture meter readings from the machine page",
+          "description": "Use Capture reading on a machine’s Service card to record hours from a meter photo without a job assignment. Set Read At to when the meter was read."
+        },
+        {
+          "title": "Find options by their displayed names",
+          "description": "Search multi-select filters and form fields using the names shown in the list."
+        },
+        {
+          "title": "Correct validation errors and save again",
+          "description": "After a save is blocked by validation, errors now update as you edit related fields so you can correct the form and save again."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Receive service alerts as a manager or admin",
+          "description": "Service due soon push notifications now reach managers and admins as well as workshop managers. Mute these notifications in App Settings when needed."
+        },
+        {
+          "title": "Correct validation errors and save again",
+          "description": "After a save is blocked by validation, errors now update as you edit related fields so you can correct the form and save again."
+        },
+        {
+          "title": "Dictate notes more reliably",
+          "description": "Holding the microphone keeps the form from scrolling and cutting your recording short. Transcripts arriving after you cancel a draft no longer appear when you reopen it."
+        }
+      ]
+    }
+  ]
+}

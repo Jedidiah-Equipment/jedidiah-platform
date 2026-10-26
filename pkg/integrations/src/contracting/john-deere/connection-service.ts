@@ -45,14 +45,26 @@ export type JohnDeereConnectionServiceConfig = {
   /** Where Deere's organization picker sends the browser back to: the callback's second leg. */
   connectionsReturnUri: string;
   now: () => Date;
+  /** Waits before the one re-read of the organization list; tests pass a no-op. */
+  sleep?: (ms: number) => Promise<void>;
 };
 
 export const JOHN_DEERE_SCOPES = 'eq1 offline_access';
 const STATE_LIFETIME_MS = 10 * 60 * 1000;
 // Refresh this long before Deere's expiry, so a token never lapses mid-poll.
 const ACCESS_TOKEN_MARGIN_MS = 5 * 60 * 1000;
+// Deere's organization list can lag the picker by a moment; one re-read after this covers it.
+const ORGANIZATION_REREAD_DELAY_MS = 2_000;
 const NO_ORGANIZATION_CONNECTED =
   'No John Deere organization has given Jedidiah access. Reconnect and choose the organization.';
+
+/** The refusal with what Deere listed, so the tab shows the evidence: each organization and its link names. */
+const noOrganizationConnected = (listings: readonly JohnDeereOrganizationListing[]) =>
+  listings.length === 0
+    ? `${NO_ORGANIZATION_CONNECTED} John Deere listed no organizations for that sign-in.`
+    : `${NO_ORGANIZATION_CONNECTED} John Deere listed: ${listings
+        .map((listing) => `${listing.name} (${listing.linkRels.length ? listing.linkRels.join(', ') : 'no links'})`)
+        .join('; ')}.`;
 
 // The token columns and the OAuth round trip are credentials and never reach the audit log; the poll and
 // refresh timestamps move every hour and are not audited facts.
@@ -141,11 +153,11 @@ export class JohnDeereConnectionService {
   }> {
     const opened = await this.openRoundTrip(state);
     const tokens = await this.config.client.exchangeCode({ code, redirectUri: this.config.redirectUri });
-    const listings = await this.config.client.organizations(tokens.accessToken);
+    const listings = await this.readOrganizations(tokens.accessToken, { reread: 'without-any-link' });
     const organizations = connectedOrganizations(listings);
     const pickerUrl =
       organizations.length === 0 ? (listings.find((listing) => listing.connectionsUrl)?.connectionsUrl ?? null) : null;
-    if (!pickerUrl) return { connected: await this.settle(state, opened, organizations, tokens), picker: null };
+    if (!pickerUrl) return { connected: await this.settle(state, opened, listings, tokens), picker: null };
 
     // The new sign-in waits beside the current one, so an abandoned picker leaves a working connection intact.
     const returnToken = `return:${randomBytes(16).toString('hex')}`;
@@ -169,8 +181,8 @@ export class JohnDeereConnectionService {
       redirectUri: this.config.redirectUri,
       scopes: JOHN_DEERE_SCOPES,
     });
-    const organizations = connectedOrganizations(await this.config.client.organizations(tokens.accessToken));
-    return { connected: await this.settle(returnToken, opened, organizations, tokens) };
+    const listings = await this.readOrganizations(tokens.accessToken, { reread: 'without-a-connected-one' });
+    return { connected: await this.settle(returnToken, opened, listings, tokens) };
   }
 
   /** Forgets the tokens and the organizations; the feed stops until someone connects again. */
@@ -303,9 +315,10 @@ export class JohnDeereConnectionService {
   private async settle(
     credential: string,
     opened: ConnectionRow,
-    organizations: ConnectionRow['organizations'],
+    listings: readonly JohnDeereOrganizationListing[],
     tokens: JohnDeereTokens,
   ): Promise<boolean> {
+    const organizations = connectedOrganizations(listings);
     const now = this.config.now();
     const closed = {
       pendingState: null,
@@ -332,12 +345,31 @@ export class JohnDeereConnectionService {
       return {
         ...closed,
         status: before.status === 'pending' ? 'not-connected' : before.status,
-        lastError: NO_ORGANIZATION_CONNECTED,
+        lastError: noOrganizationConnected(listings),
         lastErrorAt: now,
       };
     });
     if (connected) this.cachedAccessToken = { token: tokens.accessToken, expiresAt: tokens.expiresAt };
     return connected;
+  }
+
+  /**
+   * The organization list, read once more after a pause when the first read has nothing to act on: after the
+   * picker, no connected organization; on the code leg, no link to act on at all. A picker-bound first leg
+   * never waits.
+   */
+  private async readOrganizations(
+    accessToken: string,
+    { reread }: { reread: 'without-a-connected-one' | 'without-any-link' },
+  ): Promise<JohnDeereOrganizationListing[]> {
+    const listings = await this.config.client.organizations(accessToken);
+    const actionable =
+      reread === 'without-a-connected-one'
+        ? connectedOrganizations(listings).length > 0
+        : listings.some((listing) => listing.manageConnectionsUrl || listing.connectionsUrl);
+    if (actionable) return listings;
+    await (this.config.sleep ?? sleepFor)(ORGANIZATION_REREAD_DELAY_MS);
+    return this.config.client.organizations(accessToken);
   }
 
   private stateExpiry(): Date {
@@ -395,6 +427,8 @@ export class JohnDeereConnectionService {
     if (changes) await recordAuditUpdate({ db: tx, descriptor, actorUserId, after: row, changes });
   }
 }
+
+const sleepFor = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 const selectRow = (db: Db | DatabaseTransaction) =>
   db

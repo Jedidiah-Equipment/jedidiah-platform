@@ -20,6 +20,11 @@ function deere() {
     now: new Date('2026-10-26T08:00:00.000Z'),
     organizations: [{ id: '4321', name: 'Jedidiah Boerdery', connected: true }] as Organization[],
     refreshRefused: false,
+    organizationReads: 0,
+    /** The organization read on which every organization turns connected, as Deere's list catches up. */
+    connectOnRead: null as number | null,
+    /** How often the service paused before re-reading the organization list. */
+    slept: 0,
     /** Holds every refresh until it resolves, to land a write between the Deere call and its own. */
     holdRefresh: null as Promise<void> | null,
     issued: 0,
@@ -40,7 +45,10 @@ function deere() {
         expires_in: 43_200,
       });
     }
-    if (url.includes('/organizations'))
+    if (url.includes('/organizations')) {
+      state.organizationReads += 1;
+      if (state.connectOnRead === state.organizationReads)
+        state.organizations = state.organizations.map((organization) => ({ ...organization, connected: true }));
       return Response.json({
         values: state.organizations.map(({ id, name, connected }) => ({
           id,
@@ -52,6 +60,7 @@ function deere() {
           ],
         })),
       });
+    }
     throw new Error(`Unexpected request ${url}`);
   };
   const client = new JohnDeereClient({
@@ -83,6 +92,9 @@ async function setUp(db: Db) {
     redirectUri,
     connectionsReturnUri,
     now: () => state.now,
+    sleep: async () => {
+      state.slept += 1;
+    },
   });
   const row = async () => {
     const [found] = await db.select().from(contractingJohnDeereConnection);
@@ -203,7 +215,26 @@ describe('JohnDeereConnectionService', () => {
       organizations: [],
       connectedBy: null,
       connectedAt: null,
-      lastError: expect.stringContaining('No John Deere organization'),
+      lastError:
+        'No John Deere organization has given Jedidiah access. Reconnect and choose the organization. ' +
+        'John Deere listed: Jedidiah Boerdery (connections).',
+    });
+    // The code leg had a link to act on; the picker leg paused and read once more before giving up.
+    expect(state).toMatchObject({ organizationReads: 3, slept: 1 });
+  });
+
+  test('the picker leg reads the organization list once more when Deere has not caught up yet', async ({ db }) => {
+    const { state, service, connect } = await setUp(db);
+    state.organizations = [{ id: '4321', name: 'Jedidiah Boerdery', connected: false }];
+    const { picker } = await connect();
+    state.connectOnRead = 3;
+
+    expect(await service.finishConnect({ returnToken: picker?.returnToken ?? '' })).toEqual({ connected: true });
+    expect(state).toMatchObject({ organizationReads: 3, slept: 1 });
+    expect(await service.getConnection()).toMatchObject({
+      status: 'connected',
+      organizations: [{ id: '4321', name: 'Jedidiah Boerdery' }],
+      lastError: null,
     });
   });
 

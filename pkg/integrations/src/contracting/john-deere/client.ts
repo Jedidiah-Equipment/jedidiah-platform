@@ -27,6 +27,8 @@ export type JohnDeereOrganizationListing = {
   member: boolean;
   connectionsUrl: string | null;
   manageConnectionsUrl: string | null;
+  /** Every link name Deere sent with the organization, so a refused connection can say what it saw. */
+  linkRels: string[];
 };
 
 /** A machine in the connected organization, as the Equipment API lists it. `id` is unique across organizations. */
@@ -154,7 +156,8 @@ export class JohnDeereClient {
 
   async organizations(accessToken: string): Promise<JohnDeereOrganizationListing[]> {
     const listings: JohnDeereOrganizationListing[] = [];
-    let next: string | null = `${this.config.platformBaseUrl}/organizations?showLinks=connections,manage_connections`;
+    // No `showLinks` filter: the list is short, and the filter has dropped `manage_connections` in practice.
+    let next: string | null = `${this.config.platformBaseUrl}/organizations`;
     while (next) {
       const page = OrganizationsPage.safeParse(await this.getJson(next, accessToken, AXIOM_JSON));
       if (!page.success) throw badResponse('John Deere sent an organization list Jedidiah cannot read.');
@@ -166,6 +169,7 @@ export class JohnDeereClient {
           member: organization.member ?? false,
           connectionsUrl: linkTo(organization.links, 'connections'),
           manageConnectionsUrl: linkTo(organization.links, 'manage_connections'),
+          linkRels: organization.links?.map((link) => link.rel) ?? [],
         });
       }
       next = linkTo(page.data.links, 'nextPage');

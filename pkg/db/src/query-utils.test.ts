@@ -80,7 +80,7 @@ describe('isUniqueViolation', () => {
 });
 
 describe('paginateWithWindowTotal', () => {
-  it('reads the total off the unpaged match when the cursor is past the last row', async () => {
+  it('reads the total off the page, or off the unpaged match once the cursor is past the last row', async () => {
     const { databaseName, databaseUrl } = await createEphemeralTestDatabase();
     const { db, close } = createDatabaseClient(databaseUrl, { max: 1 });
 

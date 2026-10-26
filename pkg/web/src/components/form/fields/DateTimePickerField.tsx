@@ -5,6 +5,7 @@ import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui
 import { Input } from '@/components/ui/input.js';
 import { useFieldContext } from '../hooks/form-context.js';
 import { getFieldErrors } from '../utils/field-errors.js';
+import { WRONG_TIME_MESSAGE } from '../utils/form-schema.js';
 
 export type DateTimePickerFieldProps = {
   description?: React.ReactNode;
@@ -17,7 +18,8 @@ export type DateTimePickerFieldProps = {
 
 /**
  * A local date and time held as 'YYYY-MM-DDTHH:mm', blank while either half is: the app's date picker beside a 24-hour
- * time typed as HH:mm. Picking a date with no time yet fills in the current time so the value is never half set.
+ * time typed as HH:mm. Picking a date with no time yet fills in the current time so the value is never half set. The
+ * time reaches the form as it is typed, a wrong one as typed, so validate the field with `localDateTimeValue`.
  */
 export function DateTimePickerField({
   description,
@@ -27,11 +29,14 @@ export function DateTimePickerField({
   placeholder,
 }: DateTimePickerFieldProps) {
   const field = useFieldContext<string>();
-  const fieldErrors = getFieldErrors(field.state.meta.errors);
-  const isInvalid = fieldErrors.length > 0;
   const [date = '', time = ''] = field.state.value.split('T');
-  // What is typed in the time box, kept only until it blurs; otherwise the box shows the saved time.
+  // What is typed in the time box, shown as typed until it blurs as a valid time.
   const [typedTime, setTypedTime] = React.useState<string | null>(null);
+  const typedWrong = typedTime !== null && typedTime.trim() !== '' && !parseTimeInput(typedTime);
+  const formErrors = getFieldErrors(field.state.meta.errors);
+  // The form only shows its errors once submitted; a wrong time says so as soon as it is typed.
+  const fieldErrors = typedWrong && formErrors.length === 0 ? [{ message: WRONG_TIME_MESSAGE }] : formErrors;
+  const isInvalid = fieldErrors.length > 0;
   const change = (nextDate: string, nextTime: string) =>
     field.handleChange(nextDate && nextTime ? `${nextDate}T${nextTime}` : '');
 
@@ -57,15 +62,15 @@ export function DateTimePickerField({
           inputMode="numeric"
           name={`${field.name}-time`}
           onBlur={() => {
-            if (typedTime !== null) {
-              const nextTime = parseTimeInput(typedTime);
-              if (nextTime) change(date || localNow()[0], nextTime);
-              else if (typedTime.trim() === '') change('', '');
-              setTypedTime(null);
-            }
+            if (typedTime !== null && (typedTime.trim() === '' || parseTimeInput(typedTime))) setTypedTime(null);
             field.handleBlur();
           }}
-          onChange={(event) => setTypedTime(event.target.value)}
+          onChange={(event) => {
+            const typed = event.target.value;
+            setTypedTime(typed);
+            if (typed.trim() === '') change('', '');
+            else change(date || localNow()[0], parseTimeInput(typed) ?? typed.trim());
+          }}
           placeholder="HH:mm"
           value={typedTime ?? time}
         />

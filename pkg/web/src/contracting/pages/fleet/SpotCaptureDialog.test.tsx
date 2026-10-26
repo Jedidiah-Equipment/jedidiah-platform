@@ -113,6 +113,27 @@ it('posts a spot reading for the Machine, on no Assignment, read when the meter 
   expect(onClose).toHaveBeenCalled();
 });
 
+it('captures a time typed without leaving the time box', async () => {
+  const { save } = await mount();
+  await enter('value', '140');
+  await enterReadAt('2026-10-20', '09:30');
+  await enter('readAt-time', '10:15');
+  await act(async () => save.click());
+
+  expect(capture.mock.calls[0]?.[0]).toMatchObject({ capturedAt: new Date(2026, 9, 20, 10, 15).toISOString() });
+});
+
+it('keeps a wrong time on screen and refuses to capture until it is fixed', async () => {
+  const { save } = await mount();
+  await enter('value', '140');
+  await enterReadAt('2026-10-20', '25:00');
+
+  expect(document.querySelector<HTMLInputElement>('[name="readAt-time"]')?.value).toBe('25:00');
+  expect(document.body.textContent).toContain('Enter the time as HH:mm');
+  expect(save.disabled).toBe(true);
+  expect(capture).not.toHaveBeenCalled();
+});
+
 it('offers the dispute for a reading below the latest one', async () => {
   const { save } = await mount();
   await enter('value', '126');

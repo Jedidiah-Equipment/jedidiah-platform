@@ -4,6 +4,7 @@ import { type Machine, ReadingComment, ReadingValue } from '@pkg/schema/contract
 import { z } from 'zod';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
+import { localDateTimeValue } from '@/components/form/utils/form-schema.js';
 import { MachineDialogTitle, machineDialogSubject } from '@/contracting/components/MachineDialogTitle.js';
 import { ReadingCaptureDetails, ReadingValueCard } from '@/contracting/components/readings/ReadingCaptureFields.js';
 import { ConfirmedDispute, useReadingCapture } from '@/contracting/components/readings/use-reading-capture.js';
@@ -12,7 +13,7 @@ const SpotValues = z.object({
   value: ReadingValue,
   comment: z.union([z.string().trim().length(0), ReadingComment]),
   confirmedDispute: ConfirmedDispute,
-  readAt: z.string(),
+  readAt: localDateTimeValue,
 });
 type SpotValues = z.infer<typeof SpotValues>;
 

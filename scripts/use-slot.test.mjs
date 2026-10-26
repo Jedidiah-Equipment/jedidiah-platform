@@ -184,7 +184,7 @@ test('takes over the named stack, preserves handwritten lines, and migrates both
   assert.match(f.read('pkg/lander/.env.dev'), /PORT=7204/);
   assert.match(f.read('pkg/db/.env.dev'), /DATABASE_URL=.*:7205\/jedidiah\n/);
   assert.match(f.read('pkg/db/.env.dev'), /TEST_DATABASE_URL=.*:7208\/jedidiah_template/);
-  for (const pkg of ['ai', 'api', 'core', 'db', 'lander']) {
+  for (const pkg of ['ai', 'api', 'core', 'db', 'integrations', 'lander']) {
     assert.match(f.read(`pkg/${pkg}/.env.test`), /TEST_DATABASE_URL=.*:7208\/jedidiah_template/);
   }
   assert.match(f.read('pkg/mobile/.env.local'), /^EXPO_PUBLIC_CUSTOM=value\n/);

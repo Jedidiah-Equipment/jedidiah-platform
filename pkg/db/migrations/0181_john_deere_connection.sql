@@ -4,6 +4,7 @@ CREATE TABLE "contracting"."john_deere_connection" (
 	"pending_state" text,
 	"pending_state_expires_at" timestamp with time zone,
 	"pending_by_user_id" text,
+	"pending_refresh_token_ciphertext" text,
 	"refresh_token_ciphertext" text,
 	"scopes" text,
 	"organizations" jsonb DEFAULT '[]'::jsonb NOT NULL,

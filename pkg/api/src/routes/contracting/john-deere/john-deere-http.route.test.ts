@@ -50,10 +50,11 @@ const test = createTester(async ({ db }) => {
     now: () => new Date(),
   });
   const app = Fastify();
-  await registerJohnDeereHttpRoutes(app, { connection, appBaseUrl: 'https://app.example' });
+  await registerJohnDeereHttpRoutes(app, { connection, appBaseUrl: 'https://app.example', secureCookie: true });
   const start = async () =>
     new URL((await connection.startConnect({ actorUserId: 'jd-admin' })).url).searchParams.get('state') ?? '';
-  const get = (query: string) => app.inject({ method: 'GET', url: `${JOHN_DEERE_CALLBACK_PATH}${query}` });
+  const get = (query: string, cookie?: string) =>
+    app.inject({ method: 'GET', url: `${JOHN_DEERE_CALLBACK_PATH}${query}`, headers: cookie ? { cookie } : {} });
   const returnFromSignIn = (state: string) => get(`?code=the-code&state=${encodeURIComponent(state)}`);
   return { deere, start, get, returnFromSignIn };
 });
@@ -65,7 +66,7 @@ test('lands back on the tab as connected when the organization already granted a
   expect(reply.headers.location).toBe(tab('connected'));
 });
 
-test('sends the browser through the organization picker once, then finishes', async ({ context }) => {
+test('sends the browser through the organization picker once, admitting its return by cookie', async ({ context }) => {
   context.deere.organizationConnected = false;
   const state = await context.start();
 
@@ -73,17 +74,24 @@ test('sends the browser through the organization picker once, then finishes', as
   expect(first.headers.location).toBe(
     `https://connections.example/select?redirect_uri=${encodeURIComponent(uris.connectionsReturnUri)}`,
   );
+  const setCookie = String(first.headers['set-cookie']);
+  expect(setCookie).toMatch(/^jd_connect_return=return%3A[0-9a-f]{32}; /);
+  expect(setCookie).toContain(`Path=${JOHN_DEERE_CALLBACK_PATH}; Max-Age=600; HttpOnly; SameSite=Lax; Secure`);
 
-  // Still unconnected on return: back to the tab, never a second trip to Deere.
-  const back = await context.get('?connections=done');
+  // Without the cookie a return is refused; with it, still unconnected, back to the tab and never to Deere again.
+  expect((await context.get('?connections=done')).headers.location).toBe(tab('error'));
+  const back = await context.get('?connections=done', setCookie.split(';')[0]);
   expect(back.headers.location).toBe(tab('not-connected'));
+  expect(String(back.headers['set-cookie'])).toContain('Max-Age=0');
   expect(context.deere.organizationReads).toBe(2);
 });
 
 test('answers a forged state, a stray return and a declined sign-in with an error', async ({ context }) => {
   await context.start();
   expect((await context.get('?code=the-code&state=connect:forged')).headers.location).toBe(tab('error'));
-  expect((await context.get('?connections=done')).headers.location).toBe(tab('error'));
+  expect((await context.get('?connections=done', 'jd_connect_return=return%3Aforged')).headers.location).toBe(
+    tab('error'),
+  );
   expect((await context.get('?error=access_denied&state=x')).headers.location).toBe(tab('error'));
   expect(context.deere.organizationReads).toBe(0);
 });

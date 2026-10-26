@@ -117,7 +117,7 @@ test('Connected names the organizations, who connected and when, with Disconnect
   expect(buttons()).toEqual(['Disconnect', 'Reconnect']);
 });
 
-test('Needs reconnecting shows the error with Reconnect', async () => {
+test('Needs reconnecting shows the error with Disconnect and Reconnect', async () => {
   const { container, buttons } = await renderTab({
     ...base,
     status: 'needs-reconnect',
@@ -125,7 +125,7 @@ test('Needs reconnecting shows the error with Reconnect', async () => {
   });
   expect(container.textContent).toContain('Needs reconnecting');
   expect(container.textContent).toContain('John Deere refused the sign-in.');
-  expect(buttons()).toEqual(['Reconnect']);
+  expect(buttons()).toEqual(['Disconnect', 'Reconnect']);
 });
 
 test('a callback result shows one toast and is then dropped', async () => {

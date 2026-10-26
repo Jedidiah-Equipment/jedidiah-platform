@@ -8,13 +8,12 @@ import type {
   JohnDeereConnectionStatus,
   JohnDeereConnectionView,
 } from '@pkg/schema/contracting';
-import type { JohnDeereClient, JohnDeereOrganizationListing } from './client.js';
+import type { JohnDeereClient, JohnDeereOrganizationListing, JohnDeereTokens } from './client.js';
 import { invalidState, isJohnDeereError, notConnected } from './john-deere-errors.js';
 import { decryptSecret, encryptSecret } from './token-vault.js';
 
 type ConnectionRow = typeof contractingJohnDeereConnection.$inferSelect;
 type ConnectionPatch = Partial<Omit<typeof contractingJohnDeereConnection.$inferInsert, 'id'>>;
-type SettledPatch = ConnectionPatch & { status: JohnDeereConnectionStatus };
 
 /** What the connection card reads; the API adds whether the environment is configured at all. */
 export type JohnDeereConnection = Omit<JohnDeereConnectionView, 'configured'>;
@@ -55,7 +54,7 @@ const ACCESS_TOKEN_MARGIN_MS = 5 * 60 * 1000;
 const NO_ORGANIZATION_CONNECTED =
   'No John Deere organization has given Jedidiah access. Reconnect and choose the organization.';
 
-// The token columns and the OAuth state are credentials and never reach the audit log; the poll and
+// The token columns and the OAuth round trip are credentials and never reach the audit log; the poll and
 // refresh timestamps move every hour and are not audited facts.
 const descriptor = defineAuditDescriptor<ConnectionRow>({
   entityType: 'contracting_john_deere_connection',
@@ -111,7 +110,7 @@ export class JohnDeereConnectionService {
 
   /**
    * Opens a round trip and returns where to send the browser. A connection that already holds a token keeps
-   * its status and its Connected by, so a Reconnect changes nothing until Deere answers.
+   * its status, token and Connected by: a Reconnect changes nothing until Deere answers.
    */
   async startConnect({ actorUserId }: { actorUserId: AuthId }): Promise<{ url: string }> {
     const state = `connect:${randomBytes(16).toString('hex')}`;
@@ -121,74 +120,57 @@ export class JohnDeereConnectionService {
       set: (before) => ({
         status: before?.refreshTokenCiphertext ? before.status : 'pending',
         pendingState: state,
-        pendingStateExpiresAt: new Date(this.config.now().getTime() + STATE_LIFETIME_MS),
+        pendingStateExpiresAt: this.stateExpiry(),
         pendingByUserId: actorUserId,
+        pendingRefreshTokenCiphertext: null,
       }),
     });
     return {
-      url: this.config.client.authorizeUrl({
-        scopes: JOHN_DEERE_SCOPES,
-        state,
-        redirectUri: this.config.redirectUri,
-      }),
+      url: this.config.client.authorizeUrl({ scopes: JOHN_DEERE_SCOPES, state, redirectUri: this.config.redirectUri }),
     };
   }
 
   /**
-   * The callback's first leg. When no organization has granted access yet, the round trip stays open and
-   * the caller sends the browser to the returned `connectionsUrl`, then calls {@link finishConnect}.
+   * The callback's first leg. When no organization has granted access yet, the round trip stays open under a
+   * fresh `returnToken` and the caller sends the browser to `picker.url`; Deere's picker returns with no
+   * `state`, so the caller hands the token to the browser alone and {@link finishConnect} demands it back.
    */
-  async completeConnect({
-    code,
-    state,
-  }: {
-    code: string;
-    state: string;
-  }): Promise<{ status: JohnDeereConnectionStatus; connectionsUrl: string | null }> {
-    const opened = await this.openRoundTrip();
-    if (opened.pendingState !== state) throw invalidState();
-
+  async completeConnect({ code, state }: { code: string; state: string }): Promise<{
+    connected: boolean;
+    picker: { url: string; returnToken: string } | null;
+  }> {
+    const opened = await this.openRoundTrip(state);
     const tokens = await this.config.client.exchangeCode({ code, redirectUri: this.config.redirectUri });
-    this.cachedAccessToken = { token: tokens.accessToken, expiresAt: tokens.expiresAt };
     const listings = await this.config.client.organizations(tokens.accessToken);
     const organizations = connectedOrganizations(listings);
-    const connectionsUrl =
+    const pickerUrl =
       organizations.length === 0 ? (listings.find((listing) => listing.connectionsUrl)?.connectionsUrl ?? null) : null;
-    const now = this.config.now();
-    // Still waiting on the organization picker: a Connected row stays Connected until it settles.
-    const outcome: SettledPatch = connectionsUrl
-      ? {
-          status: opened.status === 'connected' ? 'connected' : 'pending',
-          pendingStateExpiresAt: new Date(now.getTime() + STATE_LIFETIME_MS),
-        }
-      : this.settled(organizations, opened.pendingByUserId, now);
+    if (!pickerUrl) return { connected: await this.settle(state, opened, organizations, tokens), picker: null };
 
-    await this.write({
-      actorUserId: opened.pendingByUserId,
-      set: () => ({
-        refreshTokenCiphertext: encryptSecret(tokens.refreshToken, this.config.tokenKey),
-        scopes: JOHN_DEERE_SCOPES,
-        lastRefreshedAt: now,
-        ...outcome,
-      }),
-    });
+    // The new sign-in waits beside the current one, so an abandoned picker leaves a working connection intact.
+    const returnToken = `return:${randomBytes(16).toString('hex')}`;
+    await this.writeRoundTrip(state, opened.pendingByUserId, () => ({
+      pendingState: returnToken,
+      pendingStateExpiresAt: this.stateExpiry(),
+      pendingRefreshTokenCiphertext: encryptSecret(tokens.refreshToken, this.config.tokenKey),
+    }));
     return {
-      status: outcome.status,
-      connectionsUrl:
-        connectionsUrl && this.config.client.connectionsUrl(connectionsUrl, this.config.connectionsReturnUri),
+      connected: false,
+      picker: { url: this.config.client.connectionsUrl(pickerUrl, this.config.connectionsReturnUri), returnToken },
     };
   }
 
-  /**
-   * The callback's second leg, after Deere's organization picker. Deere returns no `state` here, so the
-   * round trip {@link completeConnect} left open is what admits it.
-   */
-  async finishConnect(): Promise<{ status: JohnDeereConnectionStatus }> {
-    const opened = await this.openRoundTrip();
-    const organizations = connectedOrganizations(await this.config.client.organizations(await this.accessToken()));
-    const outcome = this.settled(organizations, opened.pendingByUserId, this.config.now());
-    await this.write({ actorUserId: opened.pendingByUserId, set: () => outcome });
-    return { status: outcome.status };
+  /** The callback's second leg, after Deere's organization picker, admitted by the first leg's `returnToken`. */
+  async finishConnect({ returnToken }: { returnToken: string }): Promise<{ connected: boolean }> {
+    const opened = await this.openRoundTrip(returnToken);
+    if (!opened.pendingRefreshTokenCiphertext) throw invalidState();
+    const tokens = await this.config.client.refresh({
+      refreshToken: decryptSecret(opened.pendingRefreshTokenCiphertext, this.config.tokenKey),
+      redirectUri: this.config.redirectUri,
+      scopes: JOHN_DEERE_SCOPES,
+    });
+    const organizations = connectedOrganizations(await this.config.client.organizations(tokens.accessToken));
+    return { connected: await this.settle(returnToken, opened, organizations, tokens) };
   }
 
   /** Forgets the tokens and the organizations; the feed stops until someone connects again. */
@@ -201,6 +183,7 @@ export class JohnDeereConnectionService {
         pendingState: null,
         pendingStateExpiresAt: null,
         pendingByUserId: null,
+        pendingRefreshTokenCiphertext: null,
         refreshTokenCiphertext: null,
         scopes: null,
         organizations: [],
@@ -240,62 +223,125 @@ export class JohnDeereConnectionService {
 
   private async refreshAccessToken(): Promise<string> {
     const [row] = await selectRow(this.config.db);
-    if (!row?.refreshTokenCiphertext || row.status === 'needs-reconnect') throw notConnected();
+    if (!row?.refreshTokenCiphertext || row.status !== 'connected') throw notConnected();
+    const refreshed = row.refreshTokenCiphertext;
+    // Applies only to the grant that was refreshed: a Disconnect or Reconnect that landed meanwhile wins.
+    const stillCurrent = (before: ConnectionRow | null) =>
+      before?.status === 'connected' && before.refreshTokenCiphertext === refreshed;
 
     try {
       const tokens = await this.config.client.refresh({
-        refreshToken: decryptSecret(row.refreshTokenCiphertext, this.config.tokenKey),
+        refreshToken: decryptSecret(refreshed, this.config.tokenKey),
         redirectUri: this.config.redirectUri,
         scopes: row.scopes ?? JOHN_DEERE_SCOPES,
       });
-      this.cachedAccessToken = { token: tokens.accessToken, expiresAt: tokens.expiresAt };
-      await this.write({
+      const applied = await this.write({
         actorUserId: null,
-        set: () => ({
-          refreshTokenCiphertext: encryptSecret(tokens.refreshToken, this.config.tokenKey),
-          lastRefreshedAt: this.config.now(),
-        }),
+        set: (before) =>
+          stillCurrent(before)
+            ? {
+                refreshTokenCiphertext: encryptSecret(tokens.refreshToken, this.config.tokenKey),
+                lastRefreshedAt: this.config.now(),
+              }
+            : null,
       });
+      if (!applied) throw notConnected();
+      this.cachedAccessToken = { token: tokens.accessToken, expiresAt: tokens.expiresAt };
       return tokens.accessToken;
     } catch (error) {
       if (isJohnDeereError(error) && error.code === 'john_deere.unauthorized') {
         this.cachedAccessToken = null;
         await this.write({
           actorUserId: null,
-          set: () => ({ status: 'needs-reconnect', lastError: error.message, lastErrorAt: this.config.now() }),
+          set: (before) =>
+            stillCurrent(before)
+              ? { status: 'needs-reconnect', lastError: error.message, lastErrorAt: this.config.now() }
+              : null,
         });
       }
       throw error;
     }
   }
 
-  /** The open round trip, or a refusal when there is none or it has expired. */
-  private async openRoundTrip(): Promise<ConnectionRow> {
+  /** The round trip `credential` opened, or a refusal when it is not the open one or has expired. */
+  private async openRoundTrip(credential: string): Promise<ConnectionRow> {
     const [row] = await selectRow(this.config.db);
-    if (!row?.pendingState || !row.pendingStateExpiresAt || row.pendingStateExpiresAt <= this.config.now())
-      throw invalidState();
+    if (!row || !this.isOpenRoundTrip(row, credential)) throw invalidState();
     return row;
   }
 
+  private isOpenRoundTrip(row: ConnectionRow | null, credential: string): row is ConnectionRow {
+    return Boolean(
+      row?.pendingState === credential && row.pendingStateExpiresAt && row.pendingStateExpiresAt > this.config.now(),
+    );
+  }
+
+  /** A write the round trip `credential` still owns under the row lock; a newer Connect or a Disconnect wins. */
+  private async writeRoundTrip(
+    credential: string,
+    actorUserId: string | null,
+    set: (before: ConnectionRow) => ConnectionPatch,
+  ): Promise<void> {
+    const applied = await this.write({
+      actorUserId,
+      set: (before) => (this.isOpenRoundTrip(before, credential) ? set(before) : null),
+    });
+    if (!applied) throw invalidState();
+  }
+
   /**
-   * Closes the round trip: Connected, by whoever opened it, with the organizations that granted access; else
-   * Needs reconnecting, keeping the sign-in so a Reconnect can pick the organization.
+   * Closes the round trip. With an organization that granted access the new sign-in becomes the connection,
+   * credited to whoever opened the round trip. Without one, a working connection stays exactly as it was and
+   * any other is left Not connected or Needs reconnecting, saying why.
    */
-  private settled(
+  private async settle(
+    credential: string,
+    opened: ConnectionRow,
     organizations: ConnectionRow['organizations'],
-    connectedByUserId: string | null,
-    now: Date,
-  ): SettledPatch {
-    const closed = { pendingState: null, pendingStateExpiresAt: null, pendingByUserId: null, organizations };
-    return organizations.length > 0
-      ? { ...closed, status: 'connected', connectedByUserId, connectedAt: now, lastError: null, lastErrorAt: null }
-      : { ...closed, status: 'needs-reconnect', lastError: NO_ORGANIZATION_CONNECTED, lastErrorAt: now };
+    tokens: JohnDeereTokens,
+  ): Promise<boolean> {
+    const now = this.config.now();
+    const closed = {
+      pendingState: null,
+      pendingStateExpiresAt: null,
+      pendingByUserId: null,
+      pendingRefreshTokenCiphertext: null,
+    };
+    const connected = organizations.length > 0;
+    await this.writeRoundTrip(credential, opened.pendingByUserId, (before): ConnectionPatch => {
+      if (connected)
+        return {
+          ...closed,
+          status: 'connected',
+          refreshTokenCiphertext: encryptSecret(tokens.refreshToken, this.config.tokenKey),
+          scopes: JOHN_DEERE_SCOPES,
+          lastRefreshedAt: now,
+          organizations,
+          connectedByUserId: opened.pendingByUserId,
+          connectedAt: now,
+          lastError: null,
+          lastErrorAt: null,
+        };
+      if (before.status === 'connected') return closed;
+      return {
+        ...closed,
+        status: before.status === 'pending' ? 'not-connected' : before.status,
+        lastError: NO_ORGANIZATION_CONNECTED,
+        lastErrorAt: now,
+      };
+    });
+    if (connected) this.cachedAccessToken = { token: tokens.accessToken, expiresAt: tokens.expiresAt };
+    return connected;
+  }
+
+  private stateExpiry(): Date {
+    return new Date(this.config.now().getTime() + STATE_LIFETIME_MS);
   }
 
   /**
    * Every write to the row, audited. Hand-rolled rather than `mutateEntity` because the token and timestamp
    * columns must be written even when no audited field changes, and because the row is created on first use.
-   * A write to an absent row is a no-op unless `create` is set.
+   * A write to an absent row, or one whose `set` returns null, is skipped; the result says whether it applied.
    */
   private async write({
     actorUserId,
@@ -304,19 +350,26 @@ export class JohnDeereConnectionService {
   }: {
     actorUserId: string | null;
     create?: boolean;
-    set: (before: ConnectionRow | null) => ConnectionPatch;
-  }): Promise<void> {
-    await this.config.db.transaction(async (tx) => {
-      if (create) {
+    set: (before: ConnectionRow | null) => ConnectionPatch | null;
+  }): Promise<boolean> {
+    return this.config.db.transaction(async (tx) => {
+      const initial = create ? set(null) : null;
+      if (initial) {
         const [created] = await tx
           .insert(contractingJohnDeereConnection)
-          .values({ ...set(null), id: JOHN_DEERE_CONNECTION_ID, updatedAt: this.config.now() })
+          .values({ ...initial, id: JOHN_DEERE_CONNECTION_ID, updatedAt: this.config.now() })
           .onConflictDoNothing()
           .returning();
-        if (created) return recordAuditCreate({ db: tx, descriptor, actorUserId, input: created });
+        if (created) {
+          await recordAuditCreate({ db: tx, descriptor, actorUserId, input: created });
+          return true;
+        }
       }
       const [before] = await selectRow(tx).for('update');
-      if (before) await this.update(tx, actorUserId, before, set(before));
+      const patch = before ? set(before) : null;
+      if (!before || !patch) return false;
+      await this.update(tx, actorUserId, before, patch);
+      return true;
     });
   }
 

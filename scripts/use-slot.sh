@@ -153,7 +153,7 @@ DOCUMENT_STORAGE_ENDPOINT=http://localhost:${minio_api_port}"
   write_managed_block "$ROOT/pkg/db/.env.dev" "$slot" "DATABASE_URL=${db_host}/${DB}
 TEST_DATABASE_URL=${test_db_host}/${TEMPLATE}"
 
-  for pkg in ai api core db lander; do
+  for pkg in ai api core db integrations lander; do
     write_managed_block "$ROOT/pkg/$pkg/.env.test" "$slot" "TEST_DATABASE_URL=${test_db_host}/${TEMPLATE}"
   done
 

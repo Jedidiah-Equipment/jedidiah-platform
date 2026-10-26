@@ -1,5 +1,5 @@
 {
-  "id": "b4e1ad88-12c6-4377-905d-30e73ffeaef6",
+  "id": "a1e84c75-34dc-41c2-862f-3dcfcda1b17a",
   "prevId": "fdf4b7d2-8c07-48b0-b9e3-afe37194e6f3",
   "version": "7",
   "dialect": "postgresql",
@@ -3482,6 +3482,12 @@
         },
         "pending_by_user_id": {
           "name": "pending_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pending_refresh_token_ciphertext": {
+          "name": "pending_refresh_token_ciphertext",
           "type": "text",
           "primaryKey": false,
           "notNull": false

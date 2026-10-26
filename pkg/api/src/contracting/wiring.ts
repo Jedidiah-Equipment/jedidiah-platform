@@ -87,7 +87,11 @@ export async function registerContracting(
   await registerJobCardHttpRoutes(app, { db, pdfRenderer: renderJobCardPdf });
   const johnDeere = createJohnDeere(config, db);
   if (johnDeere)
-    await registerJohnDeereHttpRoutes(app, { connection: johnDeere.connection, appBaseUrl: config.APP_BASE_URL });
+    await registerJohnDeereHttpRoutes(app, {
+      connection: johnDeere.connection,
+      appBaseUrl: config.APP_BASE_URL,
+      secureCookie: config.API_BASE_URL.startsWith('https:'),
+    });
 
   return {
     routerDependencies: { johnDeere, push: contractingPush, readMeterPhoto },

@@ -57,18 +57,32 @@ function ConnectionCard({ connection }: { connection: JohnDeereConnectionView })
         title="Needs reconnecting"
         description={connection.lastError ?? 'John Deere no longer accepts the connection.'}
         action="Reconnect"
+        disconnectable
       />
     );
   return (
     <StatusCard
       title="Not connected"
-      description="Connect signs in to John Deere with the owner's John Deere sign-in and picks the Operations Center organization whose machines report their engine hours here."
+      description={
+        connection.lastError ??
+        "Connect signs in to John Deere with the owner's John Deere sign-in and picks the Operations Center organization whose machines report their engine hours here."
+      }
       action="Connect"
     />
   );
 }
 
-function StatusCard({ title, description, action }: { title: string; description: string; action?: string }) {
+function StatusCard({
+  title,
+  description,
+  action,
+  disconnectable = false,
+}: {
+  title: string;
+  description: string;
+  action?: string;
+  disconnectable?: boolean;
+}) {
   return (
     <Card>
       <CardHeader>
@@ -76,7 +90,8 @@ function StatusCard({ title, description, action }: { title: string; description
         <CardDescription>{description}</CardDescription>
       </CardHeader>
       {action ? (
-        <CardFooter className="justify-end">
+        <CardFooter className="justify-end gap-2">
+          {disconnectable ? <DisconnectButton /> : null}
           <ConnectButton label={action} />
         </CardFooter>
       ) : null}
@@ -85,12 +100,6 @@ function StatusCard({ title, description, action }: { title: string; description
 }
 
 function ConnectedCard({ connection }: { connection: JohnDeereConnectionView }) {
-  const trpc = useTRPC();
-  const { invalidateJohnDeere } = useQueryInvalidation();
-  const write = useContractingWrite(invalidateJohnDeere);
-  const disconnect = useMutation(
-    trpc.contractingJohnDeere.disconnect.mutationOptions(write.card('Unable to disconnect John Deere.')),
-  );
   return (
     <Card>
       <CardHeader>
@@ -110,19 +119,31 @@ function ConnectedCard({ connection }: { connection: JohnDeereConnectionView }) 
         </p>
       </CardContent>
       <CardFooter className="justify-end gap-2">
-        <RemoveEntityButton
-          confirmLabel="Disconnect"
-          description="Jedidiah forgets the John Deere sign-in and every feed pauses until someone connects again. Links and the readings already stored stay."
-          isPending={disconnect.isPending}
-          onConfirm={() => disconnect.mutate()}
-          title="Disconnect John Deere?"
-          triggerIcon={IconPlugConnectedX}
-          triggerLabel="Disconnect"
-          triggerVariant="outline"
-        />
+        <DisconnectButton />
         <ConnectButton label="Reconnect" />
       </CardFooter>
     </Card>
+  );
+}
+
+function DisconnectButton() {
+  const trpc = useTRPC();
+  const { invalidateJohnDeere } = useQueryInvalidation();
+  const write = useContractingWrite(invalidateJohnDeere);
+  const disconnect = useMutation(
+    trpc.contractingJohnDeere.disconnect.mutationOptions(write.card('Unable to disconnect John Deere.')),
+  );
+  return (
+    <RemoveEntityButton
+      confirmLabel="Disconnect"
+      description="Jedidiah forgets the John Deere sign-in and reads nothing from John Deere until someone connects again."
+      isPending={disconnect.isPending}
+      onConfirm={() => disconnect.mutate()}
+      title="Disconnect John Deere?"
+      triggerIcon={IconPlugConnectedX}
+      triggerLabel="Disconnect"
+      triggerVariant="outline"
+    />
   );
 }
 

@@ -14,4 +14,4 @@ What differs between businesses is supplied by one **Transcription Profile** per
 - Giving another business, or another text field, Voice Notes is a profile, two permissions and a nav entry, not a new pipeline.
 - Transcription joins the Audit Event and the Changelog View as business-blind mechanism in `public`, keyed by `business` on every row.
 - The tables moved from the `contracting` schema with their rows; every row before the move is `contracting`. ADR 0016's exit grades apply row by row through `business`.
-- Phones from before the move posted to `/api/contracting/transcriptions` and called `contractingTranscriptions.saved`. Both aliases are gone (#1804): such a phone must take the 1.112.0 OTA before it can transcribe or save a Voice Note again.
+- No Contracting alias remains for the old upload path or save name, so a phone from before the move must take its OTA before it can transcribe or save a Voice Note.

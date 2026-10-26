@@ -24,20 +24,13 @@ A John Deere Link pairs one Machine with one machine in the organization.
 3. Compare the two meters side by side: John Deere's last reported hours beside the Machine's latest reading and its Read At. Link only when the two meters agree for the time between them.
 4. Choose **Link**. The machine moves to **Linked Machines**, and its PIN becomes the Machine's serial number. A PIN another Machine already holds is refused.
 
-## What a John Deere reading looks like
-
-Every hour Jedidiah asks John Deere for each linked Machine's engine hours and writes them into the Machine's readings as a **Telematics Reading**.
-
-- On the Machine page and the phone, the reading is marked **John Deere** instead of a person's name. It has no photo and is never **Missing Photo Evidence**.
-- If John Deere reports the same hours again and nothing else was read in between, the reading's time moves forward to the new report instead of adding a row.
-- Nobody amends or disputes a John Deere reading. If a captured reading is out of sequence with one, the captured reading becomes **Disputed** and lands on **Reading Exceptions**; amend it there, with a reason, back into sequence.
-- A Machine that comes within its **Service Alert Hours** of its next service on a John Deere report sends the same Service Due Soon push a field capture sends.
-
 ## Refresh now
 
-1. On a **Connected** tab, choose **Refresh now** to run the poll straight away instead of waiting for the hour.
-2. A message says how many Machines were read, and how many readings were new, moved or unchanged. A run that John Deere cut short says why; the rest of the Machines are read in the next hour.
-3. If John Deere no longer lists a linked machine, its row under **Linked Machines** reads **Lost** until John Deere lists it again.
+Every hour Jedidiah reads each linked Machine's hours from John Deere on its own. [How John Deere readings work](./john-deere-readings) explains what lands on the Machine's readings.
+
+1. On a **Connected** tab, choose **Refresh now** to read John Deere straight away instead of waiting for the hour.
+2. Read the message that follows: it counts the Machines read and what became of their readings. A run John Deere cut short says why, and the Machines it did not reach are read in the next hour.
+3. A linked Machine that John Deere no longer lists reads **Lost** under **Linked Machines** until John Deere lists it again.
 
 ## Unlink a Machine
 

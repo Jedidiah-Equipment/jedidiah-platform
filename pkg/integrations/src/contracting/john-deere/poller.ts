@@ -177,8 +177,12 @@ export class JohnDeerePoller {
         now: now(),
       });
       summary[result.outcome] += 1;
-      if (result.outcome === 'unchanged' && result.reason === 'future-report-time')
+      // A report from the future is not yet a fact: the Link keeps what it last saw until the clock catches up.
+      if (result.outcome === 'unchanged' && result.reason === 'future-report-time') {
         logger.warn({ linkId: link.id, reportTime: report.reportTime }, 'John Deere reported a time in the future');
+        await links.recordPoll(link.id, { lastPolledAt: now() });
+        return;
+      }
       if (result.outcome !== 'unchanged' && result.serviceDueSoonCrossed)
         push.schedule({ kind: 'machine.service-due-soon', machineId: link.machineId });
       await links.recordPoll(link.id, {

@@ -340,6 +340,20 @@ describe('JohnDeerePoller', () => {
     });
   });
 
+  test('leaves a Link as it was when Deere reports a time in the future', async ({ db }) => {
+    const { poller, state, linked, warnings } = await setUp(db);
+    state.hours.set(1, { hours: 1000, reportTime: '2026-09-07T10:30:00.000Z' });
+    const summary = await poller().pollOnce();
+    expect(summary).toMatchObject({ stored: 1, unchanged: 1 });
+    expect(warnings).toEqual(['John Deere reported a time in the future']);
+    expect(await linkRow(db, linked[0]?.linkId ?? '')).toMatchObject({
+      lastPolledAt: new Date('2026-09-07T10:00:00Z'),
+      lastReportTime: null,
+      lastValue: null,
+    });
+    expect(await readings(db)).toHaveLength(1);
+  });
+
   test('skips and never calls Deere when nothing is connected', async ({ db }) => {
     const { poller, state } = await setUp(db, { connected: false });
     expect(await poller().pollOnce()).toMatchObject({ skipped: 'not-connected', polled: 0 });

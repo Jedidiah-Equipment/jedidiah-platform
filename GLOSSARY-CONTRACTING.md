@@ -128,10 +128,10 @@ external accounting system. Stamping it is what makes a Job Invoiced.
 **Machine** is one piece of the contracting fleet: a make and model (entered via creatable
 selects so spelling stays consistent), a year, a registration number, a hand-entered unique
 **Machine Code** following the fleet's `JD140-1` convention, a **Category**, an optional
-current **Driver**, and notes. A Machine is what an Assignment assigns. It has no reference to the
-Equipment context: the two businesses share no machine identity. A Machine is **On Job** while it
-has an **on-site** Assignment and otherwise **In Yard** — a planned Assignment never counts —
-derived, never stored, with no manual flag;
+current **Driver**, notes, and a serial number filled in by its John Deere Link. A Machine is what an
+Assignment assigns. It has no reference to the Equipment context: the two businesses share no machine
+identity. A Machine is **On Job** while it has an **on-site** Assignment and otherwise **In Yard** — a
+planned Assignment never counts — derived, never stored, with no manual flag;
 the **Machine Yard** view lists In Yard machines by Category, and an open fault shows as an
 indicator, not a third state. A Machine with any history is never deleted: it is **Retired** with
 a mandatory reason, hidden from every picker and the yard view, history intact and un-retirable;
@@ -350,7 +350,9 @@ current value; nothing stored is re-judged.
 **John Deere Connection** is Contracting's one link to the owner's John Deere Operations Center
 organization, made and renewed by an administrator on the John Deere tab of Settings with the owner's John
 Deere sign-in, and the only way Telematics Readings reach the fleet. It is Connected, Needs reconnecting, or
-Not connected. _Avoid_: integration, sync, JDLink connection.
+Not connected. **John Deere Link** pairs one Machine with one machine in that organization, made on the same tab by
+comparing the two meters, and starts the Machine's feed; a Link is **lost** while the organization no longer lists
+its machine. Unlinking stops the feed and keeps every reading. _Avoid_: integration, sync, JDLink connection.
 
 The **Dashboard** is the web home: counts and lists of what needs a person now — the Jobs needing a look, the
 Breakdowns not yet Fixed, the Machines Due for Service, the Jobs waiting for sign-off, pricing or an

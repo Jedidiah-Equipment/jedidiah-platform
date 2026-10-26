@@ -22,6 +22,7 @@ import { useTRPC } from '@/lib/trpc.js';
 import { CategoryPickerField } from './CategoryFields.js';
 import { FleetHistoryCard } from './FleetHistoryCard.js';
 import { FleetRetirement } from './FleetRetirement.js';
+import { MachineJohnDeereField } from './MachineJohnDeereField.js';
 import { MachineServiceCard } from './MachineServiceCard.js';
 import { MachineEditTab, resolveMachineEditTab } from './machine-edit-tabs.js';
 import { MachineFormValues, machineFormValues, machinePatchInput } from './types.js';
@@ -138,6 +139,8 @@ function MachineForm({
                 </form.AppField>
                 <form.AppField name="year">{(field) => <field.NumberField label="Year" />}</form.AppField>
                 <form.AppField name="registration">{(field) => <field.TextField label="Registration" />}</form.AppField>
+                <ReadOnlyField label="Serial number" value={machine.serialNumber} />
+                <MachineJohnDeereField machine={machine} />
                 <form.AppField name="currentDriverUserId">
                   {(field) => (
                     <field.ComboboxField

@@ -148,6 +148,12 @@ export const activityErrorFamily = defineCoreErrorFamily<ActivityError>({
 export const johnDeereErrorFamily = defineCoreErrorFamily<JohnDeereError>({
   codes: {
     'john_deere.bad_response': 'SERVICE_UNAVAILABLE',
+    'john_deere.equipment_linked': 'CONFLICT',
+    'john_deere.equipment_not_found': 'NOT_FOUND',
+    'john_deere.link_not_found': 'NOT_FOUND',
+    'john_deere.machine_linked': 'CONFLICT',
+    'john_deere.machine_not_found': 'NOT_FOUND',
+    'john_deere.machine_retired': 'CONFLICT',
     'john_deere.forbidden': 'CONFLICT',
     'john_deere.invalid_state': 'BAD_REQUEST',
     'john_deere.not_configured': 'PRECONDITION_FAILED',
@@ -155,6 +161,7 @@ export const johnDeereErrorFamily = defineCoreErrorFamily<JohnDeereError>({
     'john_deere.not_found': 'NOT_FOUND',
     'john_deere.rate_limited': 'SERVICE_UNAVAILABLE',
     'john_deere.restricted_org': 'CONFLICT',
+    'john_deere.serial_taken': 'CONFLICT',
     'john_deere.unauthorized': 'CONFLICT',
     'john_deere.unavailable': 'SERVICE_UNAVAILABLE',
   },

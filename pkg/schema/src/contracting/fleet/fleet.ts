@@ -119,6 +119,19 @@ export const Machine = MachineCreateInput.extend({
   serviceDueStatus: z.enum(serviceDueStatuses),
   /** Booked In: the Machine has an open Service Record. */
   serviceBookedIn: z.boolean(),
+  /** The PIN its John Deere Link wrote; read-only. */
+  serialNumber: z.string().nullable(),
+  /** The Machine's active John Deere Link, or null when it has none; read-only. */
+  johnDeere: z
+    .object({
+      equipmentId: z.string(),
+      principalId: z.number().int(),
+      name: z.string(),
+      lost: z.boolean(),
+      lastReportTime: DateIso.nullable(),
+      lastValue: ReadingValue.nullable(),
+    })
+    .nullable(),
   /** The Job the Machine is on site on now (arrived, not yet departed), or null when it is free. */
   busyOnJob: z
     .object({
@@ -165,6 +178,7 @@ export const FieldMachine = Machine.pick({
   categoryColour: true,
   currentDriverUserId: true,
   currentDriverName: true,
+  serialNumber: true,
   latestReadingHours: true,
   latestReadingAt: true,
   serviceIntervalHours: true,

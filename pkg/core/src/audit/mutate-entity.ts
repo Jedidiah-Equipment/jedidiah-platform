@@ -34,6 +34,8 @@ import { type AuditDescriptor, diffAuditUpdate, recordAuditUpdate } from './audi
  *   locked and diffed as a whole; a per-row lock would audit one Save as six events.
  * - The John Deere Connection (`@pkg/integrations`) — its token and poll columns are written when no
  *   audited field changes, and its row is created on first use.
+ * - Unlinking a John Deere Link (`@pkg/integrations`) — its audit label is its Machine's code, read beside
+ *   the locked row.
  */
 export async function mutateEntity<TTable extends PgTable & { id: PgColumn }, TResult, TPrepared = void>({
   actorUserId,

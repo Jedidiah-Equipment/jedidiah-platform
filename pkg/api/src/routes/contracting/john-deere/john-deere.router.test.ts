@@ -1,9 +1,11 @@
 import { randomBytes } from 'node:crypto';
+import type { Db } from '@pkg/db';
 import { contractingJohnDeereConnection } from '@pkg/db/contracting';
 import {
   encryptSecret,
   JohnDeereClient,
   JohnDeereConnectionService,
+  JohnDeereLinkService,
   NOT_CONNECTED,
 } from '@pkg/integrations/contracting';
 import { expect } from 'vitest';
@@ -22,8 +24,22 @@ const test = createTester(async ({ db }) => {
     issuer: 'https://signin.example/oauth2/aus',
     clientId: 'client-id',
     clientSecret: 'client-secret',
-    fetch: async () => {
-      throw new Error('No Deere call expected');
+    // Deere answers a token, one machine and its engine hours.
+    fetch: async (input) => {
+      const url = String(input);
+      if (url.endsWith('/v1/token'))
+        return Response.json({ access_token: 'access', refresh_token: 'refresh', expires_in: 43_200 });
+      if (url.includes('/equipment?'))
+        return Response.json({
+          values: [
+            { id: 'eq-1', principalId: 7, name: 'Big Green', serialNumber: 'PIN-1', organization: [{ id: 4321 }] },
+          ],
+        });
+      if (url.includes('/engineHours'))
+        return Response.json({
+          values: [{ reading: { valueAsDouble: 812.3 }, reportTime: '2026-10-26T06:00:00.000Z', source: 'TM' }],
+        });
+      throw new Error(`Unexpected request ${url}`);
     },
     now: () => new Date(),
   });
@@ -35,8 +51,16 @@ const test = createTester(async ({ db }) => {
     connectionsReturnUri: 'https://api.example/api/contracting/john-deere/callback?connections=done',
     now: () => new Date(),
   });
-  return { connection, db };
+  const links = new JohnDeereLinkService({ db, client, connection, now: () => new Date() });
+  return { johnDeere: { connection, links }, db };
 });
+
+const connect = (db: Db) =>
+  db.insert(contractingJohnDeereConnection).values({
+    status: 'connected',
+    refreshTokenCiphertext: encryptSecret('refresh', tokenKey),
+    organizations: [{ id: '4321', name: 'Jedidiah Boerdery' }],
+  });
 
 const contractingSession = (role: Parameters<typeof sessionAs>[1]) => sessionAs('test-user-id', role);
 
@@ -46,9 +70,9 @@ test('status reads Not configured when the environment has no John Deere keys', 
   await expect(johnDeere.connect.start()).rejects.toMatchObject({ code: 'PRECONDITION_FAILED' });
 });
 
-test('status reads every connection state', async ({ context: { createCaller, connection, db } }) => {
+test('status reads every connection state', async ({ context: { createCaller, johnDeere: deps, db } }) => {
   const johnDeere = createCaller(contractingSession('contracting-admin'), {
-    contracting: { johnDeere: { connection } },
+    contracting: { johnDeere: deps },
   }).contractingJohnDeere;
   expect(await johnDeere.status()).toMatchObject({ configured: true, status: 'not-connected' });
 
@@ -81,15 +105,77 @@ test('status reads every connection state', async ({ context: { createCaller, co
   expect(await johnDeere.status()).toMatchObject({ status: 'not-connected', organizations: [], connectedBy: null });
 });
 
-test('needs contracting_settings:update for every procedure', async ({ context: { createCaller, connection } }) => {
+test('needs contracting_settings:update to read and Refresh, contracting_machine:update to link and unlink', async ({
+  context: { createCaller, johnDeere: deps },
+}) => {
+  const id = '00000000-0000-4000-8000-000000000000';
   for (const session of [
     mockSession('admin'),
     contractingSession('contracting-manager'),
     contractingSession('foreman'),
   ]) {
-    const johnDeere = createCaller(session, { contracting: { johnDeere: { connection } } }).contractingJohnDeere;
+    const johnDeere = createCaller(session, { contracting: { johnDeere: deps } }).contractingJohnDeere;
     await expect(johnDeere.status()).rejects.toMatchObject({ code: 'FORBIDDEN' });
     await expect(johnDeere.connect.start()).rejects.toMatchObject({ code: 'FORBIDDEN' });
     await expect(johnDeere.disconnect()).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(johnDeere.equipment.list()).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(johnDeere.equipment.refresh()).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(johnDeere.links.list()).rejects.toMatchObject({ code: 'FORBIDDEN' });
   }
+  // The manager maintains the fleet, so reaches the service, which finds no such Link.
+  const manager = createCaller(contractingSession('contracting-manager'), { contracting: { johnDeere: deps } });
+  await expect(manager.contractingJohnDeere.links.remove({ id })).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  for (const session of [mockSession('admin'), contractingSession('foreman')]) {
+    const johnDeere = createCaller(session, { contracting: { johnDeere: deps } }).contractingJohnDeere;
+    await expect(johnDeere.links.create({ machineId: id, equipmentId: 'eq-1' })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+    await expect(johnDeere.links.remove({ id })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  }
+});
+
+test('a Link fills the Machine wire with its serial number and John Deere machine', async ({
+  context: { createCaller, johnDeere: deps, db },
+}) => {
+  await connect(db);
+  const caller = createCaller(contractingSession('contracting-admin'), { contracting: { johnDeere: deps } });
+  const category = await caller.contractingFleet.categories.create({ name: 'Tractors', kind: 'machine' });
+  const machine = await caller.contractingFleet.machines.create({
+    code: 'T01',
+    make: 'John Deere',
+    model: '8R',
+    categoryId: category.id,
+  });
+  expect(machine).toMatchObject({ serialNumber: null, johnDeere: null });
+
+  expect(await caller.contractingJohnDeere.equipment.list()).toEqual([
+    expect.objectContaining({ equipmentId: 'eq-1', lastHours: 812.3, lastReportTime: '2026-10-26T06:00:00.000Z' }),
+  ]);
+  await caller.contractingJohnDeere.links.create({ machineId: machine.id, equipmentId: 'eq-1' });
+  await expect(
+    caller.contractingJohnDeere.links.create({ machineId: machine.id, equipmentId: 'eq-1' }),
+  ).rejects.toMatchObject({ code: 'CONFLICT' });
+
+  const linked = {
+    serialNumber: 'PIN-1',
+    johnDeere: {
+      equipmentId: 'eq-1',
+      principalId: 7,
+      name: 'Big Green',
+      lost: false,
+      lastReportTime: null,
+      lastValue: null,
+    },
+  };
+  expect(await caller.contractingFleet.machines.get({ id: machine.id })).toMatchObject(linked);
+  expect(await caller.contractingFleet.machines.list({})).toEqual([expect.objectContaining(linked)]);
+  expect(await caller.contractingJohnDeere.equipment.list()).toEqual([]);
+
+  const [link] = await caller.contractingJohnDeere.links.list();
+  if (!link) throw new Error('No link');
+  await caller.contractingJohnDeere.links.remove({ id: link.id });
+  expect(await caller.contractingFleet.machines.get({ id: machine.id })).toMatchObject({
+    serialNumber: 'PIN-1',
+    johnDeere: null,
+  });
 });

@@ -1,4 +1,4 @@
-export { and, eq, isNull, sql } from 'drizzle-orm';
+export { and, asc, eq, isNull, ne, or, sql } from 'drizzle-orm';
 export { closeDatabaseConnection, db, queryClient } from './client.js';
 export { createDatabaseClient, type DatabaseClient, type Db } from './database-client.js';
 export {

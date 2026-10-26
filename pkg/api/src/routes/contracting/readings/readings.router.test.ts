@@ -70,6 +70,7 @@ test('foremen can find active Machines and read field history without fleet mana
       categoryColour: 'indigo',
       currentDriverUserId: null,
       currentDriverName: null,
+      serialNumber: null,
       latestReadingHours: 100,
       latestReadingAt: expect.any(String),
       serviceIntervalHours: null,

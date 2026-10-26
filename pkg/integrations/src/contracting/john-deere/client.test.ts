@@ -150,6 +150,102 @@ describe('JohnDeereClient', () => {
     });
   });
 
+  it('lists connected machines across pages, mapped, with a modem when a TelematicsGateway is paired', async () => {
+    const machine = {
+      id: 'eq-1',
+      principalId: 217373,
+      name: '8R 410',
+      serialNumber: '1RW8410RCNA012345',
+      engineSerialNumber: 'RG6135U000500',
+      modelYear: '2022',
+      make: { name: 'JOHN DEERE' },
+      model: { name: '8R 410' },
+      organization: [{ '@type': 'Resource', id: 1234 }],
+      telematicsCapable: true,
+      archived: false,
+      devices: [{ '@type': 'Display' }, { '@type': 'TelematicsGateway' }],
+    };
+    const { client, requests } = clientAnswering(
+      Response.json({
+        links: [{ rel: 'nextPage', uri: 'https://equipment.example/isg/equipment?pageOffset=100' }],
+        values: [machine],
+      }),
+      Response.json({
+        values: [{ id: 77, principalId: 9, name: 'Gator', organization: [{ id: '1234' }], devices: [] }],
+      }),
+    );
+
+    expect(await client.equipment('access-1')).toEqual([
+      {
+        id: 'eq-1',
+        principalId: 217373,
+        name: '8R 410',
+        serialNumber: '1RW8410RCNA012345',
+        engineSerialNumber: 'RG6135U000500',
+        make: 'JOHN DEERE',
+        model: '8R 410',
+        modelYear: '2022',
+        organizationId: '1234',
+        telematicsCapable: true,
+        archived: false,
+        hasModem: true,
+      },
+      {
+        id: '77',
+        principalId: 9,
+        name: 'Gator',
+        serialNumber: null,
+        engineSerialNumber: null,
+        make: null,
+        model: null,
+        modelYear: null,
+        organizationId: '1234',
+        telematicsCapable: false,
+        archived: false,
+        hasModem: false,
+      },
+    ]);
+    expect(requests.map(({ url }) => url)).toEqual([
+      'https://equipment.example/isg/equipment?categories=Machine&capableOf=Connectivity&archived=false&embed=devices&itemLimit=100',
+      'https://equipment.example/isg/equipment?pageOffset=100',
+    ]);
+    expect(requests[0]?.init?.headers).toMatchObject({ Accept: 'application/json', Authorization: 'Bearer access-1' });
+  });
+
+  it('looks machines up by id, archived ones included', async () => {
+    const { client, requests } = clientAnswering(Response.json({ values: [] }));
+    expect(await client.equipmentByIds('access-1', ['eq-1', 'eq-2'])).toEqual([]);
+    const url = new URL(requests[0]?.url ?? '');
+    expect(url.searchParams.get('ids')).toBe('eq-1,eq-2');
+    expect(url.searchParams.has('archived')).toBe(false);
+  });
+
+  it('reads the last known engine hours, or null when the machine has reported none', async () => {
+    const { client, requests } = clientAnswering(
+      Response.json({
+        values: [
+          {
+            reading: { valueAsDouble: 1234.56, unit: 'Hours' },
+            reportTime: '2026-10-26T06:30:00.000Z',
+            source: 'TM',
+          },
+        ],
+      }),
+      Response.json({ values: [] }),
+    );
+
+    expect(await client.engineHours('access-1', 217373)).toEqual({
+      hours: 1234.56,
+      reportTime: new Date('2026-10-26T06:30:00.000Z'),
+      source: 'TM',
+    });
+    expect(await client.engineHours('access-1', 9)).toBeNull();
+    expect(requests[0]?.url).toBe(
+      'https://api.example/platform/machines/217373/engineHours?lastKnown=true&showLinks=none',
+    );
+    expect(requests[0]?.init?.headers).toMatchObject({ Accept: 'application/vnd.deere.axiom.v3+json' });
+  });
+
   it.each([
     [new Response('', { status: 401 }), { code: 'john_deere.unauthorized' }],
     [new Response('', { status: 403 }), { code: 'john_deere.forbidden' }],

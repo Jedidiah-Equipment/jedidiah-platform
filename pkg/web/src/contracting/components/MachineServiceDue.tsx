@@ -7,10 +7,10 @@ import {
 import type { Machine, ServiceDueStatus } from '@pkg/schema/contracting';
 import { cn } from '@/lib/utils.js';
 
-/** Hours, or a muted dash when there are none. */
-export const hoursOrDash = (hours: number | null) =>
+/** Hours, or a muted dash (or `empty`) when there are none. */
+export const hoursOrDash = (hours: number | null, empty = '—') =>
   hours === null ? (
-    <span className="text-muted-foreground">—</span>
+    <span className="text-muted-foreground">{empty}</span>
   ) : (
     <span className="tabular-nums">{formatHours(hours)}</span>
   );

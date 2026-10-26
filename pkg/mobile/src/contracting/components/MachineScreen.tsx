@@ -218,6 +218,9 @@ export default function MachineScreen() {
                 {machine.currentDriverName ? ` · ${getFirstName(machine.currentDriverName)}` : ''}
               </Text>
             ) : null}
+            {machine?.serialNumber ? (
+              <Text className="text-sm text-muted-foreground">Serial number {machine.serialNumber}</Text>
+            ) : null}
             <Text className="text-3xl text-foreground" weight="bold">
               {machine?.latestReadingHours != null ? formatHours(machine.latestReadingHours) : 'No known reading'}
             </Text>

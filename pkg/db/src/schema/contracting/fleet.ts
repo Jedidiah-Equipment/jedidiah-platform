@@ -43,6 +43,8 @@ export const contractingMachines = contractingSchema.table(
     model: text('model').notNull(),
     year: integer('year'),
     registration: text('registration'),
+    // The PIN its John Deere Link wrote; never edited directly.
+    serialNumber: text('serial_number'),
     categoryId: uuid('category_id')
       .notNull()
       .references(() => contractingCategories.id, { onDelete: 'restrict' }),
@@ -58,6 +60,9 @@ export const contractingMachines = contractingSchema.table(
   },
   (table) => [
     uniqueIndex('machine_code_ci_unique').on(sql`lower(${table.code})`),
+    uniqueIndex('machine_serial_number_ci_unique')
+      .on(sql`lower(${table.serialNumber})`)
+      .where(sql`${table.serialNumber} IS NOT NULL`),
     check('machine_code_uppercase', sql`${table.code} = upper(btrim(${table.code})) AND length(${table.code}) > 0`),
     check(
       'machine_retirement_reason',

@@ -33,6 +33,8 @@ export function useQueryInvalidation() {
       invalidateFleet: invalidate('contractingFleet', 'contractingServices'),
       invalidateJobs: invalidate('contractingJobs'),
       invalidateJohnDeere: invalidate('contractingJohnDeere'),
+      // A John Deere Link writes its Machine's serial number and names its Deere machine on the Machine read.
+      invalidateJohnDeereLinks: invalidate('contractingJohnDeere', 'contractingFleet'),
       invalidateRateCard: invalidate('contractingRateCard'),
       // A reading moves the Machine's latest hours, and Activity reads its items off readings.
       invalidateReadings: invalidate(

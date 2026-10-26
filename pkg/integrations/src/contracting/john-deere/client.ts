@@ -29,6 +29,27 @@ export type JohnDeereOrganizationListing = {
   manageConnectionsUrl: string | null;
 };
 
+/** A machine in the connected organization, as the Equipment API lists it. `id` is unique across organizations. */
+export type DeereMachine = {
+  id: string;
+  principalId: number;
+  name: string;
+  /** The PIN. */
+  serialNumber: string | null;
+  engineSerialNumber: string | null;
+  make: string | null;
+  model: string | null;
+  modelYear: string | null;
+  organizationId: string;
+  telematicsCapable: boolean;
+  archived: boolean;
+  /** A TelematicsGateway (the modem) is paired, so the machine can report its hours. */
+  hasModem: boolean;
+};
+
+/** The machine's last reported engine hours. */
+export type DeereEngineHours = { hours: number; reportTime: Date; source: string };
+
 const AXIOM_JSON = 'application/vnd.deere.axiom.v3+json';
 
 const TokenResponse = z.object({
@@ -49,6 +70,44 @@ const OrganizationsPage = z.object({
       type: z.string().optional(),
       member: z.boolean().optional(),
       links: z.array(Link).optional(),
+    }),
+  ),
+});
+
+const Id = z.union([z.string(), z.number()]).transform(String);
+const Named = z.object({ name: z.string() });
+// Deere's samples serve a make or model both as an object and as a one-element array.
+const NamedOrList = z
+  .union([Named, z.array(Named)])
+  .optional()
+  .transform((value) => (Array.isArray(value) ? value[0] : value)?.name ?? null);
+const EquipmentPage = z.object({
+  links: z.array(Link).optional(),
+  values: z.array(
+    z.object({
+      id: Id,
+      principalId: z.number().int(),
+      name: z.string(),
+      serialNumber: z.string().nullish(),
+      engineSerialNumber: z.string().nullish(),
+      make: NamedOrList,
+      model: NamedOrList,
+      modelYear: z.union([z.string(), z.number()]).nullish(),
+      // The owning organization comes first.
+      organization: z.tuple([z.object({ id: Id })], z.object({ id: Id })),
+      telematicsCapable: z.boolean().optional(),
+      archived: z.boolean().optional(),
+      devices: z.array(z.object({ '@type': z.string().optional() })).optional(),
+    }),
+  ),
+});
+
+const EngineHoursPage = z.object({
+  values: z.array(
+    z.object({
+      reading: z.object({ valueAsDouble: z.number() }),
+      reportTime: z.iso.datetime(),
+      source: z.string(),
     }),
   ),
 });
@@ -114,11 +173,60 @@ export class JohnDeereClient {
     return listings;
   }
 
+  /** Every connected, unarchived machine the connection can read, across every page. */
+  equipment(accessToken: string): Promise<DeereMachine[]> {
+    const query = 'categories=Machine&capableOf=Connectivity&archived=false&embed=devices&itemLimit=100';
+    return this.equipmentPages(`${this.config.equipmentBaseUrl}/equipment?${query}`, accessToken);
+  }
+
+  /** The machines with these ids, archived or not; one the organization no longer lists is simply absent. */
+  equipmentByIds(accessToken: string, ids: readonly string[]): Promise<DeereMachine[]> {
+    const query = new URLSearchParams({ ids: ids.join(','), embed: 'devices', itemLimit: '100' });
+    return this.equipmentPages(`${this.config.equipmentBaseUrl}/equipment?${query}`, accessToken);
+  }
+
+  /** The machine's last known engine hours, or null when it has reported none. */
+  async engineHours(accessToken: string, principalId: number): Promise<DeereEngineHours | null> {
+    const url = `${this.config.platformBaseUrl}/machines/${principalId}/engineHours?lastKnown=true&showLinks=none`;
+    const page = EngineHoursPage.safeParse(await this.getJson(url, accessToken, AXIOM_JSON));
+    if (!page.success) throw badResponse('John Deere sent engine hours Jedidiah cannot read.');
+    const [last] = page.data.values;
+    return last
+      ? { hours: last.reading.valueAsDouble, reportTime: new Date(last.reportTime), source: last.source }
+      : null;
+  }
+
   /** Where to send the browser to grant an organization access, returning to `redirectUri` afterwards. */
   connectionsUrl(url: string, redirectUri: string): string {
     const target = new URL(url);
     target.searchParams.set('redirect_uri', redirectUri);
     return target.toString();
+  }
+
+  private async equipmentPages(first: string, accessToken: string): Promise<DeereMachine[]> {
+    const machines: DeereMachine[] = [];
+    let next: string | null = first;
+    while (next) {
+      const page = EquipmentPage.safeParse(await this.getJson(next, accessToken, 'application/json'));
+      if (!page.success) throw badResponse('John Deere sent an equipment list Jedidiah cannot read.');
+      for (const machine of page.data.values)
+        machines.push({
+          id: machine.id,
+          principalId: machine.principalId,
+          name: machine.name,
+          serialNumber: machine.serialNumber ?? null,
+          engineSerialNumber: machine.engineSerialNumber ?? null,
+          make: machine.make,
+          model: machine.model,
+          modelYear: machine.modelYear == null ? null : String(machine.modelYear),
+          organizationId: machine.organization[0].id,
+          telematicsCapable: machine.telematicsCapable ?? false,
+          archived: machine.archived ?? false,
+          hasModem: machine.devices?.some((device) => device['@type'] === 'TelematicsGateway') ?? false,
+        });
+      next = linkTo(page.data.links, 'nextPage');
+    }
+    return machines;
   }
 
   private async token(grant: Record<string, string>): Promise<JohnDeereTokens> {

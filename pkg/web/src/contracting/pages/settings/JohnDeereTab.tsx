@@ -14,6 +14,7 @@ import { useContractingWrite } from '@/contracting/hooks/use-contracting-write.j
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { JohnDeereLinks } from './JohnDeereLinks.js';
 
 const RESULT_TOAST_ID = 'john-deere-connect-result';
 
@@ -50,7 +51,13 @@ function ConnectionCard({ connection }: { connection: JohnDeereConnectionView })
         description="This environment has no John Deere application keys. Set JOHN_DEERE_CLIENT_ID, JOHN_DEERE_CLIENT_SECRET and JOHN_DEERE_TOKEN_KEY on the API and restart it to connect."
       />
     );
-  if (connection.status === 'connected') return <ConnectedCard connection={connection} />;
+  if (connection.status === 'connected')
+    return (
+      <div className="space-y-4">
+        <ConnectedCard connection={connection} />
+        <JohnDeereLinks />
+      </div>
+    );
   if (connection.status === 'needs-reconnect')
     return (
       <StatusCard

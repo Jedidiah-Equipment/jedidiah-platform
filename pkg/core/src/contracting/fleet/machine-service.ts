@@ -62,11 +62,16 @@ const busyStint = {
   arrivalReadingId: sql`stint.arrival_reading_id`,
   departureReadingId: sql`stint.departure_reading_id`,
 };
-/**
- * What every Machine read derives beside its row: the newest Hour Reading of any role (so a spot reading moves Service
- * Due Soon as much as a stint does), the Job it is on site on, and whether it is Booked In.
- */
-const derivedMachineColumns = (machine: typeof contractingMachines._.columns) => ({
+type JohnDeereRow = {
+  equipmentId: string;
+  principalId: number;
+  name: string;
+  lost: boolean;
+  lastReportTime: string | null;
+  lastValue: number | null;
+};
+/** The Machine's latest Hour Reading, of any role, and its Read At; a John Deere Link names its Machine's too. */
+export const latestReadingColumns = (machine: typeof contractingMachines._.columns) => ({
   latestReadingHours: sql<number | null>`(
     select latest.value::float8
     from contracting.hour_reading latest
@@ -81,6 +86,13 @@ const derivedMachineColumns = (machine: typeof contractingMachines._.columns) =>
     order by latest.captured_at desc, latest.sequence desc
     limit 1
   )`.as('latest_reading_at'),
+});
+/**
+ * What every Machine read derives beside its row: the newest Hour Reading of any role (so a spot reading moves Service
+ * Due Soon as much as a stint does), the Job it is on site on, whether it is Booked In, and its active John Deere Link.
+ */
+const derivedMachineColumns = (machine: typeof contractingMachines._.columns) => ({
+  ...latestReadingColumns(machine),
   busyOnJob: sql<BusyOnJobRow | null>`(
     select json_build_object(
       'id', job.id,
@@ -108,6 +120,19 @@ const derivedMachineColumns = (machine: typeof contractingMachines._.columns) =>
     where booked.machine_id = ${machine.id}
       and booked.closed_at is null
   )`.as('service_booked_in'),
+  johnDeere: sql<JohnDeereRow | null>`(
+    select json_build_object(
+      'equipmentId', link.equipment_id,
+      'principalId', link.principal_id,
+      'name', link.deere_name,
+      'lost', link.lost_at is not null,
+      'lastReportTime', link.last_report_time,
+      'lastValue', link.last_value::float8
+    )
+    from contracting.john_deere_link link
+    where link.machine_id = ${machine.id}
+      and link.unlinked_at is null
+  )`.as('john_deere'),
 });
 function mapMachine(
   row: Row & {
@@ -117,6 +142,7 @@ function mapMachine(
     latestReadingAt: string | null;
     busyOnJob: BusyOnJobRow | null;
     serviceBookedIn: boolean;
+    johnDeere: JohnDeereRow | null;
   },
   settingsThresholdHours: number,
 ) {
@@ -244,6 +270,30 @@ export async function patchMachine({
       project: (tx, row) => getMachine({ db: tx, id: row.id }),
     }),
   );
+}
+/** Linking a Machine to John Deere writes the Deere PIN as its serial number, audited as the Machine's own update. */
+export async function stampSerialNumber({
+  db,
+  actorUserId,
+  machineId,
+  serialNumber,
+}: {
+  db: DatabaseTransaction;
+  actorUserId: AuthId;
+  machineId: string;
+  serialNumber: string;
+}) {
+  return mutateEntity({
+    db,
+    actorUserId,
+    descriptor,
+    table: contractingMachines,
+    id: machineId,
+    notFound: () => notFound('Machine'),
+    set: () => ({ serialNumber, updatedAt: new Date() }),
+    summary: 'Serial number set by John Deere Link',
+    project: () => undefined,
+  });
 }
 /** Closing a Service Record prints the sticker: it sets Next Service Due, audited as the Machine's own update. */
 export async function stampNextServiceDue({

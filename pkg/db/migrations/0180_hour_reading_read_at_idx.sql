@@ -1,0 +1,2 @@
+DROP INDEX "contracting"."hour_reading_machine_sequence_idx";--> statement-breakpoint
+CREATE INDEX "hour_reading_machine_read_at_idx" ON "contracting"."hour_reading" USING btree ("machine_id","captured_at","sequence");

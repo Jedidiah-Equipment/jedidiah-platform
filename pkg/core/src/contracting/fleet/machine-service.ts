@@ -71,14 +71,14 @@ const derivedMachineColumns = (machine: typeof contractingMachines._.columns) =>
     select latest.value::float8
     from contracting.hour_reading latest
     where latest.machine_id = ${machine.id}
-    order by latest.sequence desc
+    order by latest.captured_at desc, latest.sequence desc
     limit 1
   )`.as('latest_reading_hours'),
   latestReadingAt: sql<string | null>`(
     select to_json(latest.captured_at) #>> '{}'
     from contracting.hour_reading latest
     where latest.machine_id = ${machine.id}
-    order by latest.sequence desc
+    order by latest.captured_at desc, latest.sequence desc
     limit 1
   )`.as('latest_reading_at'),
   busyOnJob: sql<BusyOnJobRow | null>`(

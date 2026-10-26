@@ -98,7 +98,7 @@ function splitGapRuns(runs: readonly GapRun[], closing: LedgerStint, gapFlagThre
 }
 
 /**
- * The ledger walk: a Machine's whole reading ledger in `sequence` order, phases switched by the stints' arrival and
+ * The ledger walk: a Machine's whole reading ledger in Read At order (ties by acceptance), phases switched by the stints' arrival and
  * departure reading ids (never by role). Before the first arrival and in a gap no arrival has closed count nowhere.
  */
 export function hourSegments(

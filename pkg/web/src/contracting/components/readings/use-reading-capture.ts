@@ -76,8 +76,8 @@ export function useReadingCapture<TValues>(target: CaptureTarget, toDraft: (valu
     photo,
     judge: (values: TValues) => judgeDraft(toDraft(values)),
     /** Whether the value is below the latest and its dispute confirmed: all the reading card needs. */
-    judgeValue: (value: CaptureValue) =>
-      captureValueVerdict(latest, parseFormValue(value.value), disputedReadingId(value)),
+    judgeValue: (value: CaptureValue & { readAt: Date | null }) =>
+      captureValueVerdict(latest, parseFormValue(value.value), disputedReadingId(value), value.readAt),
     /** Spread onto `ReadingCaptureDetails`. */
     details: { photo, onPhotoChange: setPhoto, error, onError: setError },
     reset: () => {

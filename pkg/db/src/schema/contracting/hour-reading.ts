@@ -48,7 +48,7 @@ export const contractingHourReadings = contractingSchema.table(
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
-    index('hour_reading_machine_sequence_idx').on(table.machineId, table.sequence),
+    index('hour_reading_machine_read_at_idx').on(table.machineId, table.capturedAt, table.sequence),
     index('hour_reading_created_idx').on(table.createdAt, table.id),
     check('hour_reading_role', sql`${table.role} IN (${quotedList(readingRoles)})`),
     check('hour_reading_value', sql`${table.value} >= 0 AND (${table.aiValue} IS NULL OR ${table.aiValue} >= 0)`),

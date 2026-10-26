@@ -112,7 +112,10 @@ const previousReading = alias(contractingHourReadings, 'job_previous_departure')
 const previousAssignment = alias(contractingMachineAssignments, 'job_previous_assignment');
 const previousDepartureOf = eq(
   previousReading.id,
-  jobSql.previousDepartureId(contractingMachineAssignments.machineId, arrivalReading.sequence),
+  jobSql.previousDepartureId(contractingMachineAssignments.machineId, {
+    capturedAt: arrivalReading.capturedAt,
+    sequence: arrivalReading.sequence,
+  }),
 );
 
 /** Each arrived stint's previous departure: the Machine's last departure before its arrival, where its Hour Gap starts. */

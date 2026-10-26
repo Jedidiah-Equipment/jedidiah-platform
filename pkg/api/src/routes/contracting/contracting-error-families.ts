@@ -50,6 +50,7 @@ export const directoryErrorFamily = defineCoreErrorFamily<DirectoryError>({
 
 export const readingErrorFamily = defineCoreErrorFamily<ReadingError>({
   codes: {
+    'reading.above_next': 'CONFLICT',
     'reading.baseline_exists': 'CONFLICT',
     'reading.below_latest': 'CONFLICT',
     'reading.capture_id_conflict': 'CONFLICT',

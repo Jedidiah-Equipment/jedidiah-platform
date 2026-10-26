@@ -1,5 +1,5 @@
-import { formatHours } from '@pkg/domain';
-import { READING_PHOTO_POLICY } from '@pkg/domain/contracting';
+import { formatHours, getPlantDateNow } from '@pkg/domain';
+import { captureRefusals, isFutureReadAt, READING_PHOTO_POLICY, readAtFromInput } from '@pkg/domain/contracting';
 import { IconArrowRight } from '@tabler/icons-react';
 import type React from 'react';
 import { useState } from 'react';
@@ -120,7 +120,7 @@ export function ReadingValueField({
  * which belongs to the value it was confirmed for.
  */
 export const ReadingValueCard = withFieldGroup({
-  defaultValues: { value: Number.NaN, confirmedDispute: null as ConfirmedDispute },
+  defaultValues: { value: Number.NaN, confirmedDispute: null as ConfirmedDispute, readAt: '' },
   props: {} as { capture: Pick<ReadingCapture<unknown>, 'judgeValue' | 'latest' | 'latestQuery'> },
   render: function ReadingValueCardGroup({ group, capture }) {
     const [readingFocused, setReadingFocused] = useState(false);
@@ -132,7 +132,7 @@ export const ReadingValueCard = withFieldGroup({
         warning={
           <group.Subscribe selector={(state) => state.values}>
             {(values) => {
-              const verdict = capture.judgeValue(values);
+              const verdict = capture.judgeValue({ ...values, readAt: readAtFromInput(values.readAt) });
               return !readingFocused && latest && verdict.below ? (
                 <group.AppField name="confirmedDispute">
                   {(field) => (
@@ -159,6 +159,35 @@ export const ReadingValueCard = withFieldGroup({
           </group.AppField>
         </div>
       </ReadingCaptureCard>
+    );
+  },
+});
+
+/** When the meter was read, as a `datetime-local` value; blank is now, and a time still to come is refused. */
+export const ReadingReadAtField = withFieldGroup({
+  defaultValues: { readAt: '' },
+  render: function ReadingReadAtFieldGroup({ group }) {
+    return (
+      <>
+        <group.AppField name="readAt">
+          {(field) => (
+            <field.DateTimePickerField
+              label="Read At"
+              maxValue={getPlantDateNow()}
+              description="When the meter was read. Leave blank to use the current time."
+            />
+          )}
+        </group.AppField>
+        <group.Subscribe selector={(state) => readAtFromInput(state.values.readAt)}>
+          {(readAt) =>
+            readAt && isFutureReadAt(readAt) ? (
+              <p className="text-sm text-destructive" role="alert">
+                {captureRefusals['future-read-at'].message}
+              </p>
+            ) : null
+          }
+        </group.Subscribe>
+      </>
     );
   },
 });

@@ -32,6 +32,7 @@ import {
 } from '@pkg/schema/contracting';
 import { asc, eq, isNotNull, type SQL } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
+import { oldestFirst } from '../readings/reading-sql.js';
 import { getContractingSettings } from '../settings/settings-service.js';
 import { ReportError } from './report-errors.js';
 
@@ -46,7 +47,7 @@ type FleetMachine = {
   spans: ActiveSpan[];
 };
 
-/** One Machine's whole reading ledger in `sequence` order and the stints that phase it: what the hours read. */
+/** One Machine's whole reading ledger in Read At order and the stints that phase it: what the hours read. */
 type Ledger = { readings: LedgerReading[]; stints: LedgerStint[] };
 
 const EMPTY_LEDGER: Ledger = { readings: [], stints: [] };
@@ -118,7 +119,7 @@ async function loadLedger(db: Db): Promise<Map<string, Ledger>> {
         capturedAt: contractingHourReadings.capturedAt,
       })
       .from(contractingHourReadings)
-      .orderBy(asc(contractingHourReadings.machineId), asc(contractingHourReadings.sequence)),
+      .orderBy(asc(contractingHourReadings.machineId), ...oldestFirst),
     db
       .select({
         machineId: contractingMachineAssignments.machineId,

@@ -10,6 +10,9 @@ import {
 import { hasPermission, validateFile } from '@pkg/domain';
 import {
   assignmentState,
+  type CaptureNeighbour,
+  type CaptureWorld,
+  captureCrossesServiceDueSoon,
   effectiveServiceAlertHours,
   FUTURE_READ_AT_TOLERANCE_MS,
   formatJobNumber,
@@ -21,7 +24,6 @@ import {
   readingExceptionTypes,
   readingVerification,
   resolveReadingAmendment,
-  serviceDueSoonCrossed,
 } from '@pkg/domain/contracting';
 import { type AuthId, getNextCursor } from '@pkg/schema';
 import {
@@ -31,7 +33,7 @@ import {
   ReadingAmendInput,
   ReadingCaptureInput,
 } from '@pkg/schema/contracting';
-import { and, asc, desc, eq, getTableColumns, gt, inArray, or, sql } from 'drizzle-orm';
+import { and, asc, eq, getTableColumns, gt, inArray, lte, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { defineAuditDescriptor, recordAuditCreate } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
@@ -42,7 +44,7 @@ import { getContractingSettings } from '../settings/settings-service.js';
 import { attachReadingToStint, resolveCaptureStint } from './capture-stint.js';
 import { assertAmendReadings, ReadingError, withCaptureConstraints } from './reading-errors.js';
 import { type MeterMeasurement, measureMeterPhoto, type ReadMeterPhoto } from './reading-evidence.js';
-import { readingNeedsALookSql } from './reading-sql.js';
+import { newestFirst, oldestFirst, readingNeedsALookSql } from './reading-sql.js';
 import { readingToWire } from './reading-wire.js';
 
 const notFound = () => new ReadingError('reading.not_found', 'Hour Reading not found.');
@@ -68,7 +70,7 @@ export async function listReadingsByMachine({ db, machineId }: { db: Db; machine
   const opensStint = eq(contractingMachineAssignments.arrivalReadingId, contractingHourReadings.id);
   const rows = await db
     // A reading that closed one stint and opened the next appears once, under the Job it opened.
-    .selectDistinctOn([contractingHourReadings.sequence], {
+    .selectDistinctOn([contractingHourReadings.capturedAt, contractingHourReadings.sequence], {
       ...getTableColumns(contractingHourReadings),
       jobCode: contractingJobs.code,
     })
@@ -79,7 +81,7 @@ export async function listReadingsByMachine({ db, machineId }: { db: Db; machine
     )
     .leftJoin(contractingJobs, eq(contractingJobs.id, contractingMachineAssignments.jobId))
     .where(eq(contractingHourReadings.machineId, machineId))
-    .orderBy(desc(contractingHourReadings.sequence), sql`${opensStint} desc nulls last`);
+    .orderBy(...newestFirst, sql`${opensStint} desc nulls last`);
   return rows.map(({ jobCode, ...row }) => ({
     ...withHint(row),
     jobNumber: jobCode === null ? null : formatJobNumber(jobCode),
@@ -164,16 +166,54 @@ export async function captureReading({
         const delivered = await replay(tx);
         if (delivered) return delivered;
         const stint = await resolveCaptureStint(tx, { actor, input });
-        const [latest] = await tx
-          .select()
-          .from(contractingHourReadings)
-          .where(eq(contractingHourReadings.machineId, input.machineId))
-          .orderBy(desc(contractingHourReadings.sequence))
-          .limit(1);
+        const readAt = new Date(input.capturedAt);
+        const onMachine = eq(contractingHourReadings.machineId, input.machineId);
+        const arrivalReadingId = input.role === 'departure' ? (stint?.stint.arrivalReadingId ?? null) : null;
+        const [[latest], [previous], [next], [lastDeparture], [stintArrival]] = await Promise.all([
+          tx
+            .select()
+            .from(contractingHourReadings)
+            .where(onMachine)
+            .orderBy(...newestFirst)
+            .limit(1),
+          tx
+            .select()
+            .from(contractingHourReadings)
+            .where(and(onMachine, lte(contractingHourReadings.capturedAt, readAt)))
+            .orderBy(...newestFirst)
+            .limit(1),
+          tx
+            .select()
+            .from(contractingHourReadings)
+            .where(and(onMachine, gt(contractingHourReadings.capturedAt, readAt)))
+            .orderBy(...oldestFirst)
+            .limit(1),
+          input.role === 'arrival'
+            ? tx
+                .select({ capturedAt: contractingHourReadings.capturedAt })
+                .from(contractingHourReadings)
+                .where(and(onMachine, eq(contractingHourReadings.role, 'departure')))
+                .orderBy(...newestFirst)
+                .limit(1)
+            : [],
+          arrivalReadingId
+            ? tx
+                .select({ capturedAt: contractingHourReadings.capturedAt })
+                .from(contractingHourReadings)
+                .where(eq(contractingHourReadings.id, arrivalReadingId))
+            : [],
+        ]);
+        const neighbours: Pick<CaptureWorld, 'latest' | 'previous' | 'next'> = {
+          latest: latest ? { id: latest.id, value: latest.value } : null,
+          previous: previous ? toNeighbour(previous) : null,
+          next: next ? toNeighbour(next) : null,
+        };
         const judgement = judgeCapture(
           {
-            latest: latest ? { id: latest.id, value: latest.value } : null,
+            ...neighbours,
             stint: stint ? assignmentState(stint.stint) : null,
+            stintArrivedAt: stintArrival?.capturedAt ?? null,
+            lastDepartedAt: lastDeparture?.capturedAt ?? null,
             jobVerdict: stint?.jobVerdict ?? null,
             management: hasPermission(actor, 'contracting_job:work-any'),
             mayBaseline: hasPermission(actor, 'contracting_reading:capture-baseline'),
@@ -187,7 +227,7 @@ export async function captureReading({
           {
             role: input.role,
             value: input.value,
-            readAt: new Date(input.capturedAt),
+            readAt,
             disputePrevious: input.disputePrevious,
             expectedPreviousId: input.expectedPreviousId,
             comment: input.comment ?? null,
@@ -208,7 +248,7 @@ export async function captureReading({
             machineId: input.machineId,
             role: input.role,
             value: input.value,
-            capturedAt: new Date(input.capturedAt),
+            capturedAt: readAt,
             capturedByUserId: actorUserId,
             method: photo ? 'photo' : 'manual',
             comment: input.comment ?? null,
@@ -232,8 +272,7 @@ export async function captureReading({
           });
         return {
           reading: withHint(row),
-          serviceDueSoonCrossed: serviceDueSoonCrossed({
-            previousHours: latest?.value ?? null,
+          serviceDueSoonCrossed: captureCrossesServiceDueSoon(neighbours, {
             newHours: row.value,
             nextServiceDueHours: machine.nextServiceDueHours,
             threshold: effectiveServiceAlertHours(machine, serviceDueSoonThresholdHours),
@@ -258,6 +297,14 @@ export async function captureReading({
   }
 }
 
+const toNeighbour = ({ id, role, value, capturedAt, method }: Row): CaptureNeighbour => ({
+  id,
+  role,
+  value,
+  capturedAt,
+  method,
+});
+
 const capturer = alias(user, 'exception_capturer');
 const amender = alias(user, 'exception_amender');
 
@@ -277,7 +324,7 @@ export async function listReadingExceptions({ db }: { db: Db }) {
     .leftJoin(capturer, eq(capturer.id, contractingHourReadings.capturedByUserId))
     .leftJoin(amender, eq(amender.id, contractingHourReadings.amendedBy))
     .where(readingNeedsALookSql(contractingHourReadings))
-    .orderBy(desc(contractingHourReadings.sequence));
+    .orderBy(...newestFirst);
   return rows.map((row) => ({
     ...withHint(row),
     exceptionTypes: readingExceptionTypes(row),
@@ -321,7 +368,7 @@ export async function amendReading({ db, actor, input: raw }: { db: Db; actor: J
       .select()
       .from(contractingHourReadings)
       .where(eq(contractingHourReadings.machineId, owner.machineId))
-      .orderBy(asc(contractingHourReadings.sequence));
+      .orderBy(...oldestFirst);
     const resolution = resolveReadingAmendment(rows, input);
     if (!resolution.ok) {
       if (resolution.reason === 'not_found') throw notFound();
@@ -386,10 +433,16 @@ async function lockJobsMovedBy(tx: DatabaseTransaction, reading: Row) {
           .where(
             and(
               eq(contractingHourReadings.machineId, reading.machineId),
-              gt(contractingHourReadings.sequence, reading.sequence),
+              or(
+                gt(contractingHourReadings.capturedAt, reading.capturedAt),
+                and(
+                  eq(contractingHourReadings.capturedAt, reading.capturedAt),
+                  gt(contractingHourReadings.sequence, reading.sequence),
+                ),
+              ),
             ),
           )
-          .orderBy(asc(contractingHourReadings.sequence))
+          .orderBy(...oldestFirst)
           .limit(1)
       : [];
   const jobIds = [...new Set([...bounded, ...next].map((row) => row.jobId))];
@@ -537,13 +590,13 @@ export async function reverifyReading({
   return recordVerdict(db, owner, measurement, actorUserId);
 }
 
-/** The Machine's latest accepted reading, the one every capture is judged against; null while the ledger is empty. */
+/** The Machine's latest reading by Read At, the one a dispute names; null while the ledger is empty. */
 export async function latestReading({ db, machineId }: { db: Db; machineId: string }) {
   const [row] = await db
     .select()
     .from(contractingHourReadings)
     .where(eq(contractingHourReadings.machineId, machineId))
-    .orderBy(desc(contractingHourReadings.sequence))
+    .orderBy(...newestFirst)
     .limit(1);
   return row ? LatestReading.parse(readingToWire(row)) : null;
 }
@@ -555,7 +608,7 @@ export async function listFieldReadingsPage({ db, input }: { db: Db; input: Fiel
     .select()
     .from(contractingHourReadings)
     .where(onMachine)
-    .orderBy(desc(contractingHourReadings.sequence))
+    .orderBy(...newestFirst)
     .$dynamic();
   const [rows, total] = await Promise.all([
     withPagination(query, input),

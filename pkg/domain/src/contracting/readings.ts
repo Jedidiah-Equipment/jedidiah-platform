@@ -146,7 +146,7 @@ export type ReadingAmendmentResolution =
   | { ok: true; changes: ({ id: string } & ReadingDisputeState)[] };
 
 /**
- * Where an amended value lands in a Machine's ledger (`readings` ascending by sequence) and which
+ * Where an amended value lands in a Machine's ledger (`readings` ascending by Read At, ties by acceptance) and which
  * dispute pairs it settles. Amended hours must stay between the neighbouring readings. A pair settles
  * when the disputing reading is no longer below the one it disputes and the amended reading is one of
  * the two; pairs the amendment did not touch keep their flags. `changes` lists the amended reading and

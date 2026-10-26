@@ -1,3 +1,4 @@
+import type { Db } from '@pkg/db';
 import { contractingHourReadings, contractingJobs } from '@pkg/db/contracting';
 import { JobListInput } from '@pkg/schema/contracting';
 import { eq } from 'drizzle-orm';
@@ -5,6 +6,7 @@ import { expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
 import { createCustomer } from '../customers/customer-service.js';
 import { createFarm } from '../customers/farm-service.js';
+import { captureReading } from '../readings/reading-service.js';
 import { getContractingSettings, updateContractingSettings } from '../settings/settings-service.js';
 import { admin, adminId, foreman, foremanId, leftStint, plannedStint, seedJobFixtures } from '../test/job-fixtures.js';
 import { listJobs, summarizeJobQueues } from './job-queues.js';
@@ -66,6 +68,106 @@ test('judges an open Hour Gap against the current Gap Flag threshold on every re
   // Equal to the threshold is not over it.
   expect(await detail()).toEqual({ flagged: false, open: 0, threshold: 3 });
   expect(await queue()).toEqual({ open: 0, attention: null });
+});
+
+const stintOn = async (
+  { db, excavator, customer, farm, workType }: { db: Db } & Awaited<ReturnType<typeof seedJobFixtures>>,
+  readings: ReadonlyArray<[number, string]>,
+) => {
+  const job = await createJob({
+    db,
+    actor: admin,
+    input: {
+      customerId: customer.id,
+      farmId: farm.id,
+      workTypeId: workType.id,
+      description: null,
+      foremanUserId: foremanId,
+    },
+  });
+  const planned = await plannedStint(db, admin, { jobId: job.id, machineId: excavator.id, implementId: null });
+  const readingIds: string[] = [];
+  for (const [index, [value, capturedAt]] of readings.entries()) {
+    const { reading } = await captureReading({
+      db,
+      actor: admin,
+      input: {
+        machineId: excavator.id,
+        assignmentId: planned.id,
+        role: index === 0 ? 'arrival' : 'departure',
+        value,
+        capturedAt,
+        disputePrevious: false,
+        comment: 'Photo unavailable',
+      },
+    });
+    readingIds.push(reading.id);
+  }
+  return { job, readingIds };
+};
+
+const gapOf = async (db: Db, jobId: string) => {
+  const [stint] = (await getJob({ db, id: jobId })).assignments;
+  return { from: stint?.previousDeparture?.value, gapHours: stint?.gapHours, gapFlag: stint?.gapFlag };
+};
+
+test('refuses to backfill a stint behind another Job’s, so no Hour Gap moves', async ({ context }) => {
+  const { db } = context;
+  await stintOn(context, [
+    [100, '2026-09-01T08:00:00Z'],
+    [110, '2026-09-01T15:00:00Z'],
+  ]);
+  const { job: later } = await stintOn(context, [
+    [130, '2026-09-03T08:00:00Z'],
+    [140, '2026-09-03T15:00:00Z'],
+  ]);
+  await expect(stintOn(context, [[115, '2026-09-02T08:00:00Z']])).rejects.toMatchObject({
+    code: 'reading.invalid_role',
+    message: "An arrival cannot be read before the Machine's last departure. Check the time.",
+  });
+  expect(await gapOf(db, later.id)).toEqual({ from: 110, gapHours: 20, gapFlag: true });
+  await expect(
+    stintOn(context, [
+      [140, '2026-09-04T08:00:00Z'],
+      [140, '2026-09-04T07:00:00Z'],
+    ]),
+  ).rejects.toMatchObject({ message: 'A departure cannot be read before its arrival. Check the time.' });
+});
+
+/** Readings from before Read At ordered the ledger may sit out of insertion order; the gap reads them in time. */
+test('starts an Hour Gap at the departure before the arrival’s Read At, whatever order the rows arrived in', async ({
+  context,
+}) => {
+  const { db } = context;
+  await stintOn(context, [
+    [100, '2026-09-01T08:00:00Z'],
+    [110, '2026-09-01T15:00:00Z'],
+  ]);
+  const { job: later } = await stintOn(context, [
+    [130, '2026-09-03T08:00:00Z'],
+    [140, '2026-09-03T15:00:00Z'],
+  ]);
+  const { job: late, readingIds } = await stintOn(context, [
+    [150, '2026-09-04T08:00:00Z'],
+    [160, '2026-09-04T15:00:00Z'],
+  ]);
+  for (const [id, value, capturedAt] of [
+    [readingIds[0], 115, '2026-09-02T08:00:00Z'],
+    [readingIds[1], 127, '2026-09-02T15:00:00Z'],
+  ] as const)
+    await db
+      .update(contractingHourReadings)
+      .set({ value, capturedAt: new Date(capturedAt) })
+      .where(eq(contractingHourReadings.id, id ?? ''));
+
+  expect(await gapOf(db, later.id)).toEqual({ from: 127, gapHours: 3, gapFlag: false });
+  expect(await gapOf(db, late.id)).toEqual({ from: 110, gapHours: 5, gapFlag: true });
+  const openGapFlags = async (jobId: string) =>
+    (await listJobs({ db, actor: admin, input: JobListInput.parse({ queues: ['looks-finished'] }) })).items.find(
+      (item) => item.id === jobId,
+    )?.openGapFlags;
+  expect(await openGapFlags(later.id)).toBe(0);
+  expect(await openGapFlags(late.id)).toBe(1);
 });
 
 test('lists only the Jobs needing a look when asked: an open Gap Flag or a reading the evidence does not confirm', async ({

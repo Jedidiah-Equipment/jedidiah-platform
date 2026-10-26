@@ -168,16 +168,17 @@ one is stamped **Missing Photo Evidence**. Read At defaults to when a chosen pho
 taken, and otherwise to the moment of capture — a photo with no usable time, or one whose time
 lies in the future, is still accepted and defaults to that moment; whoever captures may correct
 it, and it is never in the future. Gallery photos and Read At correction are phone affordances,
-and the web's spot capture offers both from a photo chosen on disk; a web arrival or departure
-takes the moment of capture as its Read At. Read At
-describes a reading; it never orders them. A Machine's readings are ordered by acceptance: the
-**latest reading** is the one the server accepted last, every capture is judged against that
-reading whatever its Read At, and a late-entered reading takes its place after it. An Hour Gap
-reads the two readings its Assignments name, so a backdated Read At moves no hour between
-Jobs. Capture needs a connection: the server judges every capture as the ledger's truth, and a
-Foreman without signal keeps a Field Note instead. Every way a capture is refused is one rule in one
-ordered table, judged under the Machine lock; the phone and the web stop only what that table says the
-server would refuse, and show its sentence when it does. Once a capture has landed the server reads
+and every web capture offers both from a photo chosen on disk. Read At orders a Machine's readings:
+the **latest reading** is the one with the latest Read At, and every capture is judged against its
+**time neighbours** — it must be at or above the nearest reading before its Read At and at or below
+the nearest reading after it. A late-entered reading takes its place in time, so a departure dated
+yesterday lands behind today's readings. An Hour Gap reads the two readings its Assignments name, so
+a backdated Read At moves no hour between Jobs; for the same reason a Machine's stints stay in time
+order — no arrival is dated before its last departure, no departure before its own arrival. Capture
+needs a connection: the server judges every capture as the ledger's truth, and a Foreman without
+signal keeps a Field Note instead. Every way a capture is refused is one rule in one ordered table,
+judged under the Machine lock; the phone and the web stop only what that table says the server would
+refuse, and show its sentence when it does. Once a capture has landed the server reads
 the photo itself and records its own value and confidence as the System, so capturing never waits on it; a check
 that fails leaves the reading pending until Re-verify or the API's next start-up checks it again. A reading is
 **photo-backed** when it
@@ -195,11 +196,12 @@ minimum value the meter can now read. A field reading plays one of three roles:
 hours current for service tracking, taken on the phone at the Machine or on the web Machine page from
 a photo of its meter; the fourth role, **Baseline Reading**, is defined below. The
 pre-travel opening is never captured: it is the machine's previous departure reading, so travel
-and work time are derived and no hour can vanish between Jobs. A Machine's readings never go
-backward: a capture strictly below the latest reading is refused (equal is accepted — an idle
-machine reads its departure value), unless the Foreman asserts the previous reading is wrong,
-which saves his value as disputed and flags the pair for management. The Foreman may
-re-capture a reading only while his Assignment is open; from Completion onward only management
+and work time are derived and no hour can vanish between Jobs. A capture strictly below the
+Machine's latest reading is refused (equal is accepted — an idle machine reads its departure value),
+unless the Foreman asserts the latest reading is wrong, which saves his value as disputed and flags
+the pair for management; a backdated capture that falls below or above its neighbours is refused
+outright, since the fix is its time or its value. No capture may contradict a Telematics Reading.
+The Foreman may re-capture a reading only while his Assignment is open; from Completion onward only management
 amends, with a mandatory reason — an amendment changes the value, never Read At; an amendment on a Priced Job returns it to Completed for
 re-pricing, and Invoiced freezes everything. Derived values always recompute after an amendment.
 

@@ -1,6 +1,11 @@
+import { contractingHourReadings } from '@pkg/db/contracting';
 import { type AssignmentAttentionKind, assignmentAttentionKindLevels } from '@pkg/domain/contracting';
 import { aiFlaggedVerifications, needsALookLevels } from '@pkg/schema/contracting';
-import { type AnyColumn, or, type SQL, sql } from 'drizzle-orm';
+import { type AnyColumn, asc, desc, or, type SQL, sql } from 'drizzle-orm';
+
+/** Read At orders a Machine's ledger; acceptance breaks a tie. */
+export const oldestFirst = [asc(contractingHourReadings.capturedAt), asc(contractingHourReadings.sequence)] as const;
+export const newestFirst = [desc(contractingHourReadings.capturedAt), desc(contractingHourReadings.sequence)] as const;
 
 type ReadingColumns = Record<'disputed' | 'evidenceReviewedAt' | 'aiVerification', AnyColumn>;
 

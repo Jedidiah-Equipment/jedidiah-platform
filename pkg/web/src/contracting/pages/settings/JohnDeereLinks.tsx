@@ -1,4 +1,4 @@
-import { formatDate, formatHours } from '@pkg/domain';
+import { formatHours } from '@pkg/domain';
 import { requiredSelection, UUID } from '@pkg/schema';
 import type { JohnDeereLinkView, JohnDeereUnlinkedMachine, Machine } from '@pkg/schema/contracting';
 import { IconLink, IconLinkOff, IconLoader2, IconRefresh } from '@tabler/icons-react';
@@ -215,7 +215,7 @@ function UnlinkButton({ link }: { link: JohnDeereLinkView }) {
   return (
     <RemoveEntityButton
       confirmLabel="Unlink"
-      description={`John Deere stops reporting ${link.machine.code}'s hours. Every reading already stored stays.`}
+      description={`${link.machine.code} keeps its serial number and every reading already stored.`}
       isPending={remove.isPending}
       onConfirm={() => remove.mutate({ id: link.id })}
       title={`Unlink ${link.machine.code}?`}
@@ -323,7 +323,9 @@ function MeterColumn({
       </div>
       <div className="space-y-0.5">
         <dt className="text-muted-foreground">{atLabel}</dt>
-        <dd>{at === null ? muted('—') : formatDate(at, 'medium')}</dd>
+        <dd>
+          <DateDisplay date={at} emptyValue="—" format="medium" />
+        </dd>
       </div>
     </dl>
   );

@@ -75,9 +75,10 @@ const linkConstraints = <T>(action: () => Promise<T>) =>
 
 /** John Deere Links: which Deere machine feeds which Machine, made and ended on the John Deere tab. */
 export class JohnDeereLinkService {
-  // Keyed by the access token it was read with, so a Reconnect never serves the previous sign-in's list.
-  private listed: { accessToken: string; machines: DeereMachine[]; at: number } | null = null;
-  private readonly hours = new Map<number, { report: DeereEngineHours | null; at: number }>();
+  // Promises, so two tabs opening at once share one set of Deere calls; a failed call is forgotten. The list is
+  // keyed by the access token it was read with, so a Reconnect never serves the previous sign-in's list.
+  private listed: { accessToken: string; machines: Promise<DeereMachine[]>; at: number } | null = null;
+  private readonly hours = new Map<number, { report: Promise<DeereEngineHours | null>; at: number }>();
 
   constructor(private readonly config: JohnDeereLinkServiceConfig) {}
 
@@ -256,28 +257,41 @@ export class JohnDeereLinkService {
     });
   }
 
-  private async listedMachines(accessToken: string): Promise<DeereMachine[]> {
+  private listedMachines(accessToken: string): Promise<DeereMachine[]> {
     if (this.listed?.accessToken !== accessToken) this.refresh();
     else if (this.fresh(this.listed.at)) return this.listed.machines;
-    const machines = await this.config.client.equipment(accessToken);
-    this.listed = { accessToken, machines, at: this.config.now().getTime() };
-    return machines;
+    const listed = {
+      accessToken,
+      machines: this.config.client.equipment(accessToken),
+      at: this.config.now().getTime(),
+    };
+    this.listed = listed;
+    listed.machines.catch(() => {
+      if (this.listed === listed) this.listed = null;
+    });
+    return listed.machines;
+  }
+
+  private engineHours(accessToken: string, principalId: number): Promise<DeereEngineHours | null> {
+    const cached = this.hours.get(principalId);
+    if (cached && this.fresh(cached.at)) return cached.report;
+    const entry = { report: this.readEngineHours(accessToken, principalId), at: this.config.now().getTime() };
+    this.hours.set(principalId, entry);
+    entry.report.catch(() => {
+      if (this.hours.get(principalId) === entry) this.hours.delete(principalId);
+    });
+    return entry.report;
   }
 
   /** A machine John Deere holds no hours for, or will not show, reads as having reported none. */
-  private async engineHours(accessToken: string, principalId: number): Promise<DeereEngineHours | null> {
-    const cached = this.hours.get(principalId);
-    if (cached && this.fresh(cached.at)) return cached.report;
-    let report: DeereEngineHours | null;
+  private async readEngineHours(accessToken: string, principalId: number): Promise<DeereEngineHours | null> {
     try {
-      report = await this.config.client.engineHours(accessToken, principalId);
+      return await this.config.client.engineHours(accessToken, principalId);
     } catch (error) {
-      if (!isJohnDeereError(error) || (error.code !== 'john_deere.not_found' && error.code !== 'john_deere.forbidden'))
-        throw error;
-      report = null;
+      if (isJohnDeereError(error) && (error.code === 'john_deere.not_found' || error.code === 'john_deere.forbidden'))
+        return null;
+      throw error;
     }
-    this.hours.set(principalId, { report, at: this.config.now().getTime() });
-    return report;
   }
 
   private fresh(at: number): boolean {

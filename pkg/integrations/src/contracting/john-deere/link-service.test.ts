@@ -157,6 +157,12 @@ describe('JohnDeereLinkService', () => {
     expect(state.calls).toHaveLength(9);
   });
 
+  test('two tabs opening at once share one set of John Deere calls', async ({ db }) => {
+    const { state, service } = await setUp(db);
+    await Promise.all([service.listUnlinkedMachines(), service.listUnlinkedMachines()]);
+    expect(state.calls).toHaveLength(3);
+  });
+
   test("a Reconnect drops the previous sign-in's cached list", async ({ db }) => {
     const { state, service, connection } = await setUp(db);
     await service.listUnlinkedMachines();

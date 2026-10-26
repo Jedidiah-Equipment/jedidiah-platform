@@ -13,6 +13,11 @@ import { SettingsPage } from './SettingsPage.js';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
+vi.mock('@/hooks/use-api-mutation-error-toast.js', () => ({
+  useApiMutationErrorReport: () => () => undefined,
+  useApiMutationErrorToast: () => () => undefined,
+}));
+
 test('saves only on an explicit Save, resets to the saved row, and keeps a refused draft', async () => {
   let saved: ContractingSettings = {
     gapFlagThresholdHours: 4,
@@ -56,7 +61,11 @@ test('saves only on an explicit Save, resets to the saved row, and keeps a refus
   await queryClient.fetchQuery(trpc.auth.access.queryOptions());
   await queryClient.fetchQuery(trpc.contractingSettings.get.queryOptions());
   const router = createRouter({
-    routeTree: createRootRoute({ component: SettingsPage }),
+    routeTree: createRootRoute({
+      component: () => (
+        <SettingsPage tab="general" onTabChange={() => undefined} result={undefined} onResultShown={() => undefined} />
+      ),
+    }),
     history: createMemoryHistory({ initialEntries: ['/'] }),
   });
   const scroll = vi.spyOn(window, 'scrollTo').mockImplementation(() => undefined);

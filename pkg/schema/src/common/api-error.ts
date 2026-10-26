@@ -13,6 +13,7 @@ export const APP_CODE_PREFIXES = [
   'fleet',
   'reading',
   'job',
+  'john_deere',
   'inventory',
   'invoice',
   'part',

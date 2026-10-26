@@ -347,6 +347,11 @@ threshold, the Service Due Soon threshold (which a Machine's Service Alert Hours
 Utilisation Target %. Every derived read takes the
 current value; nothing stored is re-judged.
 
+**John Deere Connection** is Contracting's one link to the owner's John Deere Operations Center
+organization, made and renewed by an administrator on the John Deere tab of Settings with the owner's John
+Deere sign-in, and the only way Telematics Readings reach the fleet. It is Connected, Needs reconnecting, or
+Not connected. _Avoid_: integration, sync, JDLink connection.
+
 The **Dashboard** is the web home: counts and lists of what needs a person now — the Jobs needing a look, the
 Breakdowns not yet Fixed, the Machines Due for Service, the Jobs waiting for sign-off, pricing or an
 Invoice Number, and the Reading Exceptions — and two counts of what is under way: the Active Jobs not yet looking

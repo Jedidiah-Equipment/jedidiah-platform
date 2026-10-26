@@ -53,6 +53,7 @@ const auditEntityTypeLabels = {
   contracting_breakdown: 'Breakdown',
   contracting_service_record: 'Service Record',
   contracting_settings: 'Settings',
+  contracting_john_deere_connection: 'John Deere Connection',
   contracting_charge_line: 'Charge Line',
   contracting_machine: 'Machine',
   contracting_measure_type: 'Measure Type',

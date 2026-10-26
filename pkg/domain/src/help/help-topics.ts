@@ -45,6 +45,7 @@ export const HELP_TOPICS = {
   contractingAudit: '/contracting/trace-a-change-in-the-audit-log',
   contractingTranscriptions: '/contracting/review-voice-note-transcriptions',
   contractingSettings: '/contracting/maintain-contracting-settings',
+  contractingJohnDeere: '/contracting/connect-john-deere',
   contractingReports: '/contracting/review-fleet-utilisation',
   contractingReportsMechanics: '/contracting/review-mechanic-performance',
   bays: '/production/delete-a-bay',

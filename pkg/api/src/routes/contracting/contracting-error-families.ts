@@ -18,6 +18,7 @@ import {
   type ReportError,
   type ServiceError,
 } from '@pkg/core/contracting';
+import { isJohnDeereError, type JohnDeereError } from '@pkg/integrations/contracting';
 
 import { defineCoreErrorFamily } from '../../trpc/errors.js';
 
@@ -142,4 +143,20 @@ export const reportErrorFamily = defineCoreErrorFamily<ReportError>({
 export const activityErrorFamily = defineCoreErrorFamily<ActivityError>({
   codes: { 'activity.forbidden': 'FORBIDDEN' },
   is: isActivityError,
+});
+
+export const johnDeereErrorFamily = defineCoreErrorFamily<JohnDeereError>({
+  codes: {
+    'john_deere.bad_response': 'SERVICE_UNAVAILABLE',
+    'john_deere.forbidden': 'CONFLICT',
+    'john_deere.invalid_state': 'BAD_REQUEST',
+    'john_deere.not_configured': 'PRECONDITION_FAILED',
+    'john_deere.not_connected': 'CONFLICT',
+    'john_deere.not_found': 'NOT_FOUND',
+    'john_deere.rate_limited': 'SERVICE_UNAVAILABLE',
+    'john_deere.restricted_org': 'CONFLICT',
+    'john_deere.unauthorized': 'CONFLICT',
+    'john_deere.unavailable': 'SERVICE_UNAVAILABLE',
+  },
+  is: isJohnDeereError,
 });

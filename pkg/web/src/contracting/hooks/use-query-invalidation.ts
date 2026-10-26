@@ -9,6 +9,7 @@ type ContractingRoot =
   | 'contractingDirectory'
   | 'contractingFleet'
   | 'contractingJobs'
+  | 'contractingJohnDeere'
   | 'contractingRateCard'
   | 'contractingReadings'
   | 'contractingServices'
@@ -31,6 +32,7 @@ export function useQueryInvalidation() {
       // A Machine read derives its due state and Booked In; Service Records name their Machine.
       invalidateFleet: invalidate('contractingFleet', 'contractingServices'),
       invalidateJobs: invalidate('contractingJobs'),
+      invalidateJohnDeere: invalidate('contractingJohnDeere'),
       invalidateRateCard: invalidate('contractingRateCard'),
       // A reading moves the Machine's latest hours, and Activity reads its items off readings.
       invalidateReadings: invalidate(

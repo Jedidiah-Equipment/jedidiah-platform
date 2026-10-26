@@ -1,18 +1,43 @@
-import type { ContractingSettings } from '@pkg/schema/contracting';
+import type { ContractingSettings, JohnDeereConnectResult } from '@pkg/schema/contracting';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { useSaveForm } from '@/components/form/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Card, CardContent, CardFooter } from '@/components/ui/card.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { JohnDeereTab } from './JohnDeereTab.js';
+import { SettingsTab } from './settings-tabs.js';
 import { SettingsFormValues, settingsFormToInput, settingsFormValues } from './types.js';
 
-export function SettingsPage() {
+type SettingsPageProps = {
+  tab: SettingsTab;
+  onTabChange: (tab: SettingsTab) => void;
+  result: JohnDeereConnectResult | undefined;
+  onResultShown: () => void;
+};
+
+export function SettingsPage({ tab, onTabChange, result, onResultShown }: SettingsPageProps) {
   return (
-    <PageLayout title="Settings" description="Thresholds and targets that every Contracting screen reads." size="md">
-      <SettingsContent />
+    <PageLayout
+      title="Settings"
+      description="Thresholds and targets that every Contracting screen reads, and the John Deere Connection."
+      size="md"
+    >
+      <Tabs className="w-full" onValueChange={(value) => onTabChange(SettingsTab.parse(value))} size="sm" value={tab}>
+        <TabsList variant="default">
+          <TabsTrigger value="general">General</TabsTrigger>
+          <TabsTrigger value="john-deere">John Deere</TabsTrigger>
+        </TabsList>
+        <TabsContent className="pt-4" value="general">
+          <SettingsContent />
+        </TabsContent>
+        <TabsContent className="pt-4" value="john-deere">
+          <JohnDeereTab result={result} onResultShown={onResultShown} />
+        </TabsContent>
+      </Tabs>
     </PageLayout>
   );
 }

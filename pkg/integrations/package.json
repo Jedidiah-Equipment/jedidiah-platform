@@ -1,0 +1,36 @@
+{
+  "name": "@pkg/integrations",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./equipment": {
+      "types": "./dist/equipment/index.d.ts",
+      "import": "./dist/equipment/index.js"
+    },
+    "./contracting": {
+      "types": "./dist/contracting/index.d.ts",
+      "import": "./dist/contracting/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b && tsc-alias -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@pkg/core": "workspace:*",
+    "@pkg/db": "workspace:*",
+    "@pkg/domain": "workspace:*",
+    "@pkg/schema": "workspace:*",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "tsc-alias": "^1.9.7",
+    "vitest": "^5.0.3"
+  }
+}

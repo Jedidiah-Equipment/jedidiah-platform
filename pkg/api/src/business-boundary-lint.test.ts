@@ -50,7 +50,7 @@ function expectAllowed(result: ReturnType<typeof lintAt>) {
   expect(result.status, result.output).toBe(0);
 }
 
-const BUSINESS_ENTRYPOINT_PACKAGES = ['core', 'db', 'domain', 'schema'] as const;
+const BUSINESS_ENTRYPOINT_PACKAGES = ['core', 'db', 'domain', 'integrations', 'schema'] as const;
 
 describe('business namespace import boundary', () => {
   it.each([

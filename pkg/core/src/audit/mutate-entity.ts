@@ -32,6 +32,8 @@ import { type AuditDescriptor, diffAuditUpdate, recordAuditUpdate } from './audi
  *   the additive latch), diffs after, with a null system actor.
  * - Labor Rate Card update — one audited entity spread over a settings row and five Department rows,
  *   locked and diffed as a whole; a per-row lock would audit one Save as six events.
+ * - The John Deere Connection (`@pkg/integrations`) — its token and poll columns are written when no
+ *   audited field changes, and its row is created on first use.
  */
 export async function mutateEntity<TTable extends PgTable & { id: PgColumn }, TResult, TPrepared = void>({
   actorUserId,

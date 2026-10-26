@@ -1,6 +1,7 @@
+import type { HelpTopic } from '@pkg/domain';
 import { createHelpTopicResolver } from '@/lib/help-topics.js';
 
-export const helpTopicForPath = createHelpTopicResolver(
+const helpTopicForRoute = createHelpTopicResolver(
   [
     ['/contracting/activity', 'contractingActivity'],
     ['/contracting/audit', 'contractingAudit'],
@@ -23,3 +24,9 @@ export const helpTopicForPath = createHelpTopicResolver(
   ],
   'contractingHome',
 );
+
+/** A Settings tab is a search param, not a route, so the John Deere tab names its own page here. */
+export function helpTopicForPath(pathname: string, search: { tab?: unknown } = {}): HelpTopic {
+  if (pathname === '/contracting/settings' && search.tab === 'john-deere') return 'contractingJohnDeere';
+  return helpTopicForRoute(pathname);
+}

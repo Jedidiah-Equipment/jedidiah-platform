@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   type AmendableReading,
   amendmentSettledFinding,
+  contradictingTelematics,
   type ReadingAttentionFacts,
   readingAttention,
   readingAttentionKinds,
@@ -12,6 +13,7 @@ import {
   readingPhotoPath,
   readingVerification,
   resolveReadingAmendment,
+  type SequencedReading,
   shownReadingAttention,
 } from './readings.js';
 
@@ -34,6 +36,35 @@ describe('readingEvidenceCaption', () => {
     expect(readingEvidenceCaption({ telematicsProvider: 'john-deere', photoBacked: false })).toBe('John Deere');
     expect(readingEvidenceCaption({ telematicsProvider: null, photoBacked: true })).toBe('Photo-backed');
     expect(readingEvidenceCaption({ telematicsProvider: null, photoBacked: false })).toBe('Missing Photo Evidence');
+  });
+});
+
+describe('contradictingTelematics', () => {
+  const at = (hour: number) => new Date(`2026-06-03T${String(hour).padStart(2, '0')}:00:00Z`);
+  const ledger = (
+    id: string,
+    sequence: number,
+    hour: number,
+    value: number,
+    method: SequencedReading['method'] = 'manual',
+  ) => ({ id, sequence, capturedAt: at(hour), value, method }) satisfies SequencedReading;
+  const deere = ledger('deere', 2, 9, 1000, 'telematics');
+
+  it('finds the report a captured reading sits out of sequence with, on either side', () => {
+    expect(contradictingTelematics([ledger('early', 1, 6, 1010), deere], 'early')).toEqual(deere);
+    expect(contradictingTelematics([deere, ledger('late', 3, 12, 990)], 'late')).toEqual(deere);
+  });
+
+  it('is silent for a reading in sequence and for a Telematics Reading itself', () => {
+    const readings = [ledger('early', 1, 6, 990), deere, ledger('late', 3, 12, 1010)];
+    expect(contradictingTelematics(readings, 'early')).toBeNull();
+    expect(contradictingTelematics(readings, 'late')).toBeNull();
+    expect(contradictingTelematics(readings, 'deere')).toBeNull();
+  });
+
+  it('breaks a Read At tie by acceptance order', () => {
+    expect(contradictingTelematics([ledger('same', 1, 9, 1010), deere], 'same')).toEqual(deere);
+    expect(contradictingTelematics([deere, ledger('same', 3, 9, 1010)], 'same')).toBeNull();
   });
 });
 

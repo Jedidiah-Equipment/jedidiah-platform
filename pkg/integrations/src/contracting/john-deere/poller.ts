@@ -63,11 +63,12 @@ export class JohnDeerePoller {
   private timer: NodeJS.Timeout | null = null;
   private running: Promise<JohnDeerePollSummary> | null = null;
   private disposed = false;
+  private readonly stopping = new AbortController();
 
   private readonly sleep: (ms: number) => Promise<void>;
 
   constructor(private readonly config: JohnDeerePollerConfig) {
-    this.sleep = config.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
+    this.sleep = config.sleep ?? ((ms) => this.sleepUnlessStopping(ms));
   }
 
   start(): void {
@@ -76,6 +77,7 @@ export class JohnDeerePoller {
 
   async dispose(): Promise<void> {
     this.disposed = true;
+    this.stopping.abort();
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
     await this.running?.catch(() => undefined);
@@ -158,6 +160,7 @@ export class JohnDeerePoller {
 
   private async pollLink(link: PollableLink, summary: JohnDeerePollSummary): Promise<void> {
     const { client, links, push, logger, now } = this.config;
+    this.stopIfDisposed();
     try {
       const report = await this.withRetryAfter(() =>
         this.withAccessToken((token) => client.engineHours(token, link.principalId)),
@@ -241,12 +244,32 @@ export class JohnDeerePoller {
   }
 
   /** One retry after the wait Deere named; a second refusal ends the run. */
+  /** A shutdown ends the run between Links rather than waiting out every Retry-After. */
+  private stopIfDisposed(): void {
+    if (this.disposed) throw new RunEnded('John Deere polling stopped as the API shut down.', true);
+  }
+
+  private sleepUnlessStopping(ms: number): Promise<void> {
+    return new Promise((resolve) => {
+      const timer = setTimeout(resolve, ms);
+      this.stopping.signal.addEventListener(
+        'abort',
+        () => {
+          clearTimeout(timer);
+          resolve();
+        },
+        { once: true },
+      );
+    });
+  }
+
   private async withRetryAfter<T>(call: () => Promise<T>): Promise<T> {
     try {
       return await call();
     } catch (error) {
       if (!isCode(error, 'john_deere.rate_limited')) throw error;
       await this.sleep(retryAfterMs(error));
+      this.stopIfDisposed();
       return call();
     }
   }

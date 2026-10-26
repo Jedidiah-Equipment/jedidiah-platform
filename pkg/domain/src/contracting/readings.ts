@@ -4,10 +4,13 @@ import {
   type JobReadingAttentionKind,
   type NeedsALookLevel,
   type ReadingExceptionType,
+  type ReadingMethod,
   type ReadingRole,
   type ReadingVerification,
   type TelematicsProvider,
 } from '@pkg/schema/contracting';
+import { formatDate } from '../formatting/date.js';
+import { formatHours } from '../formatting/number.js';
 import {
   aiVerificationLevel,
   assignmentAttentionKindLevels,
@@ -151,6 +154,31 @@ export function meterDisagreementHint({
   return (ratio >= 9 && ratio <= 11) || (ratio >= 0.09 && ratio <= 0.11)
     ? 'Possible tenths-drum misread (≈10× / 0.1×).'
     : null;
+}
+
+/** Why a captured reading is Disputed against a Telematics Reading. */
+export const telematicsDisputeReason = (reported: { value: number; capturedAt: Date }) =>
+  `John Deere reported ${formatHours(reported.value)} at ${formatDate(reported.capturedAt, 'medium')}.`;
+
+export type SequencedReading = { id: string; method: ReadingMethod; value: number; capturedAt: Date; sequence: number };
+
+/**
+ * The Telematics Reading a reading is out of sequence with, or null: one earlier in the ledger (Read At, then
+ * acceptance) that reads higher, or one later that reads lower. Telematics Readings are never out of sequence.
+ */
+export function contradictingTelematics(readings: readonly SequencedReading[], id: string): SequencedReading | null {
+  const reading = readings.find((candidate) => candidate.id === id);
+  if (!reading || reading.method === 'telematics') return null;
+  const order = (left: SequencedReading, right: SequencedReading) =>
+    left.capturedAt.getTime() - right.capturedAt.getTime() || left.sequence - right.sequence;
+  const contradicted = readings.filter(
+    (reported) =>
+      reported.method === 'telematics' &&
+      (order(reading, reported) < 0 ? reading.value > reported.value : reading.value < reported.value),
+  );
+  const distance = (reported: SequencedReading) =>
+    Math.abs(reported.capturedAt.getTime() - reading.capturedAt.getTime());
+  return contradicted.sort((left, right) => distance(left) - distance(right))[0] ?? null;
 }
 
 export type ReadingDisputeState = {

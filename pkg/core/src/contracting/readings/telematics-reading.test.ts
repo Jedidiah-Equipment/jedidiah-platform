@@ -252,3 +252,71 @@ test('crosses Service Due Soon once, only when the report is the Machine’s lat
   expect(await report(1470, '2026-09-07T14:00:00Z')).toMatchObject({ serviceDueSoonCrossed: false });
   expect(await report(1470, '2026-09-07T15:00:00Z')).toMatchObject({ outcome: 'moved', serviceDueSoonCrossed: false });
 });
+
+test('refuses a capture that contradicts the nearest John Deere reading past a Disputed captured reading', async ({
+  context,
+}) => {
+  const { db, actor, machineId } = context;
+  const spot = (value: number, capturedAt: string) =>
+    captureReading({ db, actor, input: { machineId, role: 'spot', value, capturedAt, disputePrevious: false } });
+  const { reading: human } = await spot(1100, '2026-09-07T12:00:00Z');
+  await reportFor(context)(1200, '2026-09-07T09:00:00Z');
+  expect((await listReadingExceptions({ db })).map((row) => row.id)).toEqual([human.id]);
+
+  // 1150 is above the Disputed 1100, but below the 1200 John Deere reported earlier.
+  await expect(spot(1150, '2026-09-07T13:00:00Z')).rejects.toMatchObject({ code: 'reading.below_latest' });
+  await expect(spot(1250, '2026-09-07T10:00:00Z')).rejects.toMatchObject({ code: 'reading.above_next' });
+  expect(await listReadingsByMachine({ db, machineId })).toHaveLength(2);
+});
+
+test('disputes a captured reading at the report’s own Read At when it reads higher', async ({ context }) => {
+  const { db, actor, machineId } = context;
+  const { reading } = await captureReading({
+    db,
+    actor,
+    input: { machineId, role: 'spot', value: 1100, capturedAt: '2026-09-07T09:00:00Z', disputePrevious: false },
+  });
+  const result = written(await reportFor(context)(1000, '2026-09-07T09:00:00Z'));
+  expect(result.disputedReadingIds).toEqual([reading.id]);
+});
+
+test('keeps a reading John Deere contradicts disputed when its Disputed pair is settled', async ({ context }) => {
+  const { db, actor, machineId } = context;
+  const spot = (
+    value: number,
+    capturedAt: string,
+    dispute: Partial<{ disputePrevious: boolean; expectedPreviousId: string }> = {},
+  ) =>
+    captureReading({
+      db,
+      actor,
+      input: { machineId, role: 'spot', value, capturedAt, disputePrevious: false, ...dispute },
+    });
+  const { reading: first } = await spot(100, '2026-09-07T06:00:00Z');
+  const { reading: second } = await spot(90, '2026-09-07T07:00:00Z', {
+    disputePrevious: true,
+    expectedPreviousId: first.id,
+  });
+  // Both are already Disputed as a pair; John Deere then reports 85 after them, below both.
+  await reportFor(context)(85, '2026-09-07T10:00:00Z');
+  expect((await listReadingExceptions({ db })).map((row) => row.id).sort()).toEqual([first.id, second.id].sort());
+
+  await amendReading({ db, actor, input: { id: first.id, value: 80, reason: 'Misread' } });
+  // The pair is settled, but 90 still sits above the 85 John Deere reported later.
+  const [remaining] = await listReadingExceptions({ db });
+  expect(remaining).toMatchObject({ id: second.id, disputed: true });
+  expect(remaining?.disputeReason).toMatch(/^John Deere reported 85\.0\sh/);
+});
+
+test('ignores a report for a Link that was unlinked while it was in flight', async ({ context }) => {
+  const { db, actorUserId, machineId, linkId } = context;
+  await db
+    .update(contractingJohnDeereLinks)
+    .set({ unlinkedAt: new Date('2026-09-07T08:00:00Z'), unlinkedByUserId: actorUserId })
+    .where(eq(contractingJohnDeereLinks.id, linkId));
+  expect(await reportFor(context)(1000, '2026-09-07T09:00:00Z')).toEqual({
+    outcome: 'unchanged',
+    reason: 'link-not-active',
+  });
+  expect(await listReadingsByMachine({ db, machineId })).toEqual([]);
+});

@@ -115,6 +115,7 @@ export async function registerContracting(
 
   return {
     routerDependencies: { johnDeere, push: contractingPush, readMeterPhoto },
-    services: [readingVerifications, contractingPush, ...(johnDeere ? [johnDeere.poller] : [])],
+    // The poller goes before the push queue it schedules into, so a run finishing at shutdown still delivers.
+    services: [readingVerifications, ...(johnDeere ? [johnDeere.poller] : []), contractingPush],
   };
 }

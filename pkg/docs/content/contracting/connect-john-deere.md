@@ -26,11 +26,11 @@ A John Deere Link pairs one Machine with one machine in the organization.
 
 ## Refresh now
 
-Every hour Jedidiah reads each linked Machine's hours from John Deere on its own. [How John Deere readings work](./john-deere-readings) explains what lands on the Machine's readings.
+Jedidiah reads each linked Machine's hours from John Deere every hour; [how John Deere readings work](./john-deere-readings) explains what lands on the Machine's readings.
 
 1. On a **Connected** tab, choose **Refresh now** to read John Deere straight away instead of waiting for the hour.
-2. Read the message that follows: it counts the Machines read and what became of their readings. A run John Deere cut short says why, and the Machines it did not reach are read in the next hour.
-3. A linked Machine that John Deere no longer lists reads **Lost** under **Linked Machines** until John Deere lists it again.
+2. Read the message that follows. A run John Deere cut short says why, and the Machines it did not reach are read in the next hour.
+3. Under **Linked Machines**, check any row that reads **Lost**: John Deere no longer lists that machine. It clears when John Deere lists it again.
 
 ## Unlink a Machine
 

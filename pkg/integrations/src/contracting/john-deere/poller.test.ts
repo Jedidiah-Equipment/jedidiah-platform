@@ -13,7 +13,7 @@ import { test } from '../../test/tester.js';
 import { JohnDeereClient } from './client.js';
 import { JohnDeereConnectionService } from './connection-service.js';
 import { JohnDeereLinkService } from './link-service.js';
-import { JohnDeerePoller } from './poller.js';
+import { JohnDeerePoller, type JohnDeerePollerConfig } from './poller.js';
 import { encryptSecret } from './token-vault.js';
 
 const tokenKey = randomBytes(32);
@@ -153,8 +153,11 @@ async function setUp(db: Db, { connected = true, links = 2 }: { connected?: bool
   const pushed: ContractingPushEvent[] = [];
   const sleeps: number[] = [];
   const warnings: string[] = [];
-  const poller = (overrides: Partial<ConstructorParameters<typeof JohnDeerePoller>[0]> = {}) =>
-    new JohnDeerePoller({
+  const poller = (
+    overrides: Partial<JohnDeerePollerConfig> = {},
+    { realSleep = false }: { realSleep?: boolean } = {},
+  ) => {
+    const config: JohnDeerePollerConfig = {
       db,
       client,
       connection,
@@ -173,7 +176,10 @@ async function setUp(db: Db, { connected = true, links = 2 }: { connected?: bool
         sleeps.push(ms);
       },
       ...overrides,
-    });
+    };
+    if (realSleep) delete config.sleep;
+    return new JohnDeerePoller(config);
+  };
   return { state, connection, linked, poller, pushed, sleeps, warnings };
 }
 
@@ -381,7 +387,19 @@ describe('JohnDeerePoller', () => {
     await next;
   });
 
-  test('start polls after the first delay and dispose waits for a run in flight', async ({ db }) => {
+  test('dispose cuts a Retry-After wait short and ends the run without touching the connection row', async ({ db }) => {
+    const { poller, state } = await setUp(db);
+    state.failures.set(1, [{ status: 429, headers: { 'Retry-After': '300' } }]);
+    const run = poller({}, { realSleep: true });
+    const running = run.runNow();
+    await vi.waitFor(() => expect(state.hoursCalls).toEqual([1]));
+    await run.dispose();
+    expect(await running).toMatchObject({ endedBy: 'John Deere polling stopped as the API shut down.', stored: 0 });
+    expect(state.hoursCalls).toEqual([1]);
+    expect(await connectionRow(db)).toMatchObject({ lastError: null });
+  });
+
+  test('start polls after the first delay and dispose waits for the Link in flight', async ({ db }) => {
     const { poller, state } = await setUp(db);
     const release = holdDeere(state);
     const run = poller({ firstRunDelayMs: 5, intervalMs: 3_600_000 });
@@ -396,6 +414,7 @@ describe('JohnDeerePoller', () => {
     expect(disposed).toBe(false);
     release();
     await disposing;
-    expect(await readings(db)).toHaveLength(2);
+    // The Link in flight finishes; the rest wait for the next run.
+    expect(await readings(db)).toHaveLength(1);
   });
 });

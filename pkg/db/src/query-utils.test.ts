@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 
+import { createDatabaseClient } from './database-client.js';
 import {
   createEscapedContainsSearchCondition,
   createGlobalSearchCondition,
@@ -10,7 +11,9 @@ import {
   isUniqueViolation,
   LIKE_SEARCH_ESCAPE,
   onCalendarDays,
+  paginateWithWindowTotal,
 } from './query-utils.js';
+import { createEphemeralTestDatabase, dropTestDatabase } from './test-utils.js';
 
 describe('createLikeSearchPattern', () => {
   it('wraps search terms for contains matching', () => {
@@ -73,5 +76,38 @@ describe('isUniqueViolation', () => {
     expect(isUniqueViolation(null)).toBe(false);
     expect(isUniqueViolation({ code: '23503' })).toBe(false);
     expect(isUniqueViolation({ cause: { code: '23503' } })).toBe(false);
+  });
+});
+
+describe('paginateWithWindowTotal', () => {
+  it('reads the total off the unpaged match when the cursor is past the last row', async () => {
+    const { databaseName, databaseUrl } = await createEphemeralTestDatabase();
+    const { db, close } = createDatabaseClient(databaseUrl, { max: 1 });
+
+    try {
+      const matching = () =>
+        db
+          .select({
+            n: sql<number>`n`.mapWith(Number),
+            total: sql<number>`count(*) over ()`.mapWith(Number),
+          })
+          .from(sql`generate_series(1, 3) as n`)
+          .orderBy(sql`n`)
+          .$dynamic();
+
+      await expect(paginateWithWindowTotal(matching, { cursor: 2, limit: 2 })).resolves.toEqual({
+        rows: [{ n: 3, total: 3 }],
+        total: 3,
+        nextCursor: null,
+      });
+      await expect(paginateWithWindowTotal(matching, { cursor: 5, limit: 2 })).resolves.toEqual({
+        rows: [],
+        total: 3,
+        nextCursor: null,
+      });
+    } finally {
+      await close();
+      await dropTestDatabase(databaseName);
+    }
   });
 });

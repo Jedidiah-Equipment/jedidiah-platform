@@ -1,4 +1,4 @@
-import { createGlobalSearchCondition, type Db, getSortOrder, onCalendarDays, withPagination } from '@pkg/db';
+import { createGlobalSearchCondition, type Db, getSortOrder, onCalendarDays, paginateWithWindowTotal } from '@pkg/db';
 import { contractingCustomers, contractingFarms, contractingJobs, contractingWorkTypes } from '@pkg/db/contracting';
 import { JOHANNESBURG_TIME_ZONE } from '@pkg/domain';
 import {
@@ -10,7 +10,6 @@ import {
   jobQueueStatus,
   jobReadSeesMoney,
 } from '@pkg/domain/contracting';
-import { getNextCursor } from '@pkg/schema';
 import {
   type JobListInput,
   type JobListResult,
@@ -142,10 +141,7 @@ export async function listJobs({
       .where(where)
       .orderBy(...jobListOrder(input))
       .$dynamic();
-  const rows = await withPagination(matching(), input);
-  // Every row carries the full match count; a stale cursor past the end asks for the first row to learn it.
-  const counted = rows[0] ?? (input.cursor > 0 ? (await matching().limit(1))[0] : undefined);
-  const total = counted?.total ?? 0;
+  const { rows, total, nextCursor } = await paginateWithWindowTotal(matching, input);
   const seesMoney = jobReadSeesMoney(reader.mode);
   const items = rows.map(({ job, readings, total: _total, ...row }) =>
     JobSummary.parse({
@@ -160,5 +156,5 @@ export async function listJobs({
       updatedAt: job.updatedAt.toISOString(),
     }),
   );
-  return { items, nextCursor: getNextCursor({ count: items.length, cursor: input.cursor, total }), total };
+  return { items, nextCursor, total };
 }

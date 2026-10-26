@@ -3,11 +3,11 @@ import {
   type DatabaseTransaction,
   type Db,
   getSortOrder,
+  paginateWithWindowTotal,
   user,
-  withPagination,
 } from '@pkg/db';
 import { contractingCategories, contractingMachines, contractingServiceRecords } from '@pkg/db/contracting';
-import { type AuthId, getNextCursor } from '@pkg/schema';
+import type { AuthId } from '@pkg/schema';
 import {
   NEXT_SERVICE_DUE_BELOW_READING_MESSAGE,
   ServiceRecord,
@@ -122,12 +122,9 @@ export async function listServiceRecords({
         desc(contractingServiceRecords.createdAt),
         asc(contractingServiceRecords.id),
       );
-  const rows = await withPagination(matching(), input);
-  // Every row carries the full match count; a stale cursor past the end asks for the first row to learn it.
-  const counted = rows[0] ?? (input.cursor > 0 ? (await matching().limit(1))[0] : undefined);
-  const total = counted?.total ?? 0;
+  const { rows, total, nextCursor } = await paginateWithWindowTotal(matching, input);
   const items = rows.map(mapServiceRecord);
-  return { items, nextCursor: getNextCursor({ count: items.length, cursor: input.cursor, total }), total };
+  return { items, nextCursor, total };
 }
 
 /** How many Service Records are Booked In and how many are closed, for the Services table's quick filters. */

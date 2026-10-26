@@ -5,7 +5,7 @@ import {
   type Db,
   getSortOrder,
   onCalendarDays,
-  withPagination,
+  paginateWithWindowTotal,
 } from '@pkg/db';
 import {
   contractingBreakdowns,
@@ -26,7 +26,7 @@ import {
   fieldReaderSeesJob,
   formatJobNumber,
 } from '@pkg/domain/contracting';
-import { type AuthId, type ContractingRole, getNextCursor } from '@pkg/schema';
+import type { AuthId, ContractingRole } from '@pkg/schema';
 import {
   BREAKDOWN_MAX_PHOTOS,
   type BreakdownActionName,
@@ -345,12 +345,9 @@ export async function listBreakdowns({
     selectBreakdowns(db)
       .where(where)
       .orderBy(...breakdownListOrder(input));
-  const rows = await withPagination(matching(), input);
-  // Every row carries the full match count; a stale cursor past the end asks for the first row to learn it.
-  const counted = rows[0] ?? (input.cursor > 0 ? (await matching().limit(1))[0] : undefined);
-  const total = counted?.total ?? 0;
+  const { rows, total, nextCursor } = await paginateWithWindowTotal(matching, input);
   const items = rows.map(toBreakdownSummary);
-  return { items, nextCursor: getNextCursor({ count: items.length, cursor: input.cursor, total }), total };
+  return { items, nextCursor, total };
 }
 
 /**

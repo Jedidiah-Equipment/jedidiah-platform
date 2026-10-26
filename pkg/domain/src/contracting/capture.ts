@@ -16,6 +16,7 @@ import { serviceDueSoonCrossed } from './service-due.js';
 /** A reading either side of a capture's Read At. `telematics` is a reading the Machine itself reported. */
 export type CaptureNeighbour = {
   id: string;
+  role: ReadingRole;
   value: number;
   capturedAt: Date;
   method: (typeof readingMethods)[number] | 'telematics';
@@ -217,7 +218,8 @@ export function judgeCapture(world: CaptureWorld, capture: CaptureAttempt): Capt
   // Only a capture that becomes the latest is judged against it; one dated behind it answers to its neighbours.
   const below = next === null && captureIsBelowLatest(capture.value, world.latest);
   if (below && !capture.disputePrevious) return refuse('below-latest');
-  if (capture.role === 'baseline' && world.latest) return refuse('baseline-exists');
+  const beforeBaseline = previous === null && next?.role === 'baseline';
+  if (capture.role === 'baseline' ? world.latest : beforeBaseline) return refuse('baseline-exists');
   return { ok: true, disputes: below && world.latest ? world.latest.id : null };
 }
 

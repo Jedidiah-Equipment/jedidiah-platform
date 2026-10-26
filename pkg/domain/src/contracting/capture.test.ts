@@ -32,7 +32,8 @@ const reading = (
   value: number,
   capturedAt: Date,
   method: CaptureNeighbour['method'] = 'photo',
-): CaptureNeighbour => ({ id, value, capturedAt, method });
+  role: CaptureNeighbour['role'] = 'spot',
+): CaptureNeighbour => ({ id, role, value, capturedAt, method });
 
 const world = (overrides: Partial<CaptureWorld> = {}): CaptureWorld => ({
   latest: { id: 'latest', value: 100 },
@@ -75,6 +76,11 @@ describe('judgeCapture', () => {
     ['previous-changed', {}, { value: 90, disputePrevious: true, expectedPreviousId: 'older' }],
     ['below-latest', {}, { value: 90 }],
     ['baseline-exists', { mayBaseline: true, stint: null }, { role: 'baseline' }],
+    [
+      'baseline-exists',
+      { previous: null, next: reading('latest', 100, now, 'manual', 'baseline') },
+      { value: 90, readAt: anHourAgo },
+    ],
   ])('refuses %s', (rule, given, attempt) => {
     expect(judgeCapture(world(given), capture(attempt))).toMatchObject({ ok: false, rule });
   });

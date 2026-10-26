@@ -284,7 +284,13 @@ export async function captureReading({
   }
 }
 
-const toNeighbour = ({ id, value, capturedAt, method }: Row): CaptureNeighbour => ({ id, value, capturedAt, method });
+const toNeighbour = ({ id, role, value, capturedAt, method }: Row): CaptureNeighbour => ({
+  id,
+  role,
+  value,
+  capturedAt,
+  method,
+});
 
 const capturer = alias(user, 'exception_capturer');
 const amender = alias(user, 'exception_amender');

@@ -173,8 +173,8 @@ the **latest reading** is the one with the latest Read At, and every capture is 
 **time neighbours** — it must be at or above the nearest reading before its Read At and at or below
 the nearest reading after it. A late-entered reading takes its place in time, so a departure dated
 yesterday lands behind today's readings. An Hour Gap reads the two readings its Assignments name, so
-a backdated Read At moves no hour between Jobs. Capture needs a connection: the server judges every capture as the ledger's truth, and a
-Foreman without signal keeps a Field Note instead. Every way a capture is refused is one rule in one
+a backdated Read At moves no hour between Jobs. Capture needs a connection: the server judges every
+capture as the ledger's truth, and a Foreman without signal keeps a Field Note instead. Every way a capture is refused is one rule in one
 ordered table, judged under the Machine lock; the phone and the web stop only what that table says the
 server would refuse, and show its sentence when it does. Once a capture has landed the server reads
 the photo itself and records its own value and confidence as the System, so capturing never waits on it; a check

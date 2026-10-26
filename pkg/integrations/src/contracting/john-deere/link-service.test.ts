@@ -42,12 +42,16 @@ function deere() {
     ]),
     calls: [] as string[],
     issued: 0,
+    /** Data calls with an access token issued at or before this number are refused, as a revoked token is. */
+    refuseAccessTokens: 0,
   };
-  const fetch: typeof globalThis.fetch = async (input) => {
+  const fetch: typeof globalThis.fetch = async (input, init) => {
     const url = new URL(String(input));
     if (url.pathname.endsWith('/v1/token'))
       return Response.json({ access_token: `access-${++state.issued}`, refresh_token: 'refresh', expires_in: 43_200 });
     state.calls.push(url.pathname);
+    const token = Number(String(new Headers(init?.headers).get('Authorization')).replace(/\D/g, ''));
+    if (token <= state.refuseAccessTokens) return new Response('{}', { status: 401 });
     if (url.pathname.endsWith('/equipment')) return Response.json({ values: state.machines });
     const principal = /machines\/(\d+)\/engineHours/.exec(url.pathname)?.[1];
     if (principal) {
@@ -138,40 +142,17 @@ describe('JohnDeereLinkService', () => {
     expect((await service.listUnlinkedMachines()).map((listed) => listed.equipmentId)).toEqual(['eq-2']);
   });
 
-  test('serves the equipment list and hours from a five-minute cache until Refresh', async ({ db }) => {
-    const { state, service } = await setUp(db);
-    await service.listUnlinkedMachines();
-    await service.listUnlinkedMachines();
-    expect(state.calls).toEqual([
-      '/isg/equipment',
-      '/platform/machines/2/engineHours',
-      '/platform/machines/1/engineHours',
-    ]);
+  test('renews the access token once when John Deere refuses it, on the list and on a Link', async ({ db }) => {
+    const { state, service, machine } = await setUp(db);
+    state.refuseAccessTokens = 1;
+    expect((await service.listUnlinkedMachines()).map((listed) => listed.equipmentId)).toEqual(['eq-2', 'eq-1']);
+    expect(state.issued).toBe(2);
 
-    state.now = new Date(state.now.getTime() + 5 * 60 * 1000 + 1);
-    await service.listUnlinkedMachines();
-    expect(state.calls).toHaveLength(6);
-
-    service.refresh();
-    await service.listUnlinkedMachines();
-    expect(state.calls).toHaveLength(9);
-  });
-
-  test('two tabs opening at once share one set of John Deere calls', async ({ db }) => {
-    const { state, service } = await setUp(db);
-    await Promise.all([service.listUnlinkedMachines(), service.listUnlinkedMachines()]);
-    expect(state.calls).toHaveLength(3);
-  });
-
-  test("a Reconnect drops the previous sign-in's cached list", async ({ db }) => {
-    const { state, service, connection } = await setUp(db);
-    await service.listUnlinkedMachines();
-    await connection.disconnect({ actorUserId: adminId });
-    await db
-      .update(contractingJohnDeereConnection)
-      .set({ status: 'connected', refreshTokenCiphertext: encryptSecret('refresh', tokenKey) });
-    await service.listUnlinkedMachines();
-    expect(state.calls.filter((call) => call === '/isg/equipment')).toHaveLength(2);
+    state.refuseAccessTokens = 2;
+    const { id } = await machine('T01');
+    await service.linkMachine({ actorUserId: adminId, machineId: id, equipmentId: 'eq-1' });
+    expect(state.issued).toBe(3);
+    expect((await service.listLinks()).map((link) => link.equipmentId)).toEqual(['eq-1']);
   });
 
   test('links a Machine, writes the PIN as its serial number and audits both', async ({ db }) => {

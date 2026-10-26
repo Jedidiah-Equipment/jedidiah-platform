@@ -222,20 +222,35 @@ export class JohnDeereConnectionService {
     return this.refreshing;
   }
 
-  /** A new access token for one Deere refused, such as a token the owner revoked before its 12 hours ran out. */
-  renewAccessToken(): Promise<string> {
+  /**
+   * A Deere call with a current access token. A 401 means Deere refused a token it issued, such as one the owner
+   * revoked before its 12 hours ran out: the call is made once more with a renewed token, and a refusal of that
+   * renewal, or of the retried call, is the caller's.
+   */
+  async withAccessToken<T>(call: (accessToken: string) => Promise<T>): Promise<T> {
+    // Only Deere refusing the call renews; a refused refresh here is the refusal, and says to reconnect.
+    const accessToken = await this.accessToken();
+    try {
+      return await call(accessToken);
+    } catch (error) {
+      if (!isJohnDeereError(error) || error.code !== 'john_deere.unauthorized') throw error;
+    }
     this.cachedAccessToken = null;
-    return this.accessToken();
+    return call(await this.accessToken());
   }
 
-  async markError({ message }: { message: string }): Promise<void> {
-    await this.write({ actorUserId: null, set: () => ({ lastError: message, lastErrorAt: this.config.now() }) });
-  }
-
-  async markPolled(): Promise<void> {
+  /**
+   * What the poll made of the connection: when it ran and the error that ended it, or none. Recorded only while
+   * the connection is still Connected; one that became Needs reconnecting or was disconnected already says why.
+   */
+  async recordPoll({ error }: { error: string | null }): Promise<void> {
+    const now = this.config.now();
     await this.write({
       actorUserId: null,
-      set: () => ({ lastPolledAt: this.config.now(), lastError: null, lastErrorAt: null }),
+      set: (before) =>
+        before?.status === 'connected'
+          ? { lastPolledAt: now, lastError: error, lastErrorAt: error === null ? null : now }
+          : null,
     });
   }
 

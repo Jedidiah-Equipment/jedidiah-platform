@@ -41,13 +41,7 @@ export function JohnDeereLinks() {
 
 function UnlinkedMachinesCard({ onLink }: { onLink: (machine: JohnDeereUnlinkedMachine) => void }) {
   const trpc = useTRPC();
-  const { invalidateJohnDeere } = useQueryInvalidation();
   const query = useQuery(trpc.contractingJohnDeere.equipment.list.queryOptions());
-  const refresh = useMutation(
-    trpc.contractingJohnDeere.equipment.refresh.mutationOptions(
-      useContractingWrite(invalidateJohnDeere).card('Unable to refresh the John Deere machines.'),
-    ),
-  );
   const columns = useMemo<DataTableColumnDef<JohnDeereUnlinkedMachine>[]>(
     () => [
       {
@@ -80,7 +74,7 @@ function UnlinkedMachinesCard({ onLink }: { onLink: (machine: JohnDeereUnlinkedM
     ],
     [onLink],
   );
-  const busy = refresh.isPending || query.isFetching;
+  const busy = query.isFetching;
   const rows = query.data ?? [];
   const table = useDataTable({
     columns,
@@ -94,7 +88,7 @@ function UnlinkedMachinesCard({ onLink }: { onLink: (machine: JohnDeereUnlinkedM
       <CardHeader>
         <CardTitle>Unlinked John Deere machines</CardTitle>
         <CardAction>
-          <Button disabled={busy} onClick={() => refresh.mutate()} size="sm" type="button" variant="outline">
+          <Button disabled={busy} onClick={() => void query.refetch()} size="sm" type="button" variant="outline">
             {busy ? (
               <IconLoader2 className="animate-spin" data-icon="inline-start" />
             ) : (

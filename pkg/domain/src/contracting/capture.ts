@@ -4,22 +4,23 @@ import {
   type JobActionVerdict,
   type ReadingCaptureInput,
   type ReadingErrorCode,
-  type ReadingMethod,
   type ReadingRole,
   ReadingValue,
+  type TelematicsProvider,
 } from '@pkg/schema/contracting';
 import { formatDate } from '../formatting/date.js';
 import { formatHours } from '../formatting/number.js';
 import { assignmentActionRefusal, assignmentStateAllows } from './assignment-actions.js';
+import { telematicsProviderLabels } from './readings.js';
 import { serviceDueSoonCrossed } from './service-due.js';
 
-/** A reading either side of a capture's Read At. `telematics` is a reading the Machine itself reported. */
+/** A reading either side of a capture's Read At; `telematicsProvider` names who reported a Telematics Reading. */
 export type CaptureNeighbour = {
   id: string;
   role: ReadingRole;
   value: number;
   capturedAt: Date;
-  method: ReadingMethod;
+  telematicsProvider: TelematicsProvider | null;
 };
 
 /**
@@ -164,12 +165,11 @@ const refuse = (rule: Exclude<CaptureRule, 'job-refused' | NeighbourRule>): Capt
 /** A refusal against a neighbour, naming its value and Read At; the fix is the capture's time or its value. */
 const refuseAgainst = (rule: NeighbourRule, neighbour: CaptureNeighbour): CaptureRefused => {
   const reading = `${formatHours(neighbour.value)} at ${formatDate(neighbour.capturedAt, 'medium')}`;
-  const said =
-    neighbour.method === 'telematics'
-      ? `John Deere reported ${reading}.`
-      : rule === 'above-next'
-        ? `A later reading of ${reading} is lower.`
-        : `A reading of ${reading} is higher.`;
+  const said = neighbour.telematicsProvider
+    ? `${telematicsProviderLabels[neighbour.telematicsProvider]} reported ${reading}.`
+    : rule === 'above-next'
+      ? `A later reading of ${reading} is lower.`
+      : `A reading of ${reading} is higher.`;
   return {
     ok: false,
     rule,

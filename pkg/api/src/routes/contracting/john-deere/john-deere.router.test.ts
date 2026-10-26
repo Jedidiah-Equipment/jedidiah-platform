@@ -130,7 +130,6 @@ test('needs contracting_settings:update to read and Refresh, contracting_machine
     await expect(johnDeere.connect.start()).rejects.toMatchObject({ code: 'FORBIDDEN' });
     await expect(johnDeere.disconnect()).rejects.toMatchObject({ code: 'FORBIDDEN' });
     await expect(johnDeere.equipment.list()).rejects.toMatchObject({ code: 'FORBIDDEN' });
-    await expect(johnDeere.equipment.refresh()).rejects.toMatchObject({ code: 'FORBIDDEN' });
     await expect(johnDeere.links.list()).rejects.toMatchObject({ code: 'FORBIDDEN' });
     await expect(johnDeere.poll.now()).rejects.toMatchObject({ code: 'FORBIDDEN' });
   }

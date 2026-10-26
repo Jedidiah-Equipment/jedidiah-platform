@@ -13,9 +13,8 @@ import {
   latestReading,
   listReadingExceptions,
   listReadingsByMachine,
-  recordTelematicsReading,
-  type TelematicsReadingResult,
 } from './reading-service.js';
+import { recordTelematicsReading, type TelematicsReadingResult } from './telematics-reading.js';
 
 const test = createTester(async ({ db }) => {
   const actorUserId = 'telematics-actor';
@@ -231,7 +230,7 @@ test('refuses to amend a John Deere reading', async ({ context }) => {
   const stored = written(await reportFor(context)(1000, '2026-09-07T08:00:00Z'));
   await expect(
     amendReading({ db, actor, input: { id: stored.reading.id, value: 999, reason: 'Wrong' } }),
-  ).rejects.toMatchObject({ code: 'reading.invalid_amendment', message: 'A John Deere reading cannot be amended.' });
+  ).rejects.toMatchObject({ code: 'reading.invalid_amendment', message: 'A Telematics Reading cannot be amended.' });
   expect(await listReadingsByMachine({ db, machineId })).toMatchObject([{ value: 1000, amendedBy: null }]);
 });
 

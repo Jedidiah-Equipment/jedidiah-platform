@@ -41,11 +41,12 @@ function deere() {
       [1, { hours: 1200.5, reportTime: '2026-10-26T06:00:00.000Z' }],
     ]),
     calls: [] as string[],
+    issued: 0,
   };
   const fetch: typeof globalThis.fetch = async (input) => {
     const url = new URL(String(input));
     if (url.pathname.endsWith('/v1/token'))
-      return Response.json({ access_token: 'access', refresh_token: 'refresh', expires_in: 43_200 });
+      return Response.json({ access_token: `access-${++state.issued}`, refresh_token: 'refresh', expires_in: 43_200 });
     state.calls.push(url.pathname);
     if (url.pathname.endsWith('/equipment')) return Response.json({ values: state.machines });
     const principal = /machines\/(\d+)\/engineHours/.exec(url.pathname)?.[1];
@@ -109,7 +110,7 @@ async function setUp(db: Db) {
     now,
   });
   const service = new JohnDeereLinkService({ db, client, connection, now });
-  return { state, service, machine };
+  return { state, service, machine, connection };
 }
 
 const links = (db: Db) => db.select().from(contractingJohnDeereLinks).orderBy(contractingJohnDeereLinks.linkedAt);
@@ -154,6 +155,17 @@ describe('JohnDeereLinkService', () => {
     service.refresh();
     await service.listUnlinkedMachines();
     expect(state.calls).toHaveLength(9);
+  });
+
+  test("a Reconnect drops the previous sign-in's cached list", async ({ db }) => {
+    const { state, service, connection } = await setUp(db);
+    await service.listUnlinkedMachines();
+    await connection.disconnect({ actorUserId: adminId });
+    await db
+      .update(contractingJohnDeereConnection)
+      .set({ status: 'connected', refreshTokenCiphertext: encryptSecret('refresh', tokenKey) });
+    await service.listUnlinkedMachines();
+    expect(state.calls.filter((call) => call === '/isg/equipment')).toHaveLength(2);
   });
 
   test('links a Machine, writes the PIN as its serial number and audits both', async ({ db }) => {

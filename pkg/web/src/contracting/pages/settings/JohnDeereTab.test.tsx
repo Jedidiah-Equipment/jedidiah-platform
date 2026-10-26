@@ -172,7 +172,7 @@ const deereMachine: JohnDeereUnlinkedMachine = {
   model: '8R 410',
   modelYear: '2022',
   lastHours: 812.3,
-  lastReportTime: '2026-10-26T06:00:00.000Z' as JohnDeereUnlinkedMachine['lastReportTime'],
+  lastReportTime: '2026-09-01T06:00:00.000Z' as JohnDeereUnlinkedMachine['lastReportTime'],
 };
 
 const ourMachine = buildMachine({
@@ -224,18 +224,28 @@ test('Connected lists the unlinked machines with their hours and the Links with 
       deereMachine,
       { ...deereMachine, equipmentId: 'eq-3', name: 'Quiet Green', lastHours: null, lastReportTime: null },
     ],
-    links: [link(), link({ id: '33333333-3333-4333-8333-333333333333', lost: true, deereName: 'Gone Green' })],
+    links: [
+      link(),
+      link({
+        id: '33333333-3333-4333-8333-333333333333',
+        lost: true,
+        deereName: 'Gone Green',
+        lastPolledAt: '2026-09-02T10:00:00.000Z' as JohnDeereLinkView['lastPolledAt'],
+      }),
+    ],
   });
   await vi.waitFor(() => expect(container.textContent).toContain('Big Green'));
   expect(container.textContent).toContain('JOHN DEERE · 8R 410 · 2022');
   expect(container.textContent).toContain('812.3 h');
-  expect(container.textContent).toContain('26 Oct 2026');
+  expect(container.textContent).toContain('1 Sep 2026');
   expect(container.textContent).toContain('No report');
   await vi.waitFor(() => expect(container.textContent).toContain('Old Green'));
   const rowOf = (name: string) =>
     [...container.querySelectorAll('tr')].find((row) => row.textContent?.includes(name))?.textContent ?? '';
   expect(rowOf('Old Green')).toContain('OK');
   expect(rowOf('Gone Green')).toContain('Lost');
+  // A lost Link says when John Deere was last asked.
+  expect(rowOf('Gone Green')).toContain('Last poll 2 Sep 2026');
 });
 
 test('the Link dialog puts both meters side by side and links the picked Machine', async () => {

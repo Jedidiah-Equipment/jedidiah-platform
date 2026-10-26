@@ -5,6 +5,7 @@ import { IconLink, IconLinkOff, IconLoader2, IconRefresh } from '@tabler/icons-r
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { z } from 'zod';
+import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { RemoveEntityButton } from '@/components/common/RemoveEntityButton.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
@@ -22,7 +23,6 @@ import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 const muted = (text: string) => <span className="text-muted-foreground">{text}</span>;
-const dateOrDash = (date: string | null) => (date === null ? muted('—') : formatDate(date, 'medium'));
 const orDash = (text: string | null) => text || muted('—');
 const makeModelYear = (machine: Pick<JohnDeereUnlinkedMachine, 'make' | 'model' | 'modelYear'>) =>
   orDash([machine.make, machine.model, machine.modelYear].filter(Boolean).join(' · '));
@@ -65,7 +65,7 @@ function UnlinkedMachinesCard({ onLink }: { onLink: (machine: JohnDeereUnlinkedM
       {
         accessorKey: 'lastReportTime',
         header: 'Reported at',
-        cell: ({ row }) => dateOrDash(row.original.lastReportTime),
+        cell: ({ row }) => <DateDisplay date={row.original.lastReportTime} emptyValue="—" format="medium" />,
       },
       {
         id: 'link',
@@ -123,8 +123,15 @@ function UnlinkedMachinesCard({ onLink }: { onLink: (machine: JohnDeereUnlinkedM
 
 const linkStatus = (link: JohnDeereLinkView) => {
   if (link.machine.retiredAt) return <Badge variant="outline">Retired</Badge>;
-  if (link.lost) return <Badge variant="destructive">Lost</Badge>;
-  return <Badge variant="secondary">OK</Badge>;
+  if (!link.lost) return <Badge variant="secondary">OK</Badge>;
+  return (
+    <span className="flex items-center gap-2">
+      <Badge variant="destructive">Lost</Badge>
+      <span className="text-muted-foreground text-xs">
+        Last poll <DateDisplay date={link.lastPolledAt} emptyValue="never" format="medium" />
+      </span>
+    </span>
+  );
 };
 
 function LinkedMachinesCard() {
@@ -154,7 +161,7 @@ function LinkedMachinesCard() {
             muted('No report')
           ) : (
             <span className="tabular-nums">
-              {formatHours(row.original.lastValue)} · {formatDate(row.original.lastReportTime, 'medium')}
+              {formatHours(row.original.lastValue)} · <DateDisplay date={row.original.lastReportTime} format="medium" />
             </span>
           ),
       },
@@ -316,7 +323,7 @@ function MeterColumn({
       </div>
       <div className="space-y-0.5">
         <dt className="text-muted-foreground">{atLabel}</dt>
-        <dd>{dateOrDash(at)}</dd>
+        <dd>{at === null ? muted('—') : formatDate(at, 'medium')}</dd>
       </div>
     </dl>
   );

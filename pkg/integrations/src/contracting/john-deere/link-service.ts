@@ -75,7 +75,8 @@ const linkConstraints = <T>(action: () => Promise<T>) =>
 
 /** John Deere Links: which Deere machine feeds which Machine, made and ended on the John Deere tab. */
 export class JohnDeereLinkService {
-  private listed: { machines: DeereMachine[]; at: number } | null = null;
+  // Keyed by the access token it was read with, so a Reconnect never serves the previous sign-in's list.
+  private listed: { accessToken: string; machines: DeereMachine[]; at: number } | null = null;
   private readonly hours = new Map<number, { report: DeereEngineHours | null; at: number }>();
 
   constructor(private readonly config: JohnDeereLinkServiceConfig) {}
@@ -256,9 +257,10 @@ export class JohnDeereLinkService {
   }
 
   private async listedMachines(accessToken: string): Promise<DeereMachine[]> {
-    if (this.listed && this.fresh(this.listed.at)) return this.listed.machines;
+    if (this.listed?.accessToken !== accessToken) this.refresh();
+    else if (this.fresh(this.listed.at)) return this.listed.machines;
     const machines = await this.config.client.equipment(accessToken);
-    this.listed = { machines, at: this.config.now().getTime() };
+    this.listed = { accessToken, machines, at: this.config.now().getTime() };
     return machines;
   }
 

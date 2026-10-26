@@ -17,9 +17,9 @@ The John Deere Connection is Contracting's one link to the owner's John Deere Op
 
 ## Link a Machine
 
-A John Deere Link pairs one Machine with one machine in the organization, so John Deere reports its hours.
+A John Deere Link pairs one Machine with one machine in the organization.
 
-1. On a **Connected** tab, find the machine under **Unlinked John Deere machines**. It shows John Deere's name, make, model, year, PIN, last reported hours and when they were reported. Choose **Refresh** to ask John Deere again.
+1. On a **Connected** tab, find the machine under **Unlinked John Deere machines**. Choose **Refresh** to ask John Deere again.
 2. Choose **Link** on its row and pick the Machine. Only Machines that are not retired and not linked are offered.
 3. Compare the two meters side by side: John Deere's last reported hours beside the Machine's latest reading and its Read At. Link only when the two meters agree for the time between them.
 4. Choose **Link**. The machine moves to **Linked Machines**, and its PIN becomes the Machine's serial number. A PIN another Machine already holds is refused.
@@ -27,9 +27,7 @@ A John Deere Link pairs one Machine with one machine in the organization, so Joh
 ## Unlink a Machine
 
 1. Under **Linked Machines**, choose **Unlink** on the Machine's row and confirm.
-2. John Deere stops reporting its hours. Every reading already stored stays, and so does its serial number.
-
-A Link reads **Lost** while the organization no longer lists its machine or lists it archived, and **Retired** once its Machine is retired.
+2. The Machine keeps its serial number and every reading already stored.
 
 ## Disconnect
 

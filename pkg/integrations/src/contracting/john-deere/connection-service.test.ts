@@ -1,10 +1,11 @@
 import { randomBytes } from 'node:crypto';
 import { auditEvents, type Db, eq, user } from '@pkg/db';
 import { contractingJohnDeereConnection } from '@pkg/db/contracting';
-import { describe, expect } from 'vitest';
+import { describe, expect, vi } from 'vitest';
 import { test } from '../../test/tester.js';
 import { JohnDeereClient } from './client.js';
 import { JohnDeereConnectionService } from './connection-service.js';
+import { JohnDeereError } from './john-deere-errors.js';
 import { decryptSecret } from './token-vault.js';
 
 const tokenKey = randomBytes(32);
@@ -278,6 +279,32 @@ describe('JohnDeereConnectionService', () => {
     await expect(service.accessToken()).rejects.toMatchObject({ code: 'john_deere.unauthorized' });
     expect(await service.getConnection()).toMatchObject({ status: 'needs-reconnect', lastError: expect.any(String) });
     await expect(service.accessToken()).rejects.toMatchObject({ code: 'john_deere.not_connected' });
+  });
+
+  test('a call renews the token once when Deere refuses it, and a refused refresh is the refusal itself', async ({
+    db,
+  }) => {
+    const { state, service, connect } = await setUp(db);
+    await connect();
+    const seen: string[] = [];
+    const refusedOnce = async (token: string) => {
+      seen.push(token);
+      if (seen.length === 1) throw new JohnDeereError('john_deere.unauthorized', 'John Deere refused the sign-in.');
+      return 'read';
+    };
+    expect(await service.withAccessToken(refusedOnce)).toBe('read');
+    expect(seen).toEqual(['access-1', 'access-2']);
+
+    // The token has expired and Deere refuses to refresh it: the call never runs and the reason says Reconnect.
+    state.refreshRefused = true;
+    state.now = new Date(state.now.getTime() + 12 * 60 * 60 * 1000);
+    const never = vi.fn(async () => 'read');
+    await expect(service.withAccessToken(never)).rejects.toMatchObject({
+      code: 'john_deere.unauthorized',
+      message: 'John Deere refused the sign-in. Reconnect John Deere.',
+    });
+    expect(never).not.toHaveBeenCalled();
+    expect(await service.getConnection()).toMatchObject({ status: 'needs-reconnect' });
   });
 
   test('disconnect forgets the tokens and organizations; a poll records only on a Connected row, unaudited', async ({

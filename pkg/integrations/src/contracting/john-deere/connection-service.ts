@@ -216,8 +216,10 @@ export class JohnDeereConnectionService {
    * renewal, or of the retried call, is the caller's.
    */
   async withAccessToken<T>(call: (accessToken: string) => Promise<T>): Promise<T> {
+    // Only Deere refusing the call renews; a refused refresh here is the refusal, and says to reconnect.
+    const accessToken = await this.accessToken();
     try {
-      return await call(await this.accessToken());
+      return await call(accessToken);
     } catch (error) {
       if (!isJohnDeereError(error) || error.code !== 'john_deere.unauthorized') throw error;
     }

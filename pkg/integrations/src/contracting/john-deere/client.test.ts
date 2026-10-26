@@ -106,7 +106,11 @@ describe('JohnDeereClient', () => {
             name: 'Jedidiah Boerdery',
             type: 'customer',
             member: true,
-            links: [{ rel: 'manage_connections', uri: 'https://connections.example/manage' }],
+            // The name Deere really sends, singular; its docs say `manage_connections`.
+            links: [
+              { rel: 'self', uri: 'https://api.example/platform/organizations/4321' },
+              { rel: 'manage_connection', uri: 'https://connections.example/manage' },
+            ],
           },
         ],
       }),
@@ -116,6 +120,11 @@ describe('JohnDeereClient', () => {
             id: 99,
             name: 'Neighbour',
             links: [{ rel: 'connections', uri: 'https://connections.example/select' }],
+          },
+          {
+            id: 7,
+            name: 'As documented',
+            links: [{ rel: 'manage_connections', uri: 'https://connections.example/manage-7' }],
           },
         ],
       }),
@@ -129,7 +138,7 @@ describe('JohnDeereClient', () => {
         member: true,
         connectionsUrl: null,
         manageConnectionsUrl: 'https://connections.example/manage',
-        linkRels: ['manage_connections'],
+        linkRels: ['self', 'manage_connection'],
       },
       {
         id: '99',
@@ -140,8 +149,17 @@ describe('JohnDeereClient', () => {
         manageConnectionsUrl: null,
         linkRels: ['connections'],
       },
+      {
+        id: '7',
+        name: 'As documented',
+        type: null,
+        member: false,
+        connectionsUrl: null,
+        manageConnectionsUrl: 'https://connections.example/manage-7',
+        linkRels: ['manage_connections'],
+      },
     ]);
-    // No showLinks filter: Deere has dropped `manage_connections` under one.
+    // No showLinks filter: the connected link is not named as the docs say, so every link must come back.
     expect(requests.map(({ url }) => url)).toEqual([
       'https://api.example/platform/organizations',
       'https://api.example/platform/organizations;start=1',

@@ -61,7 +61,7 @@ function deere() {
               ? []
               : [
                   connected
-                    ? { rel: 'manage_connections', uri: 'https://connections.example/manage' }
+                    ? { rel: 'manage_connection', uri: 'https://connections.example/manage' }
                     : { rel: 'connections', uri: 'https://connections.example/select' },
                 ],
         })),

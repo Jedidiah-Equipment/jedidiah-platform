@@ -91,7 +91,7 @@ async function mount() {
   await act(async () => {
     await vi.waitFor(() => expect(container.textContent).toContain('JD110-1'));
   });
-  const rows = () => [...container.querySelectorAll('tbody tr')];
+  const rows = () => [...container.querySelectorAll<HTMLTableRowElement>('tbody tr')];
   const button = (name: string) => {
     const found = [...container.querySelectorAll('button')].find((each) => each.textContent?.trim().startsWith(name));
     if (!found) throw new Error(`Missing button ${name}`);

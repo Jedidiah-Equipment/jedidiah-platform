@@ -41,6 +41,7 @@ const config: ApiConfig = {
   JOHN_DEERE_API_BASE_URL: 'https://sandboxapi.deere.com/platform',
   JOHN_DEERE_EQUIPMENT_API_BASE_URL: 'https://equipmentapi.deere.com/isg',
   JOHN_DEERE_ISSUER: 'https://signin.johndeere.com/oauth2/aus78tnlaysMraFhC1t7',
+  JOHN_DEERE_POLL_INTERVAL_MS: 3_600_000,
   POSTHOG_HOST: 'https://us.i.posthog.com',
   PORT: 7002,
   LOG_LEVEL: 'silent',

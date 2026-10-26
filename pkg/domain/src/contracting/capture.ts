@@ -4,9 +4,9 @@ import {
   type JobActionVerdict,
   type ReadingCaptureInput,
   type ReadingErrorCode,
+  type ReadingMethod,
   type ReadingRole,
   ReadingValue,
-  type readingMethods,
 } from '@pkg/schema/contracting';
 import { formatDate } from '../formatting/date.js';
 import { formatHours } from '../formatting/number.js';
@@ -19,7 +19,7 @@ export type CaptureNeighbour = {
   role: ReadingRole;
   value: number;
   capturedAt: Date;
-  method: (typeof readingMethods)[number] | 'telematics';
+  method: ReadingMethod;
 };
 
 /**
@@ -34,6 +34,10 @@ export type CaptureWorld = {
   previous: CaptureNeighbour | null;
   /** The nearest reading after the capture's Read At (ties by the first accepted), or null. */
   next: CaptureNeighbour | null;
+  /** The nearest Telematics Reading at or before the capture's Read At: the capture answers to it however many captured readings stand between. */
+  previousTelematics: CaptureNeighbour | null;
+  /** The nearest Telematics Reading after the capture's Read At. */
+  nextTelematics: CaptureNeighbour | null;
   /** The stint the capture lands on; null for a spot or baseline reading. */
   stint: AssignmentState | null;
   /** A departure's stint arrival Read At; null otherwise. */
@@ -227,12 +231,14 @@ export function judgeCapture(world: CaptureWorld, capture: CaptureAttempt): Capt
     capture.expectedPreviousId !== (world.latest?.id ?? null)
   )
     return refuse('previous-changed');
-  const { previous, next } = world;
+  const { previous, next, previousTelematics, nextTelematics } = world;
+  // A Telematics Reading is beyond dispute, so no capture may contradict the nearest one on either side.
+  if (nextTelematics && capture.value > nextTelematics.value) return refuseAgainst('above-next', nextTelematics);
+  if (previousTelematics && capture.value < previousTelematics.value)
+    return refuseAgainst('contradicts-telematics', previousTelematics);
   if (next && capture.value > next.value) return refuseAgainst('above-next', next);
-  if (previous && capture.value < previous.value) {
-    if (previous.method === 'telematics') return refuseAgainst('contradicts-telematics', previous);
-    if (previous.id !== world.latest?.id) return refuseAgainst('below-previous', previous);
-  }
+  if (previous && capture.value < previous.value && previous.id !== world.latest?.id)
+    return refuseAgainst('below-previous', previous);
   // Only a capture that becomes the latest is judged against it; one dated behind it answers to its neighbours.
   const below = next === null && captureIsBelowLatest(capture.value, world.latest);
   if (below && !capture.disputePrevious) return refuse('below-latest');

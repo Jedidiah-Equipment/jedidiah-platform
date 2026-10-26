@@ -27,7 +27,7 @@ afterEach(() => {
   window.localStorage.clear();
 });
 
-async function mount() {
+async function mount(due = machine) {
   const tableInputs: ServiceRecordListInput[] = [];
   const opened: unknown[] = [];
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
@@ -50,7 +50,7 @@ async function mount() {
                 tableInputs.push(JSON.parse(url.searchParams.get('input') ?? '{}'));
                 return { items: [record], nextCursor: null, total: 1 };
               case 'contractingFleet.machines.list':
-                return [machine];
+                return [due];
               case 'contractingServices.options.filters':
                 return { machines: [], mechanics: [] };
               case 'contractingServices.options.mechanics':
@@ -121,6 +121,14 @@ test('pins the Machines Due for Service above every Service Record, painted, boo
   await act(async () => {
     await vi.waitFor(() => expect(opened).toMatchObject([{ machineId: machine.id }]));
   });
+});
+
+test('shows the John Deere mark on a Machine whose latest reading its telematics reported', async () => {
+  const { rows } = await mount({ ...machine, latestReadingProvider: 'john-deere' });
+
+  const [pinned, booked] = rows();
+  expect(pinned?.textContent).toContain('John Deere');
+  expect(booked?.textContent).not.toContain('John Deere');
 });
 
 test('books a service from the page header, picking the Machine in the dialog', async () => {

@@ -39,6 +39,8 @@ const world = (overrides: Partial<CaptureWorld> = {}): CaptureWorld => ({
   latest: { id: 'latest', value: 100 },
   previous: reading('latest', 100, anHourAgo),
   next: null,
+  previousTelematics: null,
+  nextTelematics: null,
   stint: 'planned',
   stintArrivedAt: null,
   lastDepartedAt: null,
@@ -184,7 +186,7 @@ describe('judgeCapture', () => {
       const telematics = { ...reportedLater, method: 'telematics' as const };
       expect(
         judgeCapture(
-          world({ latest: { id: 'deere', value: 1000 }, previous: reported }),
+          world({ latest: { id: 'deere', value: 1000 }, previous: reported, previousTelematics: reported }),
           capture({ value: 990, disputePrevious: true, expectedPreviousId: 'deere' }),
         ),
       ).toEqual({
@@ -195,7 +197,13 @@ describe('judgeCapture', () => {
       });
       expect(
         judgeCapture(
-          world({ latest: { id: 'deere-later', value: 1010 }, previous: reported, next: telematics }),
+          world({
+            latest: { id: 'deere-later', value: 1010 },
+            previous: reported,
+            next: telematics,
+            previousTelematics: reported,
+            nextTelematics: telematics,
+          }),
           capture({ value: 1020, readAt: new Date('2026-10-09T07:30:00Z') }),
         ),
       ).toMatchObject({
@@ -204,6 +212,35 @@ describe('judgeCapture', () => {
         message: `John Deere reported ${formatHours(1010)} at ${formatDate(now, 'medium')}. Check the time or the value.`,
       });
     });
+  });
+
+  test('answers to the nearest Telematics Reading even past a captured reading in between', () => {
+    // John Deere said 1200 at 07:00; a Foreman's 1100 at 07:30 was left Disputed; a later 1150 is above that reading.
+    const reported = reading('deere', 1200, new Date('2026-10-09T07:00:00Z'), 'telematics');
+    const disputed = reading('human', 1100, new Date('2026-10-09T07:30:00Z'), 'manual');
+    expect(
+      judgeCapture(
+        world({ latest: { id: 'human', value: 1100 }, previous: disputed, previousTelematics: reported }),
+        capture({ value: 1150 }),
+      ),
+    ).toMatchObject({
+      ok: false,
+      rule: 'contradicts-telematics',
+      reason: 'reading.below_latest',
+      message: `John Deere reported ${formatHours(1200)} at ${formatDate(reported.capturedAt, 'medium')}. Check the time or the value.`,
+    });
+    const later = reading('deere-later', 1300, now, 'telematics');
+    expect(
+      judgeCapture(
+        world({
+          latest: { id: 'deere-later', value: 1300 },
+          previous: disputed,
+          next: reading('human-later', 1250, new Date('2026-10-09T07:45:00Z'), 'manual'),
+          nextTelematics: later,
+        }),
+        capture({ value: 1310, readAt: new Date('2026-10-09T07:40:00Z') }),
+      ),
+    ).toMatchObject({ rule: 'above-next', reason: 'reading.above_next' });
   });
 
   test('judges in the stated order', () => {

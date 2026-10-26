@@ -4,9 +4,13 @@ import {
   type JobReadingAttentionKind,
   type NeedsALookLevel,
   type ReadingExceptionType,
+  type ReadingMethod,
   type ReadingRole,
   type ReadingVerification,
+  type TelematicsProvider,
 } from '@pkg/schema/contracting';
+import { formatDate } from '../formatting/date.js';
+import { formatHours } from '../formatting/number.js';
 import {
   aiVerificationLevel,
   assignmentAttentionKindLevels,
@@ -28,6 +32,23 @@ export const AI_VERDICT_POLL_LIMIT_MS = 120_000;
 
 /** The stamp on a reading captured without a photo. */
 export const MISSING_PHOTO_EVIDENCE = 'Missing Photo Evidence';
+
+export const telematicsProviderLabels: Record<TelematicsProvider, string> = { 'john-deere': 'John Deere' };
+
+/** What follows a reading on a line when its source is a machine's telematics: `' · John Deere'`, else nothing. */
+export const readingProviderSuffix = (provider: TelematicsProvider | null): string =>
+  provider ? ` · ${telematicsProviderLabels[provider]}` : '';
+
+/** What a ledger row says about its evidence: the provider for a Telematics Reading, which has no photo to miss. */
+export const readingEvidenceCaption = (reading: {
+  telematicsProvider: TelematicsProvider | null;
+  photoBacked: boolean;
+}): string =>
+  reading.telematicsProvider
+    ? telematicsProviderLabels[reading.telematicsProvider]
+    : reading.photoBacked
+      ? 'Photo-backed'
+      : MISSING_PHOTO_EVIDENCE;
 
 export const readingExceptionTypeLabels = {
   'ai-flagged': 'AI flagged',
@@ -135,6 +156,31 @@ export function meterDisagreementHint({
     : null;
 }
 
+/** Why a captured reading is Disputed against a Telematics Reading. */
+export const telematicsDisputeReason = (reported: { value: number; capturedAt: Date }) =>
+  `John Deere reported ${formatHours(reported.value)} at ${formatDate(reported.capturedAt, 'medium')}.`;
+
+export type SequencedReading = { id: string; method: ReadingMethod; value: number; capturedAt: Date; sequence: number };
+
+/**
+ * The Telematics Reading a reading is out of sequence with, or null: one earlier in the ledger (Read At, then
+ * acceptance) that reads higher, or one later that reads lower. Telematics Readings are never out of sequence.
+ */
+export function contradictingTelematics(readings: readonly SequencedReading[], id: string): SequencedReading | null {
+  const reading = readings.find((candidate) => candidate.id === id);
+  if (!reading || reading.method === 'telematics') return null;
+  const order = (left: SequencedReading, right: SequencedReading) =>
+    left.capturedAt.getTime() - right.capturedAt.getTime() || left.sequence - right.sequence;
+  const contradicted = readings.filter(
+    (reported) =>
+      reported.method === 'telematics' &&
+      (order(reading, reported) < 0 ? reading.value > reported.value : reading.value < reported.value),
+  );
+  const distance = (reported: SequencedReading) =>
+    Math.abs(reported.capturedAt.getTime() - reading.capturedAt.getTime());
+  return contradicted.sort((left, right) => distance(left) - distance(right))[0] ?? null;
+}
+
 export type ReadingDisputeState = {
   disputed: boolean;
   disputeReason: string | null;
@@ -161,8 +207,12 @@ export function resolveReadingAmendment(
   if (!before) return { ok: false, reason: 'not_found' };
   const previous = readings[index - 1];
   const next = readings[index + 1];
+  // A reading John Deere contradicted is disputed with no pair: only a value back in sequence settles it.
+  const disputedTargets = new Set(readings.flatMap((reading) => reading.disputedPreviousId ?? []));
+  const standalone = (reading: AmendableReading) =>
+    reading.disputed && !reading.disputedPreviousId && !disputedTargets.has(reading.id);
   if (
-    amendment.value !== before.value &&
+    (amendment.value !== before.value || standalone(before)) &&
     ((previous && amendment.value < previous.value) || (next && amendment.value > next.value))
   )
     return { ok: false, reason: 'out_of_range' };
@@ -170,7 +220,9 @@ export function resolveReadingAmendment(
   const values = new Map(
     readings.map((reading) => [reading.id, reading.id === amendment.id ? amendment.value : reading.value]),
   );
-  const stillDisputed = new Set<string>();
+  const stillDisputed = new Set(
+    readings.filter((reading) => reading.id !== amendment.id && standalone(reading)).map((reading) => reading.id),
+  );
   const settledLinks = new Set<string>();
   for (const reading of readings) {
     if (!reading.disputedPreviousId) continue;

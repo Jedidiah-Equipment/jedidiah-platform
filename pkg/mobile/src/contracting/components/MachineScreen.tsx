@@ -1,9 +1,10 @@
 import { formatHours, getFirstName } from '@pkg/domain';
 import {
   hoursToServiceLabel,
-  MISSING_PHOTO_EVIDENCE,
   machineBusyWith,
   machineServiceBadge,
+  readingEvidenceCaption,
+  readingProviderSuffix,
   readingRoleLabels,
   serviceDueNeedsAttention,
   serviceDueStatusColorClassNames,
@@ -91,7 +92,7 @@ function ReadingCard({ reading }: { reading: FieldReading }) {
       </Text>
       <DateText className="text-sm text-muted-foreground" date={reading.capturedAt} format="medium" />
       <Text className="text-sm text-muted-foreground">
-        {reading.photoBacked ? 'Photo-backed' : MISSING_PHOTO_EVIDENCE}
+        {readingEvidenceCaption(reading)}
         {reading.disputed ? ' · Disputed' : ''}
       </Text>
     </View>
@@ -228,6 +229,7 @@ export default function MachineScreen() {
               <Text className="text-sm text-muted-foreground">
                 Read{' '}
                 <DateText className="text-sm text-muted-foreground" date={machine.latestReadingAt} format="medium" />
+                {readingProviderSuffix(machine.latestReadingProvider)}
               </Text>
             ) : null}
           </View>

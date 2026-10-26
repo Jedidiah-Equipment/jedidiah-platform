@@ -82,3 +82,19 @@ export const JohnDeereLinkCreateInput = z.object({ machineId: UUID, equipmentId:
 export type JohnDeereLinkCreateInput = z.infer<typeof JohnDeereLinkCreateInput>;
 export const JohnDeereLinkRemoveInput = z.object({ id: UUID }).strict();
 export type JohnDeereLinkRemoveInput = z.infer<typeof JohnDeereLinkRemoveInput>;
+
+/** What one run of the hourly poll did, as Refresh now reports it. `skipped` is set when the run never started. */
+export const JohnDeerePollSummary = z.object({
+  skipped: z.enum(['not-connected', 'no-links']).nullable(),
+  /** Links asked for their engine hours. */
+  polled: z.number().int(),
+  stored: z.number().int(),
+  moved: z.number().int(),
+  unchanged: z.number().int(),
+  lost: z.number().int(),
+  /** Links that failed this run, each with its error kept on the Link. */
+  errors: z.number().int(),
+  /** The error that ended the run early, when one did. */
+  endedBy: z.string().nullable(),
+});
+export type JohnDeerePollSummary = z.infer<typeof JohnDeerePollSummary>;

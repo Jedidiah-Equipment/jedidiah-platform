@@ -4,7 +4,13 @@ import { DateIso } from '../../common/date.js';
 import { CursorQueryInput, createCursorQueryResult } from '../../common/pagination.js';
 import { UUID } from '../../common/uuid.js';
 import { CategoryColour, CategoryIconKey } from '../fleet/fleet.js';
-import { readingExceptionTypes, readingMethods, readingRoles, readingVerifications } from './reading-enums.js';
+import {
+  readingExceptionTypes,
+  readingMethods,
+  readingRoles,
+  readingVerifications,
+  telematicsProviders,
+} from './reading-enums.js';
 import { ReadingValue } from './reading-value.js';
 
 export { ReadingValue };
@@ -98,8 +104,10 @@ export const HourReading = z.object({
   role: z.enum(readingRoles),
   value: ReadingValue,
   capturedAt: DateIso,
-  capturedByUserId: AuthId,
+  /** Null for a Telematics Reading: nobody captured it. */
+  capturedByUserId: AuthId.nullable(),
   method: z.enum(readingMethods),
+  telematicsProvider: z.enum(telematicsProviders).nullable(),
   comment: z.string().nullable(),
   photo: z
     .object({ byteSize: z.number(), contentType: z.string(), storageKey: z.string(), updatedAt: z.string() })
@@ -132,7 +140,13 @@ export const ReadingException = HourReading.extend({
 export type ReadingException = z.infer<typeof ReadingException>;
 
 /** The Machine's latest reading, the one a capture is judged against. */
-export const LatestReading = HourReading.pick({ id: true, role: true, value: true, capturedAt: true });
+export const LatestReading = HourReading.pick({
+  id: true,
+  role: true,
+  value: true,
+  capturedAt: true,
+  telematicsProvider: true,
+});
 export type LatestReading = z.infer<typeof LatestReading>;
 
 export const FieldReading = HourReading.pick({
@@ -142,6 +156,7 @@ export const FieldReading = HourReading.pick({
   value: true,
   capturedAt: true,
   disputed: true,
+  telematicsProvider: true,
 }).extend({ photoBacked: z.boolean() });
 export type FieldReading = z.infer<typeof FieldReading>;
 /** One page of a Machine's Hour Readings, newest first, for the phone's Readings tab. */

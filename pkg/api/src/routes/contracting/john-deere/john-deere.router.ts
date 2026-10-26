@@ -1,6 +1,7 @@
 import {
   type JohnDeereConnectionService,
   type JohnDeereLinkService,
+  type JohnDeerePoller,
   NOT_CONNECTED,
   notConfigured,
 } from '@pkg/integrations/contracting';
@@ -13,7 +14,11 @@ import { mapCoreErrors } from '../../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../../trpc/init.js';
 import { johnDeereErrorFamily } from '../contracting-error-families.js';
 
-export type JohnDeereDependencies = { connection: JohnDeereConnectionService; links: JohnDeereLinkService };
+export type JohnDeereDependencies = {
+  connection: JohnDeereConnectionService;
+  links: JohnDeereLinkService;
+  poller: JohnDeerePoller;
+};
 
 const settingsProcedure = authorizedProcedure('contracting_settings:update');
 const machineProcedure = authorizedProcedure('contracting_machine:update');
@@ -40,6 +45,9 @@ export function createContractingJohnDeereRouter(deps: JohnDeereDependencies | n
     disconnect: settingsProcedure.mutation(({ ctx }) =>
       run(({ connection }) => connection.disconnect({ actorUserId: ctx.session.user.id })),
     ),
+    poll: router({
+      now: settingsProcedure.mutation(() => run(({ poller }) => poller.runNow())),
+    }),
     equipment: router({
       list: settingsProcedure.query(() => run(({ links }) => links.listUnlinkedMachines())),
       refresh: settingsProcedure.mutation(() => run(({ links }) => links.refresh())),

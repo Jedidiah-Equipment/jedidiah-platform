@@ -2,7 +2,11 @@
 export const readingRoles = ['baseline', 'arrival', 'departure', 'spot'] as const;
 export type ReadingRole = (typeof readingRoles)[number];
 export const readingCaptureRoles = ['baseline', 'spot'] as const;
-export const readingMethods = ['photo', 'manual'] as const;
+export const readingMethods = ['photo', 'manual', 'telematics'] as const;
+export type ReadingMethod = (typeof readingMethods)[number];
+/** Who a Telematics Reading's hours came from. */
+export const telematicsProviders = ['john-deere'] as const;
+export type TelematicsProvider = (typeof telematicsProviders)[number];
 export const readingVerifications = ['pending', 'agrees', 'disagrees', 'low-confidence', 'not-applicable'] as const;
 export type ReadingVerification = (typeof readingVerifications)[number];
 /** An unreviewed reading with one of these verdicts is AI-flagged: the AI could not confirm the typed value. */

@@ -72,6 +72,7 @@ test('foremen can find active Machines and read field history without fleet mana
       currentDriverName: null,
       serialNumber: null,
       latestReadingHours: 100,
+      latestReadingProvider: null,
       latestReadingAt: expect.any(String),
       serviceIntervalHours: null,
       nextServiceDueHours: null,
@@ -87,6 +88,7 @@ test('foremen can find active Machines and read field history without fleet mana
     role: 'spot',
     value: 100,
     capturedAt: '2026-09-08T08:00:00.000Z',
+    telematicsProvider: null,
   });
   await expect(foreman.contractingFleet.machines.list({})).rejects.toMatchObject({ code: 'FORBIDDEN' });
   await expect(context.createCaller(mockSession('admin')).contractingReadings.fieldMachines()).rejects.toMatchObject({

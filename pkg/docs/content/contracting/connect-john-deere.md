@@ -24,6 +24,14 @@ A John Deere Link pairs one Machine with one machine in the organization.
 3. Compare the two meters side by side: John Deere's last reported hours beside the Machine's latest reading and its Read At. Link only when the two meters agree for the time between them.
 4. Choose **Link**. The machine moves to **Linked Machines**, and its PIN becomes the Machine's serial number. A PIN another Machine already holds is refused.
 
+## Refresh now
+
+Jedidiah reads each linked Machine's hours from John Deere every hour; [how John Deere readings work](./john-deere-readings) explains what lands on the Machine's readings.
+
+1. On a **Connected** tab, choose **Refresh now** to read John Deere straight away instead of waiting for the hour.
+2. Read the message that follows. A run John Deere cut short says why, and the Machines it did not reach are read in the next hour.
+3. Under **Linked Machines**, check any row that reads **Lost**: John Deere no longer lists that machine. It clears when John Deere lists it again.
+
 ## Unlink a Machine
 
 1. Under **Linked Machines**, choose **Unlink** on the Machine's row and confirm.

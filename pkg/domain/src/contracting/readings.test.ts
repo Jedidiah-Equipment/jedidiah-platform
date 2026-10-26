@@ -2,15 +2,18 @@ import { describe, expect, it } from 'vitest';
 import {
   type AmendableReading,
   amendmentSettledFinding,
+  contradictingTelematics,
   type ReadingAttentionFacts,
   readingAttention,
   readingAttentionKinds,
+  readingEvidenceCaption,
   readingExceptionTypes,
   readingNeedsALook,
   readingNeedsALookLevel,
   readingPhotoPath,
   readingVerification,
   resolveReadingAmendment,
+  type SequencedReading,
   shownReadingAttention,
 } from './readings.js';
 
@@ -28,7 +31,71 @@ const disputedPair = (): AmendableReading[] => [
   clean('r3', 130),
 ];
 
+describe('readingEvidenceCaption', () => {
+  it('names John Deere for a telematics row and never stamps it as missing a photo', () => {
+    expect(readingEvidenceCaption({ telematicsProvider: 'john-deere', photoBacked: false })).toBe('John Deere');
+    expect(readingEvidenceCaption({ telematicsProvider: null, photoBacked: true })).toBe('Photo-backed');
+    expect(readingEvidenceCaption({ telematicsProvider: null, photoBacked: false })).toBe('Missing Photo Evidence');
+  });
+});
+
+describe('contradictingTelematics', () => {
+  const at = (hour: number) => new Date(`2026-06-03T${String(hour).padStart(2, '0')}:00:00Z`);
+  const ledger = (
+    id: string,
+    sequence: number,
+    hour: number,
+    value: number,
+    method: SequencedReading['method'] = 'manual',
+  ) => ({ id, sequence, capturedAt: at(hour), value, method }) satisfies SequencedReading;
+  const deere = ledger('deere', 2, 9, 1000, 'telematics');
+
+  it('finds the report a captured reading sits out of sequence with, on either side', () => {
+    expect(contradictingTelematics([ledger('early', 1, 6, 1010), deere], 'early')).toEqual(deere);
+    expect(contradictingTelematics([deere, ledger('late', 3, 12, 990)], 'late')).toEqual(deere);
+  });
+
+  it('is silent for a reading in sequence and for a Telematics Reading itself', () => {
+    const readings = [ledger('early', 1, 6, 990), deere, ledger('late', 3, 12, 1010)];
+    expect(contradictingTelematics(readings, 'early')).toBeNull();
+    expect(contradictingTelematics(readings, 'late')).toBeNull();
+    expect(contradictingTelematics(readings, 'deere')).toBeNull();
+  });
+
+  it('breaks a Read At tie by acceptance order', () => {
+    expect(contradictingTelematics([ledger('same', 1, 9, 1010), deere], 'same')).toEqual(deere);
+    expect(contradictingTelematics([deere, ledger('same', 3, 9, 1010)], 'same')).toBeNull();
+  });
+});
+
 describe('resolveReadingAmendment', () => {
+  // A captured reading John Deere contradicted is disputed on its own, with no pair.
+  const contradicted = (): AmendableReading[] => [
+    clean('r0', 100),
+    { ...clean('r1', 90), disputed: true, disputeReason: 'John Deere reported 100.0 h at 3 Jun 2026, 14:05.' },
+    clean('r2', 120),
+    { ...clean('r3', 80), disputed: true, disputeReason: 'John Deere reported 130.0 h at 4 Jun 2026, 14:05.' },
+  ];
+
+  it('settles a reading John Deere contradicted only when its value is back in sequence', () => {
+    expect(resolveReadingAmendment(contradicted(), { id: 'r1', value: 90 })).toEqual({
+      ok: false,
+      reason: 'out_of_range',
+    });
+    expect(resolveReadingAmendment(contradicted(), { id: 'r1', value: 110 })).toEqual({
+      ok: true,
+      changes: [{ id: 'r1', disputed: false, disputeReason: null, disputedPreviousId: null }],
+    });
+  });
+
+  it('keeps every other contradicted reading disputed when a different reading is amended', () => {
+    const readings = [...contradicted(), clean('r4', 140)];
+    expect(resolveReadingAmendment(readings, { id: 'r4', value: 150 })).toEqual({
+      ok: true,
+      changes: [{ id: 'r4', disputed: false, disputeReason: null, disputedPreviousId: null }],
+    });
+  });
+
   it('refuses unknown readings and values outside the neighbouring readings', () => {
     expect(resolveReadingAmendment(disputedPair(), { id: 'missing', value: 1 })).toEqual({
       ok: false,

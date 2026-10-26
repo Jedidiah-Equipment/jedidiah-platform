@@ -1,5 +1,10 @@
 import { formatDate, formatHours, getFirstName, type StatusBadgeColor } from '@pkg/domain';
-import { breakdownStatusLabels, breakdownUrgencyLabels, readingRoleLabels } from '@pkg/domain/contracting';
+import {
+  breakdownStatusLabels,
+  breakdownUrgencyLabels,
+  readingEvidenceCaption,
+  readingRoleLabels,
+} from '@pkg/domain/contracting';
 import {
   type BreakdownStatus,
   type BreakdownUrgency,
@@ -114,7 +119,10 @@ export function FleetHistoryCard({
           detail: reading.jobNumber,
           readingRole: reading.role,
           opens: reading.jobNumber ? { to: 'job' as const, jobNumber: reading.jobNumber } : null,
-          evidence: readingEvidence({ ...reading, photoBacked: reading.photo !== null }).evidenceLabel,
+          // A Telematics Reading has no photo to miss: it names who reported it instead.
+          evidence: reading.telematicsProvider
+            ? readingEvidenceCaption({ ...reading, photoBacked: false })
+            : readingEvidence({ ...reading, photoBacked: reading.photo !== null }).evidenceLabel,
         })),
         ...(breakdowns.data?.items ?? []).map((breakdown) => ({
           id: breakdown.id,

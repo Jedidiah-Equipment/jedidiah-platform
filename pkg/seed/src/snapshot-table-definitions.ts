@@ -424,7 +424,9 @@ export const snapshotTableDefinitions = [
     tableName: 'contracting_hour_reading',
     timestampColumns: ['amendedAt', 'capturedAt', 'createdAt', 'evidenceReviewedAt'],
     optionalReadTable: true,
-    optionalReadColumns: ['createdAt'],
+    optionalReadColumns: ['telematicsLinkId', 'telematicsProvider', 'createdAt'],
+    // John Deere Links are not snapshotted, so a Telematics Reading, which names its Link, is left out.
+    unsnapshottedParentColumns: ['telematicsLinkId'],
     // A source that predates acceptance stamps accepted each reading at its Read At, as the migration did.
     seedRowDefaults: (row) => ({ createdAt: row.capturedAt }),
     readOrderColumn: 'sequence',
@@ -437,6 +439,7 @@ export const snapshotTableDefinitions = [
       'capturedAt',
       'capturedByUserId',
       'method',
+      'telematicsProvider',
       'comment',
       'photo',
       'aiValue',

@@ -6,6 +6,7 @@ import {
   isBackdated,
   type ReadAtChoice,
   readAtAfterPhoto,
+  readingProviderSuffix,
 } from '@pkg/domain/contracting';
 import { ReadingComment, type ReadingErrorCode, type ReadingRole } from '@pkg/schema/contracting';
 import { useQueryClient } from '@tanstack/react-query';
@@ -33,7 +34,11 @@ import { useTRPC } from '@/lib/trpc';
 import { useBusyAction } from '@/lib/use-busy-action';
 
 /** Refusals that mean the ledger moved under the form: its latest reading must be fetched again. */
-const LEDGER_MOVED = new Set<string>(['reading.below_latest', 'reading.previous_changed'] satisfies ReadingErrorCode[]);
+const LEDGER_MOVED = new Set<string>([
+  'reading.below_latest',
+  'reading.above_next',
+  'reading.previous_changed',
+] satisfies ReadingErrorCode[]);
 
 type CaptureTarget =
   | { kind: 'machine'; machineId: string }
@@ -238,6 +243,7 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
                 <Text className="text-xs text-primary" weight="semibold">
                   {formatHours(latest.value)}
                 </Text>
+                {readingProviderSuffix(latest.telematicsProvider)}
               </Text>
             ) : null}
           </View>

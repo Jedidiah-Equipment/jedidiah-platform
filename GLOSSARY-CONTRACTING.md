@@ -162,7 +162,8 @@ context's `JOB-xxxxx`.
 
 **Hour Reading** is one captured value of a Machine's hour meter: the value, when the meter was
 read (its **Read At** time) and by whom, and its evidence. Whoever captures it types the value —
-the Foreman in the field, an administrator for a Baseline Reading; a photo is attached whenever
+the Foreman in the field, an administrator for a Baseline Reading — or the Machine's telematics reports
+it (a Telematics Reading); a photo is attached whenever
 the camera allows, taken on the spot or chosen from the phone's gallery, and a reading without
 one is stamped **Missing Photo Evidence**. Read At defaults to when a chosen photo says it was
 taken, and otherwise to the moment of capture — a photo with no usable time, or one whose time
@@ -184,7 +185,8 @@ that fails leaves the reading pending until Re-verify or the API's next start-up
 **photo-backed** when it
 carries a photo and **AI-verified** when the server's read agrees with the typed value.
 Disagreements, low confidence, and disputes surface to management as **Reading Exceptions** — a
-reading is **Disputed** when it belongs to an unresolved out-of-sequence pair and **AI flagged**
+reading is **Disputed** when it belongs to an unresolved out-of-sequence pair or a Telematics Reading
+contradicts it, and **AI flagged**
 when its verification is pending, disagrees, or has low confidence and has not been reviewed. Only
 a disagreement or low confidence puts an AI flagged reading on the list: a pending verification is
 only a notice. A reading can carry both exception types. Exceptions never return to the Foreman, who is never
@@ -211,6 +213,14 @@ never get one: hours are captured on site, with a photo, the first time the app 
 and that first reading of whatever role opens its ledger. Hours are never collected from paper,
 stickers or memory ahead of use, because a value taken off site has no known currency. Until a
 Machine has a reading nothing derives for it — no Hour Gap, no Travel Hours, no Service Due Soon.
+
+**Telematics Reading** is an Hour Reading the Machine's own telematics reported rather than a person
+captured: role spot, its Read At the time the machine reported, its evidence the manufacturer's report,
+captured by nobody (the System). It is beyond dispute — never Disputed, never AI flagged, never Missing
+Photo Evidence, never amended — and a captured reading it contradicts is the one that becomes Disputed for
+management, who amend it back into sequence. One may move its Read At forward when the machine reports the
+same value again, so the ledger says the hours stand as of the latest report. _Avoid_: telemetry reading,
+automatic reading, JDLink reading, API reading.
 
 **Hour Gap** is the derived interval between one Assignment's departure reading and the machine's
 next arrival reading; spot readings never bound a gap, and a Machine's first arrival has no
@@ -281,9 +291,9 @@ Service Due** — the number the mechanic prints on the dash sticker at that mom
 optional **Service Interval** only pre-fills it from the reading at service. **Service Due Soon** is the derived flag raised when the Machine's latest
 known Hour Reading comes within the Machine's **Service Alert Hours** of Next Service Due — its own value, or the
 **Service Due Soon threshold** in Settings (100 h unless changed) when it has none — kept honest mid-job by spot
-readings from the field. It notifies the workshop-manager, contracting-manager, contracting-admin and super-admin
+readings from the field and by Telematics Readings. It notifies the workshop-manager, contracting-manager, contracting-admin and super-admin
 roles by push notification once, at the
-capture that first brings the reading within the threshold; closing a Service Record moves the
+capture or Telematics Reading that first brings the reading within the threshold; closing a Service Record moves the
 due point on and re-arms it.
 
 **Due for Service** is a derived state: a Machine whose Service Due Soon status is due soon or overdue and

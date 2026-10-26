@@ -1282,6 +1282,13 @@
       "when": 1793004606282,
       "tag": "0182_john_deere_link",
       "breakpoints": true
+    },
+    {
+      "idx": 183,
+      "version": "7",
+      "when": 1793007958246,
+      "tag": "0183_telematics_reading",
+      "breakpoints": true
     }
   ]
 }

@@ -34,6 +34,9 @@ export type StintHours = {
 
 export const round1 = (value: number) => Math.round(value * 10) / 10;
 
+/** Hours as the dash shows them: tenths, truncated, never rounded up past what the meter has reached. */
+export const floorToTenth = (value: number) => Math.floor(value * 10) / 10;
+
 function nonnegativeDifference(later: number, earlier: number) {
   const difference = round1(later - earlier);
   return difference < 0 ? null : difference;

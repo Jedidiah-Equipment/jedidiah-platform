@@ -6,6 +6,7 @@ import {
   JohnDeereClient,
   JohnDeereConnectionService,
   JohnDeereLinkService,
+  JohnDeerePoller,
   NOT_CONNECTED,
 } from '@pkg/integrations/contracting';
 import { expect } from 'vitest';
@@ -52,7 +53,17 @@ const test = createTester(async ({ db }) => {
     now: () => new Date(),
   });
   const links = new JohnDeereLinkService({ db, client, connection, now: () => new Date() });
-  return { johnDeere: { connection, links }, db };
+  const poller = new JohnDeerePoller({
+    db,
+    client,
+    connection,
+    links,
+    push: { schedule: () => {} },
+    logger: { trace: () => {}, debug: () => {}, info: () => {}, warn: () => {}, error: () => {} },
+    now: () => new Date(),
+    intervalMs: 3_600_000,
+  });
+  return { johnDeere: { connection, links, poller }, db };
 });
 
 const connect = (db: Db) =>
@@ -121,6 +132,7 @@ test('needs contracting_settings:update to read and Refresh, contracting_machine
     await expect(johnDeere.equipment.list()).rejects.toMatchObject({ code: 'FORBIDDEN' });
     await expect(johnDeere.equipment.refresh()).rejects.toMatchObject({ code: 'FORBIDDEN' });
     await expect(johnDeere.links.list()).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(johnDeere.poll.now()).rejects.toMatchObject({ code: 'FORBIDDEN' });
   }
   // The manager maintains the fleet, so reaches the service, which finds no such Link.
   const manager = createCaller(contractingSession('contracting-manager'), { contracting: { johnDeere: deps } });
@@ -178,4 +190,41 @@ test('a Link fills the Machine wire with its serial number and John Deere machin
     serialNumber: 'PIN-1',
     johnDeere: null,
   });
+});
+
+test('Refresh now runs the poll and answers what it did', async ({
+  context: { createCaller, johnDeere: deps, db },
+}) => {
+  const caller = createCaller(contractingSession('contracting-admin'), { contracting: { johnDeere: deps } });
+  expect(await caller.contractingJohnDeere.poll.now()).toEqual({
+    skipped: 'not-connected',
+    polled: 0,
+    stored: 0,
+    moved: 0,
+    unchanged: 0,
+    lost: 0,
+    errors: 0,
+    endedBy: null,
+  });
+
+  await connect(db);
+  const category = await caller.contractingFleet.categories.create({ name: 'Tractors', kind: 'machine' });
+  const machine = await caller.contractingFleet.machines.create({
+    code: 'T01',
+    make: 'John Deere',
+    model: '8R',
+    categoryId: category.id,
+  });
+  await caller.contractingJohnDeere.links.create({ machineId: machine.id, equipmentId: 'eq-1' });
+  expect(await caller.contractingJohnDeere.poll.now()).toMatchObject({ polled: 1, stored: 1, endedBy: null });
+  expect(await caller.contractingJohnDeere.poll.now()).toMatchObject({ polled: 1, stored: 0, unchanged: 1 });
+  expect(await caller.contractingFleet.machines.get({ id: machine.id })).toMatchObject({
+    latestReadingHours: 812.3,
+    johnDeere: { lastValue: 812.3, lastReportTime: '2026-10-26T06:00:00+00:00' },
+  });
+});
+
+test('Refresh now reads Not configured without John Deere keys', async ({ context }) => {
+  const johnDeere = context.createCaller(mockSession('super-admin')).contractingJohnDeere;
+  await expect(johnDeere.poll.now()).rejects.toMatchObject({ code: 'PRECONDITION_FAILED' });
 });

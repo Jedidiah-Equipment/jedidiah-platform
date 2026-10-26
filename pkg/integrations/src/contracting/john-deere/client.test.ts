@@ -129,6 +129,7 @@ describe('JohnDeereClient', () => {
         member: true,
         connectionsUrl: null,
         manageConnectionsUrl: 'https://connections.example/manage',
+        linkRels: ['manage_connections'],
       },
       {
         id: '99',
@@ -137,10 +138,12 @@ describe('JohnDeereClient', () => {
         member: false,
         connectionsUrl: 'https://connections.example/select',
         manageConnectionsUrl: null,
+        linkRels: ['connections'],
       },
     ]);
+    // No showLinks filter: Deere has dropped `manage_connections` under one.
     expect(requests.map(({ url }) => url)).toEqual([
-      'https://api.example/platform/organizations?showLinks=connections,manage_connections',
+      'https://api.example/platform/organizations',
       'https://api.example/platform/organizations;start=1',
     ]);
     expect(requests[0]?.init?.headers).toEqual({

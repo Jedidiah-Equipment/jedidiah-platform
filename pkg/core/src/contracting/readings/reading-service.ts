@@ -33,7 +33,7 @@ import {
   ReadingAmendInput,
   ReadingCaptureInput,
 } from '@pkg/schema/contracting';
-import { and, asc, desc, eq, getTableColumns, gt, inArray, lte, or, sql } from 'drizzle-orm';
+import { and, asc, eq, getTableColumns, gt, inArray, lte, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { defineAuditDescriptor, recordAuditCreate } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
@@ -44,15 +44,11 @@ import { getContractingSettings } from '../settings/settings-service.js';
 import { attachReadingToStint, resolveCaptureStint } from './capture-stint.js';
 import { assertAmendReadings, ReadingError, withCaptureConstraints } from './reading-errors.js';
 import { type MeterMeasurement, measureMeterPhoto, type ReadMeterPhoto } from './reading-evidence.js';
-import { readingNeedsALookSql } from './reading-sql.js';
+import { newestFirst, oldestFirst, readingNeedsALookSql } from './reading-sql.js';
 import { readingToWire } from './reading-wire.js';
 
 const notFound = () => new ReadingError('reading.not_found', 'Hour Reading not found.');
 type Row = typeof contractingHourReadings.$inferSelect;
-
-/** Read At orders a Machine's ledger; acceptance breaks a tie. */
-const oldestFirst = [asc(contractingHourReadings.capturedAt), asc(contractingHourReadings.sequence)] as const;
-const newestFirst = [desc(contractingHourReadings.capturedAt), desc(contractingHourReadings.sequence)] as const;
 
 function withHint<T extends Row>(row: T) {
   return { ...row, aiHint: meterDisagreementHint(row) };
@@ -172,7 +168,8 @@ export async function captureReading({
         const stint = await resolveCaptureStint(tx, { actor, input });
         const readAt = new Date(input.capturedAt);
         const onMachine = eq(contractingHourReadings.machineId, input.machineId);
-        const [[latest], [previous], [next]] = await Promise.all([
+        const arrivalReadingId = input.role === 'departure' ? (stint?.stint.arrivalReadingId ?? null) : null;
+        const [[latest], [previous], [next], [lastDeparture], [stintArrival]] = await Promise.all([
           tx
             .select()
             .from(contractingHourReadings)
@@ -191,6 +188,20 @@ export async function captureReading({
             .where(and(onMachine, gt(contractingHourReadings.capturedAt, readAt)))
             .orderBy(...oldestFirst)
             .limit(1),
+          input.role === 'arrival'
+            ? tx
+                .select({ capturedAt: contractingHourReadings.capturedAt })
+                .from(contractingHourReadings)
+                .where(and(onMachine, eq(contractingHourReadings.role, 'departure')))
+                .orderBy(...newestFirst)
+                .limit(1)
+            : [],
+          arrivalReadingId
+            ? tx
+                .select({ capturedAt: contractingHourReadings.capturedAt })
+                .from(contractingHourReadings)
+                .where(eq(contractingHourReadings.id, arrivalReadingId))
+            : [],
         ]);
         const neighbours: Pick<CaptureWorld, 'latest' | 'previous' | 'next'> = {
           latest: latest ? { id: latest.id, value: latest.value } : null,
@@ -201,6 +212,8 @@ export async function captureReading({
           {
             ...neighbours,
             stint: stint ? assignmentState(stint.stint) : null,
+            stintArrivedAt: stintArrival?.capturedAt ?? null,
+            lastDepartedAt: lastDeparture?.capturedAt ?? null,
             jobVerdict: stint?.jobVerdict ?? null,
             management: hasPermission(actor, 'contracting_job:work-any'),
             mayBaseline: hasPermission(actor, 'contracting_reading:capture-baseline'),

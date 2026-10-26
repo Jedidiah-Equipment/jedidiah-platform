@@ -11,6 +11,7 @@ John Deere's Operations Center reports each linked Machine's engine hours every 
 ## Consequences
 
 - A late capture lands in time: a departure dated yesterday sits behind today's readings and moves no hour between Jobs, since an Hour Gap reads the readings its Assignments name.
+- A Machine's stints stay in time order: an arrival dated before the Machine's last departure, or a departure dated before its own arrival, is refused. Otherwise a backfilled stint would become another Job's previous departure and move hours on a Job that may already be priced or invoiced.
 - A backdated capture is bounded on both sides. Below its previous or above its next it is refused outright (`reading.below_latest`, `reading.above_next`), its sentence naming the reading it contradicts and when, because the fix is its time or its value.
 - The dispute handshake stays against the Machine's latest reading only: a capture that becomes the latest and is below it may still assert the latest is wrong.
 - Telematics Readings are beyond dispute: a capture against one on either side is refused with no dispute path, and a human reading a Telematics Reading contradicts becomes Disputed for management to amend.

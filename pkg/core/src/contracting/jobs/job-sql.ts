@@ -12,7 +12,7 @@ import { readingNeedsALookLevelSql } from '../readings/reading-sql.js';
  */
 
 /** An arrival's place in its Machine's ledger: Read At, then acceptance. */
-export type LedgerPosition = { capturedAt: SQLWrapper; sequence: SQLWrapper };
+type LedgerPosition = { capturedAt: SQLWrapper; sequence: SQLWrapper };
 
 /** The Machine's last departure before an arrival's Read At, as one column of it: where the stint's Hour Gap starts. */
 const previousDeparture = (column: 'id' | 'value', machineId: SQLWrapper, arrival: LedgerPosition) => sql`(

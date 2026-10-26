@@ -36,6 +36,10 @@ export type CaptureWorld = {
   next: CaptureNeighbour | null;
   /** The stint the capture lands on; null for a spot or baseline reading. */
   stint: AssignmentState | null;
+  /** A departure's stint arrival Read At; null otherwise. */
+  stintArrivedAt: Date | null;
+  /** The Machine's latest departure Read At, or null. */
+  lastDepartedAt: Date | null;
   /** The Job's own verdict on `capture`; null when there is no stint. */
   jobVerdict: JobActionVerdict | null;
   /** Contracting management, whose photo-less departures must say why. */
@@ -74,6 +78,8 @@ export type CaptureRule =
   | 'comment-required'
   | 'already-arrived'
   | 'not-on-site'
+  | 'departs-before-arrival'
+  | 'arrives-before-departure'
   | 'previous-changed'
   | 'above-next'
   | 'contradicts-telematics'
@@ -106,6 +112,14 @@ export const captureRefusals: Record<
   },
   'already-arrived': { code: 'reading.invalid_role', message: assignmentActionRefusal('captureArrival') },
   'not-on-site': { code: 'reading.invalid_role', message: assignmentActionRefusal('captureDeparture') },
+  'departs-before-arrival': {
+    code: 'reading.invalid_role',
+    message: 'A departure cannot be read before its arrival. Check the time.',
+  },
+  'arrives-before-departure': {
+    code: 'reading.invalid_role',
+    message: "An arrival cannot be read before the Machine's last departure. Check the time.",
+  },
   'previous-changed': {
     code: 'reading.previous_changed',
     message: 'Another reading landed first. Review the latest reading before resubmitting a dispute.',
@@ -203,6 +217,10 @@ export function judgeCapture(world: CaptureWorld, capture: CaptureAttempt): Capt
     return refuse('already-arrived');
   if (capture.role === 'departure' && (world.stint === null || !assignmentStateAllows('captureDeparture', world.stint)))
     return refuse('not-on-site');
+  // Stints stay in time order, so a backdated Read At moves no hour between Jobs.
+  const before = (at: Date | null) => at !== null && capture.readAt.getTime() < at.getTime();
+  if (capture.role === 'departure' && before(world.stintArrivedAt)) return refuse('departs-before-arrival');
+  if (capture.role === 'arrival' && before(world.lastDepartedAt)) return refuse('arrives-before-departure');
   if (
     capture.disputePrevious &&
     capture.expectedPreviousId !== undefined &&

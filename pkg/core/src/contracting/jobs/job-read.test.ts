@@ -1,3 +1,4 @@
+import type { Db } from '@pkg/db';
 import { contractingHourReadings, contractingJobs } from '@pkg/db/contracting';
 import { JobListInput } from '@pkg/schema/contracting';
 import { eq } from 'drizzle-orm';
@@ -69,58 +70,98 @@ test('judges an open Hour Gap against the current Gap Flag threshold on every re
   expect(await queue()).toEqual({ open: 0, attention: null });
 });
 
-/** A whole stint entered a day late lands in time, so the next stint's Hour Gap starts at its departure. */
-test('starts an Hour Gap at the departure before the arrival’s Read At, even one entered after it', async ({
-  context,
-}) => {
-  const { db, excavator } = context;
-  const stintOn = async (readings: ReadonlyArray<[number, string]>) => {
-    const job = await createJob({
+const stintOn = async (
+  { db, excavator, customer, farm, workType }: { db: Db } & Awaited<ReturnType<typeof seedJobFixtures>>,
+  readings: ReadonlyArray<[number, string]>,
+) => {
+  const job = await createJob({
+    db,
+    actor: admin,
+    input: {
+      customerId: customer.id,
+      farmId: farm.id,
+      workTypeId: workType.id,
+      description: null,
+      foremanUserId: foremanId,
+    },
+  });
+  const planned = await plannedStint(db, admin, { jobId: job.id, machineId: excavator.id, implementId: null });
+  const readingIds: string[] = [];
+  for (const [index, [value, capturedAt]] of readings.entries()) {
+    const { reading } = await captureReading({
       db,
       actor: admin,
       input: {
-        customerId: context.customer.id,
-        farmId: context.farm.id,
-        workTypeId: context.workType.id,
-        description: null,
-        foremanUserId: foremanId,
+        machineId: excavator.id,
+        assignmentId: planned.id,
+        role: index === 0 ? 'arrival' : 'departure',
+        value,
+        capturedAt,
+        disputePrevious: false,
+        comment: 'Photo unavailable',
       },
     });
-    const planned = await plannedStint(db, admin, { jobId: job.id, machineId: excavator.id, implementId: null });
-    for (const [index, [value, capturedAt]] of readings.entries())
-      await captureReading({
-        db,
-        actor: foreman,
-        input: {
-          machineId: excavator.id,
-          assignmentId: planned.id,
-          role: index === 0 ? 'arrival' : 'departure',
-          value,
-          capturedAt,
-          disputePrevious: false,
-        },
-      });
-    return job;
-  };
-  await stintOn([
+    readingIds.push(reading.id);
+  }
+  return { job, readingIds };
+};
+
+const gapOf = async (db: Db, jobId: string) => {
+  const [stint] = (await getJob({ db, id: jobId })).assignments;
+  return { from: stint?.previousDeparture?.value, gapHours: stint?.gapHours, gapFlag: stint?.gapFlag };
+};
+
+test('refuses to backfill a stint behind another Job’s, so no Hour Gap moves', async ({ context }) => {
+  const { db } = context;
+  await stintOn(context, [
     [100, '2026-09-01T08:00:00Z'],
     [110, '2026-09-01T15:00:00Z'],
   ]);
-  const later = await stintOn([
+  const { job: later } = await stintOn(context, [
     [130, '2026-09-03T08:00:00Z'],
     [140, '2026-09-03T15:00:00Z'],
   ]);
-  const late = await stintOn([
-    [115, '2026-09-02T08:00:00Z'],
-    [127, '2026-09-02T15:00:00Z'],
-  ]);
+  await expect(stintOn(context, [[115, '2026-09-02T08:00:00Z']])).rejects.toMatchObject({
+    code: 'reading.invalid_role',
+    message: "An arrival cannot be read before the Machine's last departure. Check the time.",
+  });
+  expect(await gapOf(db, later.id)).toEqual({ from: 110, gapHours: 20, gapFlag: true });
+  await expect(
+    stintOn(context, [
+      [140, '2026-09-04T08:00:00Z'],
+      [140, '2026-09-04T07:00:00Z'],
+    ]),
+  ).rejects.toMatchObject({ message: 'A departure cannot be read before its arrival. Check the time.' });
+});
 
-  const gapOf = async (jobId: string) => {
-    const [stint] = (await getJob({ db, id: jobId })).assignments;
-    return { from: stint?.previousDeparture?.value, gapHours: stint?.gapHours, gapFlag: stint?.gapFlag };
-  };
-  expect(await gapOf(later.id)).toEqual({ from: 127, gapHours: 3, gapFlag: false });
-  expect(await gapOf(late.id)).toEqual({ from: 110, gapHours: 5, gapFlag: true });
+/** Readings from before Read At ordered the ledger may sit out of insertion order; the gap reads them in time. */
+test('starts an Hour Gap at the departure before the arrival’s Read At, whatever order the rows arrived in', async ({
+  context,
+}) => {
+  const { db } = context;
+  await stintOn(context, [
+    [100, '2026-09-01T08:00:00Z'],
+    [110, '2026-09-01T15:00:00Z'],
+  ]);
+  const { job: later } = await stintOn(context, [
+    [130, '2026-09-03T08:00:00Z'],
+    [140, '2026-09-03T15:00:00Z'],
+  ]);
+  const { job: late, readingIds } = await stintOn(context, [
+    [150, '2026-09-04T08:00:00Z'],
+    [160, '2026-09-04T15:00:00Z'],
+  ]);
+  for (const [id, value, capturedAt] of [
+    [readingIds[0], 115, '2026-09-02T08:00:00Z'],
+    [readingIds[1], 127, '2026-09-02T15:00:00Z'],
+  ] as const)
+    await db
+      .update(contractingHourReadings)
+      .set({ value, capturedAt: new Date(capturedAt) })
+      .where(eq(contractingHourReadings.id, id ?? ''));
+
+  expect(await gapOf(db, later.id)).toEqual({ from: 127, gapHours: 3, gapFlag: false });
+  expect(await gapOf(db, late.id)).toEqual({ from: 110, gapHours: 5, gapFlag: true });
   const openGapFlags = async (jobId: string) =>
     (await listJobs({ db, actor: admin, input: JobListInput.parse({ queues: ['looks-finished'] }) })).items.find(
       (item) => item.id === jobId,

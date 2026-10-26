@@ -40,6 +40,8 @@ const world = (overrides: Partial<CaptureWorld> = {}): CaptureWorld => ({
   previous: reading('latest', 100, anHourAgo),
   next: null,
   stint: 'planned',
+  stintArrivedAt: null,
+  lastDepartedAt: null,
   jobVerdict: { allowed: true },
   management: false,
   mayBaseline: false,
@@ -73,6 +75,8 @@ describe('judgeCapture', () => {
     ['comment-required', { management: true, hasPhoto: false, stint: 'on-site' }, { role: 'departure' }],
     ['already-arrived', { stint: 'on-site' }, {}],
     ['not-on-site', { stint: 'planned' }, { role: 'departure' }],
+    ['departs-before-arrival', { stint: 'on-site', stintArrivedAt: now }, { role: 'departure', readAt: anHourAgo }],
+    ['arrives-before-departure', { lastDepartedAt: now }, { readAt: anHourAgo }],
     ['previous-changed', {}, { value: 90, disputePrevious: true, expectedPreviousId: 'older' }],
     ['below-latest', {}, { value: 90 }],
     ['baseline-exists', { mayBaseline: true, stint: null }, { role: 'baseline' }],
@@ -126,9 +130,14 @@ describe('judgeCapture', () => {
 
   describe('against its time neighbours', () => {
     const yesterday = (hour: number) => new Date(`2026-10-08T${String(hour).padStart(2, '0')}:00:00Z`);
-    const departedYesterday = reading('yesterday', 999, yesterday(15));
+    const arrivedYesterday = reading('yesterday', 999, yesterday(15));
     const today = reading('today', 1001, new Date('2026-10-09T06:00:00Z'));
-    const between = world({ latest: { id: 'today', value: 1001 }, previous: departedYesterday, next: today });
+    const between = world({
+      latest: { id: 'today', value: 1001 },
+      previous: arrivedYesterday,
+      next: today,
+      stintArrivedAt: arrivedYesterday.capturedAt,
+    });
     const backdated = (value: number, overrides: Partial<CaptureAttempt> = {}) =>
       capture({ role: 'departure', value, readAt: yesterday(16), ...overrides });
 
@@ -165,7 +174,7 @@ describe('judgeCapture', () => {
         ok: false,
         rule: 'below-previous',
         reason: 'reading.below_latest',
-        message: `A reading of ${formatHours(999)} at ${formatDate(departedYesterday.capturedAt, 'medium')} is higher. Check the time or the value.`,
+        message: `A reading of ${formatHours(999)} at ${formatDate(arrivedYesterday.capturedAt, 'medium')} is higher. Check the time or the value.`,
       });
     });
 
@@ -252,6 +261,14 @@ describe('captureRefusals', () => {
       },
       'already-arrived': { code: 'reading.invalid_role', message: 'This Machine Assignment already arrived.' },
       'not-on-site': { code: 'reading.invalid_role', message: 'This Machine Assignment is not on site.' },
+      'departs-before-arrival': {
+        code: 'reading.invalid_role',
+        message: 'A departure cannot be read before its arrival. Check the time.',
+      },
+      'arrives-before-departure': {
+        code: 'reading.invalid_role',
+        message: "An arrival cannot be read before the Machine's last departure. Check the time.",
+      },
       'previous-changed': {
         code: 'reading.previous_changed',
         message: 'Another reading landed first. Review the latest reading before resubmitting a dispute.',

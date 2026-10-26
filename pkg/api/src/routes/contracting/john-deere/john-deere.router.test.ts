@@ -61,6 +61,7 @@ test('status reads every connection state', async ({ context: { createCaller, co
     status: 'connected',
     refreshTokenCiphertext: encryptSecret('refresh', tokenKey),
     organizations: [{ id: '4321', name: 'Jedidiah Boerdery' }],
+    connectedByUserId: 'test-user-id',
     connectedAt,
   });
   expect(await johnDeere.status()).toEqual({

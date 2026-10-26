@@ -62,7 +62,7 @@ function ConnectionCard({ connection }: { connection: JohnDeereConnectionView })
   return (
     <StatusCard
       title="Not connected"
-      description="Connect signs in to John Deere with the owner's login and picks the Operations Center organization whose machines report their engine hours here."
+      description="Connect signs in to John Deere with the owner's John Deere sign-in and picks the Operations Center organization whose machines report their engine hours here."
       action="Connect"
     />
   );

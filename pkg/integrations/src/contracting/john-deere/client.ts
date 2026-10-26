@@ -4,7 +4,7 @@ import { badResponse, JohnDeereError, johnDeereResponseError } from './john-deer
 export type JohnDeereClientConfig = {
   /** The Operations Center platform API, `…/platform`; the sandbox until Deere validates the application. */
   platformBaseUrl: string;
-  /** The Equipment API, `…/isg`; read from #1821 on. */
+  /** The Equipment API, `…/isg`. */
   equipmentBaseUrl: string;
   /** The OAuth authorization server, without the trailing `/v1`. */
   issuer: string;
@@ -36,6 +36,8 @@ const TokenResponse = z.object({
   refresh_token: z.string().min(1),
   expires_in: z.number().positive(),
 });
+
+const TokenRefusal = z.object({ error: z.literal('invalid_grant') });
 
 const Link = z.object({ rel: z.string(), uri: z.string() });
 const OrganizationsPage = z.object({
@@ -134,8 +136,8 @@ export class JohnDeereClient {
       }).toString(),
     });
     const body = await response.text();
-    // A spent or revoked grant answers 400 `invalid_grant`: the sign-in is gone, so it reads as a refused one.
-    if (response.status === 400)
+    // A spent or revoked grant is the only refusal a Reconnect fixes; a wrong secret or redirect is not.
+    if (response.status === 400 && TokenRefusal.safeParse(parseJsonOrNull(body)).success)
       throw new JohnDeereError('john_deere.unauthorized', 'John Deere refused the sign-in. Reconnect John Deere.');
     if (!response.ok) throw johnDeereResponseError(response, body);
     const tokens = TokenResponse.safeParse(parseJson(body));
@@ -157,10 +159,16 @@ export class JohnDeereClient {
   }
 }
 
-function parseJson(body: string): unknown {
+function parseJsonOrNull(body: string): unknown {
   try {
     return JSON.parse(body);
   } catch {
-    throw badResponse('John Deere sent a response that is not JSON.');
+    return null;
   }
+}
+
+function parseJson(body: string): unknown {
+  const parsed = parseJsonOrNull(body);
+  if (parsed === null) throw badResponse('John Deere sent a response that is not JSON.');
+  return parsed;
 }

@@ -40,7 +40,6 @@ function retryDetail(response: Response): JohnDeereErrorDetail {
   return Number.isFinite(seconds) && seconds >= 0 ? { retryAfterSeconds: seconds } : {};
 }
 
-/** The refusal a non-2xx John Deere response stands for. */
 export function johnDeereResponseError(response: Response, body: string): JohnDeereError {
   const status = response.status;
   if (status === 401) return new JohnDeereError('john_deere.unauthorized', 'John Deere refused the sign-in.');

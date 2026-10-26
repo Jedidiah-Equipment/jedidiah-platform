@@ -111,7 +111,7 @@ export class JohnDeereConnectionService {
 
   /**
    * Opens a round trip and returns where to send the browser. A connection that already holds a token keeps
-   * its status, so a Reconnect does not pause the feed before Deere answers.
+   * its status and its Connected by, so a Reconnect changes nothing until Deere answers.
    */
   async startConnect({ actorUserId }: { actorUserId: AuthId }): Promise<{ url: string }> {
     const state = `connect:${randomBytes(16).toString('hex')}`;
@@ -122,7 +122,7 @@ export class JohnDeereConnectionService {
         status: before?.refreshTokenCiphertext ? before.status : 'pending',
         pendingState: state,
         pendingStateExpiresAt: new Date(this.config.now().getTime() + STATE_LIFETIME_MS),
-        connectedByUserId: actorUserId,
+        pendingByUserId: actorUserId,
       }),
     });
     return {
@@ -155,12 +155,16 @@ export class JohnDeereConnectionService {
     const connectionsUrl =
       organizations.length === 0 ? (listings.find((listing) => listing.connectionsUrl)?.connectionsUrl ?? null) : null;
     const now = this.config.now();
+    // Still waiting on the organization picker: a Connected row stays Connected until it settles.
     const outcome: SettledPatch = connectionsUrl
-      ? { status: 'pending', pendingStateExpiresAt: new Date(now.getTime() + STATE_LIFETIME_MS) }
-      : this.settled(organizations, now);
+      ? {
+          status: opened.status === 'connected' ? 'connected' : 'pending',
+          pendingStateExpiresAt: new Date(now.getTime() + STATE_LIFETIME_MS),
+        }
+      : this.settled(organizations, opened.pendingByUserId, now);
 
     await this.write({
-      actorUserId: opened.connectedByUserId,
+      actorUserId: opened.pendingByUserId,
       set: () => ({
         refreshTokenCiphertext: encryptSecret(tokens.refreshToken, this.config.tokenKey),
         scopes: JOHN_DEERE_SCOPES,
@@ -182,8 +186,8 @@ export class JohnDeereConnectionService {
   async finishConnect(): Promise<{ status: JohnDeereConnectionStatus }> {
     const opened = await this.openRoundTrip();
     const organizations = connectedOrganizations(await this.config.client.organizations(await this.accessToken()));
-    const outcome = this.settled(organizations, this.config.now());
-    await this.write({ actorUserId: opened.connectedByUserId, set: () => outcome });
+    const outcome = this.settled(organizations, opened.pendingByUserId, this.config.now());
+    await this.write({ actorUserId: opened.pendingByUserId, set: () => outcome });
     return { status: outcome.status };
   }
 
@@ -196,6 +200,7 @@ export class JohnDeereConnectionService {
         status: 'not-connected',
         pendingState: null,
         pendingStateExpiresAt: null,
+        pendingByUserId: null,
         refreshTokenCiphertext: null,
         scopes: null,
         organizations: [],
@@ -272,11 +277,18 @@ export class JohnDeereConnectionService {
     return row;
   }
 
-  /** Closes the round trip: Connected with the organizations that granted access, else Needs reconnecting. */
-  private settled(organizations: ConnectionRow['organizations'], now: Date): SettledPatch {
-    const closed = { pendingState: null, pendingStateExpiresAt: null, organizations, connectedAt: now };
+  /**
+   * Closes the round trip: Connected, by whoever opened it, with the organizations that granted access; else
+   * Needs reconnecting, keeping the sign-in so a Reconnect can pick the organization.
+   */
+  private settled(
+    organizations: ConnectionRow['organizations'],
+    connectedByUserId: string | null,
+    now: Date,
+  ): SettledPatch {
+    const closed = { pendingState: null, pendingStateExpiresAt: null, pendingByUserId: null, organizations };
     return organizations.length > 0
-      ? { ...closed, status: 'connected', lastError: null, lastErrorAt: null }
+      ? { ...closed, status: 'connected', connectedByUserId, connectedAt: now, lastError: null, lastErrorAt: null }
       : { ...closed, status: 'needs-reconnect', lastError: NO_ORGANIZATION_CONNECTED, lastErrorAt: now };
   }
 

@@ -11,8 +11,8 @@ one database — **behind a symmetric namespace wall**. The platform serves two 
 codebase says so everywhere the same way:
 
 - **Folders.** Every layer package namespaces by business — `pkg/core`, `pkg/api` (both `src/` and
-  `src/routes/`), `pkg/domain`, `pkg/schema`, `pkg/db` (`src/schema/`), `pkg/pdf`, `pkg/ai`, web
-  (`src/` and the `_authed.<business>` routes) and mobile (`src/` and the `(protected)/<business>` route
+  `src/routes/`), `pkg/domain`, `pkg/schema`, `pkg/db` (`src/schema/`), `pkg/pdf`, `pkg/ai`,
+  `pkg/integrations`, web (`src/` and the `_authed.<business>` routes) and mobile (`src/` and the `(protected)/<business>` route
   group) — each with an `equipment/` and a `contracting/` folder. Anything outside both namespaces is
   **shared infrastructure by definition** — auth, db client, UI kit, files, theme, formatting, the AI
   model client, audit, and the platform registries whose entries both businesses will populate (audit

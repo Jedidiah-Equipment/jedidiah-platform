@@ -184,8 +184,36 @@ describe('JohnDeereConnectionService', () => {
     expect(await service.getConnection()).toMatchObject({
       status: 'needs-reconnect',
       organizations: [],
+      connectedBy: null,
+      connectedAt: null,
       lastError: expect.stringContaining('No John Deere organization'),
     });
+  });
+
+  test('a Reconnect changes nothing until Deere answers, then credits whoever reconnected', async ({ db }) => {
+    const { state, service, connect, stateOf } = await setUp(db);
+    await connect();
+    await db.insert(user).values({
+      id: 'jd-second',
+      name: 'Anna Botha',
+      email: 'jd-second@example.com',
+      emailVerified: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    // Abandoned after the picker opened: still Connected, still Jed's.
+    state.organizations = [{ id: '4321', name: 'Jedidiah Boerdery', connected: false }];
+    const abandoned = await service.startConnect({ actorUserId: 'jd-second' });
+    expect(await service.completeConnect({ code: 'c', state: stateOf(abandoned.url) })).toMatchObject({
+      status: 'connected',
+    });
+    expect(await service.getConnection()).toMatchObject({ status: 'connected', connectedBy: { id: adminId } });
+
+    state.organizations = [{ id: '4321', name: 'Jedidiah Boerdery', connected: true }];
+    const finished = await service.startConnect({ actorUserId: 'jd-second' });
+    await service.completeConnect({ code: 'c', state: stateOf(finished.url) });
+    expect(await service.getConnection()).toMatchObject({ status: 'connected', connectedBy: { id: 'jd-second' } });
   });
 
   test('caches the access token, refreshes once near expiry, and marks a refused refresh Needs reconnecting', async ({

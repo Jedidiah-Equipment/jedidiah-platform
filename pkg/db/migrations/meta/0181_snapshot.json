@@ -1,5 +1,5 @@
 {
-  "id": "8677af49-3fb2-422b-8197-13bb0890c6d2",
+  "id": "b4e1ad88-12c6-4377-905d-30e73ffeaef6",
   "prevId": "fdf4b7d2-8c07-48b0-b9e3-afe37194e6f3",
   "version": "7",
   "dialect": "postgresql",
@@ -3480,6 +3480,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "pending_by_user_id": {
+          "name": "pending_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "refresh_token_ciphertext": {
           "name": "refresh_token_ciphertext",
           "type": "text",
@@ -3552,6 +3558,19 @@
       },
       "indexes": {},
       "foreignKeys": {
+        "john_deere_connection_pending_by_user_id_user_id_fk": {
+          "name": "john_deere_connection_pending_by_user_id_user_id_fk",
+          "tableFrom": "john_deere_connection",
+          "tableTo": "user",
+          "columnsFrom": [
+            "pending_by_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
         "john_deere_connection_connected_by_user_id_user_id_fk": {
           "name": "john_deere_connection_connected_by_user_id_user_id_fk",
           "tableFrom": "john_deere_connection",

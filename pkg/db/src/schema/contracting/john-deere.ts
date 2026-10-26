@@ -16,6 +16,7 @@ export const contractingJohnDeereConnection = contractingSchema.table(
     status: text('status', { enum: johnDeereConnectionStatuses }).notNull().default('not-connected'),
     pendingState: text('pending_state'),
     pendingStateExpiresAt: timestamp('pending_state_expires_at', { withTimezone: true }),
+    pendingByUserId: text('pending_by_user_id').references(() => user.id, { onDelete: 'set null' }),
     refreshTokenCiphertext: text('refresh_token_ciphertext'),
     scopes: text('scopes'),
     organizations: jsonb('organizations').$type<JohnDeereOrganization[]>().notNull().default([]),

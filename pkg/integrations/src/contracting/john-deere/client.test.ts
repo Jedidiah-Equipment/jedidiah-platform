@@ -85,11 +85,15 @@ describe('JohnDeereClient', () => {
     });
   });
 
-  it('reads a refused grant as unauthorized', async () => {
-    const { client } = clientAnswering(Response.json({ error: 'invalid_grant' }, { status: 400 }));
-    await expect(
-      client.refresh({ refreshToken: 'dead', redirectUri: 'https://api/cb', scopes: 'eq1 offline_access' }),
-    ).rejects.toMatchObject({ code: 'john_deere.unauthorized' });
+  it('reads only a refused grant as unauthorized, not a misconfigured client', async () => {
+    const { client } = clientAnswering(
+      Response.json({ error: 'invalid_grant' }, { status: 400 }),
+      Response.json({ error: 'invalid_client' }, { status: 400 }),
+    );
+    const refresh = () =>
+      client.refresh({ refreshToken: 'dead', redirectUri: 'https://api/cb', scopes: 'eq1 offline_access' });
+    await expect(refresh()).rejects.toMatchObject({ code: 'john_deere.unauthorized' });
+    await expect(refresh()).rejects.toMatchObject({ code: 'john_deere.bad_response' });
   });
 
   it('lists organizations across pages with their connection links', async () => {

@@ -4,7 +4,6 @@ import { mapCoreErrors } from '../../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../../trpc/init.js';
 import { johnDeereErrorFamily } from '../contracting-error-families.js';
 
-/** Built by the Contracting wiring only when the environment holds the John Deere keys. */
 export type JohnDeereDependencies = { connection: JohnDeereConnectionService };
 
 const settingsProcedure = authorizedProcedure('contracting_settings:update');

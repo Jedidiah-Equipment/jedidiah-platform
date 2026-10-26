@@ -23,6 +23,8 @@ function deere() {
     organizationReads: 0,
     /** The organization read on which every organization turns connected, as Deere's list catches up. */
     connectOnRead: null as number | null,
+    /** Organization reads up to this one list every organization with no link at all, as a lagging Deere does. */
+    linklessThroughRead: 0,
     /** How often the service paused before re-reading the organization list. */
     slept: 0,
     /** Holds every refresh until it resolves, to land a write between the Deere call and its own. */
@@ -53,11 +55,14 @@ function deere() {
         values: state.organizations.map(({ id, name, connected }) => ({
           id,
           name,
-          links: [
-            connected
-              ? { rel: 'manage_connections', uri: 'https://connections.example/manage' }
-              : { rel: 'connections', uri: 'https://connections.example/select' },
-          ],
+          links:
+            state.organizationReads <= state.linklessThroughRead
+              ? []
+              : [
+                  connected
+                    ? { rel: 'manage_connections', uri: 'https://connections.example/manage' }
+                    : { rel: 'connections', uri: 'https://connections.example/select' },
+                ],
         })),
       });
     }
@@ -235,6 +240,42 @@ describe('JohnDeereConnectionService', () => {
       status: 'connected',
       organizations: [{ id: '4321', name: 'Jedidiah Boerdery' }],
       lastError: null,
+    });
+  });
+
+  test('the code leg reads once more when Deere lists the organization with no link yet', async ({ db }) => {
+    const { state, service, connect, row } = await setUp(db);
+    state.organizations = [{ id: '4321', name: 'Jedidiah Boerdery', connected: false }];
+    state.linklessThroughRead = 1;
+
+    // The second read carries the picker link, so the leg opens the picker instead of giving up.
+    const { connected, picker } = await connect();
+    expect(connected).toBe(false);
+    expect(picker?.url).toBe(
+      `https://connections.example/select?redirect_uri=${encodeURIComponent(connectionsReturnUri)}`,
+    );
+    expect(state).toMatchObject({ organizationReads: 2, slept: 1 });
+    expect(await row()).toMatchObject({ status: 'pending', lastError: null });
+
+    // A leg that can act on its first read never pauses: here the organization is already connected.
+    state.linklessThroughRead = 0;
+    state.connectOnRead = 3;
+    expect(await service.finishConnect({ returnToken: picker?.returnToken ?? '' })).toEqual({ connected: true });
+    expect(state).toMatchObject({ organizationReads: 3, slept: 1 });
+  });
+
+  test('the code leg gives up, naming an organization with no links, when the re-read shows none either', async ({
+    db,
+  }) => {
+    const { state, connect, row } = await setUp(db);
+    state.organizations = [{ id: '4321', name: 'Jedidiah Boerdery', connected: false }];
+    state.linklessThroughRead = 2;
+
+    expect(await connect()).toEqual({ connected: false, picker: null });
+    expect(state).toMatchObject({ organizationReads: 2, slept: 1 });
+    expect(await row()).toMatchObject({
+      status: 'not-connected',
+      lastError: expect.stringContaining('John Deere listed: Jedidiah Boerdery (no links).'),
     });
   });
 

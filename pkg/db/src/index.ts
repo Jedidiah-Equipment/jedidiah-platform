@@ -25,6 +25,7 @@ export {
   LIKE_SEARCH_ESCAPE,
   notRemoved,
   onCalendarDays,
+  paginateWithWindowTotal,
   withPagination,
 } from './query-utils.js';
 export * from './schema/audit.js';

@@ -1,4 +1,4 @@
-import type { CursorQueryInput, SortDirection } from '@pkg/schema';
+import { type CursorQueryInput, getNextCursor, type SortDirection } from '@pkg/schema';
 import { and, asc, desc, isNull, or, type SQL, type SQLWrapper, sql } from 'drizzle-orm';
 import type { PgSelect } from 'drizzle-orm/pg-core';
 
@@ -58,6 +58,20 @@ export function withPagination<TQuery extends PgSelect>(query: TQuery, { cursor,
   }
 
   return query.limit(limit).offset(cursor);
+}
+
+/**
+ * Pages a select whose every row carries the full match count as `total` (a `count(*) over ()` column). A cursor past
+ * the end returns no rows, so the total is then read off the first row of the unpaged match instead.
+ */
+export async function paginateWithWindowTotal<TQuery extends PgSelect & PromiseLike<readonly { total: number }[]>>(
+  matching: () => TQuery,
+  input: CursorQueryInput,
+): Promise<{ rows: Awaited<TQuery>; total: number; nextCursor: number | null }> {
+  const rows = await withPagination(matching(), input);
+  const counted = rows[0] ?? (input.cursor > 0 ? (await matching().limit(1))[0] : undefined);
+  const total = counted?.total ?? 0;
+  return { rows, total, nextCursor: getNextCursor({ count: rows.length, cursor: input.cursor, total }) };
 }
 
 // PostgreSQL SQLSTATE codes for the integrity violations we translate into domain errors.

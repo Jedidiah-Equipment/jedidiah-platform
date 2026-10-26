@@ -3,7 +3,9 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, test, vi } from 'vitest';
 
 const access = { current: true };
-vi.mock('@/hooks/use-access.js', () => ({ useCan: () => ({ can: access.current }) }));
+vi.mock('@/hooks/use-access.js', () => ({
+  useCan: (permission: string) => ({ can: permission === 'contracting_settings:update' && access.current }),
+}));
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ to, search, children, className }: ComponentProps<'a'> & { to: string; search: Record<string, string> }) => (
     <a href={`${to}?${new URLSearchParams(search)}`} className={className}>

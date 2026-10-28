@@ -9,13 +9,13 @@ import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
 import { type HeatMapColumn, heatMapColumns } from './heat-map-columns.js';
 
-/** Level 0 is the empty cell; the rest step the chart colour up from faint to full. */
+/** Level 0 is the empty cell; the rest step the primary colour up from faint to full. */
 const levelClassNames = {
   0: 'bg-muted',
-  1: 'bg-chart-1/25',
-  2: 'bg-chart-1/50',
-  3: 'bg-chart-1/75',
-  4: 'bg-chart-1',
+  1: 'bg-primary/25',
+  2: 'bg-primary/50',
+  3: 'bg-primary/75',
+  4: 'bg-primary',
 } as const satisfies Record<DailyHoursLevel, string>;
 
 const cellClassName = 'size-3 rounded-[3px]';

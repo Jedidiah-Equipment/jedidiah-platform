@@ -1,4 +1,5 @@
-import { diffDateOnlyDays, parseDateOnlyParts, startOfDateOnlyWeek } from '@pkg/domain';
+import { addDateOnlyDays, diffDateOnlyDays, parseDateOnlyParts, startOfDateOnlyWeek } from '@pkg/domain';
+import type { DateOnlyIso } from '@pkg/schema';
 import type { DailyHoursDay } from '@pkg/schema/contracting';
 
 /** One Monday-first week of the grid: seven slots, null outside the range, and the date whose month labels it. */
@@ -22,4 +23,22 @@ export function heatMapColumns(days: readonly DailyHoursDay[]): HeatMapColumn[] 
   const [firstColumn, secondColumn] = columns;
   if (firstColumn && !firstColumn.labelDate && !secondColumn?.labelDate) firstColumn.labelDate = first.date;
   return columns;
+}
+
+const CELL_GAP_PX = 3;
+const TARGET_CELL_PX = 14;
+/** Just over six months of whole weeks; the least a heat map ever shows. */
+const MIN_WEEKS = 27;
+/** The most whole weeks that always stay inside the endpoint's 366-day range. */
+const MAX_WEEKS = 52;
+
+/** How many week columns fit across `widthPx` at about the target cell size, between six months and a year. */
+export function fitHeatMapWeeks(widthPx: number): number {
+  const fitting = Math.floor((widthPx + CELL_GAP_PX) / (TARGET_CELL_PX + CELL_GAP_PX));
+  return Math.min(MAX_WEEKS, Math.max(MIN_WEEKS, fitting));
+}
+
+/** The Monday that makes `weeks` columns end with the week holding `today`. */
+export function heatMapStartForWeeks(weeks: number, today: DateOnlyIso): DateOnlyIso {
+  return addDateOnlyDays(startOfDateOnlyWeek(today), -(weeks - 1) * 7);
 }

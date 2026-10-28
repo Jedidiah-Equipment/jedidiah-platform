@@ -1,4 +1,4 @@
-import { formatDate, formatHours } from '@pkg/domain';
+import { formatDate, formatHours, getPlantDateNow } from '@pkg/domain';
 import { busiestDailyHours, type DailyHoursLevel, dailyHoursLevel, dailyHoursLevels } from '@pkg/domain/contracting';
 import type { DailyHoursDay, HoursHeatMapInput } from '@pkg/schema/contracting';
 import { useQuery } from '@tanstack/react-query';
@@ -7,7 +7,8 @@ import { Skeleton } from '@/components/ui/skeleton.js';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
-import { type HeatMapColumn, heatMapColumns } from './heat-map-columns.js';
+import { fitHeatMapWeeks, type HeatMapColumn, heatMapColumns, heatMapStartForWeeks } from './heat-map-columns.js';
+import { useElementWidth } from './use-element-width.js';
 
 /** Level 0 is the empty cell; the rest step the primary colour up from faint to full. */
 const levelClassNames = {
@@ -18,7 +19,8 @@ const levelClassNames = {
   4: 'bg-primary',
 } as const satisfies Record<DailyHoursLevel, string>;
 
-const cellClassName = 'size-3 rounded-[3px]';
+const swatchClassName = 'size-3 rounded-[3px]';
+const cellClassName = 'aspect-square w-full rounded-[3px]';
 const weekdayLabels = ['Mon', '', 'Wed', '', 'Fri', '', ''] as const;
 
 function dayDescription(day: DailyHoursDay) {
@@ -55,25 +57,31 @@ function Legend() {
     <div className="flex items-center justify-end gap-1.5 text-muted-foreground text-xs">
       Less
       {dailyHoursLevels.map((level) => (
-        <span aria-hidden="true" className={cn(cellClassName, levelClassNames[level])} key={level} />
+        <span aria-hidden="true" className={cn(swatchClassName, levelClassNames[level])} key={level} />
       ))}
       More
     </div>
   );
 }
 
+/** The weekday label column and the gap beside it, which the grid never gets. */
+const LABELS_WIDTH_PX = 36;
+
 function Grid({ columns, busiestHours }: { columns: HeatMapColumn[]; busiestHours: number }) {
   return (
     <div className="flex gap-2">
-      <div className="mt-[18px] grid grid-rows-7 gap-[3px] text-muted-foreground text-xs leading-3">
+      <div className="mt-[18px] grid w-7 shrink-0 grid-rows-7 gap-[3px] text-muted-foreground text-xs leading-3">
         {weekdayLabels.map((label, index) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: seven fixed weekday rows
           <span key={index}>{label}</span>
         ))}
       </div>
-      <div className="grid grid-flow-col gap-[3px]">
+      <div
+        className="grid min-w-0 flex-1 gap-[3px]"
+        style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr))` }}
+      >
         {columns.map((column) => (
-          <div className="grid gap-[3px]" key={column.days.find(Boolean)?.date}>
+          <div className="grid content-start gap-[3px]" key={column.days.find(Boolean)?.date}>
             <span className="h-3 whitespace-nowrap text-muted-foreground text-xs leading-3">
               {column.labelDate ? formatDate(column.labelDate, 'monthAbbr') : null}
             </span>
@@ -94,24 +102,37 @@ function Grid({ columns, busiestHours }: { columns: HeatMapColumn[]; busiestHour
 
 /**
  * The Daily Hours of the selected Machines and Jobs as a GitHub-style heat map: one cell per plant day, weeks as
- * columns. With no filter it is the whole fleet; the range defaults to the last six months.
+ * columns, the cells sized to fill the width. With no filter it is the whole fleet. With no range named it shows as
+ * many whole weeks as fit, between six months and a year; a named range is shown as given.
  */
 export function HoursHeatMap(input: HoursHeatMapInput) {
   const trpc = useTRPC();
-  const query = useQuery(trpc.contractingReports.hoursHeatMap.queryOptions(input));
-  if (query.error) return <ErrorMessage error={query.error} fallbackMessage="Unable to load the daily hours." />;
-  if (!query.data) return <Skeleton className="h-32 w-full" />;
-  const { days } = query.data;
-  const busiestHours = busiestDailyHours(days);
+  const [ref, width] = useElementWidth<HTMLDivElement>();
+  const fitting = input.start === undefined && input.end === undefined;
+  const range = fitting
+    ? { start: heatMapStartForWeeks(fitHeatMapWeeks(width - LABELS_WIDTH_PX), getPlantDateNow()) }
+    : {};
+  const query = useQuery({
+    ...trpc.contractingReports.hoursHeatMap.queryOptions({ ...input, ...range }),
+    enabled: !fitting || width > 0,
+  });
+  const days = query.data?.days;
+  const busiestHours = days ? busiestDailyHours(days) : 0;
   return (
-    <div className="grid gap-2">
-      <div className="overflow-x-auto pb-1">
-        <Grid busiestHours={busiestHours} columns={heatMapColumns(days)} />
-      </div>
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-muted-foreground text-xs">{busiestHours === 0 ? 'No hours recorded' : null}</span>
-        <Legend />
-      </div>
+    <div className="grid gap-2" ref={ref}>
+      {query.error ? (
+        <ErrorMessage error={query.error} fallbackMessage="Unable to load the daily hours." />
+      ) : days ? (
+        <>
+          <Grid busiestHours={busiestHours} columns={heatMapColumns(days)} />
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-muted-foreground text-xs">{busiestHours === 0 ? 'No hours recorded' : null}</span>
+            <Legend />
+          </div>
+        </>
+      ) : (
+        <Skeleton className="h-32 w-full" />
+      )}
     </div>
   );
 }

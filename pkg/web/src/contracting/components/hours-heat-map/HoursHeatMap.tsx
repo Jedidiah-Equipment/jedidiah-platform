@@ -103,18 +103,21 @@ function Grid({ columns, busiestHours }: { columns: HeatMapColumn[]; busiestHour
 /**
  * The Daily Hours of the selected Machines and Jobs as a GitHub-style heat map: one cell per plant day, weeks as
  * columns, the cells sized to fill the width. With no filter it is the whole fleet. With no range named it shows as
- * many whole weeks as fit, between six months and a year; a named range is shown as given.
+ * many whole weeks as fit, between six months and a year, ending at `end` or today; a named `start` is shown as given.
  */
-export function HoursHeatMap(input: HoursHeatMapInput) {
+export function HoursHeatMap({ refetchInterval, ...input }: HoursHeatMapInput & { refetchInterval?: number }) {
   const trpc = useTRPC();
   const [ref, width] = useElementWidth<HTMLDivElement>();
-  const fitting = input.start === undefined && input.end === undefined;
+  const fitting = input.start === undefined;
   const range = fitting
-    ? { start: heatMapStartForWeeks(fitHeatMapWeeks(width - LABELS_WIDTH_PX), getPlantDateNow()) }
+    ? {
+        start: heatMapStartForWeeks(fitHeatMapWeeks(width - LABELS_WIDTH_PX), input.end ?? getPlantDateNow()),
+      }
     : {};
   const query = useQuery({
     ...trpc.contractingReports.hoursHeatMap.queryOptions({ ...input, ...range }),
     enabled: !fitting || width > 0,
+    refetchInterval: refetchInterval ?? false,
   });
   const days = query.data?.days;
   const busiestHours = days ? busiestDailyHours(days) : 0;

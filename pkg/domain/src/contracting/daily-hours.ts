@@ -8,8 +8,8 @@ import { type LedgerReading, overlapShare } from './utilisation.js';
 /** One stretch of the meter between two consecutive readings, with the instants it ran between. */
 export type MeterSegment = { hours: number; from: string; to: string };
 
-/** A stint as the instants of its arrival and departure readings; the departure is open while the Machine is on site. */
-export type DailyHoursStint = { arrivalAt: string; departureAt: string | null };
+/** A stint as the ids of its arrival and departure readings; the departure is open while the Machine is on site. */
+export type DailyHoursStint = { arrivalReadingId: string; departureReadingId: string | null };
 
 /**
  * Every stretch the meter advanced between consecutive readings of one Machine's ledger (Read At order), whatever the
@@ -25,20 +25,27 @@ export function meterSegments(readings: readonly Pick<LedgerReading, 'value' | '
   });
 }
 
-/** The segments that lie wholly inside one of the stints: a Job's Work hours. */
-export function segmentsWithinStints(
-  segments: readonly MeterSegment[],
+/**
+ * A Job's Work hours: the stretches between consecutive readings from a stint's arrival reading to its departure
+ * reading, or on to the latest reading while it is open. The stints are walked by reading id along the ledger, so two
+ * readings sharing a Read At keep the order they were accepted in.
+ */
+export function stintWorkSegments(
+  readings: readonly Pick<LedgerReading, 'id' | 'value' | 'capturedAt'>[],
   stints: readonly DailyHoursStint[],
 ): MeterSegment[] {
-  const bounds = stints.map((stint) => ({
-    from: Date.parse(stint.arrivalAt),
-    to: stint.departureAt === null ? Number.POSITIVE_INFINITY : Date.parse(stint.departureAt),
-  }));
-  return segments.filter((segment) => {
-    const from = Date.parse(segment.from);
-    const to = Date.parse(segment.to);
-    return bounds.some((stint) => from >= stint.from && to <= stint.to);
-  });
+  const position = new Map(readings.map((reading, index) => [reading.id, index]));
+  const inStint = new Set<number>();
+  for (const stint of stints) {
+    const first = position.get(stint.arrivalReadingId);
+    if (first === undefined) continue;
+    const last =
+      stint.departureReadingId === null
+        ? readings.length - 1
+        : (position.get(stint.departureReadingId) ?? readings.length - 1);
+    for (let index = first + 1; index <= last; index += 1) inStint.add(index);
+  }
+  return meterSegments(readings).filter((_, segment) => inStint.has(segment + 1));
 }
 
 /** Index of the last boundary at or before `instant`, or -1 when it precedes them all. */

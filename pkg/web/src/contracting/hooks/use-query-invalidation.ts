@@ -12,6 +12,7 @@ type ContractingRoot =
   | 'contractingJohnDeere'
   | 'contractingRateCard'
   | 'contractingReadings'
+  | 'contractingReports'
   | 'contractingServices'
   | 'contractingSettings';
 
@@ -31,7 +32,8 @@ export function useQueryInvalidation() {
       invalidateDirectory: invalidate('contractingDirectory'),
       // A Machine read derives its due state and Booked In; Service Records name their Machine.
       invalidateFleet: invalidate('contractingFleet', 'contractingServices'),
-      invalidateJobs: invalidate('contractingJobs'),
+      // Reports derive Active Days and Daily Hours from stints and readings.
+      invalidateJobs: invalidate('contractingJobs', 'contractingReports'),
       invalidateJohnDeere: invalidate('contractingJohnDeere'),
       // A John Deere Link writes its Machine's serial number and names its Deere machine on the Machine read.
       invalidateJohnDeereLinks: invalidate('contractingJohnDeere', 'contractingFleet'),
@@ -43,6 +45,7 @@ export function useQueryInvalidation() {
         'contractingFleet',
         'contractingServices',
         'contractingJobs',
+        'contractingReports',
       ),
       invalidateRateCard: invalidate('contractingRateCard'),
       // A reading moves the Machine's latest hours, and Activity reads its items off readings.
@@ -51,6 +54,7 @@ export function useQueryInvalidation() {
         'contractingFleet',
         'contractingServices',
         'contractingActivity',
+        'contractingReports',
       ),
       // A service moves its Machine's Next Service Due and Booked In; Breakdowns refresh with it as they have since
       // Service Records and the Workshop shared a page.

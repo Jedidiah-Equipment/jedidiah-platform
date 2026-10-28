@@ -63,7 +63,6 @@ export function JobPage({ code }: { code: string }) {
                 <div className="min-w-0 space-y-5">
                   <SetupCard key={`setup-${job.id}`} job={job} sheet={sheet} />
                   <MachinesCard job={job} sheet={sheet} />
-                  <HoursHeatMapCard end={jobHoursEnd(job.assignments)} jobIds={[job.id]} />
                   {sheet.showsSignOff ? <SignOffCard job={job} sheet={sheet} /> : null}
                   <PricingCard job={job} sheet={sheet} />
                   <InvoiceCard job={job} sheet={sheet} />
@@ -76,10 +75,13 @@ export function JobPage({ code }: { code: string }) {
                     />
                   ) : null}
                 </div>
-                <ActivityCard
-                  thread={{ kind: 'job', id: job.id, code: job.jobNumber }}
-                  addNote={sheet.action('addNote')}
-                />
+                <div className="min-w-0 space-y-5">
+                  <HoursHeatMapCard end={jobHoursEnd(job.assignments)} jobIds={[job.id]} />
+                  <ActivityCard
+                    thread={{ kind: 'job', id: job.id, code: job.jobNumber }}
+                    addNote={sheet.action('addNote')}
+                  />
+                </div>
               </DetailAsideGrid>
               <CancelJob job={job} sheet={sheet} />
             </div>

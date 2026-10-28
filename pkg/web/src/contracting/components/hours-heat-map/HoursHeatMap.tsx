@@ -81,9 +81,12 @@ function Grid({ columns, busiestHours }: { columns: HeatMapColumn[]; busiestHour
         style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr))` }}
       >
         {columns.map((column) => (
-          <div className="grid content-start gap-[3px]" key={column.days.find(Boolean)?.date}>
-            <span className="h-3 whitespace-nowrap text-muted-foreground text-xs leading-3">
-              {column.labelDate ? formatDate(column.labelDate, 'monthAbbr') : null}
+          <div className="grid grid-cols-1 content-start gap-[3px]" key={column.days.find(Boolean)?.date}>
+            {/* The label hangs out of its column so its width never sizes the cells beneath it. */}
+            <span className="relative h-3 text-muted-foreground text-xs leading-3">
+              <span className="absolute left-0 whitespace-nowrap">
+                {column.labelDate ? formatDate(column.labelDate, 'monthAbbr') : null}
+              </span>
             </span>
             {column.days.map((day, index) =>
               day ? (

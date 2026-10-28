@@ -5,6 +5,8 @@ import { useSessionAccessSummary } from '@/lib/auth-session';
 import { navigationColors } from '@/theme/gluestack-config';
 import { useColorMode } from '@/theme/use-color-mode';
 
+export const unstable_settings = { anchor: 'activity' };
+
 export default function ContractingTabsLayout() {
   const access = useSessionAccessSummary();
   const tabs = visibleContractingTabs(access);
@@ -12,7 +14,6 @@ export default function ContractingTabsLayout() {
   const colors = navigationColors[resolved];
   return (
     <Tabs
-      initialRouteName="activity"
       screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: colors.background } }}
       tabBar={() => <ContractingTabBar />}
     >

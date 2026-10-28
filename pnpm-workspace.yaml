@@ -5,12 +5,12 @@ packageExtensions:
   # This release imports Expo config plugins without declaring the dependency.
   "@config-plugins/react-native-pdf@14.0.2":
     dependencies:
-      "@expo/config-plugins": "^57"
-  # Expo 57 needs Worklets 0.10, whose Babel plugin still omits these dependencies.
-  "react-native-worklets@0.10.4":
+      "@expo/config-plugins": "^58"
+  # Its compiled output requires @babel/runtime/regenerator without declaring the dependency, and the
+  # hoisted copy is now Babel 8's, which dropped that subpath. Metro and the config plugin both break on it.
+  "posthog-react-native@4.84.1":
     dependencies:
-      "@babel/generator": "7.29.7"
-      "@babel/traverse": "7.29.7"
+      "@babel/runtime": "^7.29.10"
 
 allowBuilds:
   "@posthog/cli": true
@@ -23,8 +23,13 @@ overrides:
   # One esbuild for the whole tree. Without this, drizzle-kit, tsx and Vite each bring their
   # own — four copies, four platform binaries — and every consumer accepts this one.
   esbuild: 0.28.2
-  # Expo's cyclic peers otherwise auto-install a second Reanimated beyond Expo 57's Worklets range.
-  react-native-reanimated: 4.5.5
+  # Expo's cyclic peers otherwise auto-install a second Reanimated beyond Expo 58's Worklets range.
+  react-native-reanimated: 4.7.1
+  react-native-worklets: 0.13.0
+  # Expo 58 and React Native 0.88 require React 19.3.0 exactly. Peer auto-installs (VitePress's docsearch,
+  # Better Auth's Expo plugin) otherwise float to 19.3.1 and duplicate Expo's native modules in the tree.
+  react: 19.3.0
+  react-dom: 19.3.0
   # patch-package asks for ^0.0.33, from long before tmp closed its symlink escape.
   "patch-package>tmp": 0.2.7
   # xcode asks for ^7 and requires CommonJS; uuid 11 is the last CommonJS release.
@@ -33,3 +38,12 @@ overrides:
 patchedDependencies:
   # NativeWind 4 otherwise shares generated styles across every concurrent export/build.
   react-native-css-interop@0.2.7: patches/react-native-css-interop@0.2.7.patch
+
+minimumReleaseAgeExclude:
+  - "@expo/cli@58.1.16"
+  - babel-preset-expo@58.0.21
+  - expo-dev-client@58.0.16
+  - expo-dev-launcher@58.0.16
+  - expo-modules-core@58.0.27
+  - expo-router@58.0.27
+  - expo@58.0.20

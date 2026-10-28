@@ -6,6 +6,8 @@ import { useAccess } from '@/lib/use-access';
 import { navigationColors } from '@/theme/gluestack-config';
 import { useColorMode } from '@/theme/use-color-mode';
 
+export const unstable_settings = { anchor: 'activity' };
+
 /** Permission-aware app tabs. {@link AppTabBar} owns which of them the bottom bar can show. */
 export default function AppTabsLayout() {
   const access = useAccess();
@@ -15,7 +17,6 @@ export default function AppTabsLayout() {
 
   return (
     <Tabs
-      initialRouteName="activity"
       screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: colors.background } }}
       tabBar={() => <AppTabBar />}
     >

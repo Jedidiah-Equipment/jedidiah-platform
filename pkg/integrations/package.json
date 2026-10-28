@@ -27,10 +27,10 @@
     "@pkg/db": "workspace:*",
     "@pkg/domain": "workspace:*",
     "@pkg/schema": "workspace:*",
-    "zod": "^4.6.5"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
-    "tsc-alias": "^1.9.7",
-    "vitest": "^5.0.3"
+    "tsc-alias": "^1.9.9",
+    "vitest": "^5.0.5"
   }
 }

@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.6.3/schema.json",
   "files": {
     "includes": [
       "**",
@@ -35,6 +35,16 @@
     "lineWidth": 120,
     "attributePosition": "auto"
   },
+  "markdown": {
+    "formatter": {
+      "enabled": false
+    }
+  },
+  "yaml": {
+    "formatter": {
+      "enabled": false
+    }
+  },
   "css": {
     "parser": {
       "tailwindDirectives": true
@@ -43,7 +53,13 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "preset": "recommended"
+      "preset": "recommended",
+      "correctness": {
+        "noReactNativeRawText": "off"
+      },
+      "complexity": {
+        "useMathMinMax": "off"
+      }
     }
   },
   "assist": {
@@ -674,6 +690,16 @@
         "rules": {
           "suspicious": {
             "noUnknownAtRules": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["pkg/*/**/*.test.tsx", "**/components/ui/calendar.tsx"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noComponentHookFactories": "off"
           }
         }
       }

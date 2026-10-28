@@ -1,5 +1,5 @@
 import { forwardRef } from 'react';
-import { TextInput as RNTextInput, type TextInput as RNTextInputType, type TextInputProps } from 'react-native';
+import { TextInput as RNTextInput, type TextInputInstance, type TextInputProps } from 'react-native';
 
 import { useColorMode } from '@/theme/use-color-mode';
 
@@ -26,7 +26,7 @@ export type AppTextInputProps = TextInputProps & {
  * to the Geist body font and the semantic border/surface tokens so callers never
  * repeat them, and resolves the placeholder colour from the active scheme.
  */
-export const TextInput = forwardRef<RNTextInputType, AppTextInputProps>(function TextInput(
+export const TextInput = forwardRef<TextInputInstance, AppTextInputProps>(function TextInput(
   { className, textSize = 'default', ...props },
   ref,
 ) {

@@ -119,7 +119,7 @@ export function ActivityTimeline<
       ListFooterComponent={
         query.isFetchingNextPage ? (
           <Text className="pb-1 pt-2 text-center text-xs text-muted-foreground">Loading more activity…</Text>
-        ) : null
+        ) : undefined
       }
       ListHeaderComponent={
         hasHeader ? (
@@ -149,7 +149,7 @@ export function ActivityTimeline<
               />
             ) : null}
           </View>
-        ) : null
+        ) : undefined
       }
       onEndReached={loadMore}
       onEndReachedThreshold={0.4}

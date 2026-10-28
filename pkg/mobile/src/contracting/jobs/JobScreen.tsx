@@ -2,12 +2,15 @@ import { formatHours, getFirstName } from '@pkg/domain';
 import {
   assignmentStateColorClassNames,
   assignmentStateLabels,
+  breakdownsByStint,
   type JobSheetStint,
   jobSheet,
+  mostUrgentBreakdown,
 } from '@pkg/domain/contracting';
-import type { AssignmentDetail, JobCardVariant } from '@pkg/schema/contracting';
+import type { AssignmentDetail, BreakdownSummary, JobCardVariant } from '@pkg/schema/contracting';
 import { IconPlayerPlay, IconPlayerStop, IconPlus } from '@tabler/icons-react-native';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
+import { useMemo } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SECONDARY_PAGE_CONTENT_STYLE } from '@/components/page-frame';
@@ -19,10 +22,11 @@ import { Text } from '@/components/ui/text';
 import { AddNoteButton } from '@/contracting/activity/AddNoteButton';
 import { ContractingActivityFeed } from '@/contracting/activity/ContractingActivityFeed';
 import { RecordTabBar, useRecordTab } from '@/contracting/activity/RecordTabs';
-import { BreakdownIcon } from '@/contracting/components/BreakdownSubjectIcons';
+import { BreakdownFlagButton, BreakdownIcon, breakdownBorder } from '@/contracting/components/BreakdownSubjectIcons';
 import { CaptureButton } from '@/contracting/components/CaptureButton';
-import { CategoryIcon } from '@/contracting/components/CategoryIcon';
+import { CategoryIcon, categoryTileSize } from '@/contracting/components/CategoryIcon';
 import { jobCardShareAction } from '@/contracting/lib/job-card';
+import { useJobBreakdowns } from '@/contracting/workshop/use-breakdowns';
 import { shareDocument } from '@/lib/document-actions';
 import { useBusyAction } from '@/lib/use-busy-action';
 import { JobStatusChip } from './JobStatusChip';
@@ -54,6 +58,11 @@ export default function JobScreen() {
       void share.run(() => shareDocument(jobCardShareAction(job.jobNumber, variant)), 'Unable to share the Job Card.');
   };
   const stints = sheet?.stints ?? [];
+  const breakdowns = useJobBreakdowns(jobId);
+  const breakdownsOnStint = useMemo(
+    () => breakdownsByStint(job?.assignments ?? [], breakdowns.data?.items ?? []).byStint,
+    [job?.assignments, breakdowns.data],
+  );
 
   const openCapture = (stint: AssignmentDetail, role: 'arrival' | 'departure') =>
     router.push({
@@ -142,23 +151,13 @@ export default function JobScreen() {
 
           {stints.map((entry) => (
             <StintCard
-              canAdd={canAdd}
+              breakdown={mostUrgentBreakdown(breakdownsOnStint.get(entry.stint.id) ?? [])}
               canReport={canReport}
               entry={entry}
               key={entry.stint.id}
               onReport={() => reportProblem(entry.stint)}
               onStart={() => openCapture(entry.stint, 'arrival')}
               onStop={() => openCapture(entry.stint, 'departure')}
-              onReadd={() =>
-                router.push({
-                  pathname: '/contracting/jobs/[jobId]/add-machine',
-                  params: {
-                    jobId,
-                    machineId: entry.stint.machineId,
-                    implementId: entry.stint.implementId ?? '',
-                  },
-                } as unknown as Href)
-              }
             />
           ))}
 
@@ -182,28 +181,36 @@ export default function JobScreen() {
   );
 }
 
+const MACHINE_ICON_SIZE = 20;
+
 function StintCard({
   entry: { stint, sheet: stintSheet },
-  canAdd,
+  breakdown,
   canReport,
   onStart,
   onStop,
-  onReadd,
   onReport,
 }: {
   entry: JobSheetStint;
-  canAdd: boolean;
+  /** The most urgent unsolved Breakdown on this Machine's stint, if any. */
+  breakdown: BreakdownSummary | null;
   canReport: boolean;
   onStart: () => void;
   onStop: () => void;
-  onReadd: () => void;
   onReport: () => void;
 }) {
   return (
-    <View className="gap-2 rounded-xl border border-border bg-surface p-4">
+    <View className={`gap-2 rounded-xl border bg-surface p-4 ${breakdownBorder(breakdown) ?? 'border-border'}`}>
       <View className="flex-row items-center justify-between gap-2">
         <View className="flex-row items-center gap-3">
-          <CategoryIcon icon={stint.categoryIcon} colour={stint.categoryColour} size={20} />
+          {breakdown ? (
+            <BreakdownFlagButton
+              breakdown={breakdown}
+              code={stint.machineCode}
+              tile={categoryTileSize(MACHINE_ICON_SIZE)}
+            />
+          ) : null}
+          <CategoryIcon icon={stint.categoryIcon} colour={stint.categoryColour} size={MACHINE_ICON_SIZE} />
           <Text className="text-lg text-foreground" weight="bold">
             {stint.machineCode}
           </Text>
@@ -213,27 +220,33 @@ function StintCard({
           label={assignmentStateLabels[stint.state]}
         />
       </View>
-      <Text className="text-sm text-muted-foreground">
-        {stint.categoryName}
-        {stint.implementCode ? ` · ${stint.implementCode}` : ''}
-        {stint.driverName ? ` · ${getFirstName(stint.driverName)}` : ''}
-      </Text>
-      {stint.arrival ? (
-        <Text className="text-sm text-muted-foreground">
-          Arrived {formatHours(stint.arrival.value)}
-          {stint.arrival.photoBacked ? ' · photo' : ' · no photo'}
-        </Text>
-      ) : null}
-      {stint.departure ? (
-        <Text className="text-sm text-muted-foreground">Departed {formatHours(stint.departure.value)}</Text>
-      ) : null}
+      <View className="flex-row items-end justify-between gap-2">
+        <View className="min-w-0 flex-1 gap-2">
+          <Text className="text-sm text-muted-foreground">
+            {stint.categoryName}
+            {stint.implementCode ? ` · ${stint.implementCode}` : ''}
+            {stint.driverName ? ` · ${getFirstName(stint.driverName)}` : ''}
+          </Text>
+          {stint.arrival ? (
+            <Text className="text-sm text-muted-foreground">
+              {stint.departure
+                ? `${formatHours(stint.arrival.value)} → ${formatHours(stint.departure.value)}`
+                : `Arrived ${formatHours(stint.arrival.value)}`}
+            </Text>
+          ) : null}
+        </View>
+        {stint.departure && stint.workHours !== null ? (
+          <Text className="text-xl text-foreground" weight="bold" mono>
+            {formatHours(stint.workHours)}
+          </Text>
+        ) : null}
+      </View>
       {stintSheet.can('captureArrival') ? (
         <CaptureButton icon={IconPlayerPlay} label="Start — capture arrival" onPress={onStart} />
       ) : null}
       {stintSheet.can('captureDeparture') ? (
         <CaptureButton icon={IconPlayerStop} label="Stop — capture departure" onPress={onStop} />
       ) : null}
-      {stint.state === 'left' && canAdd ? <Button title="Re-add machine" onPress={onReadd} /> : null}
       {canReport ? <Button icon={BreakdownIcon} title="Report a problem" onPress={onReport} /> : null}
     </View>
   );

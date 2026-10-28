@@ -14,7 +14,16 @@ import { StatusChip } from './StatusChip.js';
 type IconSize = 14 | 16 | 20 | 24;
 
 /** A Breakdown's urgency: a red or green flag on a tinted tile the size of a `CategoryIcon`. */
-export function BreakdownUrgencyIcon({ urgency, size = 20 }: { urgency: BreakdownUrgency; size?: IconSize }) {
+export function BreakdownUrgencyIcon({
+  urgency,
+  size = 20,
+  showTitle = true,
+}: {
+  urgency: BreakdownUrgency;
+  size?: IconSize;
+  /** Off where a hover card already says what the flag is. */
+  showTitle?: boolean;
+}) {
   const tone = breakdownUrgencyColorClassNames[urgency];
   const label = breakdownUrgencyLabels[urgency];
   const glyph = Math.round(size * 0.8);
@@ -22,7 +31,7 @@ export function BreakdownUrgencyIcon({ urgency, size = 20 }: { urgency: Breakdow
     <span
       role="img"
       aria-label={label}
-      title={label}
+      title={showTitle ? label : undefined}
       className={cn('inline-flex shrink-0 items-center justify-center rounded-md border', tone.chip, tone.icon)}
       style={{ width: size + 10, height: size + 10 }}
     >

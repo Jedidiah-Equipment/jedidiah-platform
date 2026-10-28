@@ -7,7 +7,7 @@ import { accentActionColor } from '@/theme/brand-colors';
 import { useColorMode } from '@/theme/use-color-mode';
 
 /**
- * The primary-tinted card action — Send Feedback and the Fabrication stamps — for the one call a
+ * The primary-tinted card action — Send Feedback, Add Note and the Fabrication stamps — for the one call a
  * card is asking the reader to make. Light mode takes the accent from the brand palette (staging's is
  * darkened); dark mode uses the token.
  */
@@ -16,11 +16,17 @@ export function AccentButton({
   label,
   onPress,
   pending = false,
+  disabled = false,
+  className = '',
 }: {
   icon: TablerIcon;
   label: string;
   onPress: () => void;
   pending?: boolean;
+  /** Refused for now: dimmed and inert, without the spinner `pending` shows. */
+  disabled?: boolean;
+  /** Layout from the parent, such as `flex-1` to share a row. */
+  className?: string;
 }) {
   const { resolved } = useColorMode();
   const isDark = resolved === 'dark';
@@ -28,11 +34,11 @@ export function AccentButton({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ disabled: pending }}
+      accessibilityState={{ disabled: pending || disabled }}
       className={`flex-row items-center justify-center gap-2 rounded-xl border bg-primary/10 px-4 py-3.5 ${
         isDark ? 'border-primary/60' : ''
-      } ${pending ? 'opacity-60' : 'active:bg-primary/15'}`}
-      disabled={pending}
+      } ${pending || disabled ? 'opacity-60' : 'active:bg-primary/15'} ${className}`}
+      disabled={pending || disabled}
       onPress={onPress}
       style={isDark ? undefined : { borderColor: accentActionColor }}
     >

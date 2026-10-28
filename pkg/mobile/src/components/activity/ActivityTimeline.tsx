@@ -94,6 +94,8 @@ export function ActivityTimeline<
     void query.fetchNextPage();
   };
 
+  const hasHeader = Boolean(listHeader || controls);
+
   return (
     <SectionList
       className="flex-1"
@@ -103,7 +105,8 @@ export function ActivityTimeline<
       keyExtractor={getItemKey}
       keyboardShouldPersistTaps="handled"
       ListEmptyComponent={
-        <View className="pt-4">
+        // A header already leaves its own 16pt below it.
+        <View className={hasHeader ? '' : 'pt-4'}>
           {query.isPending ? (
             <ActivitySkeleton />
           ) : query.isError ? (
@@ -119,7 +122,7 @@ export function ActivityTimeline<
         ) : null
       }
       ListHeaderComponent={
-        listHeader || controls ? (
+        hasHeader ? (
           <View className="z-10 mb-4 gap-4">
             {listHeader}
             {controls ? (

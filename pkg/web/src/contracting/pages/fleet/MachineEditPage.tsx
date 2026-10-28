@@ -2,6 +2,7 @@ import { formatNumber } from '@pkg/domain';
 import { opensWebJobs, readingProviderSuffix } from '@pkg/domain/contracting';
 import type { Machine } from '@pkg/schema/contracting';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import type { ReactNode } from 'react';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { QueryContent } from '@/components/common/QueryContent.js';
 import { withCurrentOption } from '@/components/common/SearchableCombobox.js';
@@ -17,6 +18,7 @@ import { machineDialogSubject } from '@/contracting/components/MachineDialogTitl
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { JobsTable } from '@/contracting/pages/jobs/JobsPage.js';
 import { ServicesTable } from '@/contracting/pages/services/ServicesPage.js';
+import { WorkshopTable } from '@/contracting/pages/workshop/WorkshopPage.js';
 import { useAccess, useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { CategoryPickerField } from './CategoryFields.js';
@@ -24,7 +26,7 @@ import { FleetHistoryCard } from './FleetHistoryCard.js';
 import { FleetRetirement } from './FleetRetirement.js';
 import { MachineJohnDeereField } from './MachineJohnDeereField.js';
 import { MachineServiceCard } from './MachineServiceCard.js';
-import { MachineEditTab, resolveMachineEditTab } from './machine-edit-tabs.js';
+import { MachineEditTab, type MachineTabAccess, resolveMachineEditTab } from './machine-edit-tabs.js';
 import { MachineFormValues, machineFormValues, machinePatchInput } from './types.js';
 
 export function MachineEditPage({
@@ -72,9 +74,18 @@ function MachineForm({
   const trpc = useTRPC();
   const { invalidateFleet } = useQueryInvalidation();
   const canEdit = useCan('contracting_machine:update').can && !machine.retiredAt;
-  const readsServices = useCan('contracting_service:read').can;
-  const readsJobs = opensWebJobs(useAccess().data);
-  const activeTab = resolveMachineEditTab(tab, { readsServices, readsJobs });
+  const access: MachineTabAccess = {
+    jobs: opensWebJobs(useAccess().data),
+    workshop: useCan('contracting_breakdown:read').can,
+    service: useCan('contracting_service:read').can,
+  };
+  const activeTab = resolveMachineEditTab(tab, access);
+  const linkedTabs = [
+    { value: 'jobs', label: 'Jobs', content: <JobsTable scope={{ kind: 'machine', id: machine.id }} /> },
+    { value: 'workshop', label: 'Workshop', content: <WorkshopTable machineId={machine.id} /> },
+    { value: 'service', label: 'Services', content: <ServicesTable machineId={machine.id} /> },
+  ] as const satisfies readonly { value: keyof MachineTabAccess; label: string; content: ReactNode }[];
+  const openTabs = linkedTabs.filter(({ value }) => access[value]);
   const categories = useQuery(trpc.contractingFleet.categories.list.queryOptions({ kind: 'machine' }));
   const options = useQuery(trpc.contractingFleet.machines.options.queryOptions());
   const patch = useMutation(trpc.contractingFleet.machines.patch.mutationOptions({ onSuccess: invalidateFleet }));
@@ -102,8 +113,11 @@ function MachineForm({
       >
         <TabsList variant="default">
           <TabsTrigger value="details">Details</TabsTrigger>
-          {readsServices ? <TabsTrigger value="service">Services</TabsTrigger> : null}
-          {readsJobs ? <TabsTrigger value="jobs">Jobs</TabsTrigger> : null}
+          {openTabs.map(({ value, label }) => (
+            <TabsTrigger key={value} value={value}>
+              {label}
+            </TabsTrigger>
+          ))}
         </TabsList>
         <TabsContent className="pt-4" value="details" keepMounted>
           <DetailAsideGrid>
@@ -206,16 +220,11 @@ function MachineForm({
             <FleetHistoryCard subject={{ machineId: machine.id }} onOpenService={() => onTabChange('service')} />
           </DetailAsideGrid>
         </TabsContent>
-        {readsServices ? (
-          <TabsContent className="pt-4" value="service">
-            <ServicesTable machineId={machine.id} />
+        {openTabs.map(({ value, content }) => (
+          <TabsContent className="pt-4" key={value} value={value}>
+            {content}
           </TabsContent>
-        ) : null}
-        {readsJobs ? (
-          <TabsContent className="pt-4" value="jobs">
-            <JobsTable scope={{ kind: 'machine', id: machine.id }} />
-          </TabsContent>
-        ) : null}
+        ))}
       </Tabs>
     </>
   );

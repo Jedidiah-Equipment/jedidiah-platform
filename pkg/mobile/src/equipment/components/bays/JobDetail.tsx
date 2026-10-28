@@ -154,9 +154,13 @@ function Ready({
         <JobActivityFeed
           jobId={jobId}
           listHeader={
-            <View className="flex-row flex-wrap items-center gap-3">
-              <PurchaseOrderFeedbackButton jobCode={state.jobCode} purchaseOrders={state.purchaseOrders} />
-              <GiveFeedbackButton jobCode={state.jobCode} jobId={jobId} />
+            <View className="flex-row gap-3">
+              <PurchaseOrderFeedbackButton
+                className="flex-1"
+                jobCode={state.jobCode}
+                purchaseOrders={state.purchaseOrders}
+              />
+              <GiveFeedbackButton className="flex-1" jobCode={state.jobCode} jobId={jobId} />
             </View>
           }
           showControls={false}

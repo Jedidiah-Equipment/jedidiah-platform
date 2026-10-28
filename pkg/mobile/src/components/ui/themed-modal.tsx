@@ -1,6 +1,8 @@
 import type React from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, View } from 'react-native';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { ModalSafeArea } from '@/components/ModalSafeArea';
 
 import { gluestackConfig } from '@/theme/gluestack-config';
 import { useColorMode } from '@/theme/use-color-mode';
@@ -32,7 +34,7 @@ export function ThemedModal({
 
   return (
     <Modal animationType="fade" onRequestClose={close} transparent visible={open}>
-      <SafeAreaProvider>
+      <ModalSafeArea>
         <View className="flex-1" style={gluestackConfig[resolved]}>
           <SafeAreaView className="flex-1" edges={['top', 'bottom', 'left', 'right']}>
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1">
@@ -52,7 +54,7 @@ export function ThemedModal({
             </KeyboardAvoidingView>
           </SafeAreaView>
         </View>
-      </SafeAreaProvider>
+      </ModalSafeArea>
     </Modal>
   );
 }

@@ -3,7 +3,8 @@ import { breakdownStatusColorClassNames, breakdownStatusLabels } from '@pkg/doma
 import { type BreakdownListInput, breakdownStatuses } from '@pkg/schema/contracting';
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { useState } from 'react';
+import type { ColumnFiltersState } from '@tanstack/react-table';
+import { useMemo, useState } from 'react';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
@@ -44,23 +45,73 @@ export function focusWorkshopOnUnsolved() {
   useWorkshopTableStore.getState().setColumnFilters(focusOnUnsolved);
 }
 
+const useMachineWorkshopTableStore = createPersistedDataTableStore({
+  initialState: { sorting: [{ id: 'reportedAt', desc: true }] },
+  persistName: 'contracting-machine-workshop-table',
+});
+
+/** What differs between the whole Workshop and one Machine's: the saved table state, what the server is asked, the chrome. */
+type WorkshopScope = {
+  store: typeof useWorkshopTableStore;
+  listFilters: (columnFilters: ColumnFiltersState) => Partial<BreakdownListInput>;
+  showsQueueCounts: boolean;
+  showsSubject: boolean;
+};
+
+const wholeWorkshop: WorkshopScope = {
+  store: useWorkshopTableStore,
+  listFilters: (columnFilters) => workshopListFilters(columnFilters),
+  showsQueueCounts: true,
+  showsSubject: true,
+};
+
+/** One Machine's Breakdowns, every status until one is picked: its history, Fixed ones included, and no one else's. */
+const machineWorkshop = (machineId: string): WorkshopScope => ({
+  store: useMachineWorkshopTableStore,
+  listFilters: (columnFilters) => ({
+    ...workshopListFilters(columnFilters, breakdownStatuses),
+    machineIds: [machineId],
+    implementIds: [],
+  }),
+  showsQueueCounts: false,
+  showsSubject: false,
+});
+
 const breakdownSortOptions: SortOptions<BreakdownListInput> = {
   allowedSortIds: ['reportedAt', 'urgency'],
   defaultSort: { id: 'reportedAt', desc: true },
 };
 
 export function WorkshopPage() {
+  const canReport = useCan('contracting_breakdown:report').can;
+  const [reporting, setReporting] = useState(false);
+  return (
+    <PageLayout
+      title="Workshop"
+      description="Breakdowns reported from the field, newest first. One trip can fix several."
+      size="full"
+      actions={canReport ? <Button onClick={() => setReporting(true)}>Report a problem</Button> : undefined}
+    >
+      <WorkshopTable />
+      <ReportProblemDialog open={reporting} onOpenChange={setReporting} />
+    </PageLayout>
+  );
+}
+
+/** The Workshop queue, or with a `machineId` that Machine's Breakdowns (see `machineWorkshop`). */
+export function WorkshopTable({ machineId }: { machineId?: string } = {}) {
   const trpc = useTRPC();
   const navigate = useNavigate();
   const write = useContractingWrite(useQueryInvalidation().invalidateWorkshop);
   const canManage = useCan('contracting_breakdown:update').can;
-  const canReport = useCan('contracting_breakdown:report').can;
-  const [reporting, setReporting] = useState(false);
-  const summary = useQuery(trpc.contractingBreakdowns.queueSummary.queryOptions());
+  const scope = useMemo(() => (machineId ? machineWorkshop(machineId) : wholeWorkshop), [machineId]);
+  const summary = useQuery(
+    trpc.contractingBreakdowns.queueSummary.queryOptions(undefined, { enabled: scope.showsQueueCounts }),
+  );
   const tableController = useServerSideTableController({
-    store: useWorkshopTableStore,
+    store: scope.store,
     sortOptions: breakdownSortOptions,
-    getListInputExtras: workshopListFilters,
+    getListInputExtras: scope.listFilters,
   });
   const breakdownsQuery = useInfiniteQuery(
     trpc.contractingBreakdowns.list.infiniteQueryOptions(tableController.listInput, {
@@ -81,6 +132,7 @@ export function WorkshopPage() {
     filters: filters.data,
     mechanics: mechanics.data,
     onAssignMechanic: assign.mutate,
+    hideSubject: !scope.showsSubject,
   });
   const table = useDataTable({
     columns,
@@ -98,27 +150,24 @@ export function WorkshopPage() {
     },
   });
   return (
-    <PageLayout
-      title="Workshop"
-      description="Breakdowns reported from the field, newest first. One trip can fix several."
-      size="full"
-      actions={canReport ? <Button onClick={() => setReporting(true)}>Report a problem</Button> : undefined}
-    >
+    <>
       <ErrorMessage
         error={summary.error ?? filters.error ?? mechanics.error}
         fallbackMessage="Unable to load the Workshop."
       />
-      <StatusQuickFilters
-        label="Breakdown statuses"
-        columnId={STATUS_COLUMN_ID}
-        statuses={breakdownStatuses}
-        shown={quickFilterStatuses(summary.data?.counts, tableController.columnFilters)}
-        labels={breakdownStatusLabels}
-        colours={breakdownStatusColorClassNames}
-        counts={summary.data?.counts}
-        columnFilters={tableController.columnFilters}
-        onColumnFiltersChange={tableController.setColumnFilters}
-      />
+      {scope.showsQueueCounts ? (
+        <StatusQuickFilters
+          label="Breakdown statuses"
+          columnId={STATUS_COLUMN_ID}
+          statuses={breakdownStatuses}
+          shown={quickFilterStatuses(summary.data?.counts, tableController.columnFilters)}
+          labels={breakdownStatusLabels}
+          colours={breakdownStatusColorClassNames}
+          counts={summary.data?.counts}
+          columnFilters={tableController.columnFilters}
+          onColumnFiltersChange={tableController.setColumnFilters}
+        />
+      ) : null}
       <DataTable
         emptyMessage="No Breakdowns found."
         errorMessage={getApiQueryErrorMessage(breakdownsQuery.error, 'Unable to load Breakdowns.')}
@@ -137,7 +186,6 @@ export function WorkshopPage() {
         total={total}
         totalLabel={(value) => countPhrase(value, 'Breakdown', 'Breakdowns')}
       />
-      <ReportProblemDialog open={reporting} onOpenChange={setReporting} />
-    </PageLayout>
+    </>
   );
 }

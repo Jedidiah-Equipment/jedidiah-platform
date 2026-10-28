@@ -93,6 +93,7 @@ export function JobActivityFeed({
         onViewedLatest={onViewedLatest}
         query={activity}
         renderItem={(item, last) => <JobActivityEntry item={item} jobId={jobId} last={last} />}
+        underSecondaryToolbar={jobId !== undefined}
       />
     </>
   );

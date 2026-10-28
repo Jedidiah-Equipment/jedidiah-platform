@@ -46,11 +46,14 @@ export function useWorkshopColumns({
   filters,
   mechanics,
   onAssignMechanic,
+  hideSubject = false,
 }: {
   canManage: boolean;
   filters: BreakdownFilterOptions | undefined;
   mechanics: readonly Mechanic[] | undefined;
   onAssignMechanic: (input: { id: string; mechanicUserId: string | null }) => void;
+  /** One Machine's table repeats the same Subject on every row. */
+  hideSubject?: boolean;
 }) {
   const filterOptions = useMemo(
     () => ({
@@ -69,7 +72,7 @@ export function useWorkshopColumns({
     () => mechanicFilterPeople(mechanics, filters?.mechanics).map(toOption),
     [mechanics, filters],
   );
-  return useMemo<DataTableColumnDef<BreakdownSummary>[]>(
+  const columns = useMemo<DataTableColumnDef<BreakdownSummary>[]>(
     () => [
       {
         id: REPORTED_COLUMN_ID,
@@ -226,5 +229,9 @@ export function useWorkshopColumns({
       },
     ],
     [canManage, filterOptions, mechanicFilterOptions, mechanicOptions, onAssignMechanic],
+  );
+  return useMemo(
+    () => (hideSubject ? columns.filter((column) => column.id !== SUBJECT_COLUMN_ID) : columns),
+    [columns, hideSubject],
   );
 }

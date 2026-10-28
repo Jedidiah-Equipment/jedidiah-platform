@@ -33,6 +33,14 @@ export function CategoryGlyph({ icon, size, className }: { icon: CategoryIconKey
   );
 }
 
+const CATEGORY_TILE_PADDING = 10;
+
+/** The tile a glyph of this size sits on, so a neighbour can be drawn the same size. */
+export const categoryTileSize = (glyphSize: number) => glyphSize + CATEGORY_TILE_PADDING;
+
+/** The glyph that fits a tile of this size, the inverse of `categoryTileSize`. */
+export const categoryGlyphSize = (tile: number) => tile - CATEGORY_TILE_PADDING;
+
 /** A category's glyph on its tinted tile, the thumbnail the field screens show; records are squares, people circles. */
 export function CategoryIcon({
   icon,
@@ -48,7 +56,7 @@ export function CategoryIcon({
   return (
     <View
       className={`items-center justify-center rounded-lg border ${tone.chip}`}
-      style={{ width: size + 10, height: size + 10 }}
+      style={{ width: categoryTileSize(size), height: categoryTileSize(size) }}
       accessibilityRole="image"
       accessibilityLabel={categoryIcon(icon).label}
     >

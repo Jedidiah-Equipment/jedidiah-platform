@@ -19,6 +19,7 @@ import {
   jobQueues,
 } from '@pkg/schema/contracting';
 import { and, asc, eq, not, or, type SQL, type SQLWrapper, sql } from 'drizzle-orm';
+import { loadOpenBreakdowns } from '../breakdowns/open-breakdowns.js';
 import { foreman, invoicer, jobHeader } from './job-load.js';
 import { assertReadableStatus, readableBy, readerFor } from './job-readers.js';
 import * as jobSql from './job-sql.js';
@@ -143,11 +144,13 @@ export async function listJobs({
       .$dynamic();
   const { rows, total, nextCursor } = await paginateWithWindowTotal(matching, input);
   const seesMoney = jobReadSeesMoney(reader.mode);
+  const open = await loadOpenBreakdowns({ db, actor, on: 'job', ids: rows.map(({ job }) => job.id) });
   const items = rows.map(({ job, readings, total: _total, ...row }) =>
     JobSummary.parse({
       ...job,
       ...row,
       assignmentAttention: jobAssignmentAttentionCounts(row.openGapFlags, readings),
+      openBreakdowns: open.get(job.id) ?? [],
       jobNumber: formatJobNumber(job.code),
       pricedTotal: seesMoney ? job.pricedTotal : null,
       pricedAt: job.pricedAt?.toISOString() ?? null,

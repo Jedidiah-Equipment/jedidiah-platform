@@ -24,6 +24,15 @@ export function useBreakdownScope() {
   return breakdownReadScope(useSessionAccessSummary());
 }
 
+/** The Job's unsolved Breakdowns this person may read, which flag its Machine cards; none for a role with no Workshop. */
+export function useJobBreakdowns(jobId: string) {
+  const canRead = useBreakdownScope() !== null;
+  const trpc = useTRPC();
+  return useQuery(
+    trpc.contractingBreakdowns.list.queryOptions({ jobIds: [jobId], limit: 0 }, { enabled: canRead && !!jobId }),
+  );
+}
+
 export function useBreakdownList({
   search,
   statuses,

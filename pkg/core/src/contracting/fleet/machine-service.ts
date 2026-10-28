@@ -15,12 +15,14 @@ import {
   Machine,
   type MachineCreateInput,
   type MachineListInput,
+  type MachineListItem,
   type MachinePatchInput,
   type TelematicsProvider,
 } from '@pkg/schema/contracting';
 import { and, asc, eq, isNull, sql } from 'drizzle-orm';
 import { defineAuditDescriptor, recordAuditCreate } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
+import { loadOpenBreakdowns } from '../breakdowns/open-breakdowns.js';
 import { stintOnSite } from '../jobs/job-sql.js';
 import { getContractingSettings } from '../settings/settings-service.js';
 import { assertCategoryKind } from './category-service.js';
@@ -187,6 +189,20 @@ export async function listMachines({ db, input }: { db: Db; input: MachineListIn
     }),
   ]);
   return rows.map((row) => mapMachine(row, serviceDueSoonThresholdHours));
+}
+/** The Machines `listMachines` finds, each with the unsolved Breakdowns `actor` may read: what a Machine list flags. */
+export async function listMachinesWithOpenBreakdowns({
+  db,
+  actor,
+  input,
+}: {
+  db: Db;
+  actor: UserAccessSummary;
+  input: MachineListInput;
+}): Promise<MachineListItem[]> {
+  const machines = await listMachines({ db, input });
+  const open = await loadOpenBreakdowns({ db, actor, on: 'machine', ids: machines.map(({ id }) => id) });
+  return machines.map((machine) => ({ ...machine, openBreakdowns: open.get(machine.id) ?? [] }));
 }
 export async function getMachine({ db, id }: { db: Db | DatabaseTransaction; id: string }) {
   const [row, { serviceDueSoonThresholdHours }] = await Promise.all([
@@ -395,7 +411,7 @@ export async function assertDriverAccountChangeAllowed({
  * someone who works every Job, or the Foreman of that Job, as the field Job reads themselves do.
  */
 export async function listFieldMachines({ db, actor }: { db: Db; actor: UserAccessSummary }) {
-  const machines = await listMachines({ db, input: { status: 'active', search: '' } });
+  const machines = await listMachinesWithOpenBreakdowns({ db, actor, input: { status: 'active', search: '' } });
   return machines.map(({ busyOnJob, ...machine }) =>
     FieldMachine.parse({
       ...machine,

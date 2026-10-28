@@ -14,6 +14,12 @@ function asElement(value: unknown): TestElement {
   return value as TestElement;
 }
 
+/** The card is a bordered frame holding an optional leading slot and the tappable body, which holds the row. */
+function partsOf(card: TestElement) {
+  const [leading, body] = card.props.children as [TestElement | null, TestElement];
+  return { leading, body, children: body.props.children as TestElement[] };
+}
+
 describe('CatalogListCard', () => {
   test('owns the full-width avatar, text hierarchy, trailing slot, and accessibility contract', () => {
     const onPress = vi.fn();
@@ -33,12 +39,12 @@ describe('CatalogListCard', () => {
         trailing,
       }),
     );
-    const children = card.props.children as TestElement[];
+    const { body, children } = partsOf(card);
     const textColumn = asElement(children[1]);
     const textLines = textColumn.props.children as TestElement[];
     const trailingFrame = asElement(children[2]);
 
-    expect(card.props).toMatchObject({
+    expect(body.props).toMatchObject({
       accessibilityHint: 'Opens details',
       accessibilityLabel: 'Catalog item',
       accessibilityRole: 'button',
@@ -70,7 +76,30 @@ describe('CatalogListCard', () => {
       }),
     );
 
-    expect((card.props.children as unknown[])[2]).toBeNull();
+    expect(partsOf(card).children[2]).toBeNull();
+  });
+
+  test('puts a leading element beside the tappable body and takes its border colour', () => {
+    const leading = <ViewMarker kind="flag" />;
+    const card = asElement(
+      CatalogListCard({
+        accessibilityHint: 'Opens details',
+        accessibilityLabel: 'Catalog item',
+        avatarName: 'Item name',
+        borderClassName: 'border-red-500/60',
+        leading,
+        mainText: 'Main',
+        onPress: vi.fn(),
+        subText: 'Sub',
+      }),
+    );
+    const parts = partsOf(card);
+
+    expect(parts.leading?.props.children).toBe(leading);
+    expect(card.props.className).toContain('border-red-500/60');
+    expect(card.props.className).not.toContain('border-border');
+    // The body is the leading control's sibling, so no button holds another.
+    expect(parts.body.props).toMatchObject({ accessibilityRole: 'button', accessibilityLabel: 'Catalog item' });
   });
 
   test('renders structured metadata in place of the plain mono line', () => {
@@ -87,7 +116,7 @@ describe('CatalogListCard', () => {
         subText: 'Sub',
       }),
     );
-    const textColumn = asElement((card.props.children as TestElement[])[1]);
+    const textColumn = asElement(partsOf(card).children[1]);
     const metadataRow = asElement((textColumn.props.children as TestElement[])[2]);
 
     expect(metadataRow.props.className).toContain('flex-row items-center');

@@ -16,11 +16,15 @@ vi.mock('@/components/ui/status-badge', () => ({ StatusBadge: 'Badge' }));
 vi.mock('@/components/ui/text', () => ({ Text: 'Text' }));
 vi.mock('@/contracting/activity/AddNoteButton', () => ({ AddNoteButton: 'AddNote' }));
 vi.mock('@/contracting/activity/ContractingActivityFeed', () => ({ ContractingActivityFeed: 'ActivityFeed' }));
-vi.mock('@/contracting/components/BreakdownSubjectIcons', () => ({ BreakdownIcon: 'BreakdownIcon' }));
+vi.mock('@/contracting/components/BreakdownSubjectIcons', () => ({
+  BreakdownIcon: 'BreakdownIcon',
+  BreakdownFlagButton: 'BreakdownFlagButton',
+}));
 vi.mock('@/contracting/components/CaptureButton', () => ({ CaptureButton: 'Capture' }));
 vi.mock('@/contracting/components/CategoryIcon', () => ({ CategoryIcon: 'CategoryIcon' }));
 vi.mock('@/lib/document-actions', () => ({ shareDocument: vi.fn() }));
 vi.mock('@/lib/observability', () => ({ captureException: vi.fn() }));
+vi.mock('@/contracting/workshop/use-breakdowns', () => ({ useJobBreakdowns: () => ({ data: undefined }) }));
 vi.mock('./use-jobs', () => ({ useJob: () => ({ data: undefined, canRead: false }) }));
 
 import JobScreen from './JobScreen';

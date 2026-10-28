@@ -28,7 +28,7 @@ import { Text } from '@/components/ui/text';
 import { useVoiceSession } from '@/components/voice/use-voice-session';
 import { VoiceTextArea } from '@/components/voice/VoiceTextArea';
 import { BreakdownStatusBadge, BreakdownUrgencyIcon } from '@/contracting/components/BreakdownSubjectIcons';
-import { CategoryIcon } from '@/contracting/components/CategoryIcon';
+import { CategoryIcon, categoryTileSize } from '@/contracting/components/CategoryIcon';
 import { implementOption } from '@/contracting/components/implement-option';
 import { PhotoStrip } from '@/contracting/components/PhotoStrip';
 import { useImplements } from '@/contracting/jobs/use-jobs';
@@ -286,7 +286,7 @@ export default function ReportBreakdownScreen() {
               }
             >
               <View className="flex-row items-center gap-2">
-                <BreakdownUrgencyIcon urgency={row.urgency} size={16} />
+                <BreakdownUrgencyIcon urgency={row.urgency} tile={categoryTileSize(16)} />
                 <Text className="min-w-0 flex-1 text-sm text-foreground" numberOfLines={2}>
                   {row.firstLine} ({formatDate(row.reportedAt, 'duration')})
                 </Text>
@@ -302,7 +302,7 @@ export default function ReportBreakdownScreen() {
             <Toggle
               key={choice.urgency}
               label={choice.label}
-              leading={<BreakdownUrgencyIcon urgency={choice.urgency} size={16} />}
+              leading={<BreakdownUrgencyIcon urgency={choice.urgency} tile={categoryTileSize(16)} />}
               selected={urgency === choice.urgency}
               selectedClassNames={breakdownUrgencyColorClassNames[choice.urgency]}
               disabled={busy}

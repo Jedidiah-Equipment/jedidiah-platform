@@ -1,6 +1,6 @@
 import { formatHours, getFirstName } from '@pkg/domain';
 import { readingProviderSuffix } from '@pkg/domain/contracting';
-import type { FleetListInput, Machine } from '@pkg/schema/contracting';
+import type { FleetListInput, MachineListItem } from '@pkg/schema/contracting';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
@@ -14,6 +14,7 @@ import { CreateEntityDialog } from '@/components/form/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
+import { BreakdownFlags } from '@/contracting/components/BreakdownFlags.js';
 import { CategoryLabel } from '@/contracting/components/CategoryIcon.js';
 import { machineHoursToService, NextServiceDue } from '@/contracting/components/MachineServiceDue.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
@@ -63,7 +64,7 @@ export function MachinesPage({
     invalidate: invalidateFleet,
     navigateTo: (row) => ({ to: '/contracting/fleet/$id/edit', params: { id: row.id } }),
   });
-  const columns = useMemo<DataTableColumnDef<Machine>[]>(
+  const columns = useMemo<DataTableColumnDef<MachineListItem>[]>(
     () => [
       {
         accessorKey: 'categoryName',
@@ -144,6 +145,13 @@ export function MachinesPage({
             label
           );
         },
+      },
+      {
+        id: 'breakdowns',
+        header: 'Breakdowns',
+        enableSorting: false,
+        enableGlobalFilter: false,
+        cell: ({ row }) => <BreakdownFlags breakdowns={row.original.openBreakdowns} />,
       },
       {
         id: 'lastReading',

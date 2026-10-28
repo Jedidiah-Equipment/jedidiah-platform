@@ -1,16 +1,18 @@
 import { auditEvents, user } from '@pkg/db';
 import { accessForRole } from '@pkg/domain/testing';
-import { ActivityListInput, BreakdownListInput } from '@pkg/schema/contracting';
+import { ActivityListInput, BreakdownListInput, JobListInput } from '@pkg/schema/contracting';
 import { and, asc, eq } from 'drizzle-orm';
 import { expect } from 'vitest';
 import { InMemoryStorageAdapter } from '../../storage/in-memory-storage-adapter.js';
 import { createTester } from '../../test/create-tester.js';
 import { listActivity } from '../activity/activity-service.js';
+import { listMachinesWithOpenBreakdowns } from '../fleet/machine-service.js';
 import { onSiteAssignment } from '../fleet/on-site-assignment.js';
+import { listJobs } from '../jobs/job-queues.js';
 import { createJob } from '../jobs/job-service.js';
 import { addNote } from '../notes/note-service.js';
 import { captureReading } from '../readings/reading-service.js';
-import { admin, foreman, foremanId, plannedStint, seedJobFixtures } from '../test/job-fixtures.js';
+import { admin, foreman, foremanId, invoicing, plannedStint, seedJobFixtures } from '../test/job-fixtures.js';
 import {
   addBreakdownPhotos,
   assignMechanic,
@@ -263,3 +265,51 @@ test('the report and each transition are audited; notes append without an audit 
 function listInput() {
   return BreakdownListInput.parse({});
 }
+
+test('Job and Machine rows list their unsolved Breakdowns, Code Red first, for each reader who may open them', async ({
+  context,
+}) => {
+  const { db, excavator, tipper, jobId } = context;
+  await arrive(db, jobId, excavator.id);
+  await arrive(db, jobId, tipper.id);
+  const green = await reportNew({
+    db,
+    actor: foreman,
+    input: report({ kind: 'machine', id: tipper.id }, { urgency: 'code-green', description: 'Rattle' }),
+  });
+  const down = await reportNew({ db, actor: foreman, input: report({ kind: 'machine', id: excavator.id }) });
+  const jobFlags = async (actor: Parameters<typeof listJobs>[0]['actor']) =>
+    (await listJobs({ db, actor, input: JobListInput.parse({ queues: ['active'] }) })).items.find(
+      (item) => item.id === jobId,
+    )?.openBreakdowns;
+  const machineFlags = async (actor: Parameters<typeof listJobs>[0]['actor']) =>
+    new Map(
+      (await listMachinesWithOpenBreakdowns({ db, actor, input: { status: 'active', search: '' } })).map((machine) => [
+        machine.id,
+        machine.openBreakdowns,
+      ]),
+    );
+  const red = (status: 'open' | 'in-progress') => ({
+    id: down.id,
+    urgency: 'code-red',
+    status,
+    subjectCode: 'CAT320-1',
+    firstLine: 'Hydraulic hose burst',
+  });
+  const rattle = { id: green.id, urgency: 'code-green', status: 'open', subjectCode: 'TIP-7', firstLine: 'Rattle' };
+
+  // The Code Green was reported first, and still comes second.
+  expect(await jobFlags(admin)).toEqual([red('open'), rattle]);
+  expect(await jobFlags(foreman)).toEqual([red('open'), rattle]);
+  const machines = await machineFlags(admin);
+  expect(machines.get(excavator.id)).toEqual([red('open')]);
+  expect(machines.get(tipper.id)).toEqual([rattle]);
+  // A role that reads no Breakdowns is told of none.
+  expect([...(await machineFlags(invoicing)).values()].flat()).toEqual([]);
+
+  await startBreakdown({ db, actor: workshop, id: down.id });
+  expect(await jobFlags(admin)).toEqual([red('in-progress'), rattle]);
+  await solveBreakdown({ db, actor: workshop, input: { id: down.id, closeOutNote: 'Replaced' } });
+  expect(await jobFlags(admin)).toEqual([rattle]);
+  expect((await machineFlags(admin)).get(excavator.id)).toEqual([]);
+});

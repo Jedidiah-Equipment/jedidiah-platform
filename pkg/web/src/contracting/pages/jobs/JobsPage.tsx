@@ -36,6 +36,7 @@ import { useCreateEntityFlow } from '@/components/form/hooks/use-create-entity-f
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Button } from '@/components/ui/button.js';
+import { BreakdownFlags } from '@/contracting/components/BreakdownFlags.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useAccess, useCan } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
@@ -111,6 +112,12 @@ const jobSortOptions: SortOptions<JobListInput> = {
 };
 
 const stageFilterOptions = jobQueues.map((queue) => ({ value: queue, label: jobQueueLabels[queue] }));
+// Pinned columns take their width from `size`: the Job Number with a short line of its description under it, the
+// Customer · Farm pair, and the widest next-step button ("Review & sign off").
+const JOB_COLUMN_SIZE = 152;
+const CUSTOMER_COLUMN_SIZE = 184;
+const NEXT_STEP_COLUMN_SIZE = 176;
+
 const attentionFilterOptions = [{ value: NEEDS_A_LOOK, label: 'Needs a look' }];
 
 export function JobsPage() {
@@ -187,11 +194,12 @@ export function JobsTable({ scope }: { scope?: JobsScope }) {
         header: 'Job',
         enableColumnFilter: false,
         enableSorting: true,
+        size: JOB_COLUMN_SIZE,
         cell: ({ row }) => (
-          <div className="min-w-32">
+          <div className="min-w-0">
             <span className="font-mono font-semibold">{row.original.jobNumber}</span>
             {row.original.description ? (
-              <div className="mt-1 max-w-64 truncate text-xs text-muted-foreground" title={row.original.description}>
+              <div className="mt-1 truncate text-xs text-muted-foreground" title={row.original.description}>
                 {row.original.description}
               </div>
             ) : null}
@@ -199,24 +207,16 @@ export function JobsTable({ scope }: { scope?: JobsScope }) {
         ),
       },
       {
-        id: STAGE_COLUMN_ID,
-        accessorFn: jobQueueOf,
-        header: 'Stage',
-        enableColumnFilter: true,
-        enableSorting: false,
-        meta: { filterOptions: stageFilterOptions, filterVariant: 'multi-select', headerClassName: 'min-w-32' },
-        cell: ({ row }) => <JobQueueBadge queue={jobQueueOf(row.original)} />,
-      },
-      {
         id: 'customer',
         header: scopeKind === 'customer' ? 'Farm' : 'Customer · Farm',
+        size: CUSTOMER_COLUMN_SIZE,
         cell: ({ row }) =>
           scopeKind === 'customer' ? (
-            <div className="min-w-28 font-medium">{row.original.farmName}</div>
+            <div className="min-w-0 truncate font-medium">{row.original.farmName}</div>
           ) : (
-            <div className="min-w-36">
-              <div className="font-medium">{row.original.customerName}</div>
-              <div className="mt-1 text-xs text-muted-foreground">{row.original.farmName}</div>
+            <div className="min-w-0">
+              <div className="truncate font-medium">{row.original.customerName}</div>
+              <div className="mt-1 truncate text-xs text-muted-foreground">{row.original.farmName}</div>
             </div>
           ),
       },
@@ -262,6 +262,16 @@ export function JobsTable({ scope }: { scope?: JobsScope }) {
         ),
       },
       {
+        id: 'breakdowns',
+        header: 'Breakdowns',
+        enableSorting: false,
+        cell: ({ row }) => (
+          <div className="min-w-24">
+            <BreakdownFlags breakdowns={row.original.openBreakdowns} />
+          </div>
+        ),
+      },
+      {
         id: ATTENTION_COLUMN_ID,
         // A column filters only with an accessor; the server owns the filtering itself.
         accessorFn: (job) => (countedAssignmentAttentionLevel(job.assignmentAttention) ? NEEDS_A_LOOK : ''),
@@ -299,20 +309,34 @@ export function JobsTable({ scope }: { scope?: JobsScope }) {
         ),
       },
       {
+        id: STAGE_COLUMN_ID,
+        accessorFn: jobQueueOf,
+        header: 'Stage',
+        enableColumnFilter: true,
+        enableSorting: false,
+        meta: { filterOptions: stageFilterOptions, filterVariant: 'multi-select', headerClassName: 'min-w-32' },
+        cell: ({ row }) => <JobQueueBadge queue={jobQueueOf(row.original)} />,
+      },
+      {
         id: 'next-step',
         header: '',
+        size: NEXT_STEP_COLUMN_SIZE,
         cell: ({ row }) => {
           const queue = jobQueueOf(row.original);
           if (queue === 'looks-finished')
             return (
-              <Button size="sm" variant="outline" onClick={() => openJob(row.original)}>
-                Review & sign off
-              </Button>
+              <div className="flex justify-end">
+                <Button size="sm" variant="outline" onClick={() => openJob(row.original)}>
+                  Review & sign off
+                </Button>
+              </div>
             );
           return queue === 'awaiting-pricing' && canPrice ? (
-            <Button size="sm" variant="outline" onClick={() => openJob(row.original, 'pricing')}>
-              Price
-            </Button>
+            <div className="flex justify-end">
+              <Button size="sm" variant="outline" onClick={() => openJob(row.original, 'pricing')}>
+                Price
+              </Button>
+            </div>
           ) : null;
         },
       },
@@ -323,6 +347,7 @@ export function JobsTable({ scope }: { scope?: JobsScope }) {
     columns,
     data: jobs,
     enableSortingRemoval: false,
+    initialState: { columnPinning: { start: ['jobNumber', 'customer'], end: ['next-step'] } },
     manualFiltering: true,
     manualSorting: true,
     onColumnFiltersChange: tableController.setColumnFilters,

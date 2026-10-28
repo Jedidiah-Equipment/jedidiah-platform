@@ -1,0 +1,19 @@
+{
+  "business": "equipment",
+  "releasedAt": "2026-10-28T08:11:37.296Z",
+  "sections": [
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Find feedback actions more easily",
+          "description": "Job and purchase order feedback buttons now sit side by side in Activity. Public feedback forms have a simpler layout, while private feedback still shows its visibility notice."
+        },
+        {
+          "title": "Use forms reliably in your browser",
+          "description": "Forms opened in the browser version of the mobile app now keep their contents visible instead of collapsing."
+        }
+      ]
+    }
+  ]
+}

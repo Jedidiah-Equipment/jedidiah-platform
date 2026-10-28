@@ -1,0 +1,52 @@
+{
+  "business": "contracting",
+  "releasedAt": "2026-10-28T08:11:37.296Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Record when a meter was read",
+          "description": "Set Read At when capturing arrival and departure hours. Readings follow the time they were taken, with checks to prevent conflicting hours or arrivals and departures in the wrong order."
+        },
+        {
+          "title": "Connect your John Deere machines",
+          "description": "Connect John Deere Operations Center from Settings, compare meter readings and link machines. Machine details show the serial number and connection status, with a shortcut to Settings for unlinked machines."
+        },
+        {
+          "title": "Update engine hours automatically",
+          "description": "Linked machines receive John Deere hour readings every hour, or on demand using Refresh. Reports flag conflicting manual readings for management review and trigger service reminders when due soon."
+        },
+        {
+          "title": "Spot open breakdowns from jobs and machines",
+          "description": "Jobs and Machines lists now flag open breakdowns, with the most urgent first and direct links to each report. Flags update after changes, and a new Workshop tab on each machine shows its breakdown history."
+        },
+        {
+          "title": "Keep job details visible while scrolling",
+          "description": "Job and customer details stay pinned as you scroll across the Jobs table, with next-step actions kept visible on the right."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Open urgent breakdowns from job and machine cards",
+          "description": "Cards highlight the most urgent open breakdown in its urgency colour; tap the flag to open it in Workshop. Flags refresh automatically when breakdowns are reported or resolved."
+        },
+        {
+          "title": "Check machine details and worked hours at a glance",
+          "description": "Machine details now show the serial number. Job machine cards display arrival and departure readings together and make total worked hours easier to see."
+        },
+        {
+          "title": "Keep hour readings in time order",
+          "description": "Readings are checked against when they were taken. Captures that conflict with John Deere reports or put arrivals and departures in the wrong order are refused with guidance on what to check."
+        },
+        {
+          "title": "Use forms reliably in your browser",
+          "description": "Forms opened in the browser version of the mobile app now keep their contents visible instead of collapsing."
+        }
+      ]
+    }
+  ]
+}

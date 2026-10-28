@@ -63,8 +63,15 @@ export function useQueryInvalidation() {
         'contractingFleet',
         'contractingServices',
       ),
-      // Activity reads its items off Breakdowns; Service Records refresh with them for the same history as above.
-      invalidateWorkshop: invalidate('contractingBreakdowns', 'contractingServices', 'contractingActivity'),
+      // Activity reads its items off Breakdowns; Service Records refresh with them for the same history as above. Job and
+      // Machine rows flag their open Breakdowns, so those lists refresh too.
+      invalidateWorkshop: invalidate(
+        'contractingBreakdowns',
+        'contractingServices',
+        'contractingActivity',
+        'contractingJobs',
+        'contractingFleet',
+      ),
     };
   }, [queryClient, trpc]);
 }

@@ -20,7 +20,7 @@ export function DashboardWidgetCard({ children, className, size, title }: Dashbo
       <CardHeader>
         <CardTitle>{title}</CardTitle>
       </CardHeader>
-      <CardContent className="flex min-h-32 flex-col">
+      <CardContent className={cn('flex flex-col', size === 'xs' ? undefined : 'min-h-32')}>
         <DashboardWidgetErrorBoundary>{children}</DashboardWidgetErrorBoundary>
       </CardContent>
     </Card>

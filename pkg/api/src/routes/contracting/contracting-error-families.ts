@@ -136,7 +136,7 @@ export const serviceErrorFamily = defineCoreErrorFamily<ServiceError>({
 });
 
 export const reportErrorFamily = defineCoreErrorFamily<ReportError>({
-  codes: { 'report.not_found': 'NOT_FOUND' },
+  codes: { 'report.not_found': 'NOT_FOUND', 'report.invalid_range': 'BAD_REQUEST' },
   is: isReportError,
 });
 

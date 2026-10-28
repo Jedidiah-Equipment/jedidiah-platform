@@ -34,7 +34,7 @@ import { asc, eq, isNotNull, type SQL } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { oldestFirst } from '../readings/reading-sql.js';
 import { getContractingSettings } from '../settings/settings-service.js';
-import { ReportError } from './report-errors.js';
+import { reportNotFound } from './report-errors.js';
 
 /** One Machine with its Category, its fleet span and its stints as plant dates: what the day counts read. */
 type FleetMachine = {
@@ -238,7 +238,7 @@ async function trendLabel(db: Db, subject: UtilisationTrendSubject): Promise<str
           .from(contractingMachines)
           .where(eq(contractingMachines.id, subject.id))
           .limit(1);
-  if (!row) throw new ReportError('report.not_found', 'That Category or Machine does not exist.');
+  if (!row) throw reportNotFound('That Category or Machine does not exist.');
   return row.label;
 }
 

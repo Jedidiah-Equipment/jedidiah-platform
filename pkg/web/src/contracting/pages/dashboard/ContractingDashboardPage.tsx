@@ -1,8 +1,9 @@
+import type { CSSProperties } from 'react';
 import { DashboardWidgetCard } from '@/components/common/dashboard/DashboardWidgetCard.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { useAccess } from '@/hooks/use-access.js';
 
-import { visibleContractingDashboardRows } from './dashboard-widgets.js';
+import { dashboardRowColumns, visibleContractingDashboardRows } from './dashboard-widgets.js';
 
 export function ContractingDashboardPage() {
   const access = useAccess();
@@ -18,9 +19,13 @@ export function ContractingDashboardPage() {
       ) : (
         <div className="flex flex-col gap-4">
           {rows.map((row) => (
-            <div key={row[0]?.id} className="grid grid-cols-1 gap-4 md:grid-cols-6 xl:grid-cols-12">
+            <div
+              key={row[0]?.id}
+              className="grid grid-cols-1 gap-4 md:grid-cols-6 xl:grid-cols-(--row-columns)"
+              style={{ '--row-columns': dashboardRowColumns(row) } as CSSProperties}
+            >
               {row.map((widget) => (
-                <DashboardWidgetCard key={widget.id} size={widget.size} title={widget.title}>
+                <DashboardWidgetCard className="xl:col-span-1" key={widget.id} size={widget.size} title={widget.title}>
                   <widget.Component />
                 </DashboardWidgetCard>
               ))}

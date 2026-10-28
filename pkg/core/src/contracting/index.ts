@@ -31,6 +31,7 @@ export * from './readings/reading-errors.js';
 export * from './readings/reading-evidence.js';
 export * from './readings/reading-service.js';
 export * from './readings/telematics-reading.js';
+export * from './reports/hours-heat-map-service.js';
 export * from './reports/mechanic-performance-service.js';
 export * from './reports/report-errors.js';
 export * from './reports/utilisation-service.js';

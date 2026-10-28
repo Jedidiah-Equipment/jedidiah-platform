@@ -15,6 +15,8 @@ import { EditFormFullWidth } from '@/components/page-layout/EditFormLayout.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Button } from '@/components/ui/button.js';
 import { ActivityCard } from '@/contracting/components/activity/ActivityCard.js';
+import { HoursHeatMapCard } from '@/contracting/components/hours-heat-map/HoursHeatMapCard.js';
+import { jobHoursEnd } from '@/contracting/components/hours-heat-map/job-hours-end.js';
 import { ReasonDialog } from '@/contracting/components/ReasonDialog.js';
 import { useAiVerdictRefetchInterval } from '@/contracting/hooks/use-ai-verdict-polling.js';
 import { useResetOnOpen } from '@/contracting/hooks/use-contracting-write.js';
@@ -73,10 +75,13 @@ export function JobPage({ code }: { code: string }) {
                     />
                   ) : null}
                 </div>
-                <ActivityCard
-                  thread={{ kind: 'job', id: job.id, code: job.jobNumber }}
-                  addNote={sheet.action('addNote')}
-                />
+                <div className="min-w-0 space-y-5">
+                  <HoursHeatMapCard end={jobHoursEnd(job.assignments)} jobIds={[job.id]} />
+                  <ActivityCard
+                    thread={{ kind: 'job', id: job.id, code: job.jobNumber }}
+                    addNote={sheet.action('addNote')}
+                  />
+                </div>
               </DetailAsideGrid>
               <CancelJob job={job} sheet={sheet} />
             </div>

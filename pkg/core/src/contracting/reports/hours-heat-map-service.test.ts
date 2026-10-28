@@ -103,6 +103,22 @@ test('counts every meter hour for a Machine, the gap between its Jobs included, 
   expect(Math.abs(total(heatMap) - 67.4)).toBeLessThan(0.6);
 });
 
+test('opens the first day from the reading before the range and ends the last on the one after it', async ({
+  context,
+}) => {
+  const { db, excavator } = context;
+  // 30 Jun 18:00 (4030.0) to 3 Jul 12:00 (4051.2) is 21.2 h over 66 elapsed hours; the range holds 1 and 2 July only.
+  const heatMap = await getHoursHeatMap({
+    db,
+    input: { machineIds: [excavator.id], start: date('2026-07-01'), end: date('2026-07-02') },
+    today,
+  });
+  expect(heatMap.days).toEqual([
+    { date: '2026-07-01', hours: 7.7, estimated: true },
+    { date: '2026-07-02', hours: 7.7, estimated: true },
+  ]);
+});
+
 test('sums every Machine, retired ones included, when nothing is filtered, and treats empty arrays as nothing', async ({
   context,
 }) => {
@@ -180,6 +196,7 @@ test('defaults to the six months ending today and refuses ranges that run backwa
   await expect(
     getHoursHeatMap({ db, input: { start: date('2026-10-12'), end: date('2026-10-01') }, today }),
   ).rejects.toMatchObject({ code: 'report.invalid_range' });
+  expect(await getHoursHeatMap({ db, input: { start: date('2026-12-01') }, today })).toMatchObject({ days: [] });
   await expect(getHoursHeatMap({ db, input: { start: date('2025-01-01') }, today })).rejects.toMatchObject({
     code: 'report.invalid_range',
   });

@@ -7,12 +7,14 @@ export const maxHoursHeatMapDays = 366;
 /** The range a heat map covers when it names no start: this many calendar months before its end. */
 export const defaultHoursHeatMapMonths = 6;
 
-const wholeDaysBetween = (start: string, end: string) => (Date.parse(end) - Date.parse(start)) / 86_400_000 + 1;
+/** A range that runs forwards and spans no more than `maxHoursHeatMapDays`. */
+export function isValidHoursHeatMapRange({ start, end }: { start: string; end: string }): boolean {
+  return end >= start && (Date.parse(end) - Date.parse(start)) / 86_400_000 + 1 <= maxHoursHeatMapDays;
+}
 
 /**
  * Omitted or empty `machineIds` / `jobIds` filter nothing on that dimension; both together are the intersection.
- * `end` defaults to today and `start` to six months before `end`; when both are named the range must run forwards and
- * span no more than `maxHoursHeatMapDays`.
+ * `end` defaults to today and `start` to six months before `end`; when both are named the range must be valid.
  */
 export const HoursHeatMapInput = z
   .object({
@@ -22,12 +24,8 @@ export const HoursHeatMapInput = z
     end: DateOnlyIso.optional(),
   })
   .strict()
-  .refine(({ start, end }) => !start || !end || end >= start, {
-    message: 'The end date cannot be before the start date.',
-    path: ['end'],
-  })
-  .refine(({ start, end }) => !start || !end || wholeDaysBetween(start, end) <= maxHoursHeatMapDays, {
-    message: `A heat map covers at most ${maxHoursHeatMapDays} days.`,
+  .refine(({ start, end }) => !start || !end || isValidHoursHeatMapRange({ start, end }), {
+    message: `The range must run forwards and span at most ${maxHoursHeatMapDays} days.`,
     path: ['end'],
   });
 export type HoursHeatMapInput = z.infer<typeof HoursHeatMapInput>;

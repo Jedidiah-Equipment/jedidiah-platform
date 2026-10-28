@@ -1,5 +1,5 @@
 import type { DateOnlyIso } from '@pkg/schema';
-import { type DailyHoursDay, defaultHoursHeatMapMonths, maxHoursHeatMapDays } from '@pkg/schema/contracting';
+import { type DailyHoursDay, defaultHoursHeatMapMonths } from '@pkg/schema/contracting';
 import { JOHANNESBURG_TIME_ZONE, zonedDateStartToUtcInstant } from '../formatting/date.js';
 import { addDateOnlyDays, addDateOnlyMonths, diffDateOnlyDays } from '../formatting/date-only.js';
 import { round1 } from './hours.js';
@@ -94,7 +94,8 @@ export function allocateDailyHours(
 
 /**
  * The inclusive range a heat map reads: `end` defaults to today and is capped at it, `start` to six calendar months
- * before `end`. The range may still run backwards or too long; the caller refuses it with `isValidHoursHeatMapRange`.
+ * before `end`. The range may still run backwards or too long; the caller refuses it with `isValidHoursHeatMapRange`
+ * from `@pkg/schema/contracting`.
  */
 export function resolveHoursHeatMapRange(
   input: { start?: DateOnlyIso | undefined; end?: DateOnlyIso | undefined },
@@ -102,10 +103,6 @@ export function resolveHoursHeatMapRange(
 ): { start: DateOnlyIso; end: DateOnlyIso } {
   const end = input.end && input.end < today ? input.end : today;
   return { start: input.start ?? addDateOnlyMonths(end, -defaultHoursHeatMapMonths), end };
-}
-
-export function isValidHoursHeatMapRange({ start, end }: { start: DateOnlyIso; end: DateOnlyIso }): boolean {
-  return end >= start && diffDateOnlyDays(end, start) + 1 <= maxHoursHeatMapDays;
 }
 
 export const dailyHoursLevels = [0, 1, 2, 3, 4] as const;

@@ -1,5 +1,5 @@
 import type { Db } from '@pkg/db';
-import { contractingHourReadings, contractingMachineAssignments } from '@pkg/db/contracting';
+import { contractingHourReadings, contractingMachineAssignments, contractingMachines } from '@pkg/db/contracting';
 import {
   addDateOnlyDays,
   getPlantDateNow,
@@ -10,21 +10,22 @@ import {
 import {
   allocateDailyHours,
   type DailyHoursStint,
-  isValidHoursHeatMapRange,
   type MeterSegment,
   meterSegments,
   resolveHoursHeatMapRange,
   segmentsWithinStints,
 } from '@pkg/domain/contracting';
 import type { DateOnlyIso } from '@pkg/schema';
-import { HoursHeatMap, type HoursHeatMapInput } from '@pkg/schema/contracting';
-import { and, asc, desc, eq, gte, inArray, isNotNull, lt, type SQL } from 'drizzle-orm';
+import { HoursHeatMap, type HoursHeatMapInput, isValidHoursHeatMapRange } from '@pkg/schema/contracting';
+import { and, asc, eq, gte, inArray, isNotNull, lt, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { oldestFirst } from '../readings/reading-sql.js';
 import { ReportError } from './report-errors.js';
 
 const arrival = alias(contractingHourReadings, 'heat_map_arrival');
 const departure = alias(contractingHourReadings, 'heat_map_departure');
+const neighbourName = 'heat_map_neighbour';
+const neighbour = alias(contractingHourReadings, neighbourName);
 
 type LedgerPoint = { machineId: string; value: number; capturedAt: Date };
 
@@ -56,25 +57,37 @@ async function loadStints(db: Db, jobIds: string[], machineIds: string[] | undef
 }
 
 /**
- * The readings inside the range plus, per Machine, the one just before it and the one just after it: the neighbours
- * the first and last segments run to. Three queries over the `(machine, Read At)` index; nothing reads a whole ledger.
+ * The reading nearest the range on one side, per Machine, found by an index probe on `(machine, Read At, sequence)`
+ * for each Machine rather than a scan of everything before or after it.
  */
-async function loadLedgers(db: Db, range: { from: Date; to: Date }, machineFilter: SQL | undefined) {
+const nearestReadingId = (side: 'before' | 'after', instant: Date) => {
+  const iso = instant.toISOString();
+  return side === 'before'
+    ? sql`(select ${neighbour.id} from ${contractingHourReadings} ${sql.raw(neighbourName)} where ${neighbour.machineId} = ${contractingMachines.id} and ${neighbour.capturedAt} < ${iso}::timestamptz order by ${neighbour.capturedAt} desc, ${neighbour.sequence} desc limit 1)`
+    : sql`(select ${neighbour.id} from ${contractingHourReadings} ${sql.raw(neighbourName)} where ${neighbour.machineId} = ${contractingMachines.id} and ${neighbour.capturedAt} >= ${iso}::timestamptz order by ${neighbour.capturedAt} asc, ${neighbour.sequence} asc limit 1)`;
+};
+
+/**
+ * The readings inside the range plus, per Machine, the one just before it and the one just after it: the neighbours
+ * the first and last segments run to. Nothing reads a whole ledger.
+ */
+async function loadLedgers(db: Db, range: { from: Date; to: Date }, machineIds: string[] | undefined) {
   const columns = {
     machineId: contractingHourReadings.machineId,
     value: contractingHourReadings.value,
     capturedAt: contractingHourReadings.capturedAt,
   };
-  const [before, inside, after] = await Promise.all([
+  const nearest = (side: 'before' | 'after') =>
     db
-      .selectDistinctOn([contractingHourReadings.machineId], columns)
-      .from(contractingHourReadings)
-      .where(and(lt(contractingHourReadings.capturedAt, range.from), machineFilter))
-      .orderBy(
-        asc(contractingHourReadings.machineId),
-        desc(contractingHourReadings.capturedAt),
-        desc(contractingHourReadings.sequence),
-      ),
+      .select(columns)
+      .from(contractingMachines)
+      .innerJoin(
+        contractingHourReadings,
+        eq(contractingHourReadings.id, nearestReadingId(side, side === 'before' ? range.from : range.to)),
+      )
+      .where(machineIds ? inArray(contractingMachines.id, machineIds) : undefined);
+  const [before, inside, after] = await Promise.all([
+    nearest('before'),
     db
       .select(columns)
       .from(contractingHourReadings)
@@ -82,19 +95,11 @@ async function loadLedgers(db: Db, range: { from: Date; to: Date }, machineFilte
         and(
           gte(contractingHourReadings.capturedAt, range.from),
           lt(contractingHourReadings.capturedAt, range.to),
-          machineFilter,
+          machineIds ? inArray(contractingHourReadings.machineId, machineIds) : undefined,
         ),
       )
       .orderBy(asc(contractingHourReadings.machineId), ...oldestFirst),
-    db
-      .selectDistinctOn([contractingHourReadings.machineId], columns)
-      .from(contractingHourReadings)
-      .where(and(gte(contractingHourReadings.capturedAt, range.to), machineFilter))
-      .orderBy(
-        asc(contractingHourReadings.machineId),
-        asc(contractingHourReadings.capturedAt),
-        asc(contractingHourReadings.sequence),
-      ),
+    nearest('after'),
   ]);
   const ledgers = new Map<string, LedgerPoint[]>();
   // Before, inside and after are each in Read At order and in that order in time, so appending keeps the ledger sorted.
@@ -120,6 +125,8 @@ export async function getHoursHeatMap({
   today?: DateOnlyIso;
 }): Promise<HoursHeatMap> {
   const range = resolveHoursHeatMapRange(input, today);
+  // A range that starts after today has no day left to show once its end is capped.
+  if (range.start > today) return HoursHeatMap.parse({ ...range, days: [] });
   if (!isValidHoursHeatMapRange(range)) {
     throw new ReportError('report.invalid_range', 'The heat map range must run forwards and span at most a year.');
   }
@@ -135,7 +142,7 @@ export async function getHoursHeatMap({
         from: zonedDateStartToUtcInstant(range.start, JOHANNESBURG_TIME_ZONE),
         to: zonedDateStartToUtcInstant(addDateOnlyDays(range.end, 1), JOHANNESBURG_TIME_ZONE),
       },
-      scopedMachineIds ? inArray(contractingHourReadings.machineId, scopedMachineIds) : undefined,
+      scopedMachineIds,
     );
     for (const [machineId, ledger] of ledgers) {
       const machineSegments = meterSegments(

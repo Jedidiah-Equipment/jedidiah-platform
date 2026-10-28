@@ -4,7 +4,6 @@ import {
   allocateDailyHours,
   busiestDailyHours,
   dailyHoursLevel,
-  isValidHoursHeatMapRange,
   type MeterSegment,
   meterSegments,
   resolveHoursHeatMapRange,
@@ -54,6 +53,18 @@ describe('allocateDailyHours', () => {
     );
     expect(days.map((day) => day.hours)).toEqual([4.2, 10, 10, 5.8, 0]);
     expect(days.map((day) => day.estimated)).toEqual([true, true, true, true, false]);
+  });
+
+  test('splits a segment across a month boundary by elapsed time', () => {
+    const days = allocateDailyHours(
+      [segment(6, '2026-06-30T12:00:00+02:00', '2026-07-01T12:00:00+02:00')],
+      date('2026-06-30'),
+      date('2026-07-01'),
+    );
+    expect(days).toEqual([
+      { date: '2026-06-30', hours: 3, estimated: true },
+      { date: '2026-07-01', hours: 3, estimated: true },
+    ]);
   });
 
   test('does not mark a segment that ends on midnight as spanning the next day', () => {
@@ -139,12 +150,6 @@ describe('heat map range', () => {
       start: '2025-12-30',
       end: '2026-06-30',
     });
-  });
-
-  test('accepts up to 366 days and refuses a backwards or longer range', () => {
-    expect(isValidHoursHeatMapRange({ start: date('2025-10-28'), end: date('2026-10-28') })).toBe(true);
-    expect(isValidHoursHeatMapRange({ start: date('2025-10-27'), end: date('2026-10-28') })).toBe(false);
-    expect(isValidHoursHeatMapRange({ start: date('2026-10-28'), end: date('2026-10-27') })).toBe(false);
   });
 });
 

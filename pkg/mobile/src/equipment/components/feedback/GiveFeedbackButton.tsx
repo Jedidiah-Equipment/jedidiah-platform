@@ -1,7 +1,7 @@
 import { toSentenceCase } from '@pkg/domain';
 import { departmentLabels, getFeedbackVisibilityNotice } from '@pkg/domain/equipment';
 import { DEPARTMENTS, type FeedbackKind } from '@pkg/schema/equipment';
-import { IconEye, IconLock, IconMessagePlus } from '@tabler/icons-react-native';
+import { IconLock, IconMessagePlus } from '@tabler/icons-react-native';
 import { revalidateLogic, useStore } from '@tanstack/react-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -35,12 +35,20 @@ const DEPARTMENT_OPTIONS = DEPARTMENTS.map((department) => ({
  * Mirror of web's `GiveFeedbackButton`, scoped to a Job: a trigger that opens a
  * full-screen form to submit feedback about this Job.
  */
-export function GiveFeedbackButton({ jobCode, jobId }: { jobCode: string; jobId: string }) {
+export function GiveFeedbackButton({
+  className,
+  jobCode,
+  jobId,
+}: {
+  className?: string;
+  jobCode: string;
+  jobId: string;
+}) {
   const [open, setOpen] = useState(false);
 
   return (
     <>
-      <AccentButton icon={IconMessagePlus} label="Send Feedback" onPress={() => setOpen(true)} />
+      <AccentButton className={className} icon={IconMessagePlus} label="Send Feedback" onPress={() => setOpen(true)} />
       {/* Mount fresh each open so the form starts from defaults, mirroring web's remount-on-open. */}
       {open ? <FeedbackModal jobCode={jobCode} jobId={jobId} onClose={() => setOpen(false)} /> : null}
     </>
@@ -155,33 +163,22 @@ function FeedbackModal({ jobCode, jobId, onClose }: { jobCode: string; jobId: st
   );
 }
 
-/**
- * Mirrors web's FeedbackVisibilityBanner, which owns these two tints. Each scheme's half is written
- * out on its own the way the shared badge palettes are: native picks one by name, and only a class
- * Tailwind scanned as its own literal has a rule behind it.
- */
-const VISIBILITY_PALETTE = {
-  private: {
-    container: 'border-amber-500/50 bg-amber-500/10',
-    textByScheme: { dark: 'text-amber-200', light: 'text-amber-800' },
-  },
-  public: {
-    container: 'border-sky-500/50 bg-sky-500/10',
-    textByScheme: { dark: 'text-sky-200', light: 'text-sky-800' },
-  },
+/** Written out whole, the way the shared badge palettes are: native picks a scheme's half by name. */
+const PRIVATE_PALETTE = {
+  container: 'border-amber-500/50 bg-amber-500/10',
+  textByScheme: { dark: 'text-amber-200', light: 'text-amber-800' },
 } as const;
 
-/** Mobile mirror of web's FeedbackVisibilityBanner; this form is always Job-scoped. */
+/** Mobile mirror of web's FeedbackVisibilityBanner for the private kinds; public feedback needs no banner. */
 function FeedbackVisibilityBanner({ kind }: { kind: FeedbackKind }) {
   const notice = getFeedbackVisibilityNotice(kind, 'job');
-  const isPublic = notice.visibility === 'public';
   const { resolved } = useColorMode();
-  const palette = isPublic ? VISIBILITY_PALETTE.public : VISIBILITY_PALETTE.private;
-  const textClassName = palette.textByScheme[resolved];
+  if (notice.visibility === 'public') return null;
+  const textClassName = PRIVATE_PALETTE.textByScheme[resolved];
 
   return (
-    <View className={`flex-row items-center gap-2.5 rounded-xl border px-3 py-2.5 ${palette.container}`}>
-      <Icon className={textClassName} icon={isPublic ? IconEye : IconLock} size={18} />
+    <View className={`flex-row items-center gap-2.5 rounded-xl border px-3 py-2.5 ${PRIVATE_PALETTE.container}`}>
+      <Icon className={textClassName} icon={IconLock} size={18} />
       <View className="min-w-0 flex-1">
         <Text className={`text-xs ${textClassName}`}>
           <Text className={textClassName} weight="bold">

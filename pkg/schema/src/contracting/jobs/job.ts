@@ -4,6 +4,7 @@ import { DateIso, DateOnlyIso } from '../../common/date.js';
 import { createCursorQueryResult, createSearchedSortedCursorQueryInput } from '../../common/pagination.js';
 import { nullableTrimmedTextInput, nullableTrimmedTextInputOptional, requiredTrimmedText } from '../../common/text.js';
 import { UUID } from '../../common/uuid.js';
+import { OpenBreakdown } from '../breakdowns/open-breakdown.js';
 import { CategoryColour, CategoryIconKey, FleetCode, FleetName } from '../fleet/fleet.js';
 import { RateBasis } from '../rate-card/rate-card.js';
 import { HourReading, ReadingValue } from '../readings/reading.js';
@@ -285,7 +286,11 @@ const jobSummaryShape = {
   createdAt: DateIso,
   updatedAt: DateIso,
 };
-export const JobSummary = z.object(jobSummaryShape);
+export const JobSummary = z.object({
+  ...jobSummaryShape,
+  /** The unsolved Breakdowns the reader may see: Code Red first, each urgency newest first. */
+  openBreakdowns: OpenBreakdown.array(),
+});
 export type JobSummary = z.infer<typeof JobSummary>;
 export const JobListResult = createCursorQueryResult(JobSummary);
 export type JobListResult = z.infer<typeof JobListResult>;

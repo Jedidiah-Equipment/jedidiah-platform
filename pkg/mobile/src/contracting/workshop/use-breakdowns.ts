@@ -24,6 +24,15 @@ export function useBreakdownScope() {
   return breakdownReadScope(useSessionAccessSummary());
 }
 
+/** The Job's unsolved Breakdowns this person may read, which flag its Machine cards; none for a role with no Workshop. */
+export function useJobBreakdowns(jobId: string) {
+  const canRead = useBreakdownScope() !== null;
+  const trpc = useTRPC();
+  return useQuery(
+    trpc.contractingBreakdowns.list.queryOptions({ jobIds: [jobId], limit: 0 }, { enabled: canRead && !!jobId }),
+  );
+}
+
 export function useBreakdownList({
   search,
   statuses,
@@ -95,10 +104,16 @@ export function useBreakdownUpload<TVariables, TData>(upload: (variables: TVaria
   return useMutation({ mutationFn: upload, onSuccess: refetch });
 }
 
+/** A Breakdown write also moves the flags the Jobs list and the field Machines list (under Readings) serve. */
 function useRefetchBreakdowns() {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
-  return () => queryClient.invalidateQueries({ queryKey: trpc.contractingBreakdowns.pathKey() });
+  return () =>
+    Promise.all(
+      [trpc.contractingBreakdowns, trpc.contractingJobs, trpc.contractingReadings].map((root) =>
+        queryClient.invalidateQueries({ queryKey: root.pathKey() }),
+      ),
+    );
 }
 
 /** Where a report of the chosen subject files when it names no Job, and what is already open on it. */

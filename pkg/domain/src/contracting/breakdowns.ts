@@ -5,6 +5,7 @@ import {
   type BreakdownSubjectKind,
   type BreakdownUrgency,
   breakdownStatuses,
+  breakdownUrgencies,
 } from '@pkg/schema/contracting';
 import { splitGraphemes } from 'unicode-segmenter/grapheme';
 import { hasPermission } from '../auth/authorization.js';
@@ -20,11 +21,11 @@ export const breakdownUrgencyLabels: Record<BreakdownUrgency, string> = {
   'code-red': 'Code Red',
   'code-green': 'Code Green',
 };
-/** Urgency shows as a flag icon on its chip tint, the same on web and mobile; `icon` paints the flag. */
+/** Urgency shows as a flag icon on its chip tint, the same on web and mobile; `icon` paints the flag, `border` a card. */
 export const breakdownUrgencyColorClassNames = {
-  'code-red': { ...statusBadgeColorClassNames.red, icon: 'text-red-500' },
-  'code-green': { ...statusBadgeColorClassNames.green, icon: 'text-emerald-500' },
-} satisfies Record<BreakdownUrgency, BadgeColorClassNames & { icon: string }>;
+  'code-red': { ...statusBadgeColorClassNames.red, icon: 'text-red-500', border: 'border-red-500/60' },
+  'code-green': { ...statusBadgeColorClassNames.green, icon: 'text-emerald-500', border: 'border-emerald-500/60' },
+} satisfies Record<BreakdownUrgency, BadgeColorClassNames & { icon: string; border: string }>;
 /** What the screens call each status: the plain words the workshop uses, while the codes stay open / in-progress / solved. */
 export const breakdownStatusLabels: Record<BreakdownStatus, string> = {
   open: 'Not fixed',
@@ -49,6 +50,21 @@ export function breakdownReadScope(access: UserAccessSummary | null | undefined)
   if (hasPermission(access, 'contracting_breakdown:read')) return 'all';
   return hasPermission(access, 'contracting_breakdown:report') ? 'own' : null;
 }
+
+/** Breakdowns most urgent first: Code Red over Code Green, the newest reported first among equals. */
+export function breakdownsByUrgency<TBreakdown extends { urgency: BreakdownUrgency; reportedAt: string }>(
+  breakdowns: readonly TBreakdown[],
+): TBreakdown[] {
+  const rank = (breakdown: TBreakdown) => breakdownUrgencies.indexOf(breakdown.urgency);
+  return [...breakdowns].sort(
+    (left, right) => rank(left) - rank(right) || right.reportedAt.localeCompare(left.reportedAt),
+  );
+}
+
+/** The most urgent of some Breakdowns; none for none. */
+export const mostUrgentBreakdown = <TBreakdown extends { urgency: BreakdownUrgency; reportedAt: string }>(
+  breakdowns: readonly TBreakdown[],
+): TBreakdown | null => breakdownsByUrgency(breakdowns)[0] ?? null;
 
 /** A Breakdown is "mine" when I reported it or it sits on a Job I am Foreman of. */
 export function isBreakdownMine(

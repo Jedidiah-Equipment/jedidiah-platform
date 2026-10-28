@@ -3,6 +3,7 @@ import { AuthId } from '../../auth/auth-id.js';
 import { DateIso } from '../../common/date.js';
 import { nullableTrimmedTextInput, nullableTrimmedTextInputOptional, requiredTrimmedText } from '../../common/text.js';
 import { UUID } from '../../common/uuid.js';
+import { OpenBreakdown } from '../breakdowns/open-breakdown.js';
 import { telematicsProviders } from '../readings/reading-enums.js';
 import { ReadingValue } from '../readings/reading-value.js';
 import { serviceDueStatuses } from '../services/service-enums.js';
@@ -151,6 +152,10 @@ export const Machine = MachineCreateInput.extend({
 });
 export type Machine = z.infer<typeof Machine>;
 
+/** A Machine on a list: the Machine, with its unsolved Breakdowns the reader may see, Code Red first, newest first. */
+export const MachineListItem = Machine.extend({ openBreakdowns: OpenBreakdown.array() });
+export type MachineListItem = z.infer<typeof MachineListItem>;
+
 export const ImplementCreateInput = z.object({ code: FleetCode, categoryId: UUID, notes: FleetOptionalText }).strict();
 export type ImplementCreateInput = z.infer<typeof ImplementCreateInput>;
 export const ImplementPatchInput = z
@@ -170,7 +175,7 @@ export const ImplementCodeSuggestion = z.object({ code: FleetCode });
 export type ImplementCodeSuggestion = z.infer<typeof ImplementCodeSuggestion>;
 
 /** The field picker exposes only the identity a reading capture needs. */
-export const FieldMachine = Machine.pick({
+export const FieldMachine = MachineListItem.pick({
   id: true,
   code: true,
   make: true,
@@ -191,6 +196,7 @@ export const FieldMachine = Machine.pick({
   serviceDueStatus: true,
   serviceBookedIn: true,
   busyOnJob: true,
+  openBreakdowns: true,
 })
   .extend({ onSiteJobNumber: z.string().nullable() })
   .strip();

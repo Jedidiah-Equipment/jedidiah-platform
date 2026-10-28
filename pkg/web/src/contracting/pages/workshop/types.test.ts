@@ -17,6 +17,8 @@ describe('listedStatuses', () => {
   it('asks for the unsolved Breakdowns until statuses are picked', () => {
     expect(listedStatuses([])).toEqual(['open', 'in-progress']);
     expect(listedStatuses([{ id: STATUS_COLUMN_ID, value: ['solved'] }])).toEqual(['solved']);
+    expect(listedStatuses([], ['open', 'in-progress', 'solved'])).toEqual(['open', 'in-progress', 'solved']);
+    expect(listedStatuses([{ id: STATUS_COLUMN_ID, value: ['solved'] }], ['open'])).toEqual(['solved']);
   });
 });
 

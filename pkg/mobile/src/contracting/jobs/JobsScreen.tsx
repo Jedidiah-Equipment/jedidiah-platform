@@ -18,6 +18,7 @@ import { infiniteQueryPagination, TabRootList } from '@/components/TabRootList';
 import { MainToolbar } from '@/components/TopToolbar';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Text } from '@/components/ui/text';
+import { BreakdownUrgencyIcon, breakdownBorder } from '@/contracting/components/BreakdownSubjectIcons';
 import { contractingStorageKey } from '@/contracting/lib/contracting-storage';
 import { useCan } from '@/lib/use-access';
 import { useDebouncedSearch } from '@/lib/use-debounced-search';
@@ -110,18 +111,36 @@ export default function JobsScreen() {
   );
 }
 
+/** As tall as the status badge above it, so the two stack inside the card's height. */
+const FLAG_TILE = 22;
+
 function JobRow({ job }: { job: JobSummary }) {
   const queue = jobQueueOf(job);
   const machines = job.plannedStints + job.onSiteStints + job.leftStints;
+  // The server lists a Job's open Breakdowns most urgent first, so each urgency appears once, Code Red first.
+  const [mostUrgent] = job.openBreakdowns;
+  const urgencies = [...new Set(job.openBreakdowns.map(({ urgency }) => urgency))];
   return (
     <CatalogListCard
       accessibilityHint="Opens the Job"
       accessibilityLabel={`Job ${job.jobNumber}`}
+      borderClassName={breakdownBorder(mostUrgent)}
       mainText={job.customerName}
       monoText={`${job.jobNumber} · ${formatNumber(machines)} machines · ${formatNumber(job.onSiteStints)} running`}
       onPress={() => router.push(`/contracting/jobs/${job.id}` as Href)}
       subText={`${job.farmName} · ${job.workTypeName}`}
-      trailing={<StatusBadge classNames={jobQueueColorClassNames[queue]} label={jobQueueLabels[queue]} />}
+      trailing={
+        <View className="flex-1 items-end justify-between">
+          <StatusBadge classNames={jobQueueColorClassNames[queue]} label={jobQueueLabels[queue]} />
+          {urgencies.length === 0 ? null : (
+            <View className="flex-row items-center gap-1">
+              {urgencies.map((urgency) => (
+                <BreakdownUrgencyIcon key={urgency} tile={FLAG_TILE} urgency={urgency} />
+              ))}
+            </View>
+          )}
+        </View>
+      }
     />
   );
 }

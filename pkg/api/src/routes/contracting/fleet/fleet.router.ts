@@ -7,7 +7,7 @@ import {
   getMachine,
   listCategories,
   listImplements,
-  listMachines,
+  listMachinesWithOpenBreakdowns,
   machineOptions,
   patchCategory,
   patchImplement,
@@ -67,7 +67,7 @@ export const contractingFleetRouter = router({
   machines: router({
     list: authorizedProcedure('contracting_machine:read')
       .input(MachineListInput)
-      .query(({ ctx, input }) => listMachines({ db: ctx.db, input })),
+      .query(({ ctx, input }) => listMachinesWithOpenBreakdowns({ db: ctx.db, actor: ctx.access, input })),
     options: authorizedProcedure('contracting_machine:read').query(({ ctx }) => machineOptions({ db: ctx.db })),
     get: authorizedProcedure('contracting_machine:read')
       .input(FleetIdInput)

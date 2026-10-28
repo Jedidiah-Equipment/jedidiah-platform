@@ -23,9 +23,11 @@ const notice = getFeedbackVisibilityNotice('general', 'purchase-order');
  * Orders, so the form is the order and the note. A Job with no linked orders offers nothing.
  */
 export function PurchaseOrderFeedbackButton({
+  className,
   jobCode,
   purchaseOrders,
 }: {
+  className?: string;
   jobCode: string;
   purchaseOrders: FeedbackPurchaseOrder[];
 }) {
@@ -34,7 +36,12 @@ export function PurchaseOrderFeedbackButton({
 
   return (
     <>
-      <AccentButton icon={IconShoppingCart} label="Send PO Feedback" onPress={() => setOpen(true)} />
+      <AccentButton
+        className={className}
+        icon={IconShoppingCart}
+        label="Send PO Feedback"
+        onPress={() => setOpen(true)}
+      />
       {/* Mount fresh each open so the form starts from defaults, mirroring web's remount-on-open. */}
       {open ? (
         <PurchaseOrderFeedbackModal jobCode={jobCode} onClose={() => setOpen(false)} purchaseOrders={purchaseOrders} />

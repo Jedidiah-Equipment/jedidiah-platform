@@ -1,11 +1,13 @@
 import type { ActionVerdict } from '@pkg/domain/contracting';
 import { NoteText } from '@pkg/schema/contracting';
+import { IconMessagePlus } from '@tabler/icons-react-native';
 import { useState } from 'react';
 import { ModalSheet, SheetSubmitButton } from '@/components/ModalSheet';
+import { AccentButton } from '@/components/ui/accent-button';
 import { Text } from '@/components/ui/text';
 import { useVoiceSession } from '@/components/voice/use-voice-session';
 import { VoiceTextArea } from '@/components/voice/VoiceTextArea';
-import { VerdictButton } from '@/contracting/workshop/VerdictButton';
+import { VerdictGroup } from '@/contracting/workshop/VerdictButton';
 import { type NoteThreadRef, useAddNote } from './use-add-note';
 
 /** Add Note on a record's Activity thread, under that record's `addNote` verdict. */
@@ -13,7 +15,11 @@ export function AddNoteButton({ thread, verdict }: { thread: NoteThreadRef; verd
   const [open, setOpen] = useState(false);
   return (
     <>
-      <VerdictButton primary verdict={verdict} title="Add Note" onPress={() => setOpen(true)} />
+      <VerdictGroup verdict={verdict}>
+        {(disabled) => (
+          <AccentButton disabled={disabled} icon={IconMessagePlus} label="Add Note" onPress={() => setOpen(true)} />
+        )}
+      </VerdictGroup>
       {/* Mounted fresh each open, so the note and its voice session start empty. */}
       {open ? <NoteModal thread={thread} onClose={() => setOpen(false)} /> : null}
     </>

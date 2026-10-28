@@ -5,10 +5,11 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { CatalogListCard } from '@/components/CatalogList';
+import { CATALOG_AVATAR_TILE, CatalogListCard } from '@/components/CatalogList';
 import { TabRootList } from '@/components/TabRootList';
 import { MainToolbar } from '@/components/TopToolbar';
 import { Text } from '@/components/ui/text';
+import { BreakdownFlagButton, breakdownBorder } from '@/contracting/components/BreakdownSubjectIcons';
 import { contractingStorageKey } from '@/contracting/lib/contracting-storage';
 import {
   getMachineCategories,
@@ -49,6 +50,8 @@ function BusyWith({ machine }: { machine: FieldMachine }) {
 
 function MachineCard({ machine }: { machine: FieldMachine }) {
   const { resolved } = useColorMode();
+  // The server lists a Machine's open Breakdowns most urgent first.
+  const [breakdown] = machine.openBreakdowns;
   const tile = categoryTileProps(machine.categoryIcon, machine.categoryColour, resolved);
   return (
     <CatalogListCard
@@ -57,6 +60,12 @@ function MachineCard({ machine }: { machine: FieldMachine }) {
       avatarClassName={tile.className}
       avatarFallback={tile.fallback}
       avatarName={machine.code}
+      borderClassName={breakdownBorder(breakdown)}
+      leading={
+        breakdown ? (
+          <BreakdownFlagButton breakdown={breakdown} code={machine.code} tile={CATALOG_AVATAR_TILE} />
+        ) : undefined
+      }
       mainText={machine.code}
       monoText={machine.latestReadingHours === null ? 'No reading' : formatHours(machine.latestReadingHours)}
       onPress={() => router.push(`/contracting/machines/${machine.id}`)}

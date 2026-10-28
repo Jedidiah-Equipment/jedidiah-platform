@@ -1,7 +1,8 @@
 import { IconX } from '@tabler/icons-react-native';
 import type React from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, View } from 'react-native';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { ModalSafeArea } from '@/components/ModalSafeArea';
 import { ScrollLockScrollView } from '@/components/scroll-lock';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
@@ -35,7 +36,7 @@ export function ModalSheet({
           parent var context) or the modal's tokens fall back to light. The Modal also sits
           outside the root SafeAreaProvider, so its SafeAreaView would read zero insets and
           slide the header under the notch; a nested provider re-measures insets here. */}
-      <SafeAreaProvider>
+      <ModalSafeArea>
         <View className="flex-1" style={gluestackConfig[resolved]}>
           <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom', 'left', 'right']}>
             <View className="flex-row items-center justify-between border-b border-border px-4 py-3">
@@ -68,7 +69,7 @@ export function ModalSheet({
             </KeyboardAvoidingView>
           </SafeAreaView>
         </View>
-      </SafeAreaProvider>
+      </ModalSafeArea>
     </Modal>
   );
 }

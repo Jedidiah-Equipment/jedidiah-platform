@@ -35,12 +35,15 @@ export const STATUS_COLUMN_ID = 'status';
 export const subjectFilterValue = (subject: BreakdownSubjectRef) => `${subject.kind}:${subject.id}`;
 
 /** Everything the Workshop's column filters ask of the Breakdown list. */
-export function workshopListFilters(columnFilters: ColumnFiltersState) {
+export function workshopListFilters(
+  columnFilters: ColumnFiltersState,
+  fallbackStatuses: readonly BreakdownStatus[] = unsolvedBreakdownStatuses,
+) {
   const subjects = readMultiSelectFilter(columnFilters, SUBJECT_COLUMN_ID);
   const idsOf = (kind: BreakdownSubjectRef['kind']) =>
     subjects.filter((value) => value.startsWith(`${kind}:`)).map((value) => value.slice(kind.length + 1));
   return {
-    statuses: listedStatuses(columnFilters),
+    statuses: listedStatuses(columnFilters, fallbackStatuses),
     urgencies: listedUrgencies(columnFilters),
     machineIds: idsOf('machine'),
     implementIds: idsOf('implement'),
@@ -52,11 +55,14 @@ export function workshopListFilters(columnFilters: ColumnFiltersState) {
   } satisfies Partial<BreakdownListInput>;
 }
 
-/** What the queue asks the server for: the picked statuses, or every unsolved one when none is picked. */
-export function listedStatuses(columnFilters: ColumnFiltersState): BreakdownStatus[] {
+/** What the queue asks the server for: the picked statuses, or `fallback` (every unsolved one) when none is picked. */
+export function listedStatuses(
+  columnFilters: ColumnFiltersState,
+  fallback: readonly BreakdownStatus[] = unsolvedBreakdownStatuses,
+): BreakdownStatus[] {
   const picked = readMultiSelectFilter(columnFilters, STATUS_COLUMN_ID);
   const statuses = breakdownStatuses.filter((status) => picked.includes(status));
-  return statuses.length ? statuses : [...unsolvedBreakdownStatuses];
+  return statuses.length ? statuses : [...fallback];
 }
 
 /** The urgencies picked in the Urgency column filter; none picked lists every urgency. */

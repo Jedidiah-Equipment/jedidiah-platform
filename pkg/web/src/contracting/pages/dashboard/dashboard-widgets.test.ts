@@ -2,7 +2,7 @@ import { accessForRole } from '@pkg/domain/testing';
 import type { AppRole } from '@pkg/schema';
 import { expect, it, vi } from 'vitest';
 
-import { visibleContractingDashboardRows } from './dashboard-widgets.js';
+import { dashboardRowColumns, visibleContractingDashboardRows } from './dashboard-widgets.js';
 
 vi.mock('./widgets/JobQueueTiles.js', () => ({
   ActiveJobsTile: () => null,
@@ -23,24 +23,28 @@ const visibleTo = (role: AppRole) =>
 it('shows each role only the blocks whose data it may read, each row of tiles on its own line', () => {
   expect(visibleTo('contracting-admin')).toEqual([
     ['looks-finished', 'awaiting-pricing', 'awaiting-invoice', 'reading-exceptions'],
-    ['active-jobs', 'machines-on-job'],
+    ['active-jobs', 'machines-on-job', 'daily-hours'],
     ['jobs-needing-a-look', 'workshop', 'service-due'],
-    ['daily-hours'],
   ]);
   // Awaiting invoice is gated like the Invoicing page, which the manager does not open.
   expect(visibleTo('contracting-manager')).toEqual([
     ['looks-finished', 'awaiting-pricing', 'reading-exceptions'],
-    ['active-jobs', 'machines-on-job'],
+    ['active-jobs', 'machines-on-job', 'daily-hours'],
     ['jobs-needing-a-look', 'workshop', 'service-due'],
-    ['daily-hours'],
   ]);
   // The workshop manager reads every Job, but has no Reading Exceptions to resolve and no invoice to stamp.
   expect(visibleTo('workshop-manager')).toEqual([
     ['looks-finished', 'awaiting-pricing'],
-    ['active-jobs', 'machines-on-job'],
+    ['active-jobs', 'machines-on-job', 'daily-hours'],
     ['jobs-needing-a-look', 'workshop', 'service-due'],
-    ['daily-hours'],
   ]);
   expect(visibleTo('contracting-invoicing')).toEqual([['awaiting-invoice']]);
   expect(visibleTo('foreman')).toEqual([]);
+});
+
+it('sizes each row from the widgets a role sees, so no row leaves a gap', () => {
+  expect(dashboardRowColumns([{ size: 'xs' }, { size: 'xs' }, { size: 'md' }])).toBe(
+    'minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr)',
+  );
+  expect(dashboardRowColumns([{ size: 'xs' }, { size: 'xs' }])).toBe('minmax(0, 1fr) minmax(0, 1fr)');
 });

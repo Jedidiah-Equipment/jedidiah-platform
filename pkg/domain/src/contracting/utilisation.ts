@@ -140,6 +140,16 @@ export function hourSegments(
 }
 
 /**
+ * The share of a stretch of the meter, from `from` to `to` in epoch milliseconds, that falls in the range `[from, to)`:
+ * its overlap over its length. A zero-length stretch is wholly in the range that holds its instant.
+ */
+export function overlapShare(from: number, to: number, range: { from: number; to: number }): number {
+  const length = to - from;
+  if (length <= 0) return from >= range.from && from < range.to ? 1 : 0;
+  return Math.max(0, Math.min(to, range.to) - Math.max(from, range.from)) / length;
+}
+
+/**
  * Each segment's hours in proportion to its overlap with the window's plant-time instant range. A window after today
  * resolves with `end < start`, so its range is empty and every share is zero without a guard.
  */
@@ -148,16 +158,7 @@ export function allocateHours(segments: readonly HourSegment[], window: ReportWi
   const instants = reportWindowInstants(window);
   const range = { from: instants.from.getTime(), to: instants.to.getTime() };
   for (const segment of segments) {
-    const from = Date.parse(segment.from);
-    const to = Date.parse(segment.to);
-    const length = to - from;
-    const share =
-      length <= 0
-        ? from >= range.from && from < range.to
-          ? 1
-          : 0
-        : Math.max(0, Math.min(to, range.to) - Math.max(from, range.from)) / length;
-    totals[segment.kind] += segment.hours * share;
+    totals[segment.kind] += segment.hours * overlapShare(Date.parse(segment.from), Date.parse(segment.to), range);
   }
   return {
     workHours: round1(totals.work),

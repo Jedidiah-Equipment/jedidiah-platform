@@ -1,4 +1,4 @@
-export type ReportErrorCode = 'report.not_found';
+export type ReportErrorCode = 'report.not_found' | 'report.invalid_range';
 export class ReportError extends Error {
   constructor(
     readonly code: ReportErrorCode,

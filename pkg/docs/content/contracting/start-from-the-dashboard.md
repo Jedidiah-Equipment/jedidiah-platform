@@ -14,5 +14,6 @@ The Dashboard is the first screen of Jedidiah Contracting on the web. It shows w
 4. Read **Workshop**: every Breakdown not yet Fixed, Code Red first and then the longest waiting, with its Mechanic or **Unassigned**. Select one to open the Breakdown.
 5. Read **Service due**: the Machines due for a service and not yet booked in, overdue first and then the fewest hours to go. Select a Machine to open it.
 6. Choose **View all** on a list to open its full page, filtered to the same kind of record.
+7. If you can read reports, read **Daily hours**: a square for each of the last six months' days across the whole fleet, darker the more hours the Machines ran. Hover a square for the day's hours; a day marked as estimated spreads hours between two readings taken days apart. The same chart sits on a Machine's page for that Machine and on a Job's page for the hours worked on it.
 
-A count or list you do not see is one your role does not act on. Anything over a period, such as utilisation, is on **Reports**.
+A count or list you do not see is one your role does not act on. Anything else over a period, such as utilisation, is on **Reports**.

@@ -15,6 +15,7 @@ import { EditFormFullWidth } from '@/components/page-layout/EditFormLayout.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Button } from '@/components/ui/button.js';
 import { ActivityCard } from '@/contracting/components/activity/ActivityCard.js';
+import { HoursHeatMapCard } from '@/contracting/components/hours-heat-map/HoursHeatMapCard.js';
 import { ReasonDialog } from '@/contracting/components/ReasonDialog.js';
 import { useAiVerdictRefetchInterval } from '@/contracting/hooks/use-ai-verdict-polling.js';
 import { useResetOnOpen } from '@/contracting/hooks/use-contracting-write.js';
@@ -61,6 +62,7 @@ export function JobPage({ code }: { code: string }) {
                 <div className="min-w-0 space-y-5">
                   <SetupCard key={`setup-${job.id}`} job={job} sheet={sheet} />
                   <MachinesCard job={job} sheet={sheet} />
+                  <HoursHeatMapCard jobIds={[job.id]} />
                   {sheet.showsSignOff ? <SignOffCard job={job} sheet={sheet} /> : null}
                   <PricingCard job={job} sheet={sheet} />
                   <InvoiceCard job={job} sheet={sheet} />

@@ -14,6 +14,7 @@ import { EditFormFullWidth } from '@/components/page-layout/EditFormLayout.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
 import { CategoryLabel } from '@/contracting/components/CategoryIcon.js';
+import { HoursHeatMapCard } from '@/contracting/components/hours-heat-map/HoursHeatMapCard.js';
 import { machineDialogSubject } from '@/contracting/components/MachineDialogTitle.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { JobsTable } from '@/contracting/pages/jobs/JobsPage.js';
@@ -206,6 +207,7 @@ function MachineForm({
                   </form.AppField>
                 </AutosaveFormFields>
               </MachineServiceCard>
+              <HoursHeatMapCard machineIds={[machine.id]} />
               {canEdit ? (
                 <FleetRetirement
                   machine={machineDialogSubject(machine)}

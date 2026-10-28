@@ -368,7 +368,7 @@ The **Dashboard** is the web home: counts and lists of what needs a person now �
 Breakdowns not yet Fixed, the Machines Due for Service, the Jobs waiting for sign-off, pricing or an
 Invoice Number, and the Reading Exceptions — and two counts of what is under way: the Active Jobs not yet looking
 finished and the Machines On Job. Each block shows only to a role holding the permission that reads what
-it lists, and it refreshes every minute. It never shows anything over a period; that is Reporting's.
+it lists, and it refreshes every minute. Apart from the Daily Hours heat map, a trailing six-month card for the roles that read reports, it never shows anything over a period; that is Reporting's.
 
 ## Activity
 
@@ -403,7 +403,17 @@ management sets in Settings; empty draws no line. **Hour totals by kind** are a 
 in a window as **Work** (inside a stint), **Travel** and **Unaccounted** (its Hour Gaps, as resolved
 or, under the threshold, all travel) and **Unresolved**, derived from consecutive readings — spot
 readings included — and spread across months by elapsed time; hours before a Machine's first arrival
-and in a gap no arrival has closed count nowhere. Mechanic performance — Solved count, average
+and in a gap no arrival has closed count nowhere (**Daily Hours** count them). Mechanic performance — Solved count, average
 report-to-Solved time in days, Not solved count — is derived from Breakdowns over the window (Not solved
 ignores it) and never stored; **Solved** counts the `solved` status the Workshop shows as Fixed. Reporting is
 readable by every role that reads all Jobs; Foremen and invoicing never see it.
+
+**Daily Hours** are a Machine's meter hours attributed to one plant-date day, derived from consecutive Hour
+Readings and spread across the days between them by elapsed time, so two photo readings three days apart average
+out over the three days and a Telematics Reading logged hourly is exact. Unfiltered and per Machine they count every
+positive meter delta whatever the phase (yard time and hours before a first arrival included, which the Hour totals
+by kind drop); under a Job they count only Work hours inside that Job's stints, an open stint running to the
+Machine's latest reading. A disputed pair that runs backwards counts nothing. A day is **estimated** when its hours
+come from a reading pair spanning more than one plant day. The web shows them as a heat map, a cell per day shaded
+by quarters of the busiest day, on the Machine page, the Job page and the Dashboard, for the roles that read
+reports. _Avoid_: utilisation heat map (Utilisation % counts Active Days, never hours), usage, activity (Activity is the feed)

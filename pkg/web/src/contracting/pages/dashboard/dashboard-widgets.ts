@@ -1,6 +1,7 @@
 import { jobQueueLabels } from '@pkg/domain/contracting';
 import type { UserAccessSummary } from '@pkg/schema';
 import { type DashboardWidget, filterDashboardWidgets } from '@/components/common/dashboard/dashboard-widget-types.js';
+import { DailyHoursWidget } from './widgets/DailyHoursWidget.js';
 import {
   ActiveJobsTile,
   AwaitingInvoiceTile,
@@ -82,6 +83,15 @@ export const contractingDashboardRows = [
       requires: 'contracting_service:read',
       size: 'md',
       title: 'Service due',
+    },
+  ],
+  [
+    {
+      Component: DailyHoursWidget,
+      id: 'daily-hours',
+      requires: 'contracting_report:read',
+      size: 'xl',
+      title: 'Daily hours',
     },
   ],
 ] as const satisfies readonly (readonly DashboardWidget[])[];

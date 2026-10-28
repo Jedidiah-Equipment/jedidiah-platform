@@ -4,6 +4,8 @@ import { TabAccessErrorScreen, TabAccessLoadingScreen } from '@/equipment/compon
 import { MAIN_TAB_PARENTS } from '@/equipment/lib/toolbar-navigation';
 import { useCan } from '@/lib/use-access';
 
+export const unstable_settings = { anchor: 'plan/index' };
+
 /** Owns the Job read gate for the Plan catalog and existing Bay schedule screen. */
 export default function PlanLayout() {
   const access = useCan('equipment_job:read');
@@ -18,5 +20,5 @@ export default function PlanLayout() {
 
   if (!access.can) return <Redirect href="/" />;
 
-  return <Stack initialRouteName="plan/index" screenOptions={{ headerShown: false }} />;
+  return <Stack screenOptions={{ headerShown: false }} />;
 }

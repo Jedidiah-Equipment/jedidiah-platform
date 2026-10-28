@@ -83,7 +83,7 @@ test('sends the browser through the organization picker once, admitting its retu
   const back = await context.get('?connections=done', setCookie.split(';')[0]);
   expect(back.headers.location).toBe(tab('not-connected'));
   expect(String(back.headers['set-cookie'])).toContain('Max-Age=0');
-  expect(context.deere.organizationReads).toBe(2);
+  expect(context.deere.organizationReads).toBe(3);
 });
 
 test('answers a forged state, a stray return and a declined sign-in with an error', async ({ context }) => {

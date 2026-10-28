@@ -133,7 +133,7 @@ function ReadingsTab({ machineId }: { machineId: string }) {
       ListFooterComponent={
         query.isFetchingNextPage ? (
           <Text className="pt-3 text-center text-sm text-muted-foreground">Loading more readings…</Text>
-        ) : null
+        ) : undefined
       }
       onEndReached={loadMore}
       onEndReachedThreshold={0.4}

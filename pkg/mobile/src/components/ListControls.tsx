@@ -1,6 +1,6 @@
 import { IconCheck, IconChevronDown, IconPlus, IconSearch, type Icon as TablerIcon } from '@tabler/icons-react-native';
 import { forwardRef, type ReactNode, useRef, useState } from 'react';
-import { Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
+import { Pressable, ScrollView, useWindowDimensions, View, type ViewInstance } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AnchoredMenu } from '@/components/ui/anchored-menu';
@@ -133,7 +133,7 @@ export function ListDropdownControl<Value extends string>({
   showLabel?: boolean;
   value: Value;
 }) {
-  const buttonRef = useRef<View>(null);
+  const buttonRef = useRef<ViewInstance>(null);
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [menuAnchor, setMenuAnchor] = useState<{ right: number; top: number; bottom: number } | null>(null);
@@ -194,7 +194,7 @@ export function ListDropdownControl<Value extends string>({
 }
 
 const ListDropdownButton = forwardRef<
-  View,
+  ViewInstance,
   {
     accessibilityLabel: string;
     active: boolean;

@@ -1,7 +1,7 @@
 import { IconCamera, IconScan } from '@tabler/icons-react-native';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { Pressable, type TextInput as RNTextInput, View } from 'react-native';
+import { Pressable, type TextInputInstance, View } from 'react-native';
 
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
@@ -44,7 +44,7 @@ export function ScanField({
   onScan: (raw: string) => void;
   placeholder?: string;
 }) {
-  const inputRef = useRef<RNTextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
   const [value, setValue] = useState('');
   const [cameraOpen, setCameraOpen] = useState(false);
 

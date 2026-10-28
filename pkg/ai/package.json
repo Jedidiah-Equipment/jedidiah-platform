@@ -23,16 +23,16 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@ai-sdk/openai": "4.0.82",
+    "@ai-sdk/openai": "4.0.103",
     "@pkg/core": "workspace:*",
     "@pkg/db": "workspace:*",
     "@pkg/domain": "workspace:*",
     "@pkg/schema": "workspace:*",
-    "ai": "7.0.123",
-    "zod": "^4.6.5"
+    "ai": "7.0.154",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
-    "tsc-alias": "^1.9.7",
-    "vitest": "^5.0.3"
+    "tsc-alias": "^1.9.9",
+    "vitest": "^5.0.5"
   }
 }

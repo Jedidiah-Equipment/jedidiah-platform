@@ -20,7 +20,7 @@ describe('route layout contract', () => {
   test('configures each explicit Stack initial route with its full registered child name', () => {
     const planDirectory = join(MOBILE_DIR, 'app/(protected)/equipment/(tabs)/(plan)');
     const layout = readFileSync(join(planDirectory, '_layout.tsx'), 'utf8');
-    const initialRouteName = layout.match(/initialRouteName="([^"]+)"/)?.[1];
+    const initialRouteName = layout.match(/unstable_settings = \{ anchor: '([^']+)' \}/)?.[1];
     const childNames = listTsxFiles(planDirectory)
       .filter((file) => !file.endsWith('_layout.tsx'))
       .map((file) => relative(planDirectory, file).slice(0, -extname(file).length));

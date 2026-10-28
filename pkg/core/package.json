@@ -28,7 +28,7 @@
     "@pkg/pdf": "workspace:*",
     "@pkg/schema": "workspace:*",
     "date-fns": "^4.4.0",
-    "drizzle-orm": "^0.45.3",
+    "drizzle-orm": "^0.45.4",
     "sharp": "^0.35.5",
     "sql-formatter": "^15.9.0"
   }

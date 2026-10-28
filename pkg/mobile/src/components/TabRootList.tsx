@@ -104,9 +104,9 @@ export function TabRootList<T>({
       ListFooterComponent={
         loadingMore ? (
           <Text className="pb-1 pt-0.5 text-center text-sm text-muted-foreground">{pagination?.loadingMoreLabel}</Text>
-        ) : null
+        ) : undefined
       }
-      ListHeaderComponent={header === undefined ? null : <ListHeader>{header}</ListHeader>}
+      ListHeaderComponent={header === undefined ? undefined : <ListHeader>{header}</ListHeader>}
       onEndReached={pagination ? loadMore : undefined}
       onEndReachedThreshold={0.35}
       refreshControl={<RefreshControl />}

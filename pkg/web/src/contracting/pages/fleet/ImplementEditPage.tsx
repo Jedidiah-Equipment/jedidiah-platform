@@ -85,7 +85,7 @@ function ImplementForm({ implement }: { implement: Implement }) {
             />
           ) : null}
         </div>
-        <FleetHistoryCard subject={{ implementId: implement.id }} />
+        <FleetHistoryCard subject={{ kind: 'implement', id: implement.id }} />
       </DetailAsideGrid>
     </>
   );

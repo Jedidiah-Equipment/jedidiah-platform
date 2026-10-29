@@ -7,6 +7,7 @@ export * from './customers/customer.js';
 export * from './customers/farm.js';
 export * from './fleet/category-enums.js';
 export * from './fleet/fleet.js';
+export * from './fleet/fleet-history.js';
 export * from './jobs/field.js';
 export * from './jobs/invoicing.js';
 export * from './jobs/job.js';

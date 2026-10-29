@@ -96,3 +96,15 @@ test('audits fleet writes atomically and keeps Contracting rates out of Equipmen
     fleet.machines.create({ code: 'JD6140M-1', make: 'Deere', model: '6140M', categoryId: category.id }),
   ).rejects.toMatchObject({ appCode: 'fleet.duplicate', code: 'CONFLICT' });
 });
+
+test('opens a History and its Kind choices to its readers only', async ({ context }) => {
+  const subject = { kind: 'machine', id: '11111111-1111-4111-8111-111111111111' } as const;
+  const manager = context.createCaller(contractingSession('workshop-manager')).contractingFleet.history;
+  expect(await manager.list({ subject })).toEqual({ items: [], nextCursor: null, total: 0 });
+  expect(await manager.filters({ subject })).toEqual({ kinds: ['reading', 'breakdown', 'service'] });
+  for (const session of [contractingSession('foreman'), mockSession('admin')]) {
+    const { history } = context.createCaller(session).contractingFleet;
+    await expect(history.list({ subject })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(history.filters({ subject })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  }
+});

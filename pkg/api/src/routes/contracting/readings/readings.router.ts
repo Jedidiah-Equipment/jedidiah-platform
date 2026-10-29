@@ -4,7 +4,6 @@ import {
   listFieldMachines,
   listFieldReadingsPage,
   listReadingExceptions,
-  listReadingsByMachine,
   type ReadMeterPhoto,
   reverifyReading,
 } from '@pkg/core/contracting';
@@ -13,7 +12,6 @@ import {
   FieldReadingPage,
   FieldReadingPageInput,
   LatestReading,
-  MachineHistoryReading,
   ReadingAmendInput,
   ReadingException,
   ReadingIdInput,
@@ -37,10 +35,6 @@ export function createContractingReadingsRouter(readPhoto: ReadMeterPhoto) {
       .input(FieldReadingPageInput)
       .output(FieldReadingPage)
       .query(({ ctx, input }) => listFieldReadingsPage({ db: ctx.db, input })),
-    listByMachine: authorizedProcedure('contracting_machine:read')
-      .input(ReadingMachineInput)
-      .output(MachineHistoryReading.array())
-      .query(({ ctx, input }) => listReadingsByMachine({ db: ctx.db, ...input })),
     listExceptions: authorizedProcedure('contracting_reading:update')
       .output(ReadingException.array())
       .query(({ ctx }) => listReadingExceptions({ db: ctx.db })),

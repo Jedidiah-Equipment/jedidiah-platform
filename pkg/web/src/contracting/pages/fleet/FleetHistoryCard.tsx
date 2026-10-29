@@ -1,50 +1,50 @@
-import { formatDate, formatHours, getFirstName, type StatusBadgeColor } from '@pkg/domain';
+import { formatDate, type StatusBadgeColor } from '@pkg/domain';
+import { fleetHistoryKindLabels } from '@pkg/domain/contracting';
 import {
-  breakdownStatusLabels,
-  breakdownUrgencyLabels,
-  readingEvidenceCaption,
-  readingRoleLabels,
-} from '@pkg/domain/contracting';
-import {
-  type BreakdownStatus,
-  type BreakdownUrgency,
-  breakdownStatuses,
+  type BreakdownSubjectRef,
+  type FleetHistoryListInput,
+  type FleetHistoryRow,
+  fleetHistoryKinds,
   type ReadingRole,
 } from '@pkg/schema/contracting';
 import { IconGauge, IconTool, type TablerIcon } from '@tabler/icons-react';
-import { skipToken, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { useMemo } from 'react';
+import type { ColumnFiltersState } from '@tanstack/react-table';
+import { useCallback, useMemo, useState } from 'react';
 import { ActivityEventTile } from '@/components/activity/ActivityEntries.js';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
-import { ClientDataTable } from '@/components/data-table/ClientDataTable.js';
-import type { DataTableColumnDef } from '@/components/data-table/features.js';
+import { readDateOnlyRangeFilter, readMultiSelectFilter } from '@/components/data-table/column-filter-values.js';
+import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';
+import { DataTable } from '@/components/data-table/DataTable.js';
+import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
+import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
+import { createDataTableStore } from '@/components/data-table/store.js';
+import type { SortOptions } from '@/components/data-table/table-state.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { ACTIVITY_EVENT_ICONS } from '@/contracting/components/activity/ActivityEntry.js';
 import { BreakdownStatusBadge, BreakdownUrgencyIcon } from '@/contracting/components/BreakdownSubjectLabel.js';
-import { readingEvidence } from '@/contracting/components/ReadingEvidence.js';
-import { useCan } from '@/hooks/use-access.js';
+import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { historyKindColumn, historyKindLabels } from './history-kind-column.js';
 
-type HistoryKind = keyof typeof historyKindLabels;
-type HistoryRow = {
-  id: string;
-  kind: HistoryKind;
-  kindLabel: string;
-  /** An instant, or a plant date for a service; both sort as ISO strings. */
-  at: string;
-  searchText: string;
-  title: string;
-  detail: string | null;
-  /** The reading's photo and AI evidence, as the stint card labels it. */
-  evidence?: string;
-  readingRole?: ReadingRole;
-  breakdown?: { urgency: BreakdownUrgency; status: BreakdownStatus };
-  opens: { to: 'breakdown'; id: string } | { to: 'job'; jobNumber: string } | { to: 'service' } | null;
+const WHEN_COLUMN_ID = 'at';
+const KIND_COLUMN_ID = 'kind';
+
+const historySortOptions: SortOptions<FleetHistoryListInput> = {
+  allowedSortIds: [WHEN_COLUMN_ID, KIND_COLUMN_ID],
+  defaultSort: { id: WHEN_COLUMN_ID, desc: true },
 };
+
+/** Everything the History's column filters ask of the list. */
+export function historyListFilters(columnFilters: ColumnFiltersState) {
+  const picked = readMultiSelectFilter(columnFilters, KIND_COLUMN_ID);
+  return {
+    kinds: fleetHistoryKinds.filter((kind) => picked.includes(kind)),
+    ...readDateOnlyRangeFilter(columnFilters, WHEN_COLUMN_ID, ['from', 'to']),
+  } satisfies Partial<FleetHistoryListInput>;
+}
 
 const readingTiles: Partial<Record<ReadingRole, { icon: TablerIcon; tone: StatusBadgeColor }>> = {
   arrival: { icon: ACTIVITY_EVENT_ICONS['machine-arrived'], tone: 'blue' },
@@ -53,7 +53,7 @@ const readingTiles: Partial<Record<ReadingRole, { icon: TablerIcon; tone: Status
 const otherReadingTile = { icon: IconGauge, tone: 'gray' } as const;
 const serviceTile = { icon: IconTool, tone: 'green' } as const;
 
-function HistoryWhatHappened({ row }: { row: HistoryRow }) {
+function HistoryWhatHappened({ row }: { row: FleetHistoryRow }) {
   const icon = row.breakdown ? (
     <BreakdownUrgencyIcon urgency={row.breakdown.urgency} size={20} />
   ) : row.kind === 'service' ? (
@@ -76,98 +76,50 @@ function HistoryWhatHappened({ row }: { row: HistoryRow }) {
   );
 }
 
-/** One newest-first timeline of what happened to a Machine or Implement: readings, Breakdowns and services. */
+/**
+ * One newest-first timeline of what happened to a Machine or Implement: readings, Breakdowns and services, paged,
+ * sorted and filtered on the server. It opens unfiltered every time.
+ */
 export function FleetHistoryCard({
-  subject,
+  subject: { kind: subjectKind, id: subjectId },
   onOpenService,
 }: {
-  subject: { machineId: string } | { implementId: string };
+  subject: BreakdownSubjectRef;
   /** A service row has no page of its own, so it opens the Machine's Service tab. */
   onOpenService?: () => void;
 }) {
   const trpc = useTRPC();
   const navigate = useNavigate();
-  const machineId = 'machineId' in subject ? subject.machineId : null;
-  const readsBreakdowns = useCan('contracting_breakdown:read').can;
-  const readsServices = useCan('contracting_service:read').can && machineId !== null;
-  const readings = useQuery(trpc.contractingReadings.listByMachine.queryOptions(machineId ? { machineId } : skipToken));
-  const breakdowns = useQuery(
-    trpc.contractingBreakdowns.list.queryOptions(
-      {
-        ...('machineId' in subject ? { machineIds: [subject.machineId] } : { implementIds: [subject.implementId] }),
-        statuses: [...breakdownStatuses],
-        limit: 0,
-      },
-      { enabled: readsBreakdowns },
-    ),
+  const subject = useMemo(() => ({ kind: subjectKind, id: subjectId }), [subjectKind, subjectId]);
+  const [useHistoryTableStore] = useState(() =>
+    createDataTableStore({ sorting: [{ id: WHEN_COLUMN_ID, desc: true }] }),
   );
-  const services = useQuery(
-    trpc.contractingServices.list.queryOptions(
-      readsServices && machineId ? { machineIds: [machineId], limit: 0 } : skipToken,
-    ),
+  const getListInputExtras = useCallback(
+    (columnFilters: ColumnFiltersState) => ({ subject, ...historyListFilters(columnFilters) }),
+    [subject],
   );
-  const rows = useMemo<HistoryRow[]>(
-    () =>
-      [
-        ...(readings.data ?? []).map((reading) => ({
-          id: reading.id,
-          kind: 'reading' as const,
-          kindLabel: historyKindLabels.reading,
-          at: reading.capturedAt,
-          searchText: `Reading · ${formatHours(reading.value)} · ${readingRoleLabels[reading.role]} · ${reading.jobNumber ?? ''}`,
-          title: `${readingRoleLabels[reading.role]} · ${formatHours(reading.value)}`,
-          detail: reading.jobNumber,
-          readingRole: reading.role,
-          opens: reading.jobNumber ? { to: 'job' as const, jobNumber: reading.jobNumber } : null,
-          // A Telematics Reading has no photo to miss: it names who reported it instead.
-          evidence: reading.telematicsProvider
-            ? readingEvidenceCaption({ ...reading, photoBacked: false })
-            : readingEvidence({ ...reading, photoBacked: reading.photo !== null }).evidenceLabel,
-        })),
-        ...(breakdowns.data?.items ?? []).map((breakdown) => ({
-          id: breakdown.id,
-          kind: 'breakdown' as const,
-          kindLabel: historyKindLabels.breakdown,
-          at: breakdown.reportedAt,
-          searchText: `Breakdown · ${breakdownUrgencyLabels[breakdown.urgency]} · ${breakdown.firstLine} · ${breakdownStatusLabels[breakdown.status]}`,
-          title: breakdown.firstLine,
-          detail: breakdown.jobNumber
-            ? `${breakdown.jobNumber} · reported by ${getFirstName(breakdown.reporterName)}`
-            : `Reported by ${getFirstName(breakdown.reporterName)}`,
-          breakdown: { urgency: breakdown.urgency, status: breakdown.status },
-          opens: { to: 'breakdown' as const, id: breakdown.id },
-        })),
-        ...(services.data?.items ?? []).map((service) => {
-          const title = [
-            'Service',
-            service.readingAtServiceHours === null ? 'in the workshop' : formatHours(service.readingAtServiceHours),
-            service.mechanicName ? getFirstName(service.mechanicName) : null,
-          ]
-            .filter(Boolean)
-            .join(' · ');
-          return {
-            id: service.id,
-            kind: 'service' as const,
-            kindLabel: historyKindLabels.service,
-            at: service.endDate ?? service.startDate,
-            searchText: title,
-            title,
-            detail:
-              service.nextServiceDueHoursSet === null
-                ? null
-                : `Next service due set to ${formatHours(service.nextServiceDueHoursSet)}`,
-            opens: onOpenService ? { to: 'service' as const } : null,
-          };
-        }),
-      ].sort((left, right) => right.at.localeCompare(left.at)),
-    [readings.data, breakdowns.data, services.data, onOpenService],
+  const tableController = useServerSideTableController({
+    store: useHistoryTableStore,
+    sortOptions: historySortOptions,
+    getListInputExtras,
+  });
+  const historyQuery = useInfiniteQuery(
+    trpc.contractingFleet.history.list.infiniteQueryOptions(tableController.listInput, {
+      ...cursorInfiniteQueryOptions,
+      placeholderData: keepPreviousData,
+    }),
   );
-  const columns = useMemo<DataTableColumnDef<HistoryRow>[]>(
+  const filters = useQuery(trpc.contractingFleet.history.filters.queryOptions({ subject }));
+  const { items, total } = useCombinedCursorQueryPages(historyQuery.data?.pages);
+  const kinds = filters.data?.kinds;
+  const columns = useMemo<DataTableColumnDef<FleetHistoryRow>[]>(
     () => [
       {
+        id: WHEN_COLUMN_ID,
         accessorKey: 'at',
         header: 'When',
-        enableGlobalFilter: false,
+        enableColumnFilter: true,
+        enableSorting: true,
         meta: { filterVariant: 'date-range' },
         // A service carries a plant date, not an instant, so it shows no time of day.
         cell: ({ row }) =>
@@ -177,45 +129,73 @@ export function FleetHistoryCard({
             <DateDisplay date={row.original.at} />
           ),
       },
-      historyKindColumn({ isMachine: machineId !== null, readsBreakdowns, readsServices }),
       {
-        accessorKey: 'searchText',
+        id: KIND_COLUMN_ID,
+        accessorFn: (row) => fleetHistoryKindLabels[row.kind],
+        header: 'Kind',
+        enableColumnFilter: (kinds?.length ?? 0) > 1,
+        enableSorting: true,
+        meta: {
+          filterVariant: 'multi-select',
+          filterOptions: (kinds ?? []).map((kind) => ({ label: fleetHistoryKindLabels[kind], value: kind })),
+        },
+      },
+      {
+        id: 'whatHappened',
         header: 'What happened',
+        enableColumnFilter: false,
+        enableSorting: false,
         cell: ({ row }) => <HistoryWhatHappened row={row.original} />,
       },
     ],
-    [machineId, readsBreakdowns, readsServices],
+    [kinds],
   );
-  // An Implement has no readings or services, so without Breakdowns there is no history to show.
-  if (!machineId && !readsBreakdowns) return null;
+  const table = useDataTable({
+    columns,
+    data: items,
+    enableSortingRemoval: false,
+    getRowId: (row) => `${row.kind}-${row.id}`,
+    manualFiltering: true,
+    manualSorting: true,
+    onColumnFiltersChange: tableController.setColumnFilters,
+    onGlobalFilterChange: tableController.setGlobalFilter,
+    onSortingChange: tableController.setSorting,
+    state: {
+      columnFilters: tableController.columnFilters,
+      globalFilter: tableController.globalFilter,
+      sorting: tableController.sorting,
+    },
+  });
+  // Without any kind to read, such as an Implement for someone who cannot read Breakdowns, there is no History.
+  if (kinds?.length === 0) return null;
   return (
     <Card>
       <CardHeader>
         <CardTitle>History</CardTitle>
       </CardHeader>
       <CardContent>
-        <ErrorMessage
-          error={readings.error ?? breakdowns.error ?? services.error}
-          fallbackMessage="Unable to load history."
-        />
-        <ClientDataTable
-          rows={rows}
-          columns={columns}
-          loading={
-            (!!machineId && readings.isPending) ||
-            (readsBreakdowns && breakdowns.isPending) ||
-            (readsServices && services.isPending)
-          }
-          canOpen={(row) => row.opens !== null}
-          onOpen={({ opens }) => {
+        <ErrorMessage error={filters.error} fallbackMessage="Unable to load the History filters." />
+        <DataTable
+          table={table}
+          total={total}
+          emptyMessage="Nothing has happened to it yet."
+          errorMessage={getApiQueryErrorMessage(historyQuery.error, 'Unable to load history.')}
+          globalFilterPlaceholder="Search history…"
+          isLoading={historyQuery.isPending}
+          paginationMode="cursor"
+          loadMore={{
+            hasNextPage: historyQuery.hasNextPage,
+            isFetchingNextPage: historyQuery.isFetchingNextPage,
+            loadedCount: items.length,
+            onLoadMore: () => void historyQuery.fetchNextPage(),
+          }}
+          canOpenRow={({ opens }) => opens !== null && (opens.to !== 'service' || onOpenService !== undefined)}
+          onRowClick={({ opens }) => {
             if (opens?.to === 'breakdown') void navigate({ to: '/contracting/workshop/$id', params: { id: opens.id } });
             else if (opens?.to === 'job')
               void navigate({ to: '/contracting/jobs/$code', params: { code: opens.jobNumber } });
             else if (opens?.to === 'service') onOpenService?.();
           }}
-          emptyMessage="Nothing has happened to it yet."
-          searchPlaceholder="Search history…"
-          getRowId={(row) => `${row.kind}-${row.id}`}
         />
       </CardContent>
     </Card>

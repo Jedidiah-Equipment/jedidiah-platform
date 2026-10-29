@@ -360,6 +360,42 @@ describe('JohnDeerePoller', () => {
     expect(await readings(db)).toHaveLength(1);
   });
 
+  test('pollLinkNow reads only that Link’s hours and never fails when Deere refuses', async ({ db }) => {
+    const { poller, state, linked } = await setUp(db);
+    await poller().pollLinkNow(linked[1]?.linkId ?? '');
+    expect(state.hoursCalls).toEqual([2]);
+    expect(await readings(db)).toMatchObject([{ machineId: linked[1]?.machineId, value: 500, method: 'telematics' }]);
+
+    state.failures.set(1, [{ status: 503 }]);
+    await expect(poller().pollLinkNow(linked[0]?.linkId ?? '')).resolves.toBeUndefined();
+    expect(await readings(db)).toHaveLength(1);
+  });
+
+  test('pollLinkNow records a refusal on the Link and does not wait out a Retry-After', async ({ db }) => {
+    const { poller, state, linked, sleeps } = await setUp(db);
+    state.failures.set(1, [{ status: 429, headers: { 'Retry-After': '120' } }]);
+    await poller().pollLinkNow(linked[0]?.linkId ?? '');
+
+    expect(sleeps).toEqual([]);
+    expect(state.hoursCalls).toEqual([1]);
+    expect(await linkRow(db, linked[0]?.linkId ?? '')).toMatchObject({ lastError: 'John Deere is limiting requests.' });
+  });
+
+  test('two reads of one Link never overlap, so the older answer cannot land last', async ({ db }) => {
+    const { poller, state, linked } = await setUp(db);
+    const release = holdDeere(state);
+    const link = linked[0]?.linkId ?? '';
+    const reader = poller();
+    const reads = [reader.pollLinkNow(link), reader.pollLinkNow(link)];
+    await vi.waitFor(() => expect(state.hoursCalls).toEqual([1]));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(state.hoursCalls).toEqual([1]);
+
+    release();
+    await Promise.all(reads);
+    expect(state.hoursCalls).toEqual([1, 1]);
+  });
+
   test('skips and never calls Deere when nothing is connected', async ({ db }) => {
     const { poller, state } = await setUp(db, { connected: false });
     expect(await poller().pollOnce()).toMatchObject({ skipped: 'not-connected', polled: 0 });

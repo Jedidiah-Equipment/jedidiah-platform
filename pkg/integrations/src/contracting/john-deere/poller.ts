@@ -23,7 +23,7 @@ export type JohnDeerePollerConfig = {
   sleep?: (ms: number) => Promise<void>;
 };
 
-const FIRST_RUN_DELAY_MS = 60 * 1000;
+const FIRST_RUN_DELAY_MS = 5 * 1000;
 // Deere's Retry-After is honoured up to this; a longer wait ends the run for the next hour instead.
 const MAX_RETRY_AFTER_SECONDS = 5 * 60;
 const DEFAULT_RETRY_AFTER_SECONDS = 60;
@@ -61,7 +61,8 @@ const isCode = (error: unknown, code: JohnDeereErrorCode): error is JohnDeereErr
   isJohnDeereError(error) && error.code === code;
 
 /**
- * Every hour, reads each linked Machine's last reported engine hours from John Deere into its Hour Reading ledger.
+ * Shortly after start-up and then every hour, reads each linked Machine's last reported engine hours from John Deere
+ * into its Hour Reading ledger, and a Link's own hours as it is made.
  * One run at a time: Refresh now joins a run already in progress rather than starting a second.
  */
 export class JohnDeerePoller {
@@ -69,6 +70,8 @@ export class JohnDeerePoller {
   private running: Promise<JohnDeerePollSummary> | null = null;
   private disposed = false;
   private readonly stopping = new AbortController();
+  /** The tail of each Link's reads, so two reads of one Link never overlap and the later answer is the one kept. */
+  private readonly linkReads = new Map<string, Promise<unknown>>();
 
   private readonly sleep: (ms: number) => Promise<void>;
 
@@ -94,6 +97,24 @@ export class JohnDeerePoller {
       this.running = null;
     });
     return this.running;
+  }
+
+  /**
+   * Reads one Link's hours now, as a Link is made, so its Machine does not wait for the hourly run. It never fails
+   * the caller and never waits out a Retry-After: a refusal is recorded on the Link and the next run retries it.
+   */
+  async pollLinkNow(linkId: string): Promise<void> {
+    const { links, logger, now } = this.config;
+    const link = (await links.listPollable()).find((candidate) => candidate.id === linkId);
+    if (!link) return;
+    try {
+      await this.pollLink(link, emptySummary(null), { waitOutRateLimit: false });
+    } catch (error) {
+      if (!(error instanceof RunStopped || isJohnDeereError(error))) throw error;
+      logger.warn({ linkId, error: error.message }, 'John Deere could not read a new Link right away');
+      if (!(error instanceof RunStopped))
+        await links.recordPoll(linkId, { lastPolledAt: now(), lastError: error.message, lastErrorAt: now() });
+    }
   }
 
   private schedule(delayMs: number): void {
@@ -158,12 +179,26 @@ export class JohnDeerePoller {
     return present;
   }
 
-  private async pollLink(link: PollableLink, summary: JohnDeerePollSummary): Promise<void> {
+  private pollLink(
+    link: PollableLink,
+    summary: JohnDeerePollSummary,
+    { waitOutRateLimit = true }: { waitOutRateLimit?: boolean } = {},
+  ): Promise<void> {
+    const previous = this.linkReads.get(link.id) ?? Promise.resolve();
+    const read = previous.then(() => this.readLink(link, summary, waitOutRateLimit));
+    const tail = read.catch(() => undefined);
+    this.linkReads.set(link.id, tail);
+    void tail.then(() => {
+      if (this.linkReads.get(link.id) === tail) this.linkReads.delete(link.id);
+    });
+    return read;
+  }
+
+  private async readLink(link: PollableLink, summary: JohnDeerePollSummary, waitOutRateLimit: boolean): Promise<void> {
     const { client, connection, links, push, logger, now } = this.config;
     try {
-      const report = await this.withRetryAfter(() =>
-        connection.withAccessToken((token) => client.engineHours(token, link.principalId)),
-      );
+      const fetchHours = () => connection.withAccessToken((token) => client.engineHours(token, link.principalId));
+      const report = await (waitOutRateLimit ? this.withRetryAfter(fetchHours) : fetchHours());
       summary.polled += 1;
       if (!report) {
         await links.recordPoll(link.id, { lastPolledAt: now() });

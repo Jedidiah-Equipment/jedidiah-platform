@@ -168,12 +168,12 @@ export class JohnDeereLinkService {
     actorUserId: AuthId;
     machineId: string;
     equipmentId: string;
-  }): Promise<void> {
+  }): Promise<{ linkId: string }> {
     const { client, connection } = this.config;
     const listed = await connection.withAccessToken((accessToken) => client.equipmentByIds(accessToken, [equipmentId]));
     const deere = listed.find((candidate) => candidate.id === equipmentId && !candidate.archived);
     if (!deere) throw equipmentNotFound();
-    await linkConstraints(() =>
+    return linkConstraints(() =>
       this.config.db.transaction(async (tx) => {
         const [machine] = await tx
           .select({ code: contractingMachines.code, retiredAt: contractingMachines.retiredAt })
@@ -228,6 +228,7 @@ export class JohnDeereLinkService {
         await recordAuditCreate({ db: tx, descriptor, actorUserId, input: { ...link, machineCode: machine.code } });
         if (deere.serialNumber)
           await stampSerialNumber({ db: tx, actorUserId, machineId, serialNumber: deere.serialNumber });
+        return { linkId: link.id };
       }),
     );
   }

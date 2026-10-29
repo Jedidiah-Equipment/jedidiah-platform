@@ -70,6 +70,8 @@ export class JohnDeerePoller {
   private running: Promise<JohnDeerePollSummary> | null = null;
   private disposed = false;
   private readonly stopping = new AbortController();
+  /** The tail of each Link's reads, so two reads of one Link never overlap and the later answer is the one kept. */
+  private readonly linkReads = new Map<string, Promise<unknown>>();
 
   private readonly sleep: (ms: number) => Promise<void>;
 
@@ -98,17 +100,20 @@ export class JohnDeerePoller {
   }
 
   /**
-   * Reads one Link's hours now, as a Link is made, so its Machine does not wait for the hourly run. A refusal from
-   * Deere is already recorded on the Link or the connection, so it never fails the caller.
+   * Reads one Link's hours now, as a Link is made, so its Machine does not wait for the hourly run. It never fails
+   * the caller and never waits out a Retry-After: a refusal is recorded on the Link and the next run retries it.
    */
   async pollLinkNow(linkId: string): Promise<void> {
-    const link = (await this.config.links.listPollable()).find((candidate) => candidate.id === linkId);
+    const { links, logger, now } = this.config;
+    const link = (await links.listPollable()).find((candidate) => candidate.id === linkId);
     if (!link) return;
     try {
-      await this.pollLink(link, emptySummary(null));
+      await this.pollLink(link, emptySummary(null), { waitOutRateLimit: false });
     } catch (error) {
       if (!(error instanceof RunStopped || isJohnDeereError(error))) throw error;
-      this.config.logger.warn({ linkId, error: error.message }, 'John Deere could not read a new Link right away');
+      logger.warn({ linkId, error: error.message }, 'John Deere could not read a new Link right away');
+      if (!(error instanceof RunStopped))
+        await links.recordPoll(linkId, { lastPolledAt: now(), lastError: error.message, lastErrorAt: now() });
     }
   }
 
@@ -174,12 +179,26 @@ export class JohnDeerePoller {
     return present;
   }
 
-  private async pollLink(link: PollableLink, summary: JohnDeerePollSummary): Promise<void> {
+  private pollLink(
+    link: PollableLink,
+    summary: JohnDeerePollSummary,
+    { waitOutRateLimit = true }: { waitOutRateLimit?: boolean } = {},
+  ): Promise<void> {
+    const previous = this.linkReads.get(link.id) ?? Promise.resolve();
+    const read = previous.then(() => this.readLink(link, summary, waitOutRateLimit));
+    const tail = read.catch(() => undefined);
+    this.linkReads.set(link.id, tail);
+    void tail.then(() => {
+      if (this.linkReads.get(link.id) === tail) this.linkReads.delete(link.id);
+    });
+    return read;
+  }
+
+  private async readLink(link: PollableLink, summary: JohnDeerePollSummary, waitOutRateLimit: boolean): Promise<void> {
     const { client, connection, links, push, logger, now } = this.config;
     try {
-      const report = await this.withRetryAfter(() =>
-        connection.withAccessToken((token) => client.engineHours(token, link.principalId)),
-      );
+      const fetchHours = () => connection.withAccessToken((token) => client.engineHours(token, link.principalId));
+      const report = await (waitOutRateLimit ? this.withRetryAfter(fetchHours) : fetchHours());
       summary.polled += 1;
       if (!report) {
         await links.recordPoll(link.id, { lastPolledAt: now() });

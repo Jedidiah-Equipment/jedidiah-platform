@@ -111,8 +111,13 @@ function ReadingDetail({ reading }: { reading: JobReading }) {
   const evidence = readingEvidence(reading);
   const amendment = amendmentSummary(reading);
   return (
-    <span className="block truncate" title={`${formatHours(reading.value)} · ${evidence.evidenceLabel}`}>
+    <span
+      className="block truncate"
+      title={`${formatHours(reading.value)} · ${formatDate(reading.capturedAt, 'medium')} · ${evidence.evidenceLabel}`}
+    >
       <span className="font-medium text-primary">{formatHours(reading.value)}</span>
+      {' · '}
+      {formatDate(reading.capturedAt, 'medium')}
       {amendment ? (
         <>
           {' · '}

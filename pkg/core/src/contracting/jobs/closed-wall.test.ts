@@ -1,10 +1,11 @@
 import { DateOnlyIso } from '@pkg/schema';
 import { expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
-import { amendReading, captureReading } from '../readings/reading-service.js';
+import { captureReading } from '../readings/reading-service.js';
 import {
   addedChargeLine,
   admin,
+  amendHours,
   completedJob,
   foreman,
   invoicing,
@@ -160,10 +161,9 @@ test.for(['invoiced', 'cancelled'] as const)(
       'the departure its first stint’s Hour Gap starts at': { id: earlierStint.departureReadingId, value: 97 },
     };
     for (const [name, amendment] of Object.entries(readingAmendments))
-      await expect(
-        amendReading({ db, actor: admin, input: { ...amendment, reason: 'Misread' } }),
-        name,
-      ).rejects.toMatchObject({ code: closed === 'invoiced' ? 'reading.job_invoiced' : 'reading.wrong_status' });
+      await expect(amendHours(db, admin, amendment.id, amendment.value), name).rejects.toMatchObject({
+        code: closed === 'invoiced' ? 'reading.job_invoiced' : 'reading.wrong_status',
+      });
 
     expect(await getJob({ db, id: jobId })).toEqual(frozen);
   },

@@ -1,4 +1,4 @@
-import { formatHours, getFirstName } from '@pkg/domain';
+import { formatDate, formatHours, getFirstName } from '@pkg/domain';
 import {
   assignmentStateColorClassNames,
   assignmentStateLabels,
@@ -230,8 +230,8 @@ function StintCard({
           {stint.arrival ? (
             <Text className="text-sm text-muted-foreground">
               {stint.departure
-                ? `${formatHours(stint.arrival.value)} → ${formatHours(stint.departure.value)}`
-                : `Arrived ${formatHours(stint.arrival.value)}`}
+                ? `${formatHours(stint.arrival.value)} → ${formatHours(stint.departure.value)} · ${formatDate(stint.arrival.capturedAt, 'medium')} → ${formatDate(stint.departure.capturedAt, 'medium')}`
+                : `Arrived ${formatHours(stint.arrival.value)} · ${formatDate(stint.arrival.capturedAt, 'medium')}`}
             </Text>
           ) : null}
         </View>

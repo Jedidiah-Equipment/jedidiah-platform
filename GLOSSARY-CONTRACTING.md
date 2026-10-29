@@ -204,7 +204,8 @@ unless the Foreman asserts the latest reading is wrong, which saves his value as
 the pair for management; a backdated capture that falls below or above its neighbours is refused
 outright, since the fix is its time or its value. No capture may contradict a Telematics Reading.
 The Foreman may re-capture a reading only while his Assignment is open; from Completion onward only management
-amends, with a mandatory reason — an amendment changes the value, never Read At; an amendment on a Priced Job returns it to Completed for
+amends, with a mandatory reason — an amendment corrects the value or Read At or both, and the amended reading is judged again at
+its place in time by the capture rules, so stints stay in time order; an amendment on a Priced Job returns it to Completed for
 re-pricing, and Invoiced freezes everything. Derived values always recompute after an amendment.
 
 **Baseline Reading** is an optional, administrator-captured Hour Reading that anchors a Machine
@@ -218,7 +219,7 @@ Machine has a reading nothing derives for it — no Hour Gap, no Travel Hours, n
 captured: role spot, its Read At the time the machine reported, its evidence the manufacturer's report,
 captured by nobody (the System). It is beyond dispute — never Disputed, never AI flagged, never Missing
 Photo Evidence, never amended — and a captured reading it contradicts is the one that becomes Disputed for
-management, who amend it back into sequence. One may move its Read At forward when the machine reports the
+management, who correct its hours or Read At back into sequence. One may move its Read At forward when the machine reports the
 same value again, so the ledger says the hours stand as of the latest report. _Avoid_: telemetry reading,
 automatic reading, JDLink reading, API reading.
 

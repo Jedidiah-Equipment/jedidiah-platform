@@ -4,6 +4,7 @@ import {
   type JobActionSubject,
   type JobActor,
   judgeJobAction,
+  type ReadingAmendmentRefusal,
   readingCodeForJobRefusal,
 } from '@pkg/domain/contracting';
 import type { ReadingErrorCode } from '@pkg/schema/contracting';
@@ -35,6 +36,19 @@ export function assertAmendReadings(job: JobActionSubject, actor: JobActor) {
     jobCode === 'reading.wrong_status' && job.status === 'invoiced' ? 'reading.job_invoiced' : jobCode;
   throw new ReadingError(code, verdict.message, { action: 'amendReadings', reason: verdict.reason });
 }
+
+const amendmentRefusalCodes: Record<Exclude<ReadingAmendmentRefusal, 'not_found'>, ReadingErrorCode> = {
+  out_of_range: 'reading.invalid_amendment',
+  out_of_order: 'reading.invalid_amendment',
+  outruns_clock: 'reading.outruns_clock',
+  future_read_at: 'reading.future_read_at',
+};
+
+/** An amendment the ledger refused, in Reading terms. */
+export const amendmentRefused = ({ reason, message }: { reason: ReadingAmendmentRefusal; message: string }) =>
+  reason === 'not_found'
+    ? new ReadingError('reading.not_found', 'Hour Reading not found.')
+    : new ReadingError(amendmentRefusalCodes[reason], message);
 
 /** A stint constraint's refusal as the Reading error the phone reports. */
 const captureRefused = (rule: CaptureConstraintRule) =>

@@ -1,5 +1,5 @@
 import {
-  amendReading,
+  amendReadings,
   latestReading,
   listFieldMachines,
   listFieldReadingsPage,
@@ -11,6 +11,7 @@ import {
   FieldMachine,
   FieldReadingPage,
   FieldReadingPageInput,
+  HourReading,
   LatestReading,
   ReadingAmendInput,
   ReadingException,
@@ -40,8 +41,9 @@ export function createContractingReadingsRouter(readPhoto: ReadMeterPhoto) {
       .query(({ ctx }) => listReadingExceptions({ db: ctx.db })),
     amend: authorizedProcedure('contracting_reading:update')
       .input(ReadingAmendInput)
+      .output(HourReading.array())
       .mutation(({ ctx, input }) =>
-        mapCoreErrors(() => amendReading({ db: ctx.db, actor: ctx.access, input }), readingErrorFamily),
+        mapCoreErrors(() => amendReadings({ db: ctx.db, actor: ctx.access, input }), readingErrorFamily),
       ),
     reverify: authorizedProcedure('contracting_reading:update')
       .input(ReadingIdInput)

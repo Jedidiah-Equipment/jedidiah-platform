@@ -9,11 +9,11 @@ import {
 } from '@pkg/db/contracting';
 import { hasPermission, validateFile } from '@pkg/domain';
 import {
+  amendedLedger,
   assignmentState,
   type CaptureNeighbour,
   type CaptureWorld,
   captureCrossesServiceDueSoon,
-  contradictingTelematics,
   effectiveServiceAlertHours,
   FUTURE_READ_AT_TOLERANCE_MS,
   type JobActor,
@@ -22,8 +22,7 @@ import {
   READING_PHOTO_POLICY,
   readingExceptionTypes,
   readingVerification,
-  resolveReadingAmendment,
-  telematicsDisputeReason,
+  resolveReadingAmendments,
 } from '@pkg/domain/contracting';
 import { type AuthId, getNextCursor } from '@pkg/schema';
 import {
@@ -33,7 +32,7 @@ import {
   ReadingAmendInput,
   ReadingCaptureInput,
 } from '@pkg/schema/contracting';
-import { and, asc, eq, getTableColumns, gt, inArray, lte, or } from 'drizzle-orm';
+import { and, asc, eq, getTableColumns, gt, inArray, isNotNull, lte, or } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { recordAuditCreate } from '../../audit/audit-writer.js';
 import { filePolicyViolation } from '../../files/file-errors.js';
@@ -48,7 +47,7 @@ import {
   updateAudited,
   withHint,
 } from './reading-audit.js';
-import { assertAmendReadings, ReadingError, withCaptureConstraints } from './reading-errors.js';
+import { amendmentRefused, assertAmendReadings, ReadingError, withCaptureConstraints } from './reading-errors.js';
 import { type MeterMeasurement, measureMeterPhoto, type ReadMeterPhoto } from './reading-evidence.js';
 import { newestFirst, oldestFirst, readingNeedsALookSql } from './reading-sql.js';
 import { readingToWire } from './reading-wire.js';
@@ -324,50 +323,60 @@ export async function listReadingExceptions({ db }: { db: Db }) {
     photoBacked: row.photo !== null,
   }));
 }
-export async function amendReading({ db, actor, input: raw }: { db: Db; actor: JobActor; input: ReadingAmendInput }) {
+export async function amendReadings({ db, actor, input: raw }: { db: Db; actor: JobActor; input: ReadingAmendInput }) {
   const actorUserId = actor.userId;
   const input = ReadingAmendInput.parse(raw);
+  const amendments = input.amendments.map((amendment) => ({
+    ...amendment,
+    capturedAt: new Date(amendment.capturedAt),
+  }));
+  const ids = new Set(amendments.map((amendment) => amendment.id));
+  if (ids.size !== amendments.length) throw new ReadingError('reading.invalid_amendment', 'Amend each reading once.');
   return db.transaction(async (tx) => {
-    const owner = await tx.query.contractingHourReadings.findFirst({ where: eq(contractingHourReadings.id, input.id) });
-    if (!owner) throw notFound();
-    if (owner.method === 'telematics')
+    const targets = await tx
+      .select()
+      .from(contractingHourReadings)
+      .where(inArray(contractingHourReadings.id, [...ids]));
+    if (targets.length !== ids.size) throw notFound();
+    if (targets.some((row) => row.method === 'telematics'))
       throw new ReadingError('reading.invalid_amendment', 'A Telematics Reading cannot be amended.');
+    const machineIds = new Set(targets.map((row) => row.machineId));
+    const [machineId] = machineIds;
+    if (machineIds.size !== 1 || !machineId)
+      throw new ReadingError('reading.invalid_amendment', 'Amend one Machine at a time.');
     const [machine] = await tx
       .select()
       .from(contractingMachines)
-      .where(eq(contractingMachines.id, owner.machineId))
+      .where(eq(contractingMachines.id, machineId))
       .for('update');
     if (!machine) throw notFound();
-    const affected = await lockJobsMovedBy(tx, owner);
+    const [rows, stints] = await Promise.all([
+      tx
+        .select()
+        .from(contractingHourReadings)
+        .where(eq(contractingHourReadings.machineId, machineId))
+        .orderBy(...oldestFirst),
+      stintsOf(tx, machineId),
+    ]);
+    const affected = await lockJobsMovedBy(tx, { ledgers: [rows, amendedLedger(rows, amendments)], stints, ids });
     for (const job of affected) assertAmendReadings(job, actor);
-    const rows = await tx
-      .select()
-      .from(contractingHourReadings)
-      .where(eq(contractingHourReadings.machineId, owner.machineId))
-      .orderBy(...oldestFirst);
-    const resolution = resolveReadingAmendment(rows, input);
-    if (!resolution.ok) {
-      if (resolution.reason === 'not_found') throw notFound();
-      throw new ReadingError('reading.invalid_amendment', 'Amended hours must be between the neighbouring readings.');
-    }
-    const byId = new Map(rows.map((row) => [row.id, row]));
-    const afterAmendment = rows.map((row) => (row.id === input.id ? { ...row, value: input.value } : row));
-    for (const { id, ...settled } of resolution.changes) {
-      const before = byId.get(id);
-      if (!before) continue;
-      // A pair settling must not clear a reading a Telematics Reading still contradicts.
-      const reported = settled.disputed ? null : contradictingTelematics(afterAmendment, id);
-      const dispute = reported
-        ? { ...settled, disputed: true, disputeReason: telematicsDisputeReason(reported) }
-        : settled;
-      const now = new Date();
-      await updateAudited(tx, actorUserId, before, {
+    const resolution = resolveReadingAmendments(rows, amendments, stints, new Date());
+    if (!resolution.ok) throw amendmentRefused(resolution);
+    const now = new Date();
+    const before = new Map(rows.map((row) => [row.id, row]));
+    const amendmentOf = new Map(amendments.map((amendment) => [amendment.id, amendment]));
+    for (const { id, ...dispute } of resolution.changes) {
+      const row = before.get(id);
+      if (!row) continue;
+      const amendment = amendmentOf.get(id);
+      await updateAudited(tx, actorUserId, row, {
         ...dispute,
-        ...(id === input.id
+        ...(amendment
           ? {
-              value: input.value,
-              aiVerification: before.photo
-                ? readingVerification(input.value, before.aiValue, before.aiConfidence)
+              value: amendment.value,
+              capturedAt: amendment.capturedAt,
+              aiVerification: row.photo
+                ? readingVerification(amendment.value, row.aiValue, row.aiConfidence)
                 : 'not-applicable',
               amendedBy: actorUserId,
               amendedAt: now,
@@ -384,55 +393,65 @@ export async function amendReading({ db, actor, input: raw }: { db: Db; actor: J
         job.id,
         `Hour Reading amended on ${machine.code} — amounts recomputed.`,
       );
-    return getReading({ db: tx, id: input.id });
+    const amended = await tx
+      .select()
+      .from(contractingHourReadings)
+      .where(inArray(contractingHourReadings.id, [...ids]));
+    const byId = new Map(amended.map((row) => [row.id, withHint(row)]));
+    return [...ids].flatMap((id) => byId.get(id) ?? []);
   });
 }
 
-/**
- * The Jobs whose derived hours an amendment of this reading moves, locked after the machine: the stint
- * the reading bounds, and — for a departure — the machine's next stint, whose Hour Gap starts at this
- * value and which may be on another Job.
- */
-async function lockJobsMovedBy(tx: DatabaseTransaction, reading: Row) {
-  const bounded = await tx
-    .select({ jobId: contractingMachineAssignments.jobId })
+/** A Machine's stints with an arrival, as the readings bound them, with the Job each belongs to. */
+async function stintsOf(tx: DatabaseTransaction, machineId: string) {
+  const rows = await tx
+    .select({
+      assignmentId: contractingMachineAssignments.id,
+      jobId: contractingMachineAssignments.jobId,
+      arrivalId: contractingMachineAssignments.arrivalReadingId,
+      departureId: contractingMachineAssignments.departureReadingId,
+    })
     .from(contractingMachineAssignments)
     .where(
-      or(
-        eq(contractingMachineAssignments.arrivalReadingId, reading.id),
-        eq(contractingMachineAssignments.departureReadingId, reading.id),
+      and(
+        eq(contractingMachineAssignments.machineId, machineId),
+        isNotNull(contractingMachineAssignments.arrivalReadingId),
       ),
     );
-  const next =
-    reading.role === 'departure'
-      ? await tx
-          .select({ jobId: contractingMachineAssignments.jobId })
-          .from(contractingMachineAssignments)
-          .innerJoin(
-            contractingHourReadings,
-            eq(contractingHourReadings.id, contractingMachineAssignments.arrivalReadingId),
-          )
-          .where(
-            and(
-              eq(contractingHourReadings.machineId, reading.machineId),
-              or(
-                gt(contractingHourReadings.capturedAt, reading.capturedAt),
-                and(
-                  eq(contractingHourReadings.capturedAt, reading.capturedAt),
-                  gt(contractingHourReadings.sequence, reading.sequence),
-                ),
-              ),
-            ),
-          )
-          .orderBy(...oldestFirst)
-          .limit(1)
-      : [];
-  const jobIds = [...new Set([...bounded, ...next].map((row) => row.jobId))];
-  if (!jobIds.length) return [];
+  return rows.flatMap(({ arrivalId, ...stint }) => (arrivalId ? [{ ...stint, arrivalId }] : []));
+}
+
+/**
+ * The Jobs whose derived hours amending these readings moves, locked after the Machine: each stint a reading bounds,
+ * and for a departure the Machine's next stint, whose Hour Gap starts at it and which may be on another Job, found in
+ * each of `ledgers` (as it stands and as the amendments leave it) since a re-dated departure can change which it is.
+ */
+async function lockJobsMovedBy(
+  tx: DatabaseTransaction,
+  {
+    ledgers,
+    stints,
+    ids,
+  }: { ledgers: readonly Row[][]; stints: Awaited<ReturnType<typeof stintsOf>>; ids: ReadonlySet<string> },
+) {
+  const jobOfArrival = new Map(stints.map((stint) => [stint.arrivalId, stint.jobId]));
+  const jobIds = new Set(
+    stints
+      .filter((stint) => ids.has(stint.arrivalId) || (stint.departureId !== null && ids.has(stint.departureId)))
+      .map((stint) => stint.jobId),
+  );
+  for (const ledger of ledgers)
+    for (const [index, reading] of ledger.entries()) {
+      if (reading.role !== 'departure' || !ids.has(reading.id)) continue;
+      const nextArrival = ledger.slice(index + 1).find((candidate) => jobOfArrival.has(candidate.id));
+      const jobId = nextArrival && jobOfArrival.get(nextArrival.id);
+      if (jobId) jobIds.add(jobId);
+    }
+  if (!jobIds.size) return [];
   return tx
     .select({ id: contractingJobs.id, status: contractingJobs.status, foremanUserId: contractingJobs.foremanUserId })
     .from(contractingJobs)
-    .where(inArray(contractingJobs.id, jobIds))
+    .where(inArray(contractingJobs.id, [...jobIds]))
     .orderBy(asc(contractingJobs.id))
     .for('update');
 }

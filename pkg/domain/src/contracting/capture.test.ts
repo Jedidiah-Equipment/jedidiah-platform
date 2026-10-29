@@ -14,10 +14,9 @@ import {
   captureNeedsComment,
   captureRefusals,
   deriveCaptureForm,
-  FUTURE_READ_AT_TOLERANCE_MS,
-  isFutureReadAt,
   judgeCapture,
 } from './capture.js';
+import { FUTURE_READ_AT_TOLERANCE_MS, isFutureReadAt } from './read-at.js';
 
 const now = new Date('2026-10-09T08:00:00Z');
 const refusedJob: JobActionVerdict = {

@@ -6,6 +6,7 @@ export function readingToWire(row: typeof contractingHourReadings.$inferSelect) 
   return {
     ...row,
     capturedAt: row.capturedAt.toISOString(),
+    createdAt: row.createdAt.toISOString(),
     evidenceReviewedAt: row.evidenceReviewedAt?.toISOString() ?? null,
     amendedAt: row.amendedAt?.toISOString() ?? null,
     aiHint: meterDisagreementHint(row),

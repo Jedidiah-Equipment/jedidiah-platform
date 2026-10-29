@@ -1,5 +1,14 @@
 const BACKDATED_AFTER_MS = 5 * 60_000;
 
+/** Phone clocks drift; a Read At this far ahead of the server is still the Foreman's "now". */
+export const FUTURE_READ_AT_TOLERANCE_MS = 5 * 60_000;
+
+export const FUTURE_READ_AT_REFUSAL = 'Read At cannot be in the future.';
+
+/** Whether a Read At is still to come. The server passes the tolerance; the phone, judging its own clock, none. */
+export const isFutureReadAt = (readAt: Date, now = new Date(), toleranceMs = 0) =>
+  readAt.getTime() > now.getTime() + toleranceMs;
+
 /** EXIF DateTimeOriginal is 'YYYY:MM:DD HH:MM:SS' with no zone: read it as the phone's local time. */
 export function parseExifDateTime(exif: Record<string, unknown> | null | undefined, now = new Date()): Date | null {
   const raw = exif?.DateTimeOriginal ?? exif?.DateTimeDigitized ?? exif?.DateTime;

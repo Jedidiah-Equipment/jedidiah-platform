@@ -4,14 +4,24 @@ import { contractingJobs, contractingMachineAssignments } from '@pkg/db/contract
 import { stintAmount } from '@pkg/domain/contracting';
 import { accessForRole } from '@pkg/domain/testing';
 import { JobListInput } from '@pkg/schema/contracting';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
 import { createRate, patchRate } from '../rate-card/rate-service.js';
-import { amendReading } from '../readings/reading-service.js';
-import { addedChargeLine, admin, adminId, completedJob, seedJobFixtures } from '../test/job-fixtures.js';
+import { amendReadings, getReading } from '../readings/reading-service.js';
+import {
+  addedChargeLine,
+  admin,
+  adminId,
+  amendHours,
+  completedJob,
+  invoicing,
+  pricedJob,
+  seedJobFixtures,
+} from '../test/job-fixtures.js';
 import { resolveGap } from './assignment-service.js';
 import { patchChargeLine } from './charge-line-service.js';
+import { stampInvoice } from './invoicing-service.js';
 import { listJobs } from './job-queues.js';
 import { getJob } from './job-read.js';
 import { patchJob } from './job-service.js';
@@ -338,7 +348,7 @@ describe('what a Completed Job stores', () => {
       discountAmount: 275,
     });
 
-    await amendReading({ db, actor: admin, input: { id: dig.arrivalReadingId, value: 101, reason: 'Misread' } });
+    await amendHours(db, admin, dig.arrivalReadingId, 101, 'Misread');
     expect(await storedStint(db, dig.id)).toEqual({ amountOverride: null, computedAmount: null, finalAmount: null });
     expect(await storedJob(db, jobId)).toEqual({
       dieselAmount: null,
@@ -439,11 +449,7 @@ describe('a reading amendment on a Priced Job', () => {
     await markPriced({ db, actor: admin, input: { id: jobId, expectedTotal: 5_500 } });
     const eventsBefore = await jobEvents(db, jobId);
 
-    await amendReading({
-      db,
-      actor: admin,
-      input: { id: dig.arrivalReadingId, value: 101, reason: 'Misread 0 as 1' },
-    });
+    await amendHours(db, admin, dig.arrivalReadingId, 101, 'Misread 0 as 1');
 
     const reopened = await getJob({ db, id: jobId });
     expect(reopened).toMatchObject({
@@ -473,6 +479,100 @@ describe('a reading amendment on a Priced Job', () => {
     expect(repriced).toMatchObject({ reopenedAt: null, repricingNote: null });
   });
 
+  const hoursFrom = (at: Date, hours: number) => new Date(at.getTime() + hours * 3_600_000).toISOString();
+
+  test('re-dates both readings of a stint under one reason, audits each Read At, and reopens the Job once', async ({
+    context,
+  }) => {
+    const { db } = context;
+    const { jobId, stints } = await completedJob(context, [
+      { machineId: context.excavator.id, arrival: 100, departure: 110 },
+    ]);
+    const [dig] = stints;
+    if (!dig) throw new Error('Expected a stint');
+    await priceAt(db, jobId, dig.id, context.dryHire.id);
+    const eventsBefore = await jobEvents(db, jobId);
+    const arrival = await getReading({ db, id: dig.arrivalReadingId });
+    const departure = await getReading({ db, id: dig.departureReadingId });
+    const moved = {
+      [arrival.id]: hoursFrom(arrival.capturedAt, -24),
+      [departure.id]: hoursFrom(departure.capturedAt, -2),
+    };
+
+    const amended = await amendReadings({
+      db,
+      actor: admin,
+      input: {
+        amendments: [arrival, departure].map(({ id, value }) => ({ id, value, capturedAt: moved[id] as string })),
+        reason: 'Captured a day late',
+      },
+    });
+
+    expect(amended.map((row) => [row.id, row.capturedAt.toISOString(), row.amendmentReason])).toEqual(
+      [arrival, departure].map(({ id }) => [id, moved[id], 'Captured a day late']),
+    );
+    const audits = await db
+      .select({ entityId: auditEvents.entityId, changes: auditEvents.changes })
+      .from(auditEvents)
+      .where(and(eq(auditEvents.action, 'updated'), inArray(auditEvents.entityId, [arrival.id, departure.id])));
+    for (const reading of [arrival, departure])
+      expect(audits).toContainEqual({
+        entityId: reading.id,
+        changes: expect.objectContaining({
+          capturedAt: { from: reading.capturedAt.toISOString(), to: moved[reading.id] },
+        }),
+      });
+    expect(await getJob({ db, id: jobId })).toMatchObject({ status: 'completed', pricing: { total: 6_000 } });
+    expect(await jobEvents(db, jobId)).toBe(eventsBefore + 1);
+  });
+
+  test('refuses a set that spans two Machines', async ({ context }) => {
+    const { db } = context;
+    const { stints } = await completedJob(context, [
+      { machineId: context.excavator.id, arrival: 100, departure: 110 },
+      { machineId: context.tipper.id, arrival: 50, departure: 60 },
+    ]);
+    const amendments = await Promise.all(
+      stints.map(async ({ arrivalReadingId }) => {
+        const { id, value, capturedAt } = await getReading({ db, id: arrivalReadingId });
+        return { id, value, capturedAt: capturedAt.toISOString() };
+      }),
+    );
+    await expect(amendReadings({ db, actor: admin, input: { amendments, reason: 'Misread' } })).rejects.toMatchObject({
+      code: 'reading.invalid_amendment',
+      message: 'Amend one Machine at a time.',
+    });
+  });
+
+  test('judges a re-dated departure by the Job whose Hour Gap it would start at after the move', async ({
+    context,
+  }) => {
+    const { db } = context;
+    const machineId = context.excavator.id;
+    const first = await completedJob(context, [{ machineId, arrival: 100, departure: 110 }]);
+    const second = await completedJob(context, [{ machineId, arrival: 110, departure: 120 }]);
+    const third = await pricedJob(context, [{ machineId, arrival: 120, departure: 130 }]);
+    await stampInvoice({
+      db,
+      actor: invoicing,
+      input: { id: third.jobId, invoiceNumber: 'INV-1848', expectedTotal: third.total },
+    });
+    const departure = await getReading({ db, id: first.stints[0]?.departureReadingId ?? '' });
+    const secondDeparture = await getReading({ db, id: second.stints[0]?.departureReadingId ?? '' });
+
+    // Moved past the second stint, the departure would open the Invoiced third stint's Hour Gap.
+    await expect(
+      amendReadings({
+        db,
+        actor: admin,
+        input: {
+          amendments: [{ id: departure.id, value: 110, capturedAt: hoursFrom(secondDeparture.capturedAt, 0.5) }],
+          reason: 'Misread',
+        },
+      }),
+    ).rejects.toMatchObject({ code: 'reading.job_invoiced' });
+  });
+
   test('also reopens the Priced Job whose next stint’s Hour Gap starts at an amended departure', async ({
     context,
   }) => {
@@ -486,11 +586,7 @@ describe('a reading amendment on a Priced Job', () => {
     await priceAt(db, next.jobId, nextStint.id, context.dryHire.id);
     expect((await getJob({ db, id: next.jobId })).pricedTotal).toBe(6_000);
 
-    await amendReading({
-      db,
-      actor: admin,
-      input: { id: firstStint.departureReadingId, value: 111, reason: 'Misread the meter' },
-    });
+    await amendHours(db, admin, firstStint.departureReadingId, 111, 'Misread the meter');
 
     expect(await getJob({ db, id: first.jobId })).toMatchObject({ status: 'completed', pricing: { total: 6_600 } });
     expect(await getJob({ db, id: next.jobId })).toMatchObject({

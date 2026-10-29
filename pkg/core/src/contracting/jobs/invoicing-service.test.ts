@@ -2,8 +2,7 @@ import { auditEvents } from '@pkg/db';
 import { and, eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
-import { amendReading } from '../readings/reading-service.js';
-import { admin, invoicing, type JobFixtures, pricedJob, seedJobFixtures } from '../test/job-fixtures.js';
+import { admin, amendHours, invoicing, type JobFixtures, pricedJob, seedJobFixtures } from '../test/job-fixtures.js';
 import { findJobsByInvoiceNumber, stampInvoice } from './invoicing-service.js';
 import { getJob } from './job-read.js';
 import { markPriced } from './pricing-service.js';
@@ -50,11 +49,7 @@ describe('stamping an Invoice Number', () => {
   test('refuses a total the user did not see, then stamps the re-priced one', async ({ context }) => {
     const { db } = context;
     const priced = await pricedJob(context, [{ machineId: context.tipper.id, arrival: 100, departure: 110 }]);
-    await amendReading({
-      db,
-      actor: admin,
-      input: { id: priced.stints[0]?.arrivalReadingId ?? '', value: 101, reason: 'Misread' },
-    });
+    await amendHours(db, admin, priced.stints[0]?.arrivalReadingId ?? '', 101, 'Misread');
     await markPriced({ db, actor: admin, input: { id: priced.jobId, expectedTotal: 5_400 } });
     await expect(
       stampInvoice({

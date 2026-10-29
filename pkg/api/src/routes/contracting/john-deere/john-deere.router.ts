@@ -53,11 +53,12 @@ export function createContractingJohnDeereRouter(deps: JohnDeereDependencies | n
     }),
     links: router({
       list: settingsProcedure.query(() => run(({ links }) => links.listLinks())),
-      create: machineProcedure
-        .input(JohnDeereLinkCreateInput)
-        .mutation(({ ctx, input }) =>
-          run(({ links }) => links.linkMachine({ actorUserId: ctx.session.user.id, ...input })),
-        ),
+      create: machineProcedure.input(JohnDeereLinkCreateInput).mutation(({ ctx, input }) =>
+        run(async ({ links, poller }) => {
+          const { linkId } = await links.linkMachine({ actorUserId: ctx.session.user.id, ...input });
+          await poller.pollLinkNow(linkId);
+        }),
+      ),
       remove: machineProcedure
         .input(JohnDeereLinkRemoveInput)
         .mutation(({ ctx, input }) =>

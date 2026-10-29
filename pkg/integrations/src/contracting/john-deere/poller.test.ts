@@ -360,6 +360,17 @@ describe('JohnDeerePoller', () => {
     expect(await readings(db)).toHaveLength(1);
   });
 
+  test('pollLinkNow reads only that Link’s hours and never fails when Deere refuses', async ({ db }) => {
+    const { poller, state, linked } = await setUp(db);
+    await poller().pollLinkNow(linked[1]?.linkId ?? '');
+    expect(state.hoursCalls).toEqual([2]);
+    expect(await readings(db)).toMatchObject([{ machineId: linked[1]?.machineId, value: 500, method: 'telematics' }]);
+
+    state.failures.set(1, [{ status: 503 }]);
+    await expect(poller().pollLinkNow(linked[0]?.linkId ?? '')).resolves.toBeUndefined();
+    expect(await readings(db)).toHaveLength(1);
+  });
+
   test('skips and never calls Deere when nothing is connected', async ({ db }) => {
     const { poller, state } = await setUp(db, { connected: false });
     expect(await poller().pollOnce()).toMatchObject({ skipped: 'not-connected', polled: 0 });

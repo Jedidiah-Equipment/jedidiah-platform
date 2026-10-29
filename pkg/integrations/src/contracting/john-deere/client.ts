@@ -111,13 +111,22 @@ const EquipmentPage = z.object({
 });
 
 const EngineHoursPage = z.object({
-  values: z.array(
-    z.object({
-      reading: z.object({ valueAsDouble: z.number() }),
-      reportTime: z.iso.datetime(),
-      source: z.string(),
-    }),
-  ),
+  // A machine that has never reported may be answered with no `values` at all.
+  values: z
+    .array(
+      z.object({
+        reading: z.object({
+          valueAsDouble: z.union([z.number(), z.string().regex(/^\d+(\.\d+)?$/)]).transform(Number),
+        }),
+        // Deere's offsets are not always the `Z` or `+hh:mm` ISO form `z.iso.datetime` demands.
+        reportTime: z
+          .string()
+          .transform((value) => new Date(value))
+          .refine((date) => !Number.isNaN(date.getTime()), 'not a date'),
+        source: z.string().nullish(),
+      }),
+    )
+    .default([]),
 });
 
 /** Where in Deere's payload a parse stopped, so a response Jedidiah cannot read says what was unexpected. */
@@ -172,7 +181,8 @@ export class JohnDeereClient {
     let next: string | null = `${this.config.platformBaseUrl}/organizations`;
     while (next) {
       const page = OrganizationsPage.safeParse(await this.getJson(next, accessToken, AXIOM_JSON));
-      if (!page.success) throw badResponse('John Deere sent an organization list Jedidiah cannot read.');
+      if (!page.success)
+        throw badResponse(`John Deere sent an organization list Jedidiah cannot read (${firstIssue(page.error)}).`);
       for (const organization of page.data.values) {
         listings.push({
           id: organization.id,
@@ -207,10 +217,11 @@ export class JohnDeereClient {
   async engineHours(accessToken: string, principalId: number): Promise<DeereEngineHours | null> {
     const url = `${this.config.platformBaseUrl}/machines/${principalId}/engineHours?lastKnown=true&showLinks=none`;
     const page = EngineHoursPage.safeParse(await this.getJson(url, accessToken, AXIOM_JSON));
-    if (!page.success) throw badResponse('John Deere sent engine hours Jedidiah cannot read.');
+    if (!page.success)
+      throw badResponse(`John Deere sent engine hours Jedidiah cannot read (${firstIssue(page.error)}).`);
     const [last] = page.data.values;
     return last
-      ? { hours: last.reading.valueAsDouble, reportTime: new Date(last.reportTime), source: last.source }
+      ? { hours: last.reading.valueAsDouble, reportTime: last.reportTime, source: last.source ?? 'unknown' }
       : null;
   }
 
@@ -268,7 +279,8 @@ export class JohnDeereClient {
       throw new JohnDeereError('john_deere.unauthorized', 'John Deere refused the sign-in. Reconnect John Deere.');
     if (!response.ok) throw johnDeereResponseError(response, body);
     const tokens = TokenResponse.safeParse(parseJson(body));
-    if (!tokens.success) throw badResponse('John Deere sent a token response Jedidiah cannot read.');
+    if (!tokens.success)
+      throw badResponse(`John Deere sent a token response Jedidiah cannot read (${firstIssue(tokens.error)}).`);
     return {
       accessToken: tokens.data.access_token,
       refreshToken: tokens.data.refresh_token,

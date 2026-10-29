@@ -296,6 +296,30 @@ describe('JohnDeereClient', () => {
     expect(requests[0]?.init?.headers).toMatchObject({ Accept: 'application/vnd.deere.axiom.v3+json' });
   });
 
+  it('reads engine hours with a numeric-offset report time, a missing source, or no values at all', async () => {
+    const { client } = clientAnswering(
+      Response.json({
+        values: [{ reading: { valueAsDouble: '88.5' }, reportTime: '2026-10-26T08:30:00.000+02:00' }],
+      }),
+      Response.json({ total: 0 }),
+    );
+
+    expect(await client.engineHours('access-1', 217373)).toEqual({
+      hours: 88.5,
+      reportTime: new Date('2026-10-26T06:30:00.000Z'),
+      source: 'unknown',
+    });
+    expect(await client.engineHours('access-1', 217373)).toBeNull();
+  });
+
+  it('says where engine hours it cannot read went wrong', async () => {
+    const { client } = clientAnswering(Response.json({ values: [{ reading: {}, reportTime: 'soon' }] }));
+    await expect(client.engineHours('access-1', 217373)).rejects.toMatchObject({
+      code: 'john_deere.bad_response',
+      message: expect.stringContaining('values.0.reading.valueAsDouble'),
+    });
+  });
+
   it.each([
     [new Response('', { status: 401 }), { code: 'john_deere.unauthorized' }],
     [new Response('', { status: 403 }), { code: 'john_deere.forbidden' }],

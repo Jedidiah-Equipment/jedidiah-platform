@@ -1,0 +1,15 @@
+{
+  "business": "equipment",
+  "releasedAt": "2026-10-29T09:40:46.048Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Scan more compact dashboard tiles",
+          "description": "Small dashboard tiles now fit their contents, reducing unnecessary empty space."
+        }
+      ]
+    }
+  ]
+}

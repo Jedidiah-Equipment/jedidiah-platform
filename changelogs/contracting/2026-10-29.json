@@ -1,0 +1,35 @@
+{
+  "business": "contracting",
+  "releasedAt": "2026-10-29T09:40:46.048Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Spot daily hours patterns",
+          "description": "View a Daily Hours heat map on Machine pages, Job pages and the Dashboard when you have report access. Hover over a day to see its hours, with estimates clearly marked when readings span several days."
+        },
+        {
+          "title": "Browse and filter fleet history",
+          "description": "Search Machine and Implement History, filter by date or kind, and sort the results. Use Load more to browse older records."
+        },
+        {
+          "title": "Load John Deere machines more reliably",
+          "description": "Missing names and variations in John Deere's machine and hours data no longer prevent supported results from loading. Data errors now identify the field causing the problem."
+        },
+        {
+          "title": "Fetch hours as soon as you link a Machine",
+          "description": "Linking a Machine now requests its John Deere hours immediately. If John Deere refuses the request, the link stays saved and shows the failure for a later retry."
+        },
+        {
+          "title": "View a better-fitting Dashboard",
+          "description": "Dashboard rows now fill the available space using the tiles your role can see, avoiding gaps when some tiles are hidden."
+        },
+        {
+          "title": "Scan more compact dashboard tiles",
+          "description": "Small dashboard tiles now fit their contents, reducing unnecessary empty space."
+        }
+      ]
+    }
+  ]
+}

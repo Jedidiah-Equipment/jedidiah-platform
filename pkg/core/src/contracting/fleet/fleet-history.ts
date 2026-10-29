@@ -85,7 +85,7 @@ const labelSql = (column: SQLWrapper, labels: Record<string, string>) =>
     Object.entries(labels).map(([value, label]) => sql`when ${value} then ${label}::text`),
     sql` `,
   )} end)`;
-/** What the search box looks in: the row's kind and what it says, joined as one line. */
+/** What the search box looks in: the row's Kind label and what it says, joined as one line. */
 const searchLine = (...parts: SQL[]) =>
   sql`concat_ws(' · ', ${sql.join(
     parts.map((part) => sql`${part}::text`),
@@ -134,7 +134,7 @@ export async function listFleetHistory({
           onCalendarDays(contractingHourReadings.capturedAt, JOHANNESBURG_TIME_ZONE, days),
           createGlobalSearchCondition(search, [
             searchLine(
-              sql`'Reading'`,
+              sql`${fleetHistoryKindLabels.reading}`,
               hoursSql(contractingHourReadings.value),
               labelSql(contractingHourReadings.role, readingRoleLabels),
               jobNumberSql(readingJobCode),
@@ -162,7 +162,7 @@ export async function listFleetHistory({
             onCalendarDays(contractingBreakdowns.reportedAt, JOHANNESBURG_TIME_ZONE, days),
             createGlobalSearchCondition(search, [
               searchLine(
-                sql`'Breakdown'`,
+                sql`${fleetHistoryKindLabels.breakdown}`,
                 labelSql(contractingBreakdowns.urgency, breakdownUrgencyLabels),
                 sql`${contractingBreakdowns.description}`,
                 labelSql(contractingBreakdowns.status, breakdownStatusLabels),
@@ -189,7 +189,7 @@ export async function listFleetHistory({
             input.to ? sql`${serviceDate} <= ${input.to}::date` : undefined,
             createGlobalSearchCondition(search, [
               searchLine(
-                sql`'Service'`,
+                sql`${fleetHistoryKindLabels.service}`,
                 sql`coalesce(${hoursSql(contractingServiceRecords.readingAtServiceHours)}, 'in the workshop')`,
                 sql`${serviceMechanic.name}`,
               ),

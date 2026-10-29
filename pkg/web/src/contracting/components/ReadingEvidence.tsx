@@ -14,7 +14,10 @@ type EvidenceReading = Pick<JobReading, 'photoBacked' | 'value' | 'aiValue' | 'a
 /** A reading assessment's tone: its attention kind's level, or success when the AI confirmed the value. */
 export type AssessmentTone = AssignmentAttentionLevel | 'success';
 
-/** Each surface's wording for an evidence state. The list and the dialog deliberately differ; do not merge them here. */
+/**
+ * Each surface's wording for an evidence state beyond the list's evidence label, which domain owns. The list and the
+ * dialog deliberately differ; do not merge them here.
+ */
 const presentation = {
   'no-photo': {
     listResult: () => 'No photo verification',

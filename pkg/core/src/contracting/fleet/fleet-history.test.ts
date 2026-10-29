@@ -1,12 +1,13 @@
 import type { Db } from '@pkg/db';
-import { contractingBreakdowns, contractingHourReadings } from '@pkg/db/contracting';
+import { contractingBreakdowns, contractingHourReadings, contractingMachineAssignments } from '@pkg/db/contracting';
 import { type AppPermission, DateOnlyIso } from '@pkg/schema';
 import { FleetHistoryListInput } from '@pkg/schema/contracting';
+import { eq } from 'drizzle-orm';
 import { expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
 import { createJob } from '../jobs/job-service.js';
 import { closeServiceRecord, openServiceRecord } from '../services/service-record-service.js';
-import { admin, adminId, foremanId, leftStint, seedJobFixtures } from '../test/job-fixtures.js';
+import { admin, adminId, foremanId, leftStint, plannedStint, seedJobFixtures } from '../test/job-fixtures.js';
 import { createCategory } from './category-service.js';
 import { listFleetHistory, listFleetHistoryFilterOptions } from './fleet-history.js';
 import { createImplement } from './implement-service.js';
@@ -91,7 +92,7 @@ const test = createTester(async ({ db }) => {
     description: 'Bent tine',
   });
   if (!breakdown || !telematics) throw new Error('Expected the History rows');
-  return { breakdown, implementId: implement.id, job, machineId, service, stint, telematics };
+  return { breakdown, fixtures, implementId: implement.id, job, machineId, service, stint, telematics };
 });
 
 type Context = { db: Db; machineId: string };
@@ -183,6 +184,7 @@ test('pages, sorts, searches and filters in SQL', async ({ context }) => {
   ]);
   expect(await titles(context, { search: '1 001.0' })).toEqual(['Service · 1 001.0 h', 'Departure · 1 001.0 h']);
   expect(await titles(context, { search: 'code red' })).toEqual(['Hydraulic leak']);
+  expect(await titles(context, { search: 'services' })).toEqual(['Service · 1 001.0 h']);
   expect(await titles(context, { search: context.job.jobNumber })).toEqual([
     'Departure · 1 001.0 h',
     'Arrival · 1 000.0 h',
@@ -218,4 +220,30 @@ test('lists only the kinds the caller may read, and an Implement only its Breakd
   ).toBe(false);
   expect(listFleetHistoryFilterOptions({ actor: admin, subject: implement })).toEqual({ kinds: ['breakdown'] });
   expect(await titles(context, { subject: implement })).toEqual(['Bent tine']);
+});
+
+test('lists a reading that closed one stint and opened the next once, under the Job it opened', async ({ context }) => {
+  const { db, fixtures, machineId, stint } = context;
+  const next = await createJob({
+    db,
+    actor: admin,
+    input: {
+      customerId: fixtures.customer.id,
+      farmId: fixtures.farm.id,
+      workTypeId: fixtures.workType.id,
+      description: null,
+      foremanUserId: foremanId,
+    },
+  });
+  const planned = await plannedStint(db, admin, { jobId: next.id, machineId, implementId: null });
+  await db
+    .update(contractingMachineAssignments)
+    .set({ arrivalReadingId: stint.departureReadingId })
+    .where(eq(contractingMachineAssignments.id, planned.id));
+  const { items, total } = await history(context);
+  expect(total).toBe(5);
+  expect(items.find((row) => row.id === stint.departureReadingId)).toMatchObject({
+    detail: next.jobNumber,
+    opens: { to: 'job', jobNumber: next.jobNumber },
+  });
 });

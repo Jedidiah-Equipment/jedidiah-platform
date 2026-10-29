@@ -22,11 +22,11 @@ A John Deere Link pairs one Machine with one machine in the organization.
 1. On a **Connected** tab, find the machine under **Unlinked John Deere machines**. Choose **Refresh** to ask John Deere again.
 2. Choose **Link** on its row and pick the Machine. Only Machines that are not retired and not linked are offered.
 3. Compare the two meters side by side: John Deere's last reported hours beside the Machine's latest reading and its Read At. Link only when the two meters agree for the time between them.
-4. Choose **Link**. The machine moves to **Linked Machines**, and its PIN becomes the Machine's serial number. A PIN another Machine already holds is refused.
+4. Choose **Link**. The machine moves to **Linked Machines**, its PIN becomes the Machine's serial number, and its hours are read from John Deere straight away. A PIN another Machine already holds is refused.
 
 ## Refresh now
 
-Jedidiah reads each linked Machine's hours from John Deere every hour; [how John Deere readings work](./john-deere-readings) explains what lands on the Machine's readings.
+Jedidiah reads each linked Machine's hours from John Deere a few seconds after it starts and then every hour; [how John Deere readings work](./john-deere-readings) explains what lands on the Machine's readings.
 
 1. On a **Connected** tab, choose **Refresh now** to read John Deere straight away instead of waiting for the hour.
 2. Read the message that follows. A run John Deere cut short says why, and the Machines it did not reach are read in the next hour.

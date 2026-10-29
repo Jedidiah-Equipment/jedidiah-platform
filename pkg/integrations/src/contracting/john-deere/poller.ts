@@ -23,7 +23,7 @@ export type JohnDeerePollerConfig = {
   sleep?: (ms: number) => Promise<void>;
 };
 
-const FIRST_RUN_DELAY_MS = 60 * 1000;
+const FIRST_RUN_DELAY_MS = 5 * 1000;
 // Deere's Retry-After is honoured up to this; a longer wait ends the run for the next hour instead.
 const MAX_RETRY_AFTER_SECONDS = 5 * 60;
 const DEFAULT_RETRY_AFTER_SECONDS = 60;
@@ -61,7 +61,8 @@ const isCode = (error: unknown, code: JohnDeereErrorCode): error is JohnDeereErr
   isJohnDeereError(error) && error.code === code;
 
 /**
- * Every hour, reads each linked Machine's last reported engine hours from John Deere into its Hour Reading ledger.
+ * Shortly after start-up and then every hour, reads each linked Machine's last reported engine hours from John Deere
+ * into its Hour Reading ledger, and a Link's own hours as it is made.
  * One run at a time: Refresh now joins a run already in progress rather than starting a second.
  */
 export class JohnDeerePoller {
@@ -94,6 +95,21 @@ export class JohnDeerePoller {
       this.running = null;
     });
     return this.running;
+  }
+
+  /**
+   * Reads one Link's hours now, as a Link is made, so its Machine does not wait for the hourly run. A refusal from
+   * Deere is already recorded on the Link or the connection, so it never fails the caller.
+   */
+  async pollLinkNow(linkId: string): Promise<void> {
+    const link = (await this.config.links.listPollable()).find((candidate) => candidate.id === linkId);
+    if (!link) return;
+    try {
+      await this.pollLink(link, emptySummary(null));
+    } catch (error) {
+      if (!(error instanceof RunStopped || isJohnDeereError(error))) throw error;
+      this.config.logger.warn({ linkId, error: error.message }, 'John Deere could not read a new Link right away');
+    }
   }
 
   private schedule(delayMs: number): void {

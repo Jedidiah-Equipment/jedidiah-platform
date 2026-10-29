@@ -250,7 +250,8 @@ describe('JohnDeereLinkService', () => {
   test('unlinking keeps the row and the serial; re-linking makes a second row', async ({ db }) => {
     const { state, service, machine } = await setUp(db);
     const t01 = await machine('T01');
-    await service.linkMachine({ actorUserId: adminId, machineId: t01.id, equipmentId: 'eq-1' });
+    const { linkId } = await service.linkMachine({ actorUserId: adminId, machineId: t01.id, equipmentId: 'eq-1' });
+    expect((await service.listLinks()).map((link) => link.id)).toEqual([linkId]);
     const [first] = await service.listLinks();
     if (!first) throw new Error('No link');
 

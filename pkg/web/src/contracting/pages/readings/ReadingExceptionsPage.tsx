@@ -49,7 +49,7 @@ export function ReadingExceptionsPage() {
         ),
       },
       {
-        id: 'capture',
+        id: 'readAt',
         header: 'Read At',
         cell: ({ row }) => formatDate(row.original.capturedAt, 'medium'),
       },

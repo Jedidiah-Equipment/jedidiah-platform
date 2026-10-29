@@ -24,6 +24,8 @@ export class ReadingError extends Error {
 }
 export const isReadingError = (error: unknown): error is ReadingError => error instanceof ReadingError;
 
+export const readingNotFound = () => new ReadingError('reading.not_found', 'Hour Reading not found.');
+
 /**
  * The amendment's Job Action refused as a Reading error, because the exceptions list reports Reading codes: an
  * Invoiced Job keeps its own code, which the Job sheet names. Capture's Job verdict is judged in `judgeCapture`.
@@ -46,9 +48,7 @@ const amendmentRefusalCodes: Record<Exclude<ReadingAmendmentRefusal, 'not_found'
 
 /** An amendment the ledger refused, in Reading terms. */
 export const amendmentRefused = ({ reason, message }: { reason: ReadingAmendmentRefusal; message: string }) =>
-  reason === 'not_found'
-    ? new ReadingError('reading.not_found', 'Hour Reading not found.')
-    : new ReadingError(amendmentRefusalCodes[reason], message);
+  reason === 'not_found' ? readingNotFound() : new ReadingError(amendmentRefusalCodes[reason], message);
 
 /** A stint constraint's refusal as the Reading error the phone reports. */
 const captureRefused = (rule: CaptureConstraintRule) =>

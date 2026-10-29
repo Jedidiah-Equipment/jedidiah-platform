@@ -4,11 +4,9 @@ import { meterDisagreementHint } from '@pkg/domain/contracting';
 import type { AuthId } from '@pkg/schema';
 import { defineAuditDescriptor } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
-import { ReadingError } from './reading-errors.js';
+import { readingNotFound } from './reading-errors.js';
 
 export type ReadingRow = typeof contractingHourReadings.$inferSelect;
-
-export const readingNotFound = () => new ReadingError('reading.not_found', 'Hour Reading not found.');
 
 export function withHint<T extends ReadingRow>(row: T) {
   return { ...row, aiHint: meterDisagreementHint(row) };

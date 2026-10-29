@@ -1,32 +1,26 @@
 import { formatHours, formatPercent } from '@pkg/domain';
-import { assignmentAttentionKindLevels, MISSING_PHOTO_EVIDENCE } from '@pkg/domain/contracting';
+import {
+  assignmentAttentionKindLevels,
+  type ReadingEvidenceState,
+  readingEvidenceLabels,
+  readingEvidenceState,
+} from '@pkg/domain/contracting';
 import type { AssignmentAttentionLevel, JobReading, JobReadingAttentionKind } from '@pkg/schema/contracting';
 import { IconInfoCircle } from '@tabler/icons-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
 
 type EvidenceReading = Pick<JobReading, 'photoBacked' | 'value' | 'aiValue' | 'aiConfidence' | 'aiVerification'>;
 
-export type ReadingEvidenceState =
-  | { state: 'no-photo' | 'pending' | 'unreadable' }
-  | { state: 'low-confidence' | 'disagrees' | 'agrees'; aiValue: number };
-
-/** What the AI made of the meter photo, as `readingVerification` can store it. */
-export function readingEvidenceState(reading: Omit<EvidenceReading, 'value'>): ReadingEvidenceState {
-  if (!reading.photoBacked) return { state: 'no-photo' };
-  if (reading.aiVerification === 'pending') return { state: 'pending' };
-  if (reading.aiValue === null) return { state: 'unreadable' };
-  if (reading.aiVerification === 'low-confidence') return { state: 'low-confidence', aiValue: reading.aiValue };
-  if (reading.aiVerification === 'disagrees') return { state: 'disagrees', aiValue: reading.aiValue };
-  return { state: 'agrees', aiValue: reading.aiValue };
-}
-
 /** A reading assessment's tone: its attention kind's level, or success when the AI confirmed the value. */
 export type AssessmentTone = AssignmentAttentionLevel | 'success';
 
-/** Each surface's wording for an evidence state. The list and the dialog deliberately differ; do not merge them here. */
+/**
+ * Each surface's wording for an evidence state beyond the list's evidence label, which domain owns. The list and the
+ * dialog deliberately differ; do not merge them here.
+ */
 const presentation = {
   'no-photo': {
-    list: { evidence: MISSING_PHOTO_EVIDENCE, result: () => 'No photo verification' },
+    listResult: () => 'No photo verification',
     dialog: {
       kind: 'missing-photo',
       badge: 'No AI result',
@@ -36,7 +30,7 @@ const presentation = {
     },
   },
   pending: {
-    list: { evidence: 'Photo-backed · Verification pending', result: () => 'Verification pending' },
+    listResult: () => 'Verification pending',
     dialog: {
       kind: 'ai-pending',
       badge: 'Checking photo',
@@ -46,7 +40,7 @@ const presentation = {
     },
   },
   unreadable: {
-    list: { evidence: 'Photo-backed', result: () => 'No readable meter detected' },
+    listResult: () => 'No readable meter detected',
     dialog: {
       kind: 'ai-low-confidence',
       badge: 'Cannot verify from photo',
@@ -57,7 +51,7 @@ const presentation = {
     },
   },
   'low-confidence': {
-    list: { evidence: 'Photo-backed · Low extraction confidence', result: (aiValue: number) => formatHours(aiValue) },
+    listResult: (aiValue: number) => formatHours(aiValue),
     dialog: {
       kind: 'ai-low-confidence',
       badge: 'Uncertain result',
@@ -68,7 +62,7 @@ const presentation = {
     },
   },
   disagrees: {
-    list: { evidence: 'Photo-backed · Extracted value differs', result: (aiValue: number) => formatHours(aiValue) },
+    listResult: (aiValue: number) => formatHours(aiValue),
     dialog: {
       kind: 'ai-disagrees',
       badge: 'Different value found',
@@ -79,7 +73,7 @@ const presentation = {
     },
   },
   agrees: {
-    list: { evidence: 'Photo-backed · AI-verified', result: (aiValue: number) => formatHours(aiValue) },
+    listResult: (aiValue: number) => formatHours(aiValue),
     dialog: {
       kind: null,
       badge: 'Same value found',
@@ -92,7 +86,7 @@ const presentation = {
 } satisfies Record<
   ReadingEvidenceState['state'],
   {
-    list: { evidence: string; result: (aiValue: number) => string };
+    listResult: (aiValue: number) => string;
     dialog: {
       /** The attention kind this evidence state raises; null when the AI confirmed the value. */
       kind: JobReadingAttentionKind | null;
@@ -109,7 +103,7 @@ const aiValueOf = (evidence: ReadingEvidenceState) => ('aiValue' in evidence ? e
 /** The stint card's and the Reading Exceptions list's reading of the evidence. */
 export function readingEvidence(reading: Omit<EvidenceReading, 'value'>) {
   const evidence = readingEvidenceState(reading);
-  const { list } = presentation[evidence.state];
+  const { listResult } = presentation[evidence.state];
   const confidencePercent = reading.aiConfidence === null ? null : Math.round(reading.aiConfidence * 100);
   return {
     confidenceLabel:
@@ -118,8 +112,8 @@ export function readingEvidence(reading: Omit<EvidenceReading, 'value'>) {
         : reading.aiValue === null
           ? null
           : `${formatPercent(confidencePercent)} confidence in extracted value`,
-    evidenceLabel: list.evidence,
-    resultLabel: list.result(aiValueOf(evidence)),
+    evidenceLabel: readingEvidenceLabels[evidence.state],
+    resultLabel: listResult(aiValueOf(evidence)),
     resultConfidencePercent: evidence.state === 'unreadable' ? confidencePercent : null,
   };
 }

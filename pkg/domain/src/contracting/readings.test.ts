@@ -7,6 +7,7 @@ import {
   readingAttention,
   readingAttentionKinds,
   readingEvidenceCaption,
+  readingEvidenceState,
   readingExceptionTypes,
   readingNeedsALook,
   readingNeedsALookLevel,
@@ -31,6 +32,23 @@ const disputedPair = (): AmendableReading[] => [
   { ...clean('r2', 121), disputed: true, disputeReason: 'The previous reading is wrong.', disputedPreviousId: 'r1' },
   clean('r3', 130),
 ];
+
+describe('readingEvidenceState', () => {
+  const base = { photoBacked: true, aiValue: 412.3, aiVerification: 'agrees' as const };
+  it.each([
+    [{ photoBacked: false, aiVerification: 'not-applicable' }, { state: 'no-photo' }],
+    [{ aiVerification: 'pending', aiValue: null, aiConfidence: null }, { state: 'pending' }],
+    [{ aiVerification: 'low-confidence', aiValue: null, aiConfidence: 0.88 }, { state: 'unreadable' }],
+    [
+      { aiVerification: 'low-confidence', aiConfidence: 0.5 },
+      { state: 'low-confidence', aiValue: 412.3 },
+    ],
+    [{ aiVerification: 'disagrees' }, { state: 'disagrees', aiValue: 412.3 }],
+    [{ aiVerification: 'agrees' }, { state: 'agrees', aiValue: 412.3 }],
+  ] as const)('classifies the evidence state: %j', (overrides, expected) => {
+    expect(readingEvidenceState({ ...base, ...overrides })).toEqual(expected);
+  });
+});
 
 describe('readingEvidenceCaption', () => {
   it('names John Deere for a telematics row and never stamps it as missing a photo', () => {

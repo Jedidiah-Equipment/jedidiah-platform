@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readingAssessment, readingEvidence, readingEvidenceState } from './ReadingEvidence.js';
+import { readingAssessment, readingEvidence } from './ReadingEvidence.js';
 
 const base = {
   photoBacked: true,
@@ -41,20 +41,6 @@ describe('reading evidence', () => {
       resultLabel: 'No readable meter detected',
       resultConfidencePercent: 88,
     });
-  });
-
-  it.each([
-    [{ photoBacked: false, aiVerification: 'not-applicable' }, { state: 'no-photo' }],
-    [{ aiVerification: 'pending', aiValue: null, aiConfidence: null }, { state: 'pending' }],
-    [{ aiVerification: 'low-confidence', aiValue: null, aiConfidence: 0.88 }, { state: 'unreadable' }],
-    [
-      { aiVerification: 'low-confidence', aiConfidence: 0.5 },
-      { state: 'low-confidence', aiValue: 412.3 },
-    ],
-    [{ aiVerification: 'disagrees' }, { state: 'disagrees', aiValue: 412.3 }],
-    [{ aiVerification: 'agrees' }, { state: 'agrees', aiValue: 412.3 }],
-  ] as const)('classifies the evidence state: %j', (overrides, expected) => {
-    expect(readingEvidenceState({ ...base, ...overrides })).toEqual(expected);
   });
 
   it.each([

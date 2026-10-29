@@ -219,7 +219,10 @@ function MachineForm({
                 />
               ) : null}
             </div>
-            <FleetHistoryCard subject={{ machineId: machine.id }} onOpenService={() => onTabChange('service')} />
+            <FleetHistoryCard
+              subject={{ kind: 'machine', id: machine.id }}
+              onOpenService={() => onTabChange('service')}
+            />
           </DetailAsideGrid>
         </TabsContent>
         {openTabs.map(({ value, content }) => (

@@ -2,10 +2,13 @@ import {
   createCategory,
   createImplement,
   createMachine,
+  fleetHistoryReadPermissions,
   getCategory,
   getImplement,
   getMachine,
   listCategories,
+  listFleetHistory,
+  listFleetHistoryFilterOptions,
   listImplements,
   listMachinesWithOpenBreakdowns,
   machineOptions,
@@ -23,6 +26,10 @@ import {
   CategoryCreateInput,
   CategoryListInput,
   CategoryPatchInput,
+  FleetHistoryFilterInput,
+  FleetHistoryFilterOptions,
+  FleetHistoryListInput,
+  FleetHistoryListResult,
   FleetIdInput,
   FleetListInput,
   FleetRetireInput,
@@ -38,6 +45,16 @@ import { authorizedProcedure, router } from '../../../trpc/init.js';
 import { fleetErrorFamily } from '../contracting-error-families.js';
 
 export const contractingFleetRouter = router({
+  history: router({
+    list: authorizedProcedure(fleetHistoryReadPermissions)
+      .input(FleetHistoryListInput)
+      .output(FleetHistoryListResult)
+      .query(({ ctx, input }) => listFleetHistory({ db: ctx.db, actor: ctx.access, input })),
+    filters: authorizedProcedure(fleetHistoryReadPermissions)
+      .input(FleetHistoryFilterInput)
+      .output(FleetHistoryFilterOptions)
+      .query(({ ctx, input }) => listFleetHistoryFilterOptions({ actor: ctx.access, subject: input.subject })),
+  }),
   categories: router({
     list: authorizedProcedure('contracting_machine:read')
       .input(CategoryListInput.optional())

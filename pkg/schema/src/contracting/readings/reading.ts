@@ -125,9 +125,6 @@ export const HourReading = z.object({
   amendmentReason: z.string().nullable(),
 });
 export type HourReading = z.infer<typeof HourReading>;
-/** A Machine's reading as its History lists it: the Job Number of the stint it opened or closed, when it did. */
-export const MachineHistoryReading = HourReading.extend({ jobNumber: z.string().nullable() });
-export type MachineHistoryReading = z.infer<typeof MachineHistoryReading>;
 export const ReadingException = HourReading.extend({
   exceptionTypes: z.array(z.enum(readingExceptionTypes)).min(1),
   photoBacked: z.boolean(),

@@ -49,6 +49,42 @@ export const readingEvidenceCaption = (reading: {
       ? 'Photo-backed'
       : MISSING_PHOTO_EVIDENCE;
 
+export type ReadingEvidenceState =
+  | { state: 'no-photo' | 'pending' | 'unreadable' }
+  | { state: 'low-confidence' | 'disagrees' | 'agrees'; aiValue: number };
+
+/** What the AI made of the meter photo, as `readingVerification` can store it. */
+export function readingEvidenceState(reading: {
+  photoBacked: boolean;
+  aiValue: number | null;
+  aiVerification: ReadingVerification;
+}): ReadingEvidenceState {
+  if (!reading.photoBacked) return { state: 'no-photo' };
+  if (reading.aiVerification === 'pending') return { state: 'pending' };
+  if (reading.aiValue === null) return { state: 'unreadable' };
+  if (reading.aiVerification === 'low-confidence') return { state: 'low-confidence', aiValue: reading.aiValue };
+  if (reading.aiVerification === 'disagrees') return { state: 'disagrees', aiValue: reading.aiValue };
+  return { state: 'agrees', aiValue: reading.aiValue };
+}
+
+/** How a list of readings labels each evidence state: the stint card, the Reading Exceptions list and History. */
+export const readingEvidenceLabels: Record<ReadingEvidenceState['state'], string> = {
+  'no-photo': MISSING_PHOTO_EVIDENCE,
+  pending: 'Photo-backed · Verification pending',
+  unreadable: 'Photo-backed',
+  'low-confidence': 'Photo-backed · Low extraction confidence',
+  disagrees: 'Photo-backed · Extracted value differs',
+  agrees: 'Photo-backed · AI-verified',
+};
+
+/** A ledger row's evidence: who reported a Telematics Reading, else what the AI made of the photo. */
+export const readingEvidenceLabel = (
+  reading: Parameters<typeof readingEvidenceState>[0] & { telematicsProvider: TelematicsProvider | null },
+): string =>
+  reading.telematicsProvider
+    ? telematicsProviderLabels[reading.telematicsProvider]
+    : readingEvidenceLabels[readingEvidenceState(reading).state];
+
 export const readingExceptionTypeLabels = {
   'ai-flagged': 'AI flagged',
   disputed: 'Disputed',

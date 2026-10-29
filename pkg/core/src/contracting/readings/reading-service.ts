@@ -16,7 +16,6 @@ import {
   contradictingTelematics,
   effectiveServiceAlertHours,
   FUTURE_READ_AT_TOLERANCE_MS,
-  formatJobNumber,
   type JobActor,
   jobReadStatuses,
   judgeCapture,
@@ -34,7 +33,7 @@ import {
   ReadingAmendInput,
   ReadingCaptureInput,
 } from '@pkg/schema/contracting';
-import { and, asc, eq, getTableColumns, gt, inArray, lte, or, sql } from 'drizzle-orm';
+import { and, asc, eq, getTableColumns, gt, inArray, lte, or } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { recordAuditCreate } from '../../audit/audit-writer.js';
 import { filePolicyViolation } from '../../files/file-errors.js';
@@ -56,26 +55,14 @@ import { readingToWire } from './reading-wire.js';
 
 const isTelematics = eq(contractingHourReadings.method, 'telematics');
 
+/** A Machine's ledger, newest Read At first. */
 export async function listReadingsByMachine({ db, machineId }: { db: Db; machineId: string }) {
-  const opensStint = eq(contractingMachineAssignments.arrivalReadingId, contractingHourReadings.id);
   const rows = await db
-    // A reading that closed one stint and opened the next appears once, under the Job it opened.
-    .selectDistinctOn([contractingHourReadings.capturedAt, contractingHourReadings.sequence], {
-      ...getTableColumns(contractingHourReadings),
-      jobCode: contractingJobs.code,
-    })
+    .select()
     .from(contractingHourReadings)
-    .leftJoin(
-      contractingMachineAssignments,
-      or(opensStint, eq(contractingMachineAssignments.departureReadingId, contractingHourReadings.id)),
-    )
-    .leftJoin(contractingJobs, eq(contractingJobs.id, contractingMachineAssignments.jobId))
     .where(eq(contractingHourReadings.machineId, machineId))
-    .orderBy(...newestFirst, sql`${opensStint} desc nulls last`);
-  return rows.map(({ jobCode, ...row }) => ({
-    ...withHint(row),
-    jobNumber: jobCode === null ? null : formatJobNumber(jobCode),
-  }));
+    .orderBy(...newestFirst);
+  return rows.map((row) => withHint(row));
 }
 
 /** A photo capture: the bytes and where they are kept. The AI checks them after the capture lands. */

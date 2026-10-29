@@ -233,6 +233,35 @@ describe('JohnDeereClient', () => {
     expect(requests[0]?.init?.headers).toMatchObject({ Accept: 'application/json', Authorization: 'Bearer access-1' });
   });
 
+  it('reads a machine Deere leaves unnamed, with a lone organization object and a string principal id', async () => {
+    const { client } = clientAnswering(
+      Response.json({
+        values: [
+          {
+            id: 'eq-2',
+            principalId: '555',
+            serialNumber: '1PIN',
+            make: { id: 1 },
+            organization: { id: 1234 },
+            devices: null,
+          },
+        ],
+      }),
+    );
+
+    expect(await client.equipment('access-1')).toMatchObject([
+      { id: 'eq-2', principalId: 555, name: '1PIN', make: null, organizationId: '1234', hasModem: false },
+    ]);
+  });
+
+  it('says where an equipment list it cannot read went wrong', async () => {
+    const { client } = clientAnswering(Response.json({ values: [{ id: 'eq-3', name: 'Gator' }] }));
+    await expect(client.equipment('access-1')).rejects.toMatchObject({
+      code: 'john_deere.bad_response',
+      message: expect.stringContaining('values.0.principalId'),
+    });
+  });
+
   it('looks machines up by id, archived ones included', async () => {
     const { client, requests } = clientAnswering(Response.json({ values: [] }));
     expect(await client.equipmentByIds('access-1', ['eq-1', 'eq-2'])).toEqual([]);

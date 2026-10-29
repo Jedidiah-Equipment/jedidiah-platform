@@ -77,29 +77,35 @@ const OrganizationsPage = z.object({
 });
 
 const Id = z.union([z.string(), z.number()]).transform(String);
-const Named = z.object({ name: z.string() });
+const Named = z.object({ name: z.string().nullish() });
 // Deere's samples serve a make or model both as an object and as a one-element array.
 const NamedOrList = z
   .union([Named, z.array(Named)])
-  .optional()
+  .nullish()
   .transform((value) => (Array.isArray(value) ? value[0] : value)?.name ?? null);
+const Organization = z.object({ id: Id });
 const EquipmentPage = z.object({
   links: z.array(Link).optional(),
   values: z.array(
     z.object({
       id: Id,
-      principalId: z.number().int(),
-      name: z.string(),
+      principalId: z
+        .union([z.number(), z.string().regex(/^\d+$/)])
+        .transform(Number)
+        .pipe(z.number().int()),
+      name: z.string().nullish(),
       serialNumber: z.string().nullish(),
       engineSerialNumber: z.string().nullish(),
       make: NamedOrList,
       model: NamedOrList,
       modelYear: z.union([z.string(), z.number()]).nullish(),
-      // The owning organization comes first.
-      organization: z.tuple([z.object({ id: Id })], z.object({ id: Id })),
+      // The owning organization comes first; Deere's samples serve one as a list and as a single object.
+      organization: z
+        .union([z.tuple([Organization], Organization), Organization])
+        .transform((value) => (Array.isArray(value) ? value[0] : value)),
       telematicsCapable: z.boolean().optional(),
       archived: z.boolean().optional(),
-      devices: z.array(z.object({ '@type': z.string().optional() })).optional(),
+      devices: z.array(z.object({ '@type': z.string().optional() })).nullish(),
     }),
   ),
 });
@@ -113,6 +119,12 @@ const EngineHoursPage = z.object({
     }),
   ),
 });
+
+/** Where in Deere's payload a parse stopped, so a response Jedidiah cannot read says what was unexpected. */
+const firstIssue = (error: z.ZodError): string => {
+  const [issue] = error.issues;
+  return issue ? `${issue.path.join('.') || 'response'}: ${issue.message}` : 'unknown';
+};
 
 const linkTo = (links: readonly z.infer<typeof Link>[] | undefined, rel: string) =>
   links?.find((link) => link.rel === rel)?.uri ?? null;
@@ -214,18 +226,19 @@ export class JohnDeereClient {
     let next: string | null = first;
     while (next) {
       const page = EquipmentPage.safeParse(await this.getJson(next, accessToken, 'application/json'));
-      if (!page.success) throw badResponse('John Deere sent an equipment list Jedidiah cannot read.');
+      if (!page.success)
+        throw badResponse(`John Deere sent an equipment list Jedidiah cannot read (${firstIssue(page.error)}).`);
       for (const machine of page.data.values)
         machines.push({
           id: machine.id,
           principalId: machine.principalId,
-          name: machine.name,
+          name: machine.name ?? machine.serialNumber ?? machine.id,
           serialNumber: machine.serialNumber ?? null,
           engineSerialNumber: machine.engineSerialNumber ?? null,
           make: machine.make,
           model: machine.model,
           modelYear: machine.modelYear == null ? null : String(machine.modelYear),
-          organizationId: machine.organization[0].id,
+          organizationId: machine.organization.id,
           telematicsCapable: machine.telematicsCapable ?? false,
           archived: machine.archived ?? false,
           hasModem: machine.devices?.some((device) => device['@type'] === 'TelematicsGateway') ?? false,

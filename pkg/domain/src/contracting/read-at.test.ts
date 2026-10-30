@@ -49,14 +49,20 @@ test('detects a backdated Read At', () => {
   expect(isBackdated(new Date(now.getTime() - 5 * 60_000 - 1), now)).toBe(true);
 });
 
-test('a photo’s time replaces Read At, and without one only a photo-set Read At returns to now', () => {
+test('a photo’s time replaces Read At, and without one only a photo-set Read At returns to what it replaced', () => {
   const exif = new Date(2026, 9, 1, 7, 15);
   const hand: ReadAtChoice = { kind: 'earlier', at: new Date(2026, 9, 1, 6), by: 'hand' };
-  expect(readAtAfterPhoto(hand, exif)).toEqual({ kind: 'earlier', at: exif, by: 'photo' });
+  expect(readAtAfterPhoto(hand, exif)).toEqual({ kind: 'earlier', at: exif, by: 'photo', replaced: 'earlier' });
   expect(readAtAfterPhoto(hand, null)).toBe(hand);
-  expect(readAtAfterPhoto({ kind: 'earlier', at: exif, by: 'photo' }, null)).toBe(READ_AT_NOW);
+  expect(readAtAfterPhoto(readAtAfterPhoto(READ_AT_NOW, exif), null)).toBe(READ_AT_NOW);
   expect(readAtAfterPhoto(READ_AT_NOW, null)).toBe(READ_AT_NOW);
   expect(readAtAfterPhoto({ kind: 'earlier', at: null }, null)).toEqual({ kind: 'earlier', at: null });
+  // Earlier… chosen, then a photo's time, then the photo gone: Save is held again, never posted as now.
+  const pending = readAtAfterPhoto(readAtAfterPhoto({ kind: 'earlier', at: null }, exif), null);
+  expect(pending).toEqual({ kind: 'earlier', at: null });
+  // A second photo keeps what the first replaced.
+  const swapped = readAtAfterPhoto(readAtAfterPhoto(READ_AT_NOW, exif), new Date(2026, 9, 1, 7, 30));
+  expect(readAtAfterPhoto(swapped, null)).toBe(READ_AT_NOW);
 });
 
 test('Earlier… waits on a time, and a picked one posts', () => {

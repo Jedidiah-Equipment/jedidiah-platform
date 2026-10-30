@@ -43,7 +43,9 @@ export const capturedAtFor = (readAt: Date | null, attemptedAt: Date) => (readAt
 export type ReadAtChoice =
   | { kind: 'now' }
   | { kind: 'earlier'; at: null; proposal?: ReadAtSuggestion }
-  | { kind: 'earlier'; at: Date; by: 'hand' | 'photo' | 'proposal'; proposal?: ReadAtSuggestion };
+  | { kind: 'earlier'; at: Date; by: 'hand' | 'proposal'; proposal?: ReadAtSuggestion }
+  /** `replaced` is what the photo's time stood in for, which its removal returns to. */
+  | { kind: 'earlier'; at: Date; by: 'photo'; replaced: 'now' | 'earlier'; proposal?: ReadAtSuggestion };
 
 export const READ_AT_NOW: ReadAtChoice = { kind: 'now' };
 
@@ -78,13 +80,23 @@ export function readAtPicked(choice: ReadAtChoice, at: Date | null): ReadAtChoic
   return { kind: 'earlier', at, by: proposed ? 'proposal' : 'hand', ...keepProposal(choice) };
 }
 
-/** A photo's EXIF time replaces Read At; without one a photo-set Read At returns to now and any other stays. */
-export const readAtAfterPhoto = (choice: ReadAtChoice, takenAt: Date | null): ReadAtChoice =>
-  takenAt
-    ? { kind: 'earlier', at: takenAt, by: 'photo', ...keepProposal(choice) }
-    : setBy(choice) === 'photo'
-      ? READ_AT_NOW
-      : choice;
+/**
+ * A photo's EXIF time replaces Read At. Without one, a photo-set Read At returns to what it replaced: Now, or Earlier…
+ * with no time picked, which holds Save; any other Read At stays.
+ */
+export function readAtAfterPhoto(choice: ReadAtChoice, takenAt: Date | null): ReadAtChoice {
+  const photoSet = choice.kind === 'earlier' && choice.at && choice.by === 'photo' ? choice : null;
+  if (takenAt)
+    return {
+      kind: 'earlier',
+      at: takenAt,
+      by: 'photo',
+      replaced: photoSet ? photoSet.replaced : choice.kind,
+      ...keepProposal(choice),
+    };
+  if (!photoSet) return choice;
+  return photoSet.replaced === 'earlier' ? { kind: 'earlier', at: null, ...keepProposal(choice) } : READ_AT_NOW;
+}
 
 /** A refusal that proposes a Read At flips the choice to Earlier… with it; nothing is saved until the next Save. */
 export const readAtAfterRefusal = (
@@ -95,9 +107,10 @@ export const readAtAfterRefusal = (
 /** A proposal belongs to the value refused: typing a new value drops it and keeps its time as the person's own. */
 export function readAtAfterValueEdit(choice: ReadAtChoice): ReadAtChoice {
   if (choice.kind !== 'earlier' || !choice.proposal) return choice;
-  return choice.at
-    ? { kind: 'earlier', at: choice.at, by: choice.by === 'photo' ? 'photo' : 'hand' }
-    : { kind: 'earlier', at: null };
+  if (!choice.at) return { kind: 'earlier', at: null };
+  return choice.by === 'photo'
+    ? { kind: 'earlier', at: choice.at, by: 'photo', replaced: choice.replaced }
+    : { kind: 'earlier', at: choice.at, by: 'hand' };
 }
 
 /** A Read At as a `datetime-local` input holds it: the browser's local wall time as 'YYYY-MM-DDTHH:mm'. */

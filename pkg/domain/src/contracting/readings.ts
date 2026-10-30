@@ -322,9 +322,9 @@ function standaloneDisputes(readings: readonly AmendableReading[]): Set<string> 
 /**
  * Whether a set of amendments may land on a Machine's ledger (`readings`, any order), and the dispute state it leaves.
  * Each amended reading that moved is judged again at its new place in time: never in the future, between its new
- * neighbours, not outrunning the clock against either, and every stint it bounds still in time order. An amendment
- * that moves nothing acknowledges the evidence warning and is not judged again, unless it is the only way to settle a
- * reading John Deere contradicted.
+ * neighbours, contradicting no Telematics Reading, not outrunning the clock against either neighbour, and every stint
+ * it bounds still in time order. An amendment that moves nothing acknowledges the evidence warning and is not judged
+ * again, unless it is the only way to settle a reading John Deere contradicted.
  */
 export function resolveReadingAmendments(
   readings: readonly AmendableReading[],
@@ -350,6 +350,10 @@ export function resolveReadingAmendments(
     const next = ledger[index + 1];
     if ((previous && reading.value < previous.value) || (next && reading.value > next.value))
       return refuse('out_of_range', reading.id, 'Amended hours must be between the neighbouring readings.');
+    // A disputed reading between them can hide a report the amended reading would still contradict.
+    const reported = contradictingTelematics(ledger, reading.id);
+    if (reported)
+      return refuse('out_of_range', reading.id, `${telematicsDisputeReason(reported)} Check the time or the value.`);
     if (previous && outrunsClock(previous, reading))
       return refuse('outruns_clock', reading.id, outrunsClockSentence(previous, reading, previous, 'since'));
     if (next && outrunsClock(reading, next))

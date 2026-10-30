@@ -267,6 +267,20 @@ describe('resolveReadingAmendments', () => {
       });
     });
 
+    it('is refused where it would contradict a Telematics Reading a disputed reading hides', () => {
+      const hidden = [
+        reading('moved', day(25, 8), 95),
+        reading('report', day(26, 8), 100, { telematicsProvider: 'john-deere' }),
+        reading('lower', day(27, 8), 90, { disputed: true, disputeReason: 'John Deere reported 100.0 h.' }),
+      ];
+      expect(resolve(hidden, [amend(hidden[0] as AmendableReading, { capturedAt: day(28, 8) })])).toEqual({
+        ok: false,
+        reason: 'out_of_range',
+        id: 'moved',
+        message: `John Deere reported 100.0 h at ${formatDate(day(26, 8), 'medium')}. Check the time or the value.`,
+      });
+    });
+
     it('is refused in the future', () => {
       expect(resolve(ledger(), [amend(departure, { capturedAt: new Date(NOW.getTime() + 1) })])).toMatchObject({
         ok: false,

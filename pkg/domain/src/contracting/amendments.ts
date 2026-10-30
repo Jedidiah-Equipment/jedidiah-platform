@@ -126,9 +126,9 @@ export function amendmentJobs(
 
 /**
  * Whether a set of amendments may land on a Machine's ledger (`readings`, any order), and the dispute state it leaves.
- * Each amended reading that moves or settles is judged again at its new place in time: never in the future, by the
- * capture rules' placement judge, and every stint it bounds still in time order. An amendment that only acknowledges
- * the evidence warning is not judged again.
+ * Each amended reading that moves or settles is judged again as a fresh capture at its new place in time, in the
+ * capture rules' order: never in the future, then every stint it bounds still in time order, then the placement judge.
+ * An amendment that only acknowledges the evidence warning is not judged again.
  */
 export function resolveReadingAmendments(
   readings: readonly AmendableReading[],
@@ -144,13 +144,12 @@ export function resolveReadingAmendments(
   const effects = amendmentEffects(readings, amendments);
   const amended = new Set(effects.keys());
   const ledger = amendedLedger(readings, amendments);
-  for (const [index, reading] of ledger.entries()) {
+  const judged = [...ledger.entries()].filter(([, reading]) => {
     const effect = effects.get(reading.id);
-    if (effect !== 'moves' && effect !== 'settles') continue;
-    if (isFutureReadAt(reading.capturedAt, now)) return refuse('future_read_at', reading.id, FUTURE_READ_AT_REFUSAL);
-    const misplaced = judgePlacement(placementIn(ledger, index), reading);
-    if (misplaced) return refuse(amendmentRefusalFor(misplaced), reading.id, amendmentSentence(misplaced));
-  }
+    return effect === 'moves' || effect === 'settles';
+  });
+  const future = judged.find(([, reading]) => isFutureReadAt(reading.capturedAt, now));
+  if (future) return refuse('future_read_at', future[1].id, FUTURE_READ_AT_REFUSAL);
   const disorder = stintOutOfOrder(readings, ledger, stints, amended);
   if (disorder)
     return refuse(
@@ -158,6 +157,10 @@ export function resolveReadingAmendments(
       disorder,
       "Stints stay in time order: an arrival after the Machine's previous departure, a departure after its own arrival and before the next arrival.",
     );
+  for (const [index, reading] of judged) {
+    const misplaced = judgePlacement(placementIn(ledger, index), reading);
+    if (misplaced) return refuse(amendmentRefusalFor(misplaced), reading.id, amendmentSentence(misplaced));
+  }
   return { ok: true, changes: disputeChanges(readings, ledger, amended) };
 }
 

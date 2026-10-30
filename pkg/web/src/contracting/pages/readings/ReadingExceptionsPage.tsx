@@ -23,13 +23,13 @@ const rowMachine = (row: ReadingExceptionRow) => (row.kind === 'dispute' ? row.d
 const rowReadings = (row: ReadingExceptionRow) => (row.kind === 'dispute' ? row.dispute.readings : [row.reading]);
 
 /** The distinct stints a row's readings bound, in ledger order. */
-function rowStints(row: ReadingExceptionRow): NonNullable<ReadingStint>[] {
-  const stints = new Map<string, NonNullable<ReadingStint>>();
+function rowStints(row: ReadingExceptionRow): ReadingStint[] {
+  const stints = new Map<string, ReadingStint>();
   for (const { stint } of rowReadings(row)) if (stint) stints.set(stint.assignmentId, stint);
   return [...stints.values()];
 }
 
-const rowJobCodes = (row: ReadingExceptionRow) => [...new Set(rowStints(row).map((stint) => stint.jobCode))];
+const rowJobNumbers = (row: ReadingExceptionRow) => [...new Set(rowStints(row).map((stint) => stint.jobNumber))];
 
 function AiFinding({ reading }: { reading: ReadingException }) {
   const evidence = readingEvidence(reading);
@@ -74,10 +74,10 @@ export function ReadingExceptionsPage() {
       },
       {
         id: 'jobs',
-        accessorFn: (row) => rowJobCodes(row).join(' '),
+        accessorFn: (row) => rowJobNumbers(row).join(' '),
         header: 'Job(s)',
         cell: ({ row }) => {
-          const codes = rowJobCodes(row.original);
+          const codes = rowJobNumbers(row.original);
           return codes.length ? (
             <div className="flex flex-col gap-0.5">
               {codes.map((code) => (

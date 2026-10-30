@@ -400,7 +400,7 @@ export async function listReadingExceptions({ db }: { db: Db }) {
     photoBacked: row.photo !== null,
     stint:
       row.assignmentId && jobId && jobCode !== null
-        ? { assignmentId: row.assignmentId, jobId, jobCode: formatJobNumber(jobCode), arrivedAt, departedAt }
+        ? { assignmentId: row.assignmentId, jobId, jobNumber: formatJobNumber(jobCode), arrivedAt, departedAt }
         : null,
   }));
   const disputedByMachine = groupBy(

@@ -682,7 +682,7 @@ test('lists each Dispute as one row with its stints, and an AI-flagged reading o
   const stintOf = (stint: { id: string }, jobId: string, arrivedAt: string, departedAt: string | null) => ({
     assignmentId: stint.id,
     jobId,
-    jobCode: jobId === first.id ? first.jobNumber : second.jobNumber,
+    jobNumber: jobId === first.id ? first.jobNumber : second.jobNumber,
     arrivedAt: new Date(arrivedAt),
     departedAt: departedAt && new Date(departedAt),
   });

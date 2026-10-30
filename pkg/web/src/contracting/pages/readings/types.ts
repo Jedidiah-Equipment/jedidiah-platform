@@ -1,3 +1,4 @@
+import { UUID } from '@pkg/schema';
 import { type DisputeReading, type ReadingAmendInput, ReadingAmendment, ReadingReason } from '@pkg/schema/contracting';
 import { z } from 'zod';
 import {
@@ -39,7 +40,7 @@ export function toReadingAmendInput(values: DisputeResolveValues, dispute: Recor
   };
 }
 
-const RefusedReading = z.object({ readingId: z.string() });
+const RefusedReading = z.object({ readingId: UUID });
 
 /** The reading an amendment's refusal names, so its card can be marked; null when it names none. */
 export function refusedReadingId(error: unknown): string | null {

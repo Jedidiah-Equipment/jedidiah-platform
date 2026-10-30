@@ -134,21 +134,20 @@ export const HourReading = z.object({
   amendmentReason: z.string().nullable(),
 });
 export type HourReading = z.infer<typeof HourReading>;
-/** The stint an arrival or departure bounds, as its two readings' Read Ats bound it; null for a spot reading. */
-export const ReadingStint = z
-  .object({
-    assignmentId: UUID,
-    jobId: UUID,
-    jobCode: z.string(),
-    arrivedAt: DateIso.nullable(),
-    departedAt: DateIso.nullable(),
-  })
-  .nullable();
+/** The stint an arrival or departure bounds, as its two readings' Read Ats bound it. */
+export const ReadingStint = z.object({
+  assignmentId: UUID,
+  jobId: UUID,
+  jobNumber: z.string(),
+  arrivedAt: DateIso.nullable(),
+  departedAt: DateIso.nullable(),
+});
 export type ReadingStint = z.infer<typeof ReadingStint>;
 export const DisputeReading = HourReading.extend({
   photoBacked: z.boolean(),
   capturedByName: z.string().nullable(),
-  stint: ReadingStint,
+  /** Null for a spot reading. */
+  stint: ReadingStint.nullable(),
 });
 export type DisputeReading = z.infer<typeof DisputeReading>;
 export const ReadingException = DisputeReading.extend({

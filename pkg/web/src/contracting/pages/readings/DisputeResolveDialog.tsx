@@ -85,10 +85,10 @@ export function DisputeResolveDialog({
                       <span aria-hidden>·</span>
                       <Link
                         className="font-mono font-semibold hover:underline"
-                        params={{ code: reading.stint.jobCode }}
+                        params={{ code: reading.stint.jobNumber }}
                         to="/contracting/jobs/$code"
                       >
-                        {reading.stint.jobCode}
+                        {reading.stint.jobNumber}
                       </Link>
                       <span aria-hidden>·</span>
                       <span className="text-muted-foreground">{stintWindowLabel(reading.stint)}</span>

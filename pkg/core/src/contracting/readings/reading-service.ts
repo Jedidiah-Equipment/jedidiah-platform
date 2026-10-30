@@ -9,30 +9,33 @@ import {
 } from '@pkg/db/contracting';
 import { groupBy, hasPermission, validateFile } from '@pkg/domain';
 import {
-  amendedLedger,
+  amendmentJobs,
   assignmentState,
   type CaptureAttempt,
   type CaptureNeighbour,
   type CaptureWorld,
   captureCrossesServiceDueSoon,
+  contradictingTelematics,
   disputeGroupReason,
-  disputeReport,
+  earliestReadAtFor,
   effectiveServiceAlertHours,
   FUTURE_READ_AT_TOLERANCE_MS,
   formatJobNumber,
   groupDisputes,
+  isReported,
   type JobActor,
   jobReadStatuses,
   judgeCapture,
   ledgerOrder,
   NEXT_CAPTURE_DISPUTES,
-  NO_VALUE_BRACKET,
   PREVIOUS_READING_WRONG,
   proposesReadAt,
   READING_PHOTO_POLICY,
+  type ReportNeighbour,
   readingExceptionTypes,
   readingVerification,
   resolveReadingAmendments,
+  suggestReadAt,
   type ValueBracket,
 } from '@pkg/domain/contracting';
 import { type AuthId, getNextCursor } from '@pkg/schema';
@@ -214,7 +217,6 @@ export async function captureReading({
           };
         const world: CaptureWorld = {
           ...neighbours,
-          valueBracket: NO_VALUE_BRACKET,
           stint: stint ? assignmentState(stint.stint) : null,
           stintArrivedAt: stintArrival?.capturedAt ?? null,
           lastDepartedAt: lastDeparture?.capturedAt ?? null,
@@ -236,17 +238,21 @@ export async function captureReading({
           expectedPreviousId: input.expectedPreviousId,
           comment: input.comment ?? null,
         };
-        const judged = judgeCapture(world, attempt);
-        // Only a value refusal proposes a Read At, so only one reads the Telematics Readings bracketing the value.
-        const judgement =
-          !judged.ok && proposesReadAt(judged.rule)
-            ? judgeCapture({ ...world, valueBracket: await valueBracketFor(tx, input.machineId, input.value) }, attempt)
-            : judged;
-        if (!judgement.ok)
+        const judgement = judgeCapture(world, attempt);
+        if (!judgement.ok) {
+          // Only a value refusal proposes a Read At, so only one reads the Telematics Readings bracketing the value.
+          const suggestion = proposesReadAt(judgement.rule)
+            ? suggestReadAt(
+                input.value,
+                await valueBracketFor(tx, input.machineId, input.value),
+                earliestReadAtFor(input.role, world),
+              )
+            : null;
           throw new ReadingError(judgement.reason, judgement.message, {
             refused: judgement.refused,
-            suggestedReadAt: judgement.suggestedReadAt && ReadAtSuggestion.parse(judgement.suggestedReadAt),
+            suggestedReadAt: suggestion ? ReadAtSuggestion.parse(suggestion) : undefined,
           });
+        }
         const disputed = judgement.disputes !== null;
         if (disputed && latest)
           await updateAudited(tx, actorUserId, latest, {
@@ -311,9 +317,8 @@ export async function captureReading({
 }
 
 /**
- * The Telematics Readings `value` falls between. Every report after the floor reads above the value, so the ceiling is
- * the next one, at the time its value was first reported: its Read At moves on while the value stands, and the row was
- * inserted by the poll that first saw it.
+ * The Telematics Readings `value` falls between. Every report after the floor reads above the value, so the ceiling
+ * is the next one.
  */
 async function valueBracketFor(tx: DatabaseTransaction, machineId: string, value: number): Promise<ValueBracket> {
   const onMachine = and(eq(contractingHourReadings.machineId, machineId), isTelematics);
@@ -323,7 +328,7 @@ async function valueBracketFor(tx: DatabaseTransaction, machineId: string, value
     .where(and(onMachine, lte(contractingHourReadings.value, value)))
     .orderBy(...newestFirst)
     .limit(1);
-  if (!floor) return NO_VALUE_BRACKET;
+  if (!floor) return { floor: null, ceiling: null };
   const [ceiling] =
     floor.value === value
       ? []
@@ -334,15 +339,16 @@ async function valueBracketFor(tx: DatabaseTransaction, machineId: string, value
           .orderBy(...oldestFirst)
           .limit(1);
   return {
-    floor: toNeighbour(floor),
-    ceiling: ceiling
-      ? {
-          ...toNeighbour(ceiling),
-          capturedAt: new Date(Math.min(ceiling.createdAt.getTime(), ceiling.capturedAt.getTime())),
-        }
-      : null,
+    floor: toReport(floor),
+    ceiling: ceiling ? { ...toReport(ceiling), createdAt: ceiling.createdAt } : null,
   };
 }
+
+const toReport = (row: Row): ReportNeighbour => {
+  const neighbour = toNeighbour(row);
+  if (!isReported(neighbour)) throw new Error('A value bracket holds Telematics Readings only');
+  return neighbour;
+};
 
 const toNeighbour = ({ id, role, value, capturedAt, telematicsProvider }: Row): CaptureNeighbour => ({
   id,
@@ -425,6 +431,10 @@ export async function listReadingExceptions({ db }: { db: Db }) {
   const disputes = [...disputedByMachine].flatMap(([machineId, disputed]) =>
     groupDisputes(disputed).map((group) => {
       const [first] = group;
+      const reported = contradictingTelematics(
+        [...(reportsByMachine.get(machineId) ?? []), ...group],
+        group.map((reading) => reading.id),
+      );
       return {
         kind: 'dispute' as const,
         dispute: {
@@ -434,8 +444,8 @@ export async function listReadingExceptions({ db }: { db: Db }) {
           categoryIcon: first.categoryIcon,
           categoryColour: first.categoryColour,
           readings: group,
-          reported: disputeReport(reportsByMachine.get(machineId) ?? [], group),
-          reason: disputeGroupReason(group),
+          reported,
+          reason: disputeGroupReason(group, reported),
         },
       };
     }),
@@ -482,7 +492,8 @@ export async function amendReadings({ db, actor, input: raw }: { db: Db; actor: 
         .orderBy(...oldestFirst),
       stintsOf(tx, machineId),
     ]);
-    const affected = await lockJobsMovedBy(tx, { ledgers: [rows, amendedLedger(rows, amendments)], stints, ids });
+    const jobs = amendmentJobs(rows, amendments, stints);
+    const affected = await lockJobs(tx, jobs.bound);
     for (const job of affected) assertAmendReadings(job, actor);
     const resolution = resolveReadingAmendments(rows, amendments, stints, new Date());
     if (!resolution.ok) throw amendmentRefused(resolution);
@@ -510,7 +521,8 @@ export async function amendReadings({ db, actor, input: raw }: { db: Db; actor: 
           : {}),
       });
     }
-    for (const job of affected.filter((candidate) => candidate.status === 'priced'))
+    // Only a Job whose hours moved returns to Completed: an acknowledgement moves none.
+    for (const job of affected.filter((candidate) => candidate.status === 'priced' && jobs.moved.has(candidate.id)))
       await reopenPricingWithin(
         tx,
         actorUserId,
@@ -545,32 +557,8 @@ async function stintsOf(tx: DatabaseTransaction, machineId: string) {
   return rows.flatMap(({ arrivalId, ...stint }) => (arrivalId ? [{ ...stint, arrivalId }] : []));
 }
 
-/**
- * The Jobs whose derived hours amending these readings moves, locked after the Machine: each stint a reading bounds,
- * and for a departure the Machine's next stint, whose Hour Gap starts at it and which may be on another Job, found in
- * each of `ledgers` (as it stands and as the amendments leave it) since a re-dated departure can change which it is.
- */
-async function lockJobsMovedBy(
-  tx: DatabaseTransaction,
-  {
-    ledgers,
-    stints,
-    ids,
-  }: { ledgers: readonly Row[][]; stints: Awaited<ReturnType<typeof stintsOf>>; ids: ReadonlySet<string> },
-) {
-  const jobOfArrival = new Map(stints.map((stint) => [stint.arrivalId, stint.jobId]));
-  const jobIds = new Set(
-    stints
-      .filter((stint) => ids.has(stint.arrivalId) || (stint.departureId !== null && ids.has(stint.departureId)))
-      .map((stint) => stint.jobId),
-  );
-  for (const ledger of ledgers)
-    for (const [index, reading] of ledger.entries()) {
-      if (reading.role !== 'departure' || !ids.has(reading.id)) continue;
-      const nextArrival = ledger.slice(index + 1).find((candidate) => jobOfArrival.has(candidate.id));
-      const jobId = nextArrival && jobOfArrival.get(nextArrival.id);
-      if (jobId) jobIds.add(jobId);
-    }
+/** The Jobs an amendment touches, locked after the Machine in id order. */
+async function lockJobs(tx: DatabaseTransaction, jobIds: ReadonlySet<string>) {
   if (!jobIds.size) return [];
   return tx
     .select({ id: contractingJobs.id, status: contractingJobs.status, foremanUserId: contractingJobs.foremanUserId })

@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { formatDate } from '../formatting/date.js';
+import { type AmendableReading, amendmentEffects, amendmentJobs, resolveReadingAmendments } from './amendments.js';
 import {
-  type AmendableReading,
   amendmentSettledFinding,
   contradictingTelematics,
   type DisputeMember,
+  disputedReadingReason,
   disputeGroupReason,
-  disputeReport,
   groupDisputes,
   NEXT_CAPTURE_DISPUTES,
   PREVIOUS_READING_WRONG,
@@ -21,7 +21,6 @@ import {
   readingPhotoPath,
   readingsContradictedBy,
   readingVerification,
-  resolveReadingAmendments,
   type SequencedReading,
   shownReadingAttention,
 } from './readings.js';
@@ -101,27 +100,28 @@ describe('contradictingTelematics', () => {
   const deere = ledger('deere', 2, 9, 1000, 'john-deere');
 
   it('finds the report a captured reading sits out of sequence with, on either side', () => {
-    expect(contradictingTelematics([ledger('early', 1, 6, 1010), deere], 'early')).toEqual(deere);
-    expect(contradictingTelematics([deere, ledger('late', 3, 12, 990)], 'late')).toEqual(deere);
+    expect(contradictingTelematics([ledger('early', 1, 6, 1010), deere], ['early'])).toEqual(deere);
+    expect(contradictingTelematics([deere, ledger('late', 3, 12, 990)], ['late'])).toEqual(deere);
   });
 
   it('is silent for a reading in sequence and for a Telematics Reading itself', () => {
     const readings = [ledger('early', 1, 6, 990), deere, ledger('late', 3, 12, 1010)];
-    expect(contradictingTelematics(readings, 'early')).toBeNull();
-    expect(contradictingTelematics(readings, 'late')).toBeNull();
-    expect(contradictingTelematics(readings, 'deere')).toBeNull();
+    expect(contradictingTelematics(readings, ['early'])).toBeNull();
+    expect(contradictingTelematics(readings, ['late'])).toBeNull();
+    expect(contradictingTelematics(readings, ['deere'])).toBeNull();
   });
 
   it('breaks a Read At tie by acceptance order', () => {
-    expect(contradictingTelematics([ledger('same', 1, 9, 1010), deere], 'same')).toEqual(deere);
-    expect(contradictingTelematics([deere, ledger('same', 3, 9, 1010)], 'same')).toBeNull();
+    expect(contradictingTelematics([ledger('same', 1, 9, 1010), deere], ['same'])).toEqual(deere);
+    expect(contradictingTelematics([deere, ledger('same', 3, 9, 1010)], ['same'])).toBeNull();
   });
 
   it('gives a Dispute the report nearest to any of its readings that it contradicts', () => {
     const near = ledger('near', 4, 11, 1000, 'john-deere');
     const fine = ledger('fine', 3, 10, 1000);
-    expect(disputeReport([deere, fine, near], [fine, ledger('late', 5, 12, 990)])).toEqual(near);
-    expect(disputeReport([deere, fine, near], [fine])).toBeNull();
+    const late = ledger('late', 5, 12, 990);
+    expect(contradictingTelematics([deere, fine, near, late], ['fine', 'late'])).toEqual(near);
+    expect(contradictingTelematics([deere, fine, near], ['fine'])).toBeNull();
   });
 
   it('lists the captured readings a report leaves out of sequence, in ledger order, by the same rule', () => {
@@ -261,11 +261,12 @@ describe('resolveReadingAmendments', () => {
       });
     });
 
-    it('is refused below its new previous reading', () => {
-      expect(resolve(ledger(), [amend(departure, { capturedAt: day(27, 12) })], stints)).toMatchObject({
+    it('is refused below its new previous reading, naming John Deere as capture does', () => {
+      expect(resolve(ledger(), [amend(departure, { capturedAt: day(27, 12) })], stints)).toEqual({
         ok: false,
-        reason: 'out_of_range',
+        reason: 'contradicts_telematics',
         id: 'departure',
+        message: `John Deere reported 2 927.2 h at ${formatDate(day(27, 10, 9), 'medium')}. Check the time or the value.`,
       });
     });
 
@@ -288,10 +289,25 @@ describe('resolveReadingAmendments', () => {
       ];
       expect(resolve(hidden, [amend(hidden[0] as AmendableReading, { capturedAt: day(28, 8) })])).toEqual({
         ok: false,
-        reason: 'out_of_range',
+        reason: 'contradicts_telematics',
         id: 'moved',
         message: `John Deere reported 100.0 h at ${formatDate(day(26, 8), 'medium')}. Check the time or the value.`,
       });
+    });
+
+    it('is refused against an earlier report a lower later one does not hide', () => {
+      const fallen = [
+        reading('high', day(1, 9), 1200, { telematicsProvider: 'john-deere' }),
+        reading('low', day(1, 10), 1150, { telematicsProvider: 'john-deere' }),
+        reading('captured', day(5), 1100, { disputed: true, disputeReason: 'John Deere reported 1 200.0 h.' }),
+      ];
+      expect(resolve(fallen, [amend(fallen[2] as AmendableReading, { value: 1150 })])).toEqual({
+        ok: false,
+        reason: 'contradicts_telematics',
+        id: 'captured',
+        message: `John Deere reported 1 200.0 h at ${formatDate(day(1, 9), 'medium')}. Check the time or the value.`,
+      });
+      expect(resolve(fallen, [amend(fallen[2] as AmendableReading, { value: 1200 })])).toMatchObject({ ok: true });
     });
 
     it('is refused in the future', () => {
@@ -392,19 +408,66 @@ describe('groupDisputes', () => {
     expect(ids(groupDisputes(readings))).toEqual([['alone']]);
   });
 
-  it('gives a group its loudest reason: John Deere, then the previous reading is wrong, then the next capture', () => {
-    const deere = 'John Deere reported 2 927.2 h at 27 Oct 2026, 10:09.';
-    expect(
-      disputeGroupReason([{ disputeReason: NEXT_CAPTURE_DISPUTES }, { disputeReason: PREVIOUS_READING_WRONG }]),
-    ).toBe(PREVIOUS_READING_WRONG);
-    expect(
-      disputeGroupReason([
-        { disputeReason: NEXT_CAPTURE_DISPUTES },
-        { disputeReason: deere },
-        { disputeReason: PREVIOUS_READING_WRONG },
-      ]),
-    ).toBe(deere);
-    expect(disputeGroupReason([{ disputeReason: NEXT_CAPTURE_DISPUTES }])).toBe(NEXT_CAPTURE_DISPUTES);
+  it('reads a Dispute’s reason off its shape: the report it contradicts, then the pair, then its one reading', () => {
+    const report = { ...member('report', day(1)), telematicsProvider: 'john-deere' as const, value: 2927.2 };
+    const flagged = 'John Deere reported 2 927.2 h at 27 Oct 2026, 10:09.';
+    const pair = [member('earlier', day(1)), member('later', day(2), { disputedPreviousId: 'earlier' })] as const;
+    expect(disputeGroupReason(pair, report)).toBe(`John Deere reported 2 927.2 h at ${formatDate(day(1), 'medium')}.`);
+    expect(disputeGroupReason(pair, null)).toBe(PREVIOUS_READING_WRONG);
+    expect(disputeGroupReason([member('alone', day(1), { disputeReason: flagged })], null)).toBe(flagged);
+    expect(disputeGroupReason([member('target', day(1))], null)).toBe(NEXT_CAPTURE_DISPUTES);
+    expect(disputedReadingReason({ disputeReason: null, disputedPreviousId: 'earlier' })).toBe(PREVIOUS_READING_WRONG);
+  });
+});
+
+describe('amendmentEffects', () => {
+  it('tells a move from a settle of a reading John Deere contradicted, and from an acknowledgement', () => {
+    const readings = [
+      clean('r0', 100),
+      { ...clean('r1', 90), disputed: true, disputeReason: 'John Deere reported 100.0 h.' },
+      ...disputedPair().slice(1, 3),
+    ];
+    const [, contradicted, wrong, disputing] = readings as AmendableReading[] as [
+      AmendableReading,
+      AmendableReading,
+      AmendableReading,
+      AmendableReading,
+    ];
+    const effects = amendmentEffects(readings, [
+      amend(contradicted),
+      amend(wrong, { value: 120 }),
+      { ...amend(disputing), capturedAt: disputing.capturedAt.toISOString() },
+    ]);
+    expect(Object.fromEntries(effects)).toEqual({ r1: 'settles', [wrong.id]: 'moves', [disputing.id]: 'acknowledges' });
+  });
+});
+
+describe('amendmentJobs', () => {
+  const stints = [
+    { assignmentId: 'a', jobId: 'job-a', arrivalId: 'arrival-a', departureId: 'departure-a' },
+    { assignmentId: 'b', jobId: 'job-b', arrivalId: 'arrival-b', departureId: null },
+    { assignmentId: 'c', jobId: 'job-c', arrivalId: 'arrival-c', departureId: null },
+  ];
+  const ledger = [
+    reading('arrival-a', day(1), 100, { role: 'arrival' }),
+    reading('departure-a', day(2), 110, { role: 'departure' }),
+    reading('arrival-b', day(3), 112, { role: 'arrival' }),
+    reading('arrival-c', day(5), 120, { role: 'arrival' }),
+  ];
+  const [, departure] = ledger as [AmendableReading, AmendableReading];
+
+  it('moves the Job a moved departure bounds and the next stint’s, before and after it is re-dated', () => {
+    expect(amendmentJobs(ledger, [amend(departure, { capturedAt: day(4) })], stints)).toEqual({
+      bound: new Set(['job-a', 'job-b', 'job-c']),
+      moved: new Set(['job-a', 'job-b', 'job-c']),
+    });
+  });
+
+  it('gates the Job an acknowledgement bounds without moving any', () => {
+    expect(amendmentJobs(ledger, [amend(departure)], stints)).toEqual({
+      bound: new Set(['job-a']),
+      moved: new Set(),
+    });
   });
 });
 

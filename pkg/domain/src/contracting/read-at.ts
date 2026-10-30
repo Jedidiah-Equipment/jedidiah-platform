@@ -1,3 +1,5 @@
+import type { ReadAtSuggestion } from '@pkg/schema/contracting';
+
 const BACKDATED_AFTER_MS = 5 * 60_000;
 
 /** Phone clocks drift; a Read At this far ahead of the server is still the Foreman's "now". */
@@ -32,12 +34,81 @@ export const isBackdated = (readAt: Date | null, attemptedAt: Date) =>
 
 export const capturedAtFor = (readAt: Date | null, attemptedAt: Date) => (readAt ?? attemptedAt).toISOString();
 
-/** Read At as the capture form holds it; null is "now". `by` says who set it. */
-export type ReadAtChoice = { at: Date; by: 'hand' | 'photo' };
+/**
+ * When the meter was read, as every capture form holds it: Now, or Earlier… with the time picked by hand, a photo's
+ * time, or the time the server proposed for a refused value. Earlier… with no time yet posts nothing until one is
+ * picked. A proposal stays beside whatever time is picked until the value changes or Now is chosen, so the form keeps
+ * saying which reports it came from.
+ */
+export type ReadAtChoice =
+  | { kind: 'now' }
+  | { kind: 'earlier'; at: null; proposal?: ReadAtSuggestion }
+  | { kind: 'earlier'; at: Date; by: 'hand' | 'proposal'; proposal?: ReadAtSuggestion }
+  /** `replaced` is what the photo's time stood in for, which its removal returns to. */
+  | { kind: 'earlier'; at: Date; by: 'photo'; replaced: 'now' | 'earlier'; proposal?: ReadAtSuggestion };
 
-/** A photo's EXIF time replaces Read At; without one a hand-set Read At stays and a photo-set one returns to now. */
-export const readAtAfterPhoto = (current: ReadAtChoice | null, takenAt: Date | null): ReadAtChoice | null =>
-  takenAt ? { at: takenAt, by: 'photo' } : current?.by === 'hand' ? current : null;
+export const READ_AT_NOW: ReadAtChoice = { kind: 'now' };
+
+/** The Read At a choice posts; null is now, and so is Earlier… while no time is picked. */
+export const readAtOf = (choice: ReadAtChoice): Date | null => (choice.kind === 'earlier' ? choice.at : null);
+
+/** The proposal a choice holds, which the picker says the reports of. */
+export const readAtProposal = (choice: ReadAtChoice): ReadAtSuggestion | null =>
+  (choice.kind === 'earlier' && choice.proposal) || null;
+
+const keepProposal = (choice: ReadAtChoice) => {
+  const proposal = readAtProposal(choice);
+  return proposal ? { proposal } : {};
+};
+
+/** Earlier… chosen with no time picked yet: the form holds Save until one is. */
+export const readAtPending = (choice: ReadAtChoice): boolean => choice.kind === 'earlier' && choice.at === null;
+
+/** Earlier… chosen: a time already set stays, otherwise none is picked yet. */
+export const readAtEarlier = (choice: ReadAtChoice): ReadAtChoice =>
+  choice.kind === 'earlier' ? choice : { kind: 'earlier', at: null };
+
+/** A time the person picked, null while the picker names none; the instant already held, or proposed, keeps who set it. */
+export function readAtPicked(choice: ReadAtChoice, at: Date | null): ReadAtChoice {
+  if (at === null) return { kind: 'earlier', at: null, ...keepProposal(choice) };
+  if (readAtOf(choice)?.getTime() === at.getTime()) return choice;
+  const proposal = readAtProposal(choice);
+  const proposed = proposal !== null && new Date(proposal.readAt).getTime() === at.getTime();
+  return { kind: 'earlier', at, by: proposed ? 'proposal' : 'hand', ...keepProposal(choice) };
+}
+
+/**
+ * A photo's EXIF time replaces Read At. Without one, a photo-set Read At returns to what it replaced: Now, or Earlier…
+ * with no time picked, which holds Save; any other Read At stays.
+ */
+export function readAtAfterPhoto(choice: ReadAtChoice, takenAt: Date | null): ReadAtChoice {
+  const photoSet = choice.kind === 'earlier' && choice.at && choice.by === 'photo' ? choice : null;
+  if (takenAt)
+    return {
+      kind: 'earlier',
+      at: takenAt,
+      by: 'photo',
+      replaced: photoSet ? photoSet.replaced : choice.kind,
+      ...keepProposal(choice),
+    };
+  if (!photoSet) return choice;
+  return photoSet.replaced === 'earlier' ? { kind: 'earlier', at: null, ...keepProposal(choice) } : READ_AT_NOW;
+}
+
+/** A refusal that proposes a Read At flips the choice to Earlier… with it; nothing is saved until the next Save. */
+export const readAtAfterRefusal = (
+  choice: ReadAtChoice,
+  proposal: ReadAtSuggestion | null | undefined,
+): ReadAtChoice => (proposal ? { kind: 'earlier', at: new Date(proposal.readAt), by: 'proposal', proposal } : choice);
+
+/** A proposal belongs to the value refused: typing a new value drops it and keeps its time as the person's own. */
+export function readAtAfterValueEdit(choice: ReadAtChoice): ReadAtChoice {
+  if (choice.kind !== 'earlier' || !choice.proposal) return choice;
+  if (!choice.at) return { kind: 'earlier', at: null };
+  return choice.by === 'photo'
+    ? { kind: 'earlier', at: choice.at, by: 'photo', replaced: choice.replaced }
+    : { kind: 'earlier', at: choice.at, by: 'hand' };
+}
 
 /** A Read At as a `datetime-local` input holds it: the browser's local wall time as 'YYYY-MM-DDTHH:mm'. */
 export const readAtInputValue = (date: Date) => {
@@ -49,4 +120,22 @@ export const readAtInputValue = (date: Date) => {
 export function readAtFromInput(value: string): Date | null {
   const date = value ? new Date(value) : null;
   return date && !Number.isNaN(date.getTime()) ? date : null;
+}
+
+/**
+ * The Read At a minute picker names: the held instant while the picker still shows its minute, so seconds the picker
+ * cannot show survive an untouched field, else the picked minute.
+ */
+export const readAtFromPicker = (value: string, held: Date | null): Date | null =>
+  held && value === readAtInputValue(held) ? held : readAtFromInput(value);
+
+/**
+ * A minute picker's value picked over the choice: while it shows the minute of the time held, or of the proposal, that
+ * instant keeps its seconds.
+ */
+export function readAtPickedFromPicker(choice: ReadAtChoice, value: string): ReadAtChoice {
+  const proposal = readAtProposal(choice);
+  const proposed = proposal ? new Date(proposal.readAt) : null;
+  const held = proposed && value === readAtInputValue(proposed) ? proposed : readAtOf(choice);
+  return readAtPicked(choice, readAtFromPicker(value, held));
 }

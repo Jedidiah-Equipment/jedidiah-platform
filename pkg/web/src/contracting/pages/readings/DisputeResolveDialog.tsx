@@ -1,4 +1,3 @@
-import { formatDate, getPlantDateNow } from '@pkg/domain';
 import {
   readingRoleLabels,
   stintWindowLabel,
@@ -15,11 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card.j
 import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
 import { MeterPhotoPreview } from '@/contracting/components/MeterPhotoPreview.js';
 import { MeterPhoto, ReadingAiAssessment } from '@/contracting/components/readings/ReadingAiAssessment.js';
-import {
-  ReadingCaptureCard,
-  ReadingCaptureRow,
-  ReadingValueField,
-} from '@/contracting/components/readings/ReadingCaptureFields.js';
+import { ReadingCorrectionFields } from '@/contracting/components/readings/ReadingCaptureFields.js';
 import { cn } from '@/lib/utils.js';
 import {
   DisputeResolveValues,
@@ -105,26 +100,7 @@ export function DisputeResolveDialog({
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  <ReadingCaptureCard
-                    previousLabel="Recorded reading"
-                    previousValue={reading.value}
-                    rows={
-                      <ReadingCaptureRow
-                        label="Recorded Read At"
-                        recorded={<span className="text-sm">{formatDate(reading.capturedAt, 'medium')}</span>}
-                      >
-                        <form.AppField name={`readings[${index}].readAt`}>
-                          {(field) => (
-                            <field.DateTimePickerField label="Corrected Read At" maxValue={getPlantDateNow()} />
-                          )}
-                        </form.AppField>
-                      </ReadingCaptureRow>
-                    }
-                  >
-                    <form.AppField name={`readings[${index}].value`}>
-                      {() => <ReadingValueField label="Corrected reading" />}
-                    </form.AppField>
-                  </ReadingCaptureCard>
+                  <ReadingCorrectionFields form={form} fields={`readings[${index}]`} recorded={reading} />
                   {reading.comment ? (
                     <p className="border-l-2 pl-2.5 text-xs text-muted-foreground">
                       <span className="font-medium text-foreground">Capture comment</span> · {reading.comment}

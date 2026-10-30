@@ -210,8 +210,8 @@ test('a refusal John Deere brackets carries the Read At it proposes beside the a
         appCode: 'reading.below_latest',
         suggestedReadAt: {
           readAt: '2026-09-07T05:30:00.000Z',
-          floor: { value: 120, capturedAt: '2026-09-07T05:00:00.000Z' },
-          ceiling: { value: 125, capturedAt: '2026-09-07T06:00:00.000Z' },
+          floor: { value: 120, capturedAt: '2026-09-07T05:00:00.000Z', telematicsProvider: 'john-deere' },
+          ceiling: { value: 125, capturedAt: '2026-09-07T06:00:00.000Z', telematicsProvider: 'john-deere' },
         },
       },
       message: expect.stringContaining('John Deere reported'),

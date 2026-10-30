@@ -211,8 +211,8 @@ readings, since the fix is a Read At on one of them.
 The Foreman may re-capture a reading only while his Assignment is open; from Completion onward only management
 amends, with a mandatory reason — an amendment corrects the value or Read At or both, and the amended reading is judged again at
 its place in time by the capture rules, so stints stay in time order, and engine hours between it and either neighbour
-never exceed the wall-clock hours between them (an hour of slack for the dash and the phone); an amendment on a Priced Job returns it to Completed for
-re-pricing, and Invoiced freezes everything. Derived values always recompute after an amendment.
+never exceed the wall-clock hours between them (an hour of slack for the dash and the phone); an amendment that moves a reading's hours or Read At on a
+Priced Job returns it to Completed for re-pricing, and Invoiced freezes everything. Derived values always recompute after an amendment.
 
 **Baseline Reading** is an optional, administrator-captured Hour Reading that anchors a Machine
 before its first Job — at a service, say — and must be the Machine's first reading. Most Machines

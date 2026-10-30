@@ -15,12 +15,15 @@ import {
   captureRefusals,
   captureValueVerdict,
   deriveCaptureForm,
+  earliestReadAtFor,
   judgeCapture,
+  proposesReadAt,
+  type ReportNeighbour,
   readAtSuggestionSentence,
   suggestReadAt,
   type ValueBracket,
 } from './capture.js';
-import { FUTURE_READ_AT_TOLERANCE_MS, isFutureReadAt } from './read-at.js';
+import { FUTURE_READ_AT_TOLERANCE_MS, isFutureReadAt, READ_AT_NOW } from './read-at.js';
 
 const now = new Date('2026-10-09T08:00:00Z');
 const refusedJob: JobActionVerdict = {
@@ -31,7 +34,6 @@ const refusedJob: JobActionVerdict = {
 
 const anHourAgo = new Date('2026-10-09T07:00:00Z');
 const aDayAgo = new Date('2026-10-08T08:00:00Z');
-const noBracket: ValueBracket = { floor: null, ceiling: null };
 const reading = (
   id: string,
   value: number,
@@ -46,7 +48,6 @@ const world = (overrides: Partial<CaptureWorld> = {}): CaptureWorld => ({
   next: null,
   previousTelematics: null,
   nextTelematics: null,
-  valueBracket: noBracket,
   stint: 'planned',
   stintArrivedAt: null,
   lastDepartedAt: null,
@@ -300,38 +301,57 @@ describe('judgeCapture', () => {
 
   describe('proposing a Read At', () => {
     const at = (time: string) => new Date(`2026-10-08T${time}:00Z`);
-    const floor = reading('deere-floor', 1000, at('10:00'), 'john-deere');
-    const ceiling = reading('deere-ceiling', 1010, at('11:00'), 'john-deere');
-    const bracket: ValueBracket = { floor, ceiling };
+    const report = (id: string, value: number, time: string): ReportNeighbour => ({
+      ...reading(id, value, at(time)),
+      telematicsProvider: 'john-deere',
+    });
+    const floor = report('deere-floor', 1000, '10:00');
+    const ceiling = report('deere-ceiling', 1010, '11:00');
+    const bracket: ValueBracket = { floor, ceiling: { ...ceiling, createdAt: ceiling.capturedAt } };
 
     test('is the floor’s Read At when the value matches it', () => {
       expect(suggestReadAt(1000, bracket, null)).toEqual({ readAt: floor.capturedAt, floor, ceiling: null });
     });
 
     test('interpolates on hours between the bracketing reports', () => {
-      expect(suggestReadAt(1005, bracket, null)).toEqual({ readAt: at('10:30'), floor, ceiling });
+      expect(suggestReadAt(1005, bracket, null)).toEqual({ readAt: at('10:30'), floor, ceiling: bracket.ceiling });
+    });
+
+    test('bounds the interpolation by when the ceiling’s value was first reported', () => {
+      const moved = { ...ceiling, capturedAt: at('15:00'), createdAt: at('11:00') };
+      expect(suggestReadAt(1005, { floor, ceiling: moved }, null)).toMatchObject({
+        readAt: at('10:30'),
+        ceiling: { capturedAt: at('11:00') },
+      });
     });
 
     test('proposes nothing without a floor, or above a floor with no ceiling', () => {
-      expect(suggestReadAt(1005, { floor: null, ceiling }, null)).toBeNull();
+      expect(suggestReadAt(1005, { floor: null, ceiling: bracket.ceiling }, null)).toBeNull();
       expect(suggestReadAt(1005, { floor, ceiling: null }, null)).toBeNull();
     });
 
     test('proposes nothing that would break the stint’s time order', () => {
       expect(suggestReadAt(1005, bracket, at('10:45'))).toBeNull();
+      expect(earliestReadAtFor('departure', { stintArrivedAt: at('10:45'), lastDepartedAt: at('09:00') })).toEqual(
+        at('10:45'),
+      );
+      expect(earliestReadAtFor('arrival', { stintArrivedAt: null, lastDepartedAt: at('09:00') })).toEqual(at('09:00'));
+      expect(earliestReadAtFor('spot', { stintArrivedAt: at('10:45'), lastDepartedAt: at('09:00') })).toBeNull();
     });
 
-    test('says which reports the proposal came from', () => {
+    test('says which reports the proposal came from, by the provider that reported them', () => {
       expect(readAtSuggestionSentence({ floor, ceiling })).toBe(
         `John Deere puts this reading between ${formatDate(floor.capturedAt, 'medium')} and ${formatDate(ceiling.capturedAt, 'medium')}.`,
       );
       expect(
-        readAtSuggestionSentence({ floor: { value: 1000, capturedAt: floor.capturedAt.toISOString() }, ceiling: null }),
+        readAtSuggestionSentence({
+          floor: { value: 1000, capturedAt: floor.capturedAt.toISOString(), telematicsProvider: 'john-deere' },
+          ceiling: null,
+        }),
       ).toBe(`John Deere read ${formatHours(1000)} at ${formatDate(floor.capturedAt, 'medium')}.`);
     });
 
-    test('rides on the three value refusals when John Deere brackets the value, and only then', () => {
-      const suggestedReadAt = { readAt: at('10:30'), floor, ceiling };
+    test('is offered for the three value refusals, and only those', () => {
       const later = reading('deere-later', 1020, at('12:00'), 'john-deere');
       const contradicts = world({
         latest: { id: 'deere-later', value: 1020 },
@@ -351,9 +371,12 @@ describe('judgeCapture', () => {
         [belowPrevious, 'below-previous'],
         [belowLatest, 'below-latest'],
       ] as const) {
-        expect(judgeCapture({ ...given, valueBracket: bracket }, attempt)).toMatchObject({ rule, suggestedReadAt });
-        expect(judgeCapture(given, attempt)).not.toHaveProperty('suggestedReadAt');
+        const verdict = judgeCapture(given, attempt);
+        expect(verdict).toMatchObject({ rule });
+        expect(!verdict.ok && proposesReadAt(verdict.rule)).toBe(true);
       }
+      for (const rule of ['above-next', 'outruns-clock', 'future-read-at', 'job-refused'] as const)
+        expect(proposesReadAt(rule)).toBe(false);
     });
   });
 
@@ -467,7 +490,7 @@ describe('deriveCaptureForm', () => {
     value: '120',
     disputedReadingId: null,
     comment: '',
-    readAt: null,
+    readAt: READ_AT_NOW,
     stintOverrides: undefined,
     ...overrides,
   });
@@ -519,12 +542,17 @@ describe('deriveCaptureForm', () => {
 
   test('leaves a Read At before the latest to the server, and pre-judges one at or after it', () => {
     expect(
-      deriveCaptureForm(formWorld(), draft({ value: '90', readAt: new Date('2026-10-09T06:59:00Z') })),
+      deriveCaptureForm(
+        formWorld(),
+        draft({ value: '90', readAt: { kind: 'earlier', at: new Date('2026-10-09T06:59:00Z'), by: 'hand' } }),
+      ),
     ).toMatchObject({
       below: false,
       request: { value: 90, disputePrevious: false },
     });
-    expect(deriveCaptureForm(formWorld(), draft({ value: '90', readAt: anHourAgo }))).toMatchObject({
+    expect(
+      deriveCaptureForm(formWorld(), draft({ value: '90', readAt: { kind: 'earlier', at: anHourAgo, by: 'hand' } })),
+    ).toMatchObject({
       below: true,
       request: null,
     });
@@ -540,8 +568,26 @@ describe('deriveCaptureForm', () => {
   });
 
   test('withholds a Read At still to come', () => {
-    expect(deriveCaptureForm(formWorld(), draft({ readAt: new Date('2026-10-09T08:00:01Z') }))).toMatchObject({
+    expect(
+      deriveCaptureForm(
+        formWorld(),
+        draft({ readAt: { kind: 'earlier', at: new Date('2026-10-09T08:00:01Z'), by: 'hand' } }),
+      ),
+    ).toMatchObject({
       futureReadAt: true,
+      request: null,
+    });
+  });
+
+  test('waits on a time once Earlier… is chosen, and on a dispute below a human latest', () => {
+    expect(deriveCaptureForm(formWorld(), draft({ readAt: { kind: 'earlier', at: null } }))).toMatchObject({
+      awaitingPerson: true,
+      request: null,
+    });
+    expect(deriveCaptureForm(formWorld(), draft({ value: '90' })).awaitingPerson).toBe(true);
+    // A missing reason or a bad value is said on submit, not waited on.
+    expect(deriveCaptureForm(formWorld(), draft({ value: '' }))).toMatchObject({
+      awaitingPerson: false,
       request: null,
     });
   });

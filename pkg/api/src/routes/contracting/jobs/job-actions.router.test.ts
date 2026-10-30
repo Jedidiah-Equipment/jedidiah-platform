@@ -272,8 +272,16 @@ const attempts: Record<
 
 /** The Job Action a write was refused under, if a Job Action refused it. */
 function refusalOf(error: unknown): { action: string; reason: string } | undefined {
-  if (error instanceof TRPCError) return getTRPCPublicMetadata(error) as { action: string; reason: string } | undefined;
-  if (isReadingError(error) || isBreakdownError(error)) return error.refused;
+  if (error instanceof TRPCError) {
+    // A Job refusal's metadata is the refused action; a Reading refusal nests it beside its other context.
+    const metadata = getTRPCPublicMetadata(error) as
+      | { action: string; reason: string }
+      | { refused?: { action: string; reason: string } }
+      | undefined;
+    return metadata && 'refused' in metadata ? metadata.refused : (metadata as { action: string; reason: string });
+  }
+  if (isReadingError(error)) return error.refusal.refused;
+  if (isBreakdownError(error)) return error.refused;
   return undefined;
 }
 

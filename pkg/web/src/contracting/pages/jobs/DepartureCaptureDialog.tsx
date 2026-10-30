@@ -1,9 +1,7 @@
-import { readAtFromInput } from '@pkg/domain/contracting';
 import { type Assignment, ReadingReason, ReadingValue } from '@pkg/schema/contracting';
 import { z } from 'zod';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
-import { localDateTimeValue } from '@/components/form/utils/form-schema.js';
 import { Separator } from '@/components/ui/separator.js';
 import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
 import {
@@ -17,7 +15,6 @@ const DepartureValues = z.object({
   value: ReadingValue,
   reason: z.union([z.string().trim().length(0), ReadingReason]),
   confirmedDispute: ConfirmedDispute,
-  readAt: localDateTimeValue,
 });
 type DepartureValues = z.infer<typeof DepartureValues>;
 
@@ -25,7 +22,6 @@ export function DepartureCaptureDialog({ stint, onClose }: { stint: Assignment |
   const capture = useReadingCapture({ role: 'departure', stint }, (values: DepartureValues) => ({
     ...values,
     comment: values.reason,
-    readAt: readAtFromInput(values.readAt),
     stintOverrides: undefined,
   }));
   const { latestQuery } = capture;
@@ -43,14 +39,11 @@ export function DepartureCaptureDialog({ stint, onClose }: { stint: Assignment |
       }}
       title={<MachineDialogTitle machine={stint}>Capture departure</MachineDialogTitle>}
       contentClassName="sm:max-w-md"
-      defaultValues={{ value: Number.NaN, reason: '', confirmedDispute: null, readAt: '' }}
+      defaultValues={{ value: Number.NaN, reason: '', confirmedDispute: null }}
       validator={DepartureValues}
-      // Judged once the latest has loaded; a value below a human latest waits for its dispute, and Earlier… for its
-      // time. A missing reason or a bad value say so on submit.
-      canSubmit={(values) => {
-        const verdict = judge(values);
-        return latestQuery.isSuccess && (!verdict.disputable || verdict.disputeConfirmed) && !verdict.readAtPending;
-      }}
+      // Judged once the latest has loaded, and held only while it awaits the person; a missing reason or a bad value
+      // say so on submit.
+      canSubmit={(values) => latestQuery.isSuccess && !judge(values).awaitingPerson}
       onBeforeCreate={(values) => judge(values).request !== null}
       onCreate={async (values) => {
         await capture.submit(values);
@@ -61,10 +54,10 @@ export function DepartureCaptureDialog({ stint, onClose }: { stint: Assignment |
       {(form) => (
         <>
           <ErrorMessage error={latestQuery.error} fallbackMessage="Unable to load the Machine's previous reading." />
-          <ReadingReadAtField form={form} fields={{ readAt: 'readAt' }} capture={capture} />
+          <ReadingReadAtField capture={capture} />
           <ReadingValueCard
             form={form}
-            fields={{ value: 'value', confirmedDispute: 'confirmedDispute', readAt: 'readAt' }}
+            fields={{ value: 'value', confirmedDispute: 'confirmedDispute' }}
             capture={capture}
           />
           <ReadingCaptureDetails id={`departure-photo-${stint?.id ?? 'closed'}`} {...capture.details}>

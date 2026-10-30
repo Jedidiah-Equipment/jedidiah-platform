@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { ReadingCaptureInput, ReadingCaptureMultipart, readingCaptureMultipartFields } from './reading.js';
+import {
+  ReadingCaptureInput,
+  ReadingCaptureMultipart,
+  readingCaptureMultipartFields,
+  readingRefusalOf,
+} from './reading.js';
 
 const capture = {
   localId: '78108c3d-4b34-44f1-bf87-4fcb00a6a233',
@@ -67,5 +72,27 @@ describe('reading capture multipart', () => {
       ReadingCaptureInput.safeParse({ ...capture, role: 'departure', assignmentId, stintOverrides: {} }).success,
     ).toBe(false);
     expect(ReadingCaptureInput.safeParse({ ...capture, stintOverrides: {} }).success).toBe(false);
+  });
+});
+
+describe('readingRefusalOf', () => {
+  const readingId = '00000000-0000-4000-8000-000000000001';
+
+  it('reads the refused Job Action, the proposal and the refused reading', () => {
+    expect(
+      readingRefusalOf({
+        appCode: 'reading.forbidden',
+        refused: { action: 'capture', reason: 'not-your-job' },
+        readingId,
+      }),
+    ).toMatchObject({ refused: { action: 'capture', reason: 'not-your-job' }, readingId });
+  });
+
+  it('keeps every key it can read when one it cannot is beside them, and reads nothing from anything else', () => {
+    const refusal = readingRefusalOf({ readingId, suggestedReadAt: { readAt: 'not a time' } });
+    expect(refusal.readingId).toBe(readingId);
+    expect(refusal.suggestedReadAt).toBeUndefined();
+    expect(readingRefusalOf(undefined)).toEqual({});
+    expect(readingRefusalOf('refused')).toEqual({});
   });
 });

@@ -7,31 +7,18 @@ import {
   type ReadingAmendmentRefusal,
   readingCodeForJobRefusal,
 } from '@pkg/domain/contracting';
-import type { ReadAtSuggestion, ReadingErrorCode } from '@pkg/schema/contracting';
+import type { ReadingErrorCode, ReadingRefusal } from '@pkg/schema/contracting';
 import { translatingConstraintViolations } from '../../errors/constraint-violations.js';
-import type { RefusedJobAction } from '../jobs/job-errors.js';
 
 export class ReadingError extends Error {
-  readonly refused: RefusedJobAction | undefined;
-  readonly suggestedReadAt: ReadAtSuggestion | undefined;
-  readonly readingId: string | undefined;
   constructor(
     readonly code: ReadingErrorCode,
     message: string,
-    context: {
-      /** The Job Action a refusal refused, when a Job's status or ownership refused it. */
-      refused?: RefusedJobAction | undefined;
-      /** When John Deere puts a refused capture's value, so the form can propose it. */
-      suggestedReadAt?: ReadAtSuggestion | undefined;
-      /** The reading an amendment of several was refused on, so the form can point at it. */
-      readingId?: string | undefined;
-    } = {},
+    /** What the refusal carries beside its sentence, as the readings family sends it. */
+    readonly refusal: ReadingRefusal = {},
   ) {
     super(message);
     this.name = 'ReadingError';
-    this.refused = context.refused;
-    this.suggestedReadAt = context.suggestedReadAt;
-    this.readingId = context.readingId;
   }
 }
 export const isReadingError = (error: unknown): error is ReadingError => error instanceof ReadingError;
@@ -53,6 +40,7 @@ export function assertAmendReadings(job: JobActionSubject, actor: JobActor) {
 
 const amendmentRefusalCodes: Record<Exclude<ReadingAmendmentRefusal, 'not_found'>, ReadingErrorCode> = {
   out_of_range: 'reading.invalid_amendment',
+  contradicts_telematics: 'reading.invalid_amendment',
   out_of_order: 'reading.invalid_amendment',
   outruns_clock: 'reading.outruns_clock',
   future_read_at: 'reading.future_read_at',

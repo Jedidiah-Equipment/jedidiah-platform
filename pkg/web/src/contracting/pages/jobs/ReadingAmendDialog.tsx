@@ -1,21 +1,12 @@
-import { formatDate, getPlantDateNow } from '@pkg/domain';
-import { type HourReading, type ReadingAmendInput, ReadingAmendment, ReadingReason } from '@pkg/schema/contracting';
+import { type HourReading, type ReadingAmendInput, ReadingReason } from '@pkg/schema/contracting';
 import type React from 'react';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { type MachineDialogSubject, MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
-import {
-  ReadingCaptureCard,
-  ReadingCaptureRow,
-  ReadingValueField,
-} from '@/contracting/components/readings/ReadingCaptureFields.js';
-import {
-  CorrectedReadAt,
-  correctedCapturedAt,
-  recordedReadAtValue,
-} from '@/contracting/components/readings/read-at-correction.js';
+import { ReadingCorrectionFields } from '@/contracting/components/readings/ReadingCaptureFields.js';
+import { ReadingCorrection, recordedCorrection, toAmendment } from '@/contracting/components/readings/types.js';
 
-const AmendValues = ReadingAmendment.pick({ value: true }).extend({ readAt: CorrectedReadAt, reason: ReadingReason });
+const AmendValues = ReadingCorrection.extend({ reason: ReadingReason });
 
 export function ReadingAmendDialog({
   reading,
@@ -36,7 +27,6 @@ export function ReadingAmendDialog({
   error: unknown;
   description?: React.ReactNode;
 }) {
-  const recordedReadAt = reading ? recordedReadAtValue(reading.capturedAt) : '';
   return (
     <CreateEntityDialog
       key={reading?.id ?? 'closed'}
@@ -46,35 +36,19 @@ export function ReadingAmendDialog({
       description={description}
       contentClassName="sm:max-w-lg"
       submitLabel="Amend reading"
-      defaultValues={{ value: reading?.value ?? 0, readAt: recordedReadAt, reason: '' }}
+      defaultValues={{ ...(reading ? recordedCorrection(reading) : { value: 0, readAt: '' }), reason: '' }}
       validator={AmendValues}
-      onCreate={({ value, readAt, reason }) => {
-        if (!reading) return Promise.resolve();
-        return onAmend({
-          amendments: [{ id: reading.id, value, capturedAt: correctedCapturedAt(readAt, reading.capturedAt) }],
-          reason,
-        });
-      }}
+      // An untouched correction still posts: on the Job page it acknowledges the reading's evidence.
+      onCreate={({ value, readAt, reason }) =>
+        reading
+          ? onAmend({ amendments: [toAmendment({ id: reading.id, value, readAt }, reading)], reason })
+          : Promise.resolve()
+      }
       onCreated={onAmended}
     >
       {(form) => (
         <>
-          <ReadingCaptureCard
-            previousLabel="Recorded reading"
-            previousValue={reading?.value}
-            rows={
-              <ReadingCaptureRow
-                label="Recorded Read At"
-                recorded={<span className="text-sm">{reading ? formatDate(reading.capturedAt, 'medium') : '—'}</span>}
-              >
-                <form.AppField name="readAt">
-                  {(field) => <field.DateTimePickerField label="Corrected Read At" maxValue={getPlantDateNow()} />}
-                </form.AppField>
-              </ReadingCaptureRow>
-            }
-          >
-            <form.AppField name="value">{() => <ReadingValueField label="Corrected reading" />}</form.AppField>
-          </ReadingCaptureCard>
+          <ReadingCorrectionFields form={form} fields={{ value: 'value', readAt: 'readAt' }} recorded={reading} />
           <div className="space-y-4 border-t pt-4">
             <form.AppField name="reason">{(field) => <field.TextareaField label="Amendment reason" />}</form.AppField>
             <ErrorMessage error={error} fallbackMessage="Unable to amend reading." />

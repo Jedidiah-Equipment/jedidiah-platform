@@ -136,6 +136,16 @@ it('keeps a wrong time on screen and refuses to capture until it is fixed', asyn
   expect(capture).not.toHaveBeenCalled();
 });
 
+it('picks no time from one the time box refuses, even one a browser would roll over', async () => {
+  const { save } = await mount();
+  await enter('value', '140');
+  await enterReadAt('2026-10-20', '24:00');
+
+  expect(document.body.textContent).toContain('Enter the time as HH:mm');
+  expect(save.disabled).toBe(true);
+  expect(capture).not.toHaveBeenCalled();
+});
+
 it('offers the dispute for a reading below the latest one', async () => {
   const { save } = await mount();
   await enter('value', '126');

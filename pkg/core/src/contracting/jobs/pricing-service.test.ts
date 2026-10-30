@@ -435,6 +435,21 @@ describe('a reading amendment on a Priced Job', () => {
         .where(and(eq(auditEvents.entityType, 'contracting_job'), eq(auditEvents.entityId, jobId)))
     ).length;
 
+  test('stays Priced when the amendment only acknowledges a reading, moving no hours', async ({ context }) => {
+    const { db } = context;
+    const { jobId, stints } = await completedJob(context, [
+      { machineId: context.excavator.id, arrival: 100, departure: 110 },
+    ]);
+    const dig = stints[0];
+    if (!dig) throw new Error('Expected a stint');
+    await priceAt(db, jobId, dig.id, context.dryHire.id);
+
+    const acknowledged = await amendHours(db, admin, dig.arrivalReadingId, 100, 'Checked the photo');
+
+    expect(acknowledged).toMatchObject({ amendmentReason: 'Checked the photo', amendedBy: adminId });
+    expect(await getJob({ db, id: jobId })).toMatchObject({ status: 'priced' });
+  });
+
   test('returns it to Completed with Rates kept, amounts recomputed, and overrides reset and flagged', async ({
     context,
   }) => {

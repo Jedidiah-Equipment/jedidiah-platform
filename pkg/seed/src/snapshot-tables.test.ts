@@ -95,6 +95,7 @@ describe('snapshot table registry', () => {
       'feedback_user',
       'contracting_category',
       'contracting_machine',
+      'contracting_john_deere_link',
       'contracting_implement',
       'contracting_customer',
       'contracting_farm',
@@ -159,6 +160,7 @@ describe('snapshot table registry', () => {
       'feedback_user.json',
       'contracting_category.json',
       'contracting_machine.json',
+      'contracting_john_deere_link.json',
       'contracting_implement.json',
       'contracting_customer.json',
       'contracting_farm.json',
@@ -365,6 +367,7 @@ describe('snapshot table registry', () => {
     for (const tableName of [
       'contracting_category',
       'contracting_machine',
+      'contracting_john_deere_link',
       'contracting_implement',
       'contracting_customer',
       'contracting_farm',

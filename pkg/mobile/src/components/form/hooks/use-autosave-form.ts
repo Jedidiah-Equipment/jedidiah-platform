@@ -1,6 +1,7 @@
 import { createAutosaveController, toFormIssues } from '@pkg/domain';
 import { useCallback, useRef, useSyncExternalStore } from 'react';
 import type { z } from 'zod';
+import { trpcErrorMessage } from '@/lib/trpc-errors';
 
 import { useAppForm } from './use-app-form';
 
@@ -46,7 +47,7 @@ export function useAutosaveForm<TValues extends Record<string, unknown>, TInput,
           await optionsRef.current.onSaved?.(result);
         } catch (error) {
           lastErrorRef.current = error;
-          throw new Error(errorMessage(error, optionsRef.current.failureMessage));
+          throw new Error(trpcErrorMessage(error) ?? optionsRef.current.failureMessage);
         }
       },
       validate: (values) => {
@@ -111,8 +112,4 @@ export function useAutosaveForm<TValues extends Record<string, unknown>, TInput,
     },
     form,
   };
-}
-
-function errorMessage(error: unknown, fallback: string): string {
-  return error instanceof Error && error.message ? error.message : fallback;
 }

@@ -43,7 +43,7 @@ afterEach(async () => {
   close.mockClear();
 });
 
-async function mount(serviceIntervalHours: number | null) {
+async function mount(serviceIntervalHours: number | null, knownHours: number | null = null) {
   const container = document.createElement('div');
   document.body.append(container);
   const root = createRoot(container);
@@ -52,7 +52,7 @@ async function mount(serviceIntervalHours: number | null) {
     root.render(
       <CloseServiceRecordDialog
         record={record}
-        serviceIntervalHours={serviceIntervalHours}
+        machine={{ knownHours, serviceIntervalHours }}
         mechanicOptions={[]}
         onClose={vi.fn()}
       />,
@@ -85,6 +85,18 @@ it('pre-fills Next Service Due from the interval until it is typed over', async 
   await enter('nextServiceDueHours', '1650');
   await enter('readingAtServiceHours', '1460');
   expect(field('nextServiceDueHours').value).toBe('1650');
+});
+
+it('opens on Known Hours as the reading, and the Next Service Due they suggest, both still editable', async () => {
+  const { submit } = await mount(250, 7251);
+  expect(field('readingAtServiceHours').value).toBe(formatNumberFieldValue(7251, 2));
+  expect(field('nextServiceDueHours').value).toBe(formatNumberFieldValue(7501, 2));
+  await enter('readingAtServiceHours', '7260');
+  expect(field('nextServiceDueHours').value).toBe(formatNumberFieldValue(7510, 2));
+  await act(async () => submit.click());
+  expect(close).toHaveBeenCalledWith(
+    expect.objectContaining({ id: record.id, readingAtServiceHours: 7260, nextServiceDueHours: 7510 }),
+  );
 });
 
 it('will not close without a Next Service Due', async () => {

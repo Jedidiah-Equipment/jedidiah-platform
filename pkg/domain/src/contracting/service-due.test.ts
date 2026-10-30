@@ -12,6 +12,7 @@ import {
   serviceDueStatus,
   suggestedNextServiceDue,
   suggestedNextServiceDueValue,
+  suggestedServiceCloseHours,
 } from './service-due.js';
 import { CONTRACTING_SETTINGS_DEFAULTS } from './settings.js';
 
@@ -51,6 +52,17 @@ describe('suggestedNextServiceDue', () => {
     expect(suggestedNextServiceDueValue(1450.5, 250)).toBe(1700.5);
     expect(suggestedNextServiceDueValue(Number.NaN, 250)).toBeNaN();
     expect(suggestedNextServiceDueValue(1450.5, null)).toBeNaN();
+  });
+
+  test('suggests the reading at service from Known Hours, and the Next Service Due from that', () => {
+    expect(suggestedServiceCloseHours({ knownHours: 7251, serviceIntervalHours: 250 })).toEqual({
+      readingAtServiceHours: 7251,
+      nextServiceDueHours: 7501,
+    });
+    const unknown = suggestedServiceCloseHours({ knownHours: null, serviceIntervalHours: 250 });
+    expect(unknown.readingAtServiceHours).toBeNaN();
+    expect(unknown.nextServiceDueHours).toBeNaN();
+    expect(suggestedServiceCloseHours(undefined).readingAtServiceHours).toBeNaN();
   });
 });
 

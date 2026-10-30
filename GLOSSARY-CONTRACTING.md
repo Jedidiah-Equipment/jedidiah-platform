@@ -261,7 +261,7 @@ recorded. Mechanic performance — report-to-Solved time — is derived, never s
 
 **Service Record** is the light digital counterpart of the paper service book, which stays the
 detailed record for now: one service on one Machine — start and end date, the hour reading at
-service, the primary Mechanic (from the same set as a Breakdown's), and free-text notes. A Service
+service (suggested from the Machine's Known Hours), the primary Mechanic (from the same set as a Breakdown's), and free-text notes. A Service
 is a recurring, expected event and deliberately not a Breakdown. **Closing a Service Record requires
 setting the Machine's Next Service Due** — the number the mechanic prints on the dash sticker at that moment; the Machine's
 optional **Service Interval** only pre-fills it from the reading at service. **Service Due Soon** is the derived flag raised when the Machine's Known Hours
@@ -371,7 +371,7 @@ Breakdown's own thread. The two businesses' marks are independent (see [GLOSSARY
 ## Reporting
 
 An **Active Day** is a calendar day inside a Job's dates — its stored Start and End, else from its first arrival's
-capture to its last departure's, an open Job running to today — for a Machine with an arrival on that Job (planned
+capture to its last departure's once every Machine has left, to today while one is still on site — for a Machine with an arrival on that Job (planned
 stints never count). **Utilisation %**
 is active days over days in the window, counting only days the Machine was in the fleet — days,
 never hours, and month attribution is exact. **Fleet Load** is the share of Machines with at

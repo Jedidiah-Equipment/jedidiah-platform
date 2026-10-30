@@ -47,11 +47,11 @@ const record = {
   notes: null,
 } as ServiceRecord;
 
-function mount(serviceIntervalHours: number | null) {
+function mount(serviceIntervalHours: number | null, knownHours: number | null = null) {
   let renderer!: ReactTestRenderer;
   act(() => {
     renderer = create(
-      <CloseServiceSheet record={record} serviceIntervalHours={serviceIntervalHours} onClose={vi.fn()} />,
+      <CloseServiceSheet record={record} machine={{ knownHours, serviceIntervalHours }} onClose={vi.fn()} />,
     );
   });
   renderers.push(renderer);
@@ -78,6 +78,18 @@ test('Next service due pre-fills from the interval until it is typed over', asyn
   await type(due, '1720');
   await type(reading, '1460');
   expect(due.props.value).toBe('1720');
+});
+
+test('opens on Known Hours as the reading, and the Next service due they suggest, both still editable', async () => {
+  const { renderer, reading, due } = mount(250, 7251);
+  expect(reading.props.value).toBe('7251');
+  expect(due.props.value).toBe('7501');
+  await type(reading, '7260');
+  expect(due.props.value).toBe('7510');
+  await submit(renderer);
+  expect(close).toHaveBeenCalledWith(
+    expect.objectContaining({ id: record.id, readingAtServiceHours: 7260, nextServiceDueHours: 7510 }),
+  );
 });
 
 test('will not close with Next service due below the reading', async () => {

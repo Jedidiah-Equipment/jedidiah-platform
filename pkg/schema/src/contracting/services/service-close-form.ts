@@ -26,16 +26,17 @@ export const CloseServiceValues = z
   });
 export type CloseServiceValues = z.input<typeof CloseServiceValues>;
 
-/** The close form for an open record: ending on `endDate`, keeping its Mechanic and notes, the hours still blank. */
+/** The close form for an open record: ending on `endDate`, keeping its Mechanic and notes, the hours as suggested. */
 export const closeServiceDefaults = (
   record: Pick<ServiceRecord, 'primaryMechanicUserId' | 'notes'>,
   endDate: string,
+  hours: Pick<CloseServiceValues, 'readingAtServiceHours' | 'nextServiceDueHours'>,
 ): CloseServiceValues => ({
   endDate,
-  readingAtServiceHours: Number.NaN,
+  readingAtServiceHours: hours.readingAtServiceHours,
   primaryMechanicUserId: record.primaryMechanicUserId ?? '',
   notes: record.notes ?? '',
-  nextServiceDueHours: Number.NaN,
+  nextServiceDueHours: hours.nextServiceDueHours,
 });
 
 export function closeServiceInput(id: string, values: CloseServiceValues): ServiceRecordCloseInput {

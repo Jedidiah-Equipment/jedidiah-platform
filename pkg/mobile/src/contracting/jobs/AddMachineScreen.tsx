@@ -14,7 +14,10 @@ import { implementOption } from '@/contracting/components/implement-option';
 import { getVisibleMachines } from '@/contracting/lib/machine-catalog';
 import { useFleet } from '@/contracting/readings/use-fleet';
 import { useTRPC } from '@/lib/trpc';
+import { trpcErrorMessage } from '@/lib/trpc-errors';
 import { useDrivers, useImplements, useJob } from './use-jobs';
+
+const ADD_FAILED = 'Could not add the Machine. Check your connection and try again.';
 
 export default function AddMachineScreen() {
   const params = useLocalSearchParams<{
@@ -134,7 +137,7 @@ export default function AddMachineScreen() {
             />
           )}
         </form.AppField>
-        {add.error ? <Text className="text-sm text-danger">{add.error.message}</Text> : null}
+        {add.error ? <Text className="text-sm text-danger">{trpcErrorMessage(add.error) ?? ADD_FAILED}</Text> : null}
         <Button
           primary
           icon={IconPlus}

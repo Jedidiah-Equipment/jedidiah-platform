@@ -1,5 +1,5 @@
 import { formatDate, formatHours, getFirstName } from '@pkg/domain';
-import { serviceRecordBadge } from '@pkg/domain/contracting';
+import { type ServiceCloseMachine, serviceRecordBadge } from '@pkg/domain/contracting';
 import {
   type FieldMachine,
   OpenServiceValues,
@@ -81,7 +81,7 @@ function ServiceSections({ record }: { record: ServiceRecord }) {
     <>
       <MachineCard record={record} machine={machine} />
       {record.status === 'open' ? (
-        <OpenRecord record={record} serviceIntervalHours={machine?.serviceIntervalHours ?? null} />
+        <OpenRecord record={record} machine={machine} />
       ) : (
         <ClosedRecordCard record={record} />
       )}
@@ -132,7 +132,7 @@ function MachineIdentity({ record, title, children }: { record: ServiceRecord; t
   );
 }
 
-function OpenRecord({ record, serviceIntervalHours }: { record: ServiceRecord; serviceIntervalHours: number | null }) {
+function OpenRecord({ record, machine }: { record: ServiceRecord; machine: ServiceCloseMachine | undefined }) {
   const canUpdate = useSessionPermission('contracting_service:update');
   const [closing, setClosing] = useState(false);
   // The editor stays open until its save has refetched; the close sheet starts from the saved record, not the edits.
@@ -141,13 +141,7 @@ function OpenRecord({ record, serviceIntervalHours }: { record: ServiceRecord; s
     <>
       <DetailsCard record={record} canEdit={canUpdate} editing={editing} onEditingChange={setEditing} />
       {canUpdate ? <Button primary title="Close service" disabled={editing} onPress={() => setClosing(true)} /> : null}
-      {closing ? (
-        <CloseServiceSheet
-          record={record}
-          serviceIntervalHours={serviceIntervalHours}
-          onClose={() => setClosing(false)}
-        />
-      ) : null}
+      {closing ? <CloseServiceSheet record={record} machine={machine} onClose={() => setClosing(false)} /> : null}
     </>
   );
 }

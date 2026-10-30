@@ -54,6 +54,18 @@ export const suggestedNextServiceDueValue = (readingAtServiceHours: number, serv
   (Number.isNaN(readingAtServiceHours) ? null : suggestedNextServiceDue(readingAtServiceHours, serviceIntervalHours)) ??
   Number.NaN;
 
+/** What the close form needs of the Machine in for the service; one the phone's field read lacks suggests nothing. */
+export type ServiceCloseMachine = { knownHours: number | null; serviceIntervalHours: number | null };
+
+/** The close form's hours before anyone types: Known Hours as the reading, and the Next Service Due they suggest. */
+export function suggestedServiceCloseHours(machine: ServiceCloseMachine | undefined) {
+  const readingAtServiceHours = machine?.knownHours ?? Number.NaN;
+  return {
+    readingAtServiceHours,
+    nextServiceDueHours: suggestedNextServiceDueValue(readingAtServiceHours, machine?.serviceIntervalHours ?? null),
+  };
+}
+
 /** The line under the close form's Next Service Due, which says it was suggested only when it could have been. */
 export const nextServiceDueHint = (serviceIntervalHours: number | null) =>
   serviceIntervalHours === null

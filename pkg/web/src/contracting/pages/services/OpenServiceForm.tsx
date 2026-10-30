@@ -18,7 +18,8 @@ import { CloseServiceRecordDialog } from './CloseServiceRecordDialog.js';
 
 /**
  * A service still in the workshop: its start date, Mechanic and notes autosave until it is closed. Closing waits for
- * the Machine read, because the dialog suggests the Next Service Due from its interval.
+ * the Machine read, because the dialog suggests the reading from its Known Hours and the Next Service Due from its
+ * interval.
  */
 export function OpenServiceForm({ record }: { record: ServiceRecord }) {
   const trpc = useTRPC();
@@ -84,7 +85,7 @@ export function OpenServiceForm({ record }: { record: ServiceRecord }) {
         <CloseServiceRecordDialog
           key={record.id}
           record={record}
-          serviceIntervalHours={machine.serviceIntervalHours}
+          machine={machine}
           mechanicOptions={mechanics.options}
           onClose={() => setClosing(false)}
         />

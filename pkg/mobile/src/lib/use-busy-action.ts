@@ -1,6 +1,7 @@
 import { shouldReportApiMutationError } from '@pkg/schema';
 import { useCallback, useRef, useState } from 'react';
 import { captureException } from './observability';
+import { trpcErrorMessage } from './trpc-errors';
 
 /** Runs one async action at a time, exposing its progress and the message of its last failure. */
 export function useBusyAction() {
@@ -17,7 +18,7 @@ export function useBusyAction() {
       await action();
     } catch (error) {
       if (shouldReportApiMutationError(error)) captureException(error, { source: 'busy_action' });
-      setError(error instanceof Error ? error.message : fallbackMessage);
+      setError(trpcErrorMessage(error) ?? fallbackMessage);
     } finally {
       running.current = false;
       setBusy(false);

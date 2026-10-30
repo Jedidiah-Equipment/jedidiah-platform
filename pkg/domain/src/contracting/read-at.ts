@@ -52,9 +52,6 @@ export const READ_AT_NOW: ReadAtChoice = { kind: 'now' };
 /** The Read At a choice posts; null is now, and so is Earlier… while no time is picked. */
 export const readAtOf = (choice: ReadAtChoice): Date | null => (choice.kind === 'earlier' ? choice.at : null);
 
-/** Who set the time a choice posts; null while it posts now. */
-const setBy = (choice: ReadAtChoice) => (choice.kind === 'earlier' && choice.at ? choice.by : null);
-
 /** The proposal a choice holds, which the picker says the reports of. */
 export const readAtProposal = (choice: ReadAtChoice): ReadAtSuggestion | null =>
   (choice.kind === 'earlier' && choice.proposal) || null;

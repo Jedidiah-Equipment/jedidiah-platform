@@ -48,11 +48,11 @@ test('the catalog covers every Contracting tRPC mutation the phone calls', () =>
       for (const match of source.matchAll(/trpc\.((?:[A-Za-z0-9_]+\.)+[A-Za-z0-9_]+)\.mutationOptions/g)) {
         procedures.add(match[1]);
       }
-      // Breakdown writes go through `useBreakdownMutation((breakdowns) => breakdowns.<procedure>)`.
+      // Breakdown and Service writes go through `use<Breakdown|Service>Mutation((routes) => routes.<procedure>)`.
       for (const match of source.matchAll(
-        /useBreakdownMutation\(\(\w+\) => \w+\.((?:[A-Za-z0-9_]+\.)*[A-Za-z0-9_]+)\)/g,
+        /use(Breakdown|Service)Mutation\(\(\w+\) => \w+\.((?:[A-Za-z0-9_]+\.)*[A-Za-z0-9_]+)\)/g,
       )) {
-        procedures.add(`contractingBreakdowns.${match[1]}`);
+        procedures.add(`contracting${match[1]}s.${match[2]}`);
       }
     }
   }

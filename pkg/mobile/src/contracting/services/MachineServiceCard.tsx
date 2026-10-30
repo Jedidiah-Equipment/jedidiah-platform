@@ -8,6 +8,7 @@ import {
 import type { FieldMachine } from '@pkg/schema/contracting';
 import type { ReactNode } from 'react';
 import { View } from 'react-native';
+import { Card } from '@/components/ui/card';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Text } from '@/components/ui/text';
 import { DetailRow } from '@/contracting/components/DetailRow';
@@ -30,7 +31,7 @@ export function MachineServiceCard({
   const remaining = machine.hoursToService;
   const flagged = serviceDueNeedsAttention(machine.serviceDueStatus);
   return (
-    <View className="gap-3 rounded-xl border border-border bg-surface p-4">
+    <Card>
       {header}
       <View className="flex-row">
         <StatusBadge classNames={badge.colours} label={badge.label} />
@@ -53,6 +54,6 @@ export function MachineServiceCard({
         </Text>
       </DetailRow>
       {children}
-    </View>
+    </Card>
   );
 }

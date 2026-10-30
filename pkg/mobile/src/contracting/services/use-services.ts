@@ -1,5 +1,5 @@
 import { machinesDueForService } from '@pkg/domain/contracting';
-import type { ServiceRecord, ServiceRecordStatus } from '@pkg/schema/contracting';
+import type { FieldMachine, ServiceRecord, ServiceRecordStatus } from '@pkg/schema/contracting';
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { DecorateMutationProcedure, ResolverDef } from '@trpc/tanstack-react-query';
 import { fieldQuery } from '@/contracting/lib/field-query';
@@ -76,16 +76,23 @@ export function useServiceRecord(serviceId: string) {
   return { ...fieldQuery(canRead, query), gone: isNotFoundError(query.error) };
 }
 
-/** The Machine's open Service Records, newest start first, as the web Machine card reads them. */
-export function useMachineOpenServices(machineId: string) {
+/** A Booked In Machine's open Service Records, newest start first, as the web Machine card reads them. */
+export function useMachineOpenServices(machine: Pick<FieldMachine, 'id' | 'serviceBookedIn'> | undefined) {
   const canRead = useSessionPermission('contracting_service:read');
+  const enabled = canRead && !!machine?.serviceBookedIn;
   const trpc = useTRPC();
   return fieldQuery(
-    canRead && !!machineId,
+    enabled,
     useQuery(
       trpc.contractingServices.list.queryOptions(
-        { machineIds: [machineId], statuses: ['open'], limit: 0, sortBy: 'startDate', sortDirection: 'desc' },
-        { enabled: canRead && !!machineId },
+        {
+          machineIds: machine ? [machine.id] : [],
+          statuses: ['open'],
+          limit: 0,
+          sortBy: 'startDate',
+          sortDirection: 'desc',
+        },
+        { enabled },
       ),
     ),
   );

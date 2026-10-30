@@ -163,7 +163,7 @@ export default function MachineScreen() {
   const canBook = useSessionPermission('contracting_service:update');
   const [booking, setBooking] = useState(false);
   // Two open records on one Machine are not refused on the server; the newest start is the one in the workshop.
-  const bookedIn = useMachineOpenServices(id).data?.items[0];
+  const bookedIn = useMachineOpenServices(machine).data?.items[0];
   const canReadBreakdowns = useSessionPermission('contracting_breakdown:read');
   const breakdowns = useMachineBreakdowns(id);
   const canOpenJobs = useCanReadJobs();

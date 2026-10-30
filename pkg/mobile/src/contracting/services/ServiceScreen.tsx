@@ -260,10 +260,12 @@ function ClosedRecordCard({ record }: { record: ServiceRecord }) {
         </Text>
       </DetailRow>
       <NotesRow notes={record.notes} />
-      <Text className="text-sm text-muted-foreground">
-        Closed <DateText className="text-sm text-muted-foreground" date={record.closedAt} format="medium" />
-        {record.closedByName ? ` by ${getFirstName(record.closedByName)}` : ''}
-      </Text>
+      <DetailRow label="Closed">
+        <Text className="text-foreground" weight="semibold">
+          <DateText className="text-foreground" weight="semibold" date={record.closedAt} format="medium" />
+          {record.closedByName ? ` by ${getFirstName(record.closedByName)}` : ''}
+        </Text>
+      </DetailRow>
     </Card>
   );
 }

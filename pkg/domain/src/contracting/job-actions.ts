@@ -51,7 +51,14 @@ const rules: Record<JobActionName, Rule> = {
     anyJob: 'contracting_job:work-any',
     verb: 'change Machine Assignments',
   },
-  editMeasures: { statuses: workedJobStatuses, permissions: ['contracting_job:update'], verb: 'change Measures' },
+  // The Foreman records the production figures on site, so only while his own Job is Active; management amends after.
+  editMeasures: {
+    statuses: workedJobStatuses,
+    permissions: ['contracting_job:update', 'contracting_assignment:update-own'],
+    anyJob: 'contracting_job:update',
+    ownStatuses: ['active'],
+    verb: 'change Measures',
+  },
   editChargeLines: {
     statuses: workedJobStatuses,
     permissions: ['contracting_job:update'],

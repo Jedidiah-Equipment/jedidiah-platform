@@ -1,4 +1,4 @@
-import { formatCurrency, formatHours, formatNumber } from '@pkg/domain';
+import { formatCurrency, formatHours, formatQuantity } from '@pkg/domain';
 import { groupStints, rateUnitLabel } from '@pkg/domain/contracting';
 import type { Assignment, JobDetail, Rate, StintPricing } from '@pkg/schema/contracting';
 
@@ -37,9 +37,6 @@ export function adjustmentRows(job: JobDetail, { editable }: { editable: boolean
   if (editable || job.discount) rows.push({ kind: 'discount', discount: job.discount });
   return rows;
 }
-
-export const formatQuantity = (quantity: number) =>
-  formatNumber(quantity, { decimals: Number.isInteger(quantity) ? 0 : 2 });
 
 /** What the computed amount multiplies, shown under it; null while the stint is un-priced. */
 export function formulaLabel(pricing: StintPricing | null): string | null {

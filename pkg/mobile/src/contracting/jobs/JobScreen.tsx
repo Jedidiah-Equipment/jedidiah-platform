@@ -1,4 +1,4 @@
-import { formatHours, getFirstName } from '@pkg/domain';
+import { formatHours, formatQuantity, getFirstName } from '@pkg/domain';
 import {
   type AttentionThresholds,
   assignmentAttentionSentence,
@@ -11,9 +11,9 @@ import {
   needsALookColorClassNames,
 } from '@pkg/domain/contracting';
 import type { AssignmentDetail, BreakdownSummary, JobCardVariant } from '@pkg/schema/contracting';
-import { IconPencil, IconPlayerPlay, IconPlayerStop, IconPlus } from '@tabler/icons-react-native';
+import { IconPencil, IconPlayerPlay, IconPlayerStop, IconPlus, IconRuler2 } from '@tabler/icons-react-native';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SECONDARY_PAGE_CONTENT_STYLE } from '@/components/page-frame';
@@ -34,6 +34,7 @@ import { shareDocument } from '@/lib/document-actions';
 import { useBusyAction } from '@/lib/use-busy-action';
 import { useColorMode } from '@/theme/use-color-mode';
 import { JobStatusChip } from './JobStatusChip';
+import { MeasuresSheet } from './MeasuresSheet';
 import { useJob } from './use-jobs';
 
 export default function JobScreen() {
@@ -62,6 +63,8 @@ export default function JobScreen() {
       void share.run(() => shareDocument(jobCardShareAction(job.jobNumber, variant)), 'Unable to share the Job Card.');
   };
   const stints = sheet?.stints ?? [];
+  const [measuringId, setMeasuringId] = useState<string | null>(null);
+  const measuring = stints.find((entry) => entry.stint.id === measuringId && entry.sheet.can('editMeasures'))?.stint;
   const breakdowns = useJobBreakdowns(jobId);
   const breakdownsOnStint = useMemo(
     () => breakdownsByStint(job?.assignments ?? [], breakdowns.data?.items ?? []).byStint,
@@ -150,6 +153,7 @@ export default function JobScreen() {
               canReport={canReport}
               entry={entry}
               key={entry.stint.id}
+              onMeasure={() => setMeasuringId(entry.stint.id)}
               onReport={() => reportProblem(entry.stint)}
               onStart={() => openHours(entry.stint, { role: 'arrival' })}
               onStop={() => openHours(entry.stint, { role: 'departure' })}
@@ -174,6 +178,7 @@ export default function JobScreen() {
           ) : null}
         </ScrollView>
       )}
+      {measuring ? <MeasuresSheet stint={measuring} onClose={() => setMeasuringId(null)} /> : null}
     </SafeAreaView>
   );
 }
@@ -194,6 +199,7 @@ function StintCard({
   onStart,
   onStop,
   onEdit,
+  onMeasure,
   onReport,
   thresholds,
 }: {
@@ -204,6 +210,7 @@ function StintCard({
   onStart: () => void;
   onStop: () => void;
   onEdit: () => void;
+  onMeasure: () => void;
   onReport: () => void;
   thresholds: AttentionThresholds | undefined;
 }) {
@@ -237,6 +244,13 @@ function StintCard({
             {stint.driverName ? ` · ${getFirstName(stint.driverName)}` : ''}
           </Text>
           {stint.arrival ? <Text className="text-sm text-muted-foreground">{stintHoursLine(stint)}</Text> : null}
+          {stint.measures.length ? (
+            <Text className="text-sm text-foreground">
+              {stint.measures
+                .map((measure) => `${formatQuantity(measure.quantity)} ${measure.measureTypeName}`)
+                .join(' · ')}
+            </Text>
+          ) : null}
         </View>
         {stint.departure && stint.workHours !== null ? (
           <Text className="text-xl text-foreground" weight="bold" mono>
@@ -260,6 +274,9 @@ function StintCard({
         <CaptureButton icon={IconPlayerStop} label="Stop — capture departure" onPress={onStop} />
       ) : null}
       {stintSheet.can('editHours') ? <Button icon={IconPencil} title="Edit hours" onPress={onEdit} /> : null}
+      {stintSheet.can('editMeasures') ? (
+        <Button icon={IconRuler2} title={stint.measures.length ? 'Edit measures' : 'Add measure'} onPress={onMeasure} />
+      ) : null}
       {canReport ? <Button icon={BreakdownIcon} title="Report a problem" onPress={onReport} /> : null}
     </View>
   );

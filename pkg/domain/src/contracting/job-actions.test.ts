@@ -48,6 +48,7 @@ const none: Matrix = Object.fromEntries(jobActionNames.map((action) => [action, 
 const foremanOnOwnJob: Matrix = {
   ...none,
   assign: '✓✓sscc',
+  editMeasures: 's✓sscc',
   capture: '✓✓sscc',
   editHours: '✓✓sscc',
   reportBreakdown: '✓✓sscc',
@@ -56,6 +57,7 @@ const foremanOnOwnJob: Matrix = {
 const foremanOnAnotherJob: Matrix = {
   ...none,
   assign: 'oooooo',
+  editMeasures: 'oooooo',
   capture: 'oooooo',
   editHours: 'oooooo',
   reportBreakdown: 'oooooo',
@@ -106,6 +108,7 @@ describe('a refused verdict', () => {
     expect(refusal('editHours', 'completed', sipho)).toBe(
       'You can only change hours while the Job is Upcoming or Active.',
     );
+    expect(refusal('editMeasures', 'completed', sipho)).toBe('You can only change Measures while the Job is Active.');
     expect(refusal('editSignOffDetails', 'active', admin)).toBe(
       'You can only change sign-off details while the Job is Completed or Priced.',
     );

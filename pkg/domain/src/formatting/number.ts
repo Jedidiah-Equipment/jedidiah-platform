@@ -54,6 +54,10 @@ export function formatHours(value: number): string {
   return `${formatNumber(value, { decimals: 1 })} h`;
 }
 
+/** A counted or measured quantity — Measures, litres: whole numbers bare, anything else to two decimals. */
+export const formatQuantity = (value: number): string =>
+  formatNumber(value, { decimals: Number.isInteger(value) ? 0 : 2 });
+
 /** A duration in days, as the workshop reads a turnaround: one decimal and a `days` suffix. */
 export function formatDays(value: number): string {
   if (!Number.isFinite(value)) return '';

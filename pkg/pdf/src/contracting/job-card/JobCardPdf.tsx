@@ -1,4 +1,4 @@
-import { formatCurrency, formatDate, formatHours, formatNumber } from '@pkg/domain';
+import { formatCurrency, formatDate, formatHours, formatQuantity } from '@pkg/domain';
 import { assignmentAttentionKindLabel, JEDIDIAH_CONTRACTING_BUSINESS_DETAILS } from '@pkg/domain/contracting';
 import type {
   JobCardModel,
@@ -72,7 +72,6 @@ const markerLegend = `Readings: ${Object.values(markers)
   .join(' · ')}`;
 
 const formatAmount = (amount: number | null) => (amount === null ? '—' : formatCurrency(amount));
-const formatQuantity = (quantity: number) => formatNumber(quantity, { decimals: Number.isInteger(quantity) ? 0 : 2 });
 
 export function JobCardPdf({ document }: { document: JobCardModel }) {
   const internal = document.variant === 'internal';

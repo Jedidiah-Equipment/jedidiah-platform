@@ -16,6 +16,7 @@ export * from './jobs/job-card.js';
 export * from './jobs/job-create-form.js';
 export * from './jobs/job-enums.js';
 export * from './jobs/job-note.js';
+export * from './jobs/measure-form.js';
 export * from './jobs/pricing.js';
 export * from './jobs/stint-hours.js';
 export * from './jobs/stint-hours-form.js';

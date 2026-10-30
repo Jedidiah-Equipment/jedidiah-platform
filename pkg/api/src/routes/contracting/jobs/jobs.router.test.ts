@@ -328,7 +328,9 @@ test('counts every matching Job on each page, even a stale page past the end', a
   expect(await manager.list({ queues: [...queues], limit: 1, cursor: 9 })).toMatchObject({ items: [], total: 4 });
 });
 
-test('provides Measure Type choices to managers without granting Rate Card access', async ({ context }) => {
+test('provides Measure Type choices to whoever records Measures without granting Rate Card access', async ({
+  context,
+}) => {
   const first = await createMeasureType({ db: context.db, actorUserId: managerId, input: { name: 'Loads' } });
   const second = await createMeasureType({ db: context.db, actorUserId: managerId, input: { name: 'Hectares' } });
   const manager = context.createCaller(contractingSession('contracting-manager'));
@@ -337,8 +339,11 @@ test('provides Measure Type choices to managers without granting Rate Card acces
     { id: second.id, name: 'Hectares' },
   ]);
   await expect(manager.contractingRateCard.measureTypes.list()).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  const foreman = context.createCaller(contractingSession('foreman'));
+  expect(await foreman.contractingJobs.options.measureTypes()).toHaveLength(2);
+  await expect(foreman.contractingRateCard.measureTypes.list()).rejects.toMatchObject({ code: 'FORBIDDEN' });
   await expect(
-    context.createCaller(contractingSession('foreman')).contractingJobs.options.measureTypes(),
+    context.createCaller(contractingSession('contracting-invoicing')).contractingJobs.options.measureTypes(),
   ).rejects.toMatchObject({ code: 'FORBIDDEN' });
 });
 

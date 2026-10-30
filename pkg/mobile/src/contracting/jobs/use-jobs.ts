@@ -119,3 +119,13 @@ export function useStintHoursWrites() {
     edit: useMutation(trpc.contractingJobs.assignments.editHours.mutationOptions({ onSuccess })),
   };
 }
+
+/** The Measure Types a Measure names, in display order: for whoever may record Measures. */
+export function useMeasureTypes() {
+  const canRead = useSessionPermission('contracting_job:update', 'contracting_assignment:update-own');
+  const trpc = useTRPC();
+  return fieldQuery(
+    canRead,
+    useQuery(trpc.contractingJobs.options.measureTypes.queryOptions(undefined, { enabled: canRead })),
+  );
+}

@@ -73,7 +73,7 @@ export function assertReportBreakdownJobAction(job: JobActionSubject, actor: Job
 }
 
 export const invalidMechanic = () =>
-  new BreakdownError('breakdown.invalid_mechanic', 'Select a person with the Contracting mechanic role.');
+  new BreakdownError('breakdown.invalid_mechanic', 'Select a mechanic or a workshop manager.');
 
 export const withBreakdownConstraints = <T>(action: () => Promise<T>) =>
   translatingConstraintViolations(

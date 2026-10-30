@@ -21,7 +21,7 @@ Foremen see only the Breakdowns they reported and those on their own Jobs. The w
 ## Run a Breakdown in the workshop
 
 1. Open the Breakdown from **Workshop**. **Also open on this Job** lists the other Breakdowns on the same Job that are not yet Fixed.
-2. Under **Mechanic**, choose the Mechanic who will fix it.
+2. Under **Mechanic**, choose the Mechanic who will fix it, or yourself.
 3. Choose **Start work** when the Mechanic starts. The Breakdown is Fixing, and **Started** shows when.
 4. Choose **Mark completed**, write the **Close-out note** — what was wrong and what was done — and choose **Confirm completed**. The Breakdown is then Fixed. A Breakdown can go straight to Fixed from Not fixed.
 

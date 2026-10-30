@@ -329,7 +329,6 @@ describe('Contracting push fan-out', () => {
     });
     await setPushPreferences({ db, userId: 'wendy', input: { muted: ['contracting.breakdown.code-red'] } });
     expect(recipients(await buildContractingPush({ db, event }))).not.toContain('ExponentPushToken[wendy-1]');
-    // Queued after commit: changed back to Code Green in between, there is nothing left to escalate.
     await patchBreakdown({ db, actor: mo, input: { id: breakdown.id, urgency: 'code-green' } });
     expect(await buildContractingPush({ db, event })).toEqual([]);
   });

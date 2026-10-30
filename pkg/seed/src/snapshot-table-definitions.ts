@@ -429,6 +429,8 @@ export const snapshotTableDefinitions = [
     unsnapshottedParentColumns: ['telematicsLinkId'],
     // A source that predates acceptance stamps accepted each reading at its Read At, as the migration did.
     seedRowDefaults: (row) => ({ createdAt: row.capturedAt }),
+    // A source read before 0184 still holds photo readings, which the migration turned manual.
+    seedRowTransform: (row) => (row.method === 'photo' ? { ...row, method: 'manual' } : row),
     readOrderColumn: 'sequence',
     writableColumns: [
       'id',

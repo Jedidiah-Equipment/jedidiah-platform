@@ -273,6 +273,16 @@ describe('snapshot table registry', () => {
     ).toMatchObject({ categoryId, standardPurchaseLengthMm: 12000 });
   });
 
+  it('turns a pre-0184 photo Hour Reading manual, as the migration does', () => {
+    const readingConfig = configFor('contracting_hour_reading');
+    const capturedAt = '2026-10-01T08:00:00.000Z';
+
+    expect(prepareSnapshotRow(readingConfig, { method: 'photo', capturedAt }, 0)).toMatchObject({ method: 'manual' });
+    expect(prepareSnapshotRow(readingConfig, { method: 'telematics', capturedAt }, 0)).toMatchObject({
+      method: 'telematics',
+    });
+  });
+
   it('recovers overrides and clears amounts from a pre-migration Contracting Job row', () => {
     const jobConfig = configFor('contracting_job');
     const legacy = {

@@ -1,0 +1,28 @@
+{
+  "business": "equipment",
+  "releasedAt": "2026-10-30T17:05:03.601Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "See a clear message for invalid record links",
+          "description": "Links with an invalid record identifier now show a page-not-found message instead of an error screen."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Understand connection failures when saving",
+          "description": "Failed saves now show a clear connection message instead of a technical network error."
+        },
+        {
+          "title": "Read longer sheet descriptions",
+          "description": "Sheet descriptions now wrap onto two lines so longer instructions are easier to read."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,76 @@
+{
+  "business": "contracting",
+  "releasedAt": "2026-10-30T17:05:03.601Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Capture and correct job hours directly",
+          "description": "Record arrival and departure meter hours from the Job without entering a reading date or attaching a photo. Correct hours through Edit hours, with a reason required after sign-off and priced Jobs returned for pricing."
+        },
+        {
+          "title": "Review travel and hour warnings without blocking sign-off",
+          "description": "Travel Hours are calculated on arrival and can be corrected manually, while unusual travel or differences from John Deere appear as amber warnings. These replace the reading-dispute workflow; sign-off requires every Machine to have left the site."
+        },
+        {
+          "title": "Confirm when a spot reading was taken",
+          "description": "Choose Today or Earlier, enter the meter hours and confirm the suggested date before saving. Previous readings help estimate the date, and the form explains when the hours cannot fit."
+        },
+        {
+          "title": "Manage each service on its own page",
+          "description": "Open a Service Record from Services or a Machine to update its details and close it. Closing starts with the Machine's Known Hours and suggests the next service hours from its service interval."
+        },
+        {
+          "title": "Assign workshop managers to workshop work",
+          "description": "Choose workshop managers as mechanics on Breakdowns and Service Records, and include them in mechanic filters and performance reports."
+        },
+        {
+          "title": "Review utilisation using Job dates",
+          "description": "Active days now follow the Job's Start and End dates, with Work and Travel hours spread across those dates."
+        },
+        {
+          "title": "See a clear message for invalid record links",
+          "description": "Links with an invalid record identifier now show a page-not-found message instead of an error screen."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Capture and correct job hours from the Job",
+          "description": "Enter arrival and departure meter hours without a reading date or photo, and correct your own hours while the Job is open. John Deere's latest reading appears for comparison, with amber warnings for large differences."
+        },
+        {
+          "title": "Confirm the date of a spot reading",
+          "description": "A guided form asks whether the meter was read Today or Earlier, suggests a date from previous readings and asks you to confirm it before saving."
+        },
+        {
+          "title": "Manage services from your phone",
+          "description": "Use the new Services tab to see Machines due for service, search and filter records, and book a service with an optional mechanic or workshop manager. Open a record to edit its details, close it with the service hours and next service due, or review its history."
+        },
+        {
+          "title": "Change a Breakdown's urgency",
+          "description": "Tap the urgency flag to change Code Green or Code Red when you can edit the report. Escalating to Code Red sends a Now Code Red alert to the relevant team members."
+        },
+        {
+          "title": "Record Measures on site",
+          "description": "Add, edit and remove Measures for each Machine Assignment from the Job screen. Foremen can record them on their own Active Jobs, while management can update them until the Job is Priced."
+        },
+        {
+          "title": "Keep Field Note photos with the note",
+          "description": "Photos taken for Field Notes stay with the note without also being saved to your phone's gallery."
+        },
+        {
+          "title": "Understand connection failures when saving",
+          "description": "Failed saves now show a clear connection message instead of a technical network error."
+        },
+        {
+          "title": "Read longer sheet descriptions",
+          "description": "Sheet descriptions now wrap onto two lines so longer instructions are easier to read."
+        }
+      ]
+    }
+  ]
+}

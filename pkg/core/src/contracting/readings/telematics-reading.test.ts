@@ -8,7 +8,13 @@ import { createTester } from '../../test/create-tester.js';
 import { createCategory } from '../fleet/category-service.js';
 import { createMachine, patchMachine, retireMachine } from '../fleet/machine-service.js';
 import { amendHours, disputedReadings } from '../test/job-fixtures.js';
-import { captureReading, latestReading, listDisputes, listReadingsByMachine } from './reading-service.js';
+import {
+  captureReading,
+  estimateReadAtFor,
+  latestReading,
+  listDisputes,
+  listReadingsByMachine,
+} from './reading-service.js';
 import { recordTelematicsReading, type TelematicsReadingResult } from './telematics-reading.js';
 
 const test = createTester(async ({ db }) => {
@@ -277,6 +283,7 @@ test('proposes the Read At John Deere puts a refused value at, bracketing it by 
     code: 'reading.below_latest',
     refusal: {
       suggestedReadAt: {
+        kind: 'telematics',
         readAt: '2026-09-07T10:30:00.000Z',
         floor: { value: 1000, capturedAt: '2026-09-07T10:00:00.000Z' },
         ceiling: { value: 1010, capturedAt: '2026-09-07T11:00:00.000Z' },
@@ -314,6 +321,33 @@ test('bounds a proposal by when the ceiling’s value was first reported, not wh
       },
     },
   });
+});
+
+test('estimates across methods, and a refusal proposes the same estimate', async ({ context }) => {
+  const { db, actor, machineId } = context;
+  await reportFor(context)(1000, '2026-09-07T10:00:00Z');
+  const spot = (value: number, capturedAt: string) =>
+    captureReading({ db, actor, input: { machineId, role: 'spot', value, capturedAt, disputePrevious: false } });
+  await spot(1001, '2026-09-07T11:00:00Z');
+  const now = at('2026-09-07T12:00:00Z');
+  const estimate = (value: number) => estimateReadAtFor({ db, input: { machineId, role: 'spot', value }, now });
+  expect(await estimate(1001.5)).toEqual({ kind: 'now' });
+  const guess = await estimate(1000.5);
+  expect(guess).toEqual({
+    kind: 'human',
+    readAt: '2026-09-07T10:30:00.000Z',
+    floor: { value: 1000, capturedAt: '2026-09-07T10:00:00.000Z', telematicsProvider: 'john-deere' },
+    ceiling: { value: 1001, capturedAt: '2026-09-07T11:00:00.000Z', telematicsProvider: null },
+    overAWeek: false,
+  });
+  await expect(
+    captureReading({
+      db,
+      actor,
+      input: { machineId, role: 'spot', value: 1000.5, capturedAt: now.toISOString(), disputePrevious: false },
+      now,
+    }),
+  ).rejects.toMatchObject({ code: 'reading.below_latest', refusal: { suggestedReadAt: guess } });
 });
 
 test('disputes a captured reading at the report’s own Read At when it reads higher', async ({ context }) => {

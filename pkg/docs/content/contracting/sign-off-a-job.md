@@ -2,7 +2,7 @@
 
 1. Open the Job from **Looks finished**.
 2. Check the **Arrival** and **Departure** readings for each Machine. Choose **View arrival reading** or **View departure reading**; flagged readings offer **Review arrival** or **Review departure**. The dialog shows the recorded hours and Read At. Choose **Amend reading** to correct the value or Read At with a reason. To change an amended reading, open it and choose **Edit amendment**.
-3. If a Machine is still on site and you have its hours, choose **Stop — capture departure**. If it left earlier, choose **Earlier…** and set when the meter was read. If the value is below the Machine's previous reading, check **The previous reading is wrong** to dispute that reading.
+3. If a Machine is still on site and you have its hours, choose **Stop — capture departure** and [capture the reading](./capture-a-reading): **Today** or **Earlier**, the hours, then check the date and choose **Date looks good**. If the value is below the Machine's previous reading, choose **The previous reading is wrong** to dispute that reading.
 4. Each Machine's **Gap** row shows the hours its meter ran since its previous Job. Choose **Resolve gap** for each Gap Flag once its Machine has left: enter the billable **Travel Hours**, the rest becomes the Unaccounted Interval, then give a reason. To change a split later, choose **Edit gap split** on the Gap row.
 5. For each Machine Assignment that Pricing bills per unit, such as hectares or loads, choose **+** on it, then **Add measure**. Recorded Measures show as a **Measures** row; choose **Edit measures** on it to change or remove one.
 6. Enter **Diesel supplied** and **Add charge line** for transport, parts, or a fixed quote. Amounts are set at Pricing.

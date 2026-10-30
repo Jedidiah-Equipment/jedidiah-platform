@@ -7,16 +7,17 @@ import {
   type ReadingRole,
   ReadingValue,
   type TelematicsProvider,
+  type ReadAtEstimate as WireReadAtEstimate,
 } from '@pkg/schema/contracting';
-import { formatDate } from '../formatting/date.js';
+import { formatDate, toPlantDateOnly } from '../formatting/date.js';
 import { formatHours } from '../formatting/number.js';
 import { assignmentActionRefusal, assignmentStateAllows } from './assignment-actions.js';
-import { FUTURE_READ_AT_REFUSAL, isFutureReadAt, type ReadAtChoice, readAtOf, readAtPending } from './read-at.js';
+import { FUTURE_READ_AT_REFUSAL, isFutureReadAt } from './read-at.js';
 import {
+  hoursBetween,
   isReported,
   outrunsClock,
   outrunsClockSentence,
-  type ReportedReading,
   type TimedValue,
   telematicsDisputeReason,
   telematicsProviderLabels,
@@ -31,9 +32,6 @@ export type CaptureNeighbour = {
   capturedAt: Date;
   telematicsProvider: TelematicsProvider | null;
 };
-
-/** A Telematics Reading as a neighbour. */
-export type ReportNeighbour = ReportedReading<CaptureNeighbour>;
 
 /** A reading's place in time: its two neighbours, and the nearest Telematics Reading on each side. */
 export type Placement = {
@@ -254,46 +252,107 @@ export function placementIn(ledger: readonly CaptureNeighbour[], index: number):
   };
 }
 
-/**
- * The Telematics Readings a value falls between: the last reported at or below it, and the first reported above it,
- * with `createdAt`, when the poll that first saw its value stored it.
- */
-export type ValueBracket = { floor: ReportNeighbour | null; ceiling: (ReportNeighbour & { createdAt: Date }) | null };
+/** A reading as the estimate sees it; `createdAt` is acceptance, used to find when a report's value was first seen. */
+export type EstimateNeighbour = CaptureNeighbour & { createdAt: Date };
 
-export type SuggestedReadAt = {
-  readAt: Date;
-  /** The report the value matched, or the two it fell between, so the form can say so. */
-  floor: ReportNeighbour;
-  ceiling: ReportNeighbour | null;
+/** What core gathers for one typed value: the ledger's latest, the readings bracketing the value, and the stint's floor. */
+export type EstimateFacts = {
+  /** The capture's role, which names what `notBefore` is the Read At of. */
+  role: ReadingRole;
+  latest: CaptureNeighbour | null;
+  /** The last reading (any method) whose value is at or below the typed one, by Read At. */
+  floor: EstimateNeighbour | null;
+  /** The first reading after the floor by Read At. */
+  ceiling: EstimateNeighbour | null;
+  /** The earliest Read At stint order allows: a departure's arrival, an arrival's last departure, null for a spot. */
+  notBefore: Date | null;
+  now: Date;
 };
 
+type EstimatedReadAt = {
+  readAt: Date;
+  floor: EstimateNeighbour;
+  ceiling: EstimateNeighbour | null;
+  overAWeek: boolean;
+};
+
+export type ReadAtEstimate =
+  /** An empty ledger, or nothing to estimate from: the date is now and editable. */
+  | { kind: 'none' }
+  /** At or above the latest reading and reachable since it: the date is now, editable. */
+  | { kind: 'now' }
+  /** No date can be right; the sentence says why and the form asks for the hours again. */
+  | { kind: 'impossible'; sentence: string }
+  /** Between two Telematics Readings: locked. */
+  | ({ kind: 'telematics' } & EstimatedReadAt)
+  /** Between readings of which at least one is human: a guess, editable. */
+  | ({ kind: 'human' } & EstimatedReadAt);
+
+/** A Read At more than a week before now: the form asks the person to check the hours, and never blocks. */
+const isOverAWeekAgo = (readAt: Date, now: Date) => hoursBetween(readAt, now) > 7 * 24;
+
 /** When a Telematics Reading's value was first reported: its Read At moves on while the value stands. */
-const firstReportedAt = ({ capturedAt, createdAt }: { capturedAt: Date; createdAt: Date }) =>
-  new Date(Math.min(capturedAt.getTime(), createdAt.getTime()));
+const firstSeenAt = ({ capturedAt, createdAt, telematicsProvider }: EstimateNeighbour) =>
+  telematicsProvider ? new Date(Math.min(capturedAt.getTime(), createdAt.getTime())) : capturedAt;
+
+/** "The meter cannot have reached 1 258.2 h yet: 25.4 h since 1 232.8 h at 27 Oct 2026, 16:17. Check the hours." */
+export const cannotHaveReachedSentence = (value: number, latest: TimedValue) =>
+  `The meter cannot have reached ${formatHours(value)} yet: ${formatHours(value - latest.value)} since ${formatHours(latest.value)} at ${formatDate(latest.capturedAt, 'medium')}. Check the hours.`;
+
+/** "John Deere puts 2 906.7 h before this stint's arrival at 27 Oct 2026, 15:00. Check the hours." */
+export const beforeStintSentence = (
+  value: number,
+  floor: Pick<CaptureNeighbour, 'telematicsProvider'>,
+  notBefore: Date,
+  role: ReadingRole,
+) =>
+  `${telematicsProviderLabels[floor.telematicsProvider ?? 'john-deere']} puts ${formatHours(value)} before ${role === 'arrival' ? "the Machine's last departure" : "this stint's arrival"} at ${formatDate(notBefore, 'medium')}. Check the hours.`;
 
 /**
- * When John Deere says a value was on the meter: the floor's Read At when the value matches it (a Telematics Reading's
- * Read At is the last time that value was reported), otherwise the moment between the floor and when the ceiling's
- * value was first reported at which hours would have reached it, which inside an hourly poll is near exact. Null when
- * no Telematics Reading brackets the value, or when the moment would break the stint's time order anyway.
+ * When the ledger says a value was on the meter. At or above the latest the answer is now, or nothing when the meter
+ * cannot have got there yet. Below it, the moment between the floor and the ceiling at which hours would have reached
+ * the value; locked when both are reports, a guess otherwise. A moment before the stint's floor is impossible when
+ * John Deere fixes it, and no estimate at all when only a guess does.
  */
-export function suggestReadAt(value: number, bracket: ValueBracket, notBefore: Date | null): SuggestedReadAt | null {
-  const { floor } = bracket;
-  if (!floor) return null;
+export function estimateReadAt(value: number, facts: EstimateFacts): ReadAtEstimate {
+  const { role, latest, floor, ceiling, notBefore, now } = facts;
+  if (!latest) return { kind: 'none' };
+  if (value >= latest.value)
+    return outrunsClock(latest, { value, capturedAt: now })
+      ? { kind: 'impossible', sentence: cannotHaveReachedSentence(value, latest) }
+      : { kind: 'now' };
+  if (!floor) return { kind: 'none' };
   const exact = value === floor.value;
-  const ceiling =
-    !exact && bracket.ceiling ? { ...bracket.ceiling, capturedAt: firstReportedAt(bracket.ceiling) } : null;
-  if (!exact && !ceiling) return null;
-  const readAt = ceiling
+  // A captured floor can sit after the report first saw the ceiling's value; then only the report's Read At bounds it.
+  const ceilingAt = ceiling && (firstSeenAt(ceiling) > floor.capturedAt ? firstSeenAt(ceiling) : ceiling.capturedAt);
+  const upper = !exact && ceiling && ceilingAt ? { ...ceiling, capturedAt: ceilingAt } : null;
+  if (!exact && !upper) return { kind: 'none' };
+  const readAt = upper
     ? new Date(
         floor.capturedAt.getTime() +
-          ((value - floor.value) / (ceiling.value - floor.value)) *
-            (ceiling.capturedAt.getTime() - floor.capturedAt.getTime()),
+          ((value - floor.value) / (upper.value - floor.value)) *
+            (upper.capturedAt.getTime() - floor.capturedAt.getTime()),
       )
     : floor.capturedAt;
-  if (notBefore && readAt.getTime() < notBefore.getTime()) return null;
-  return { readAt, floor, ceiling };
+  const locked = !!floor.telematicsProvider && (exact || !!upper?.telematicsProvider);
+  if (notBefore && readAt.getTime() < notBefore.getTime())
+    return locked
+      ? { kind: 'impossible', sentence: beforeStintSentence(value, floor, notBefore, role) }
+      : { kind: 'none' };
+  return {
+    kind: locked ? 'telematics' : 'human',
+    readAt,
+    floor,
+    ceiling: upper,
+    overAWeek: isOverAWeekAgo(readAt, now),
+  };
 }
+
+/** An estimate that names a moment: the only kinds a capture refusal proposes as its Read At. */
+export const namesReadAt = <T extends { kind: string }>(
+  estimate: T,
+): estimate is Extract<T, { kind: 'telematics' | 'human' }> =>
+  estimate.kind === 'telematics' || estimate.kind === 'human';
 
 /** The earliest Read At the stint order lets a proposal take: a departure's arrival, an arrival's last departure. */
 export const earliestReadAtFor = (
@@ -301,28 +360,32 @@ export const earliestReadAtFor = (
   world: Pick<CaptureWorld, 'stintArrivedAt' | 'lastDepartedAt'>,
 ): Date | null => (role === 'departure' ? world.stintArrivedAt : role === 'arrival' ? world.lastDepartedAt : null);
 
-type Reported = { value: number; capturedAt: Date | string };
-
-/** Under a proposed Read At: the report the value matched, or the two it fell between. */
-export function readAtSuggestionSentence({
-  floor,
-  ceiling,
-}: {
-  floor: Reported & { telematicsProvider: TelematicsProvider };
-  ceiling: Reported | null;
-}): string {
-  const by = telematicsProviderLabels[floor.telematicsProvider];
-  return ceiling
-    ? `${by} puts this reading between ${formatDate(floor.capturedAt, 'medium')} and ${formatDate(ceiling.capturedAt, 'medium')}.`
-    : `${by} read ${formatHours(floor.value)} at ${formatDate(floor.capturedAt, 'medium')}.`;
+/** The estimate line: "Read on 28 Oct 2026, 14:30 per John Deere" / "Read about 28 Oct 2026, 14:30" / "Read now". */
+export function estimateSentence(estimate: ReadAtEstimate | WireReadAtEstimate): string {
+  switch (estimate.kind) {
+    case 'none':
+    case 'now':
+      return 'Read now';
+    case 'impossible':
+      return estimate.sentence;
+    case 'telematics':
+      return `Read on ${formatDate(estimate.readAt, 'medium')} per ${telematicsProviderLabels[estimate.floor.telematicsProvider ?? 'john-deere']}`;
+    case 'human':
+      return `Read about ${formatDate(estimate.readAt, 'medium')}`;
+  }
 }
 
-/** The warning over a value below the latest: a Telematics latest says only Read At can fix it. */
-export function belowLatestSentence(latest: Reported & { telematicsProvider: TelematicsProvider | null }): string {
-  return latest.telematicsProvider
-    ? `Below ${telematicsProviderLabels[latest.telematicsProvider]}'s ${formatHours(latest.value)} at ${formatDate(latest.capturedAt, 'medium')}. Set when the meter was read.`
-    : `This is below the previous reading of ${formatHours(latest.value)}.`;
-}
+/** "This reading looks like it was read on 28 Oct 2026, not today." */
+export const outsideTodaySentence = (readAt: Date) =>
+  `This reading looks like it was read on ${formatDate(readAt, 'short')}, not today.`;
+
+/** "Please check the hours: this reading would be from 21 Oct 2026, 09:10, over a week ago." */
+export const overAWeekSentence = (readAt: Date) =>
+  `Please check the hours: this reading would be from ${formatDate(readAt, 'medium')}, over a week ago.`;
+
+/** Over the dispute fork: "This is below the latest reading of 4 728.4 h at 27 Oct 2026, 17:35." */
+export const belowLatestSentence = (latest: { value: number; capturedAt: Date | string }) =>
+  `This is below the latest reading of ${formatHours(latest.value)} at ${formatDate(latest.capturedAt, 'medium')}.`;
 
 /** A Job refusal in Reading terms: a permission or ownership refusal is forbidden, a status refusal wrong status. */
 export const readingCodeForJobRefusal = (
@@ -348,7 +411,7 @@ export const proposesReadAt = (rule: CaptureRule) =>
 
 /**
  * Whether this capture may land on the Machine's ledger as the server holds it under the lock. A refusal the caller
- * may answer with a proposed Read At is one `proposesReadAt` names; `suggestReadAt` proposes it.
+ * may answer with a proposed Read At is one `proposesReadAt` names; `estimateReadAt` proposes it.
  */
 export function judgeCapture(world: CaptureWorld, capture: CaptureAttempt): CaptureVerdict {
   if (capture.role === 'baseline' && !world.mayBaseline) return refuse('baseline-forbidden');
@@ -405,16 +468,77 @@ export type CaptureFormWorld = {
   now: Date;
 };
 
+/** Step 1's answer: a declaration, not data. It decides only how the date step opens and what it warns of. */
+export type CaptureWhen = 'today' | 'earlier';
+
+/** The date the person vouched for, tied to the hours it was vouched for: either changing re-asks. */
+export type CaptureDateConfirmation = { value: number; readAt: Date | null };
+
 export type CaptureDraft = {
   role: Exclude<ReadingRole, 'baseline'>;
-  /** The value as typed. */
+  /** Step 1: null until the person chooses. */
+  when: CaptureWhen | null;
+  /** Step 2: the value as typed. */
   value: string;
+  /** The server's estimate for `value`; undefined while it is in flight or `value` is not a reading. */
+  estimate: WireReadAtEstimate | undefined;
+  /** Step 3: the date the person picked, if any; null means the estimate (or now) stands. */
+  pickedReadAt: Date | null;
   /** The reading the person said is wrong, or null. */
   disputedReadingId: string | null;
+  /** Step 3's Date looks good, for this value and date. */
+  dateConfirmed: CaptureDateConfirmation | null;
+  /** Under Today, the person tapped the date to change it; Earlier opens it from the start. */
+  dateOpened: boolean;
+  /** Step 4. */
   comment: string;
-  readAt: ReadAtChoice;
   stintOverrides: ReadingCaptureInput['stintOverrides'];
 };
+
+/** The wizard's own answers, which each client holds beside the hours and the details. */
+export type CaptureSteps = Pick<
+  CaptureDraft,
+  'when' | 'pickedReadAt' | 'disputedReadingId' | 'dateConfirmed' | 'dateOpened'
+>;
+
+export const CAPTURE_STEPS_START: CaptureSteps = {
+  when: null,
+  pickedReadAt: null,
+  disputedReadingId: null,
+  dateConfirmed: null,
+  dateOpened: false,
+};
+
+/** A changed Today or Earlier keeps the hours and asks for the date again. */
+export const stepsAfterWhen = (steps: CaptureSteps, when: CaptureWhen): CaptureSteps => ({
+  ...steps,
+  when,
+  dateConfirmed: null,
+});
+
+/** A changed number re-asks for the date: a pick, a dispute and a confirmation all belong to the hours they were for. */
+export const stepsAfterValueEdit = (steps: CaptureSteps): CaptureSteps => ({
+  ...steps,
+  pickedReadAt: null,
+  disputedReadingId: null,
+  dateConfirmed: null,
+  dateOpened: false,
+});
+
+/** Read earlier, from the dispute fork: the estimate's date when the ledger names one, else the picker opens. */
+export const stepsAfterReadEarlier = (steps: CaptureSteps, estimate: WireReadAtEstimate | undefined): CaptureSteps =>
+  estimate && namesReadAt(estimate)
+    ? { ...steps, pickedReadAt: new Date(estimate.readAt) }
+    : { ...steps, dateOpened: true };
+
+/** A refusal that proposes a Read At reopens the date step on it; nothing is saved until the next Save. */
+export const stepsAfterRefusal = (
+  steps: CaptureSteps,
+  proposal: WireReadAtEstimate | null | undefined,
+): CaptureSteps =>
+  proposal && namesReadAt(proposal)
+    ? { ...steps, pickedReadAt: new Date(proposal.readAt), dateConfirmed: null }
+    : steps;
 
 /** The request fields a form posts; the client adds where it lands and when. */
 export type CaptureRequest = Pick<
@@ -422,21 +546,54 @@ export type CaptureRequest = Pick<
   'role' | 'value' | 'comment' | 'disputePrevious' | 'expectedPreviousId' | 'stintOverrides'
 >;
 
+export type CaptureStep = 'when' | 'hours' | 'date' | 'details';
+
+export type CaptureDateWarning = 'outside-today' | 'over-a-week';
+
+/** The fork over a human latest the hours fall below, while it is offered or the dispute is confirmed. */
+export type CaptureDispute = { sentence: string; readingId: string; confirmed: boolean };
+
+/** Where the date step's date came from: a pick only when it differs from the estimate. */
+export type CaptureDateSource = 'now' | 'estimate' | 'picked';
+
 export type CaptureFormVerdict = {
+  step: CaptureStep;
   parsed: number | null;
+  /** The line under the hours input, once there is an estimate: its sentence, or the impossible sentence. */
+  estimateLine: string | null;
+  /** Step 3, once the estimate allows it. */
+  date: {
+    /** The date the form will post: the pick, else the estimate, else now (null). */
+    readAt: Date | null;
+    source: CaptureDateSource;
+    /** The date as the step shows it: "Read on … per John Deere", "Read about …", "Read on …", "Read now". */
+    line: string;
+    locked: boolean;
+    /** The picker shows: never on a locked date, from the start under Earlier, once tapped under Today. */
+    open: boolean;
+    /** Under Today no date shows yet: the fork decides it, unless the picker is open. */
+    awaitsFork: boolean;
+    warnings: CaptureDateWarning[];
+    /** Each warning's sentence, in the same order. */
+    warningLines: string[];
+    /** Below a human latest: the person must pick Read earlier or dispute. */
+    disputeOffered: boolean;
+    dispute: CaptureDispute | null;
+    /** Date looks good may be pressed: no dispute waits and the date is not still to come. */
+    confirmable: boolean;
+  } | null;
   below: boolean;
   /** Below a human latest, which the person may dispute; below a Telematics Reading only Read At can fix it. */
   disputable: boolean;
   disputeConfirmed: boolean;
   futureReadAt: boolean;
-  /**
-   * Save waits on the person before it can post anything: a dispute below a human latest, or a time under Earlier….
-   * Everything else a form can refuse, it says on submit.
-   */
+  /** Save waits on the person: every step before the details. */
   awaitingPerson: boolean;
-  /** Null until the draft would pass every rule the form can judge; then the request the client posts. */
+  /** Null until the details step; then the request the client posts. */
   request: CaptureRequest | null;
 };
+
+export const CAPTURE_VALUE_INVALID = 'Enter a non-negative value with at most one decimal place.';
 
 /** A reading as typed, read as hours; null until it is a valid reading. A comma counts as the decimal point. */
 export function parseCaptureValue(typed: string): number | null {
@@ -449,7 +606,7 @@ export function parseCaptureValue(typed: string): number | null {
  * the dispute is confirmed. A Read At before the latest's is never judged here: only the server knows its neighbours,
  * so the form posts and shows its sentence.
  */
-export function captureValueVerdict(
+function captureValueVerdict(
   latest: CaptureFormWorld['latest'],
   parsed: number | null,
   disputedReadingId: string | null,
@@ -462,28 +619,76 @@ export function captureValueVerdict(
   return { below, disputable, disputeConfirmed: disputable && disputedReadingId === latest?.id };
 }
 
+const sameInstant = (left: Date | null, right: Date | null) => (left?.getTime() ?? null) === (right?.getTime() ?? null);
+
 /**
- * The form's half of the table: what a capture form can already refuse before posting, and the request it posts
- * when it cannot. Client-only affordances (a camera open, options loading) stay with each client.
+ * The capture wizard: which step it is on, what the date step shows, and the request it posts once the person has
+ * vouched for the date. Below a human latest the guess waits for the person to say the meter was read earlier or
+ * that the latest is wrong. The server's `judgeCapture` stays the safety net.
  */
 export function deriveCaptureForm(world: CaptureFormWorld, draft: CaptureDraft): CaptureFormVerdict {
   const parsed = parseCaptureValue(draft.value);
   const latest = world.latest ?? null;
-  const readAt = readAtOf(draft.readAt);
+  const estimate = parsed === null ? undefined : draft.estimate;
+  const estimated = estimate && namesReadAt(estimate) ? new Date(estimate.readAt) : null;
+  const locked = estimate?.kind === 'telematics';
+  const belowHumanLatest = parsed !== null && !!latest && !latest.telematicsProvider && parsed < latest.value;
+  const readAt = locked ? estimated : (draft.pickedReadAt ?? (belowHumanLatest ? null : estimated));
   const { below, disputable, disputeConfirmed } = captureValueVerdict(latest, parsed, draft.disputedReadingId, readAt);
   const futureReadAt = readAt !== null && isFutureReadAt(readAt, world.now);
-  // Below a Telematics Reading the draft posts, so the server answers with the Read At John Deere puts it at.
-  const awaitingPerson = (disputable && !disputeConfirmed) || readAtPending(draft.readAt);
-  const passes = parsed !== null && !awaitingPerson && !futureReadAt;
+  const disputeOffered = below && disputable && !disputeConfirmed;
+  const warnings: CaptureDateWarning[] = [
+    ...(draft.when === 'today' && toPlantDateOnly(readAt ?? world.now) !== toPlantDateOnly(world.now)
+      ? (['outside-today'] as const)
+      : []),
+    ...(readAt && isOverAWeekAgo(readAt, world.now) ? (['over-a-week'] as const) : []),
+  ];
+  const source: CaptureDateSource = readAt === null ? 'now' : sameInstant(readAt, estimated) ? 'estimate' : 'picked';
+  const open = !locked && (draft.when === 'earlier' || draft.dateOpened);
+  const date =
+    draft.when !== null && estimate !== undefined && estimate.kind !== 'impossible'
+      ? {
+          readAt,
+          source,
+          line:
+            readAt === null
+              ? 'Read now'
+              : source === 'estimate'
+                ? estimateSentence(estimate)
+                : `Read on ${formatDate(readAt, 'medium')}`,
+          locked,
+          open,
+          awaitsFork: disputeOffered && !open,
+          warnings,
+          warningLines: warnings.map((warning) =>
+            warning === 'outside-today'
+              ? outsideTodaySentence(readAt ?? world.now)
+              : overAWeekSentence(readAt ?? world.now),
+          ),
+          disputeOffered,
+          dispute:
+            latest && (disputeOffered || disputeConfirmed)
+              ? { sentence: belowLatestSentence(latest), readingId: latest.id, confirmed: disputeConfirmed }
+              : null,
+          confirmable: !disputeOffered && !futureReadAt,
+        }
+      : null;
+  const confirmed =
+    parsed !== null && draft.dateConfirmed?.value === parsed && sameInstant(draft.dateConfirmed.readAt, readAt);
+  const step: CaptureStep =
+    draft.when === null ? 'when' : !date ? 'hours' : date.confirmable && confirmed ? 'details' : 'date';
   return {
+    step,
     parsed,
+    estimateLine: estimate ? estimateSentence(estimate) : null,
+    date,
     below,
     disputable,
     disputeConfirmed,
     futureReadAt,
-    awaitingPerson,
+    awaitingPerson: step !== 'details',
     request:
-      passes && parsed !== null
+      step === 'details' && parsed !== null
         ? {
             role: draft.role,
             value: parsed,
@@ -496,3 +701,7 @@ export function deriveCaptureForm(world: CaptureFormWorld, draft: CaptureDraft):
         : null,
   };
 }
+
+/** Date looks good: the hours and the date the form shows, vouched for together. */
+export const confirmCaptureDate = (verdict: CaptureFormVerdict): CaptureDateConfirmation | null =>
+  verdict.parsed !== null && verdict.date?.confirmable ? { value: verdict.parsed, readAt: verdict.date.readAt } : null;

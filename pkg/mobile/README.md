@@ -47,7 +47,9 @@ a page is missing from that catalog.
 The named event catalog is:
 
 - Auth: `signed in`, `sign in failed` (`reason` category only), `signed out`, `password reset requested`.
-- Contracting: `reading captured` (`role`, `backdated` — Read At more than 5 minutes before the attempt, and `refused` — the refusal's app
+- Contracting: `reading captured` (`role`, `backdated` — Read At more than 5 minutes before the attempt, `when` —
+  `today` or `earlier` as the Foreman answered, `estimateKind` — the kind of date the ledger estimated (`none`, `now`,
+  `telematics` or `human`), `dateEdited` — the Foreman changed that date, and `refused` — the refusal's app
   code, or `null` when saved), once per capture the server saves or refuses; `machine added to job` (`jobId`,
   `machineId`), emitted by the central mutation cache like the Equipment mutations; and `field note created` (`hasPhoto`, `photoCount`, `hasDescription`), `field note closed`,
   `field note reopened`, `field note deleted`, which never carry a note's words or photos. A capture that
@@ -104,7 +106,7 @@ query strings, or any form value.
 4. Sign out and sign in as a second internal user. Confirm the first event after the switch uses only the
    second internal user ID and carries no profile properties.
 5. Capture one reading the server refuses (below the latest). Confirm the `reading captured` event carries
-   `refused`, `backdated`, and `role` alongside the shared properties, and no machine or comment data.
+   `refused`, `backdated`, `role`, `when`, `estimateKind` and `dateEdited` alongside the shared properties, and no machine or comment data.
 6. Publish with `ota:staging`. The script uploads that run's Hermes maps before EAS Update; force another exception
    and confirm its OTA stack resolves to repository source.
 

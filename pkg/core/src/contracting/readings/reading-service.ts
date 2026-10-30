@@ -16,33 +16,33 @@ import {
   captureCrossesServiceDueSoon,
   contradictingTelematics,
   disputeGroupReason,
+  type EstimateFacts,
   earliestReadAtFor,
   effectiveServiceAlertHours,
+  estimateReadAt,
   FUTURE_READ_AT_TOLERANCE_MS,
   formatJobNumber,
   groupDisputes,
-  isReported,
   type JobActor,
   judgeCapture,
   ledgerOrder,
   NEXT_CAPTURE_DISPUTES,
+  namesReadAt,
   PREVIOUS_READING_WRONG,
   proposesReadAt,
-  type ReportNeighbour,
   resolveReadingAmendments,
-  suggestReadAt,
-  type ValueBracket,
 } from '@pkg/domain/contracting';
 import { getNextCursor } from '@pkg/schema';
 import {
   FieldReading,
   type FieldReadingPageInput,
   LatestReading,
-  ReadAtSuggestion,
+  ReadAtEstimate,
+  ReadAtEstimateInput,
   ReadingAmendInput,
   ReadingCaptureInput,
 } from '@pkg/schema/contracting';
-import { and, asc, eq, getTableColumns, gt, inArray, isNotNull, lte, or } from 'drizzle-orm';
+import { and, asc, eq, getTableColumns, gt, inArray, isNotNull, lte, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { recordAuditCreate } from '../../audit/audit-writer.js';
 import { reopenPricingWithin } from '../jobs/pricing-service.js';
@@ -197,17 +197,16 @@ export async function captureReading({
       };
       const judgement = judgeCapture(world, attempt);
       if (!judgement.ok) {
-        // Only a value refusal proposes a Read At, so only one reads the Telematics Readings bracketing the value.
-        const suggestion = proposesReadAt(judgement.rule)
-          ? suggestReadAt(
-              input.value,
-              await valueBracketFor(tx, input.machineId, input.value),
-              earliestReadAtFor(input.role, world),
-            )
+        // Only a value refusal proposes a Read At, so only one reads the readings bracketing the value.
+        const estimate = proposesReadAt(judgement.rule)
+          ? estimateReadAt(input.value, {
+              ...(await estimateFacts(tx, input, earliestReadAtFor(input.role, world))),
+              now,
+            })
           : null;
         throw new ReadingError(judgement.reason, judgement.message, {
           refused: judgement.refused,
-          suggestedReadAt: suggestion ? ReadAtSuggestion.parse(suggestion) : undefined,
+          suggestedReadAt: estimate && namesReadAt(estimate) ? ReadAtEstimate.parse(estimate) : undefined,
         });
       }
       const disputed = judgement.disputes !== null;
@@ -256,39 +255,92 @@ export async function captureReading({
   );
 }
 
+/** When the ledger says `value` was on the Machine's meter, as the capture form asks before it posts. */
+export async function estimateReadAtFor({
+  db,
+  input: raw,
+  now = new Date(),
+}: {
+  db: Db | DatabaseTransaction;
+  input: ReadAtEstimateInput;
+  now?: Date;
+}): Promise<ReadAtEstimate> {
+  const input = ReadAtEstimateInput.parse(raw);
+  return ReadAtEstimate.parse(estimateReadAt(input.value, { ...(await estimateFacts(db, input)), now }));
+}
+
 /**
- * The Telematics Readings `value` falls between. Every report after the floor reads above the value, so the ceiling
- * is the next one.
+ * What the estimate reads for one value: the latest, the last reading at or below the value with the first after it,
+ * and the Read At stint order keeps the value after, unless a capture under the lock already knows it.
  */
-async function valueBracketFor(tx: DatabaseTransaction, machineId: string, value: number): Promise<ValueBracket> {
-  const onMachine = and(eq(contractingHourReadings.machineId, machineId), isTelematics);
-  const [floor] = await tx
-    .select()
-    .from(contractingHourReadings)
-    .where(and(onMachine, lte(contractingHourReadings.value, value)))
-    .orderBy(...newestFirst)
-    .limit(1);
-  if (!floor) return { floor: null, ceiling: null };
+async function estimateFacts(
+  db: Db | DatabaseTransaction,
+  input: Pick<ReadingCaptureInput, 'machineId' | 'role' | 'assignmentId' | 'value'>,
+  knownNotBefore?: Date | null,
+): Promise<Omit<EstimateFacts, 'now'>> {
+  const onMachine = eq(contractingHourReadings.machineId, input.machineId);
+  const [[latest], [floor], [notBefore]] = await Promise.all([
+    db
+      .select()
+      .from(contractingHourReadings)
+      .where(onMachine)
+      .orderBy(...newestFirst)
+      .limit(1),
+    db
+      .select()
+      .from(contractingHourReadings)
+      .where(and(onMachine, lte(contractingHourReadings.value, input.value)))
+      .orderBy(...newestFirst)
+      .limit(1),
+    knownNotBefore !== undefined
+      ? [{ capturedAt: knownNotBefore }]
+      : input.role === 'arrival'
+        ? db
+            .select({ capturedAt: contractingHourReadings.capturedAt })
+            .from(contractingHourReadings)
+            .where(and(onMachine, eq(contractingHourReadings.role, 'departure')))
+            .orderBy(...newestFirst)
+            .limit(1)
+        : input.role === 'departure' && input.assignmentId
+          ? db
+              .select({ capturedAt: contractingHourReadings.capturedAt })
+              .from(contractingMachineAssignments)
+              .innerJoin(
+                contractingHourReadings,
+                eq(contractingHourReadings.id, contractingMachineAssignments.arrivalReadingId),
+              )
+              .where(
+                and(
+                  eq(contractingMachineAssignments.id, input.assignmentId),
+                  eq(contractingMachineAssignments.machineId, input.machineId),
+                ),
+              )
+          : [],
+  ]);
   const [ceiling] =
-    floor.value === value
-      ? []
-      : await tx
+    floor && floor.value !== input.value
+      ? await db
           .select()
           .from(contractingHourReadings)
-          .where(and(onMachine, gt(contractingHourReadings.capturedAt, floor.capturedAt)))
+          .where(
+            and(
+              onMachine,
+              sql`(${contractingHourReadings.capturedAt}, ${contractingHourReadings.sequence}) > (${floor.capturedAt.toISOString()}::timestamptz, ${floor.sequence})`,
+            ),
+          )
           .orderBy(...oldestFirst)
-          .limit(1);
+          .limit(1)
+      : [];
   return {
-    floor: toReport(floor),
-    ceiling: ceiling ? { ...toReport(ceiling), createdAt: ceiling.createdAt } : null,
+    role: input.role,
+    latest: latest ? toNeighbour(latest) : null,
+    floor: floor ? toEstimateNeighbour(floor) : null,
+    ceiling: ceiling ? toEstimateNeighbour(ceiling) : null,
+    notBefore: notBefore?.capturedAt ?? null,
   };
 }
 
-const toReport = (row: Row): ReportNeighbour => {
-  const neighbour = toNeighbour(row);
-  if (!isReported(neighbour)) throw new Error('A value bracket holds Telematics Readings only');
-  return neighbour;
-};
+const toEstimateNeighbour = (row: Row) => ({ ...toNeighbour(row), createdAt: row.createdAt });
 
 const toNeighbour = ({ id, role, value, capturedAt, telematicsProvider }: Row): CaptureNeighbour => ({
   id,

@@ -28,6 +28,14 @@ vi.mock('@/contracting/components/readings/use-latest-reading.js', () => ({
     },
   }),
 }));
+vi.mock('@/contracting/components/readings/use-read-at-estimate.js', () => ({
+  useReadAtEstimate: (_target: unknown, value: number | null) => ({
+    estimate: value === null ? undefined : { kind: 'now' },
+    working: false,
+    error: null,
+    refetch: async () => undefined,
+  }),
+}));
 vi.mock('@/contracting/hooks/use-query-invalidation.js', () => ({
   useQueryInvalidation: () => ({ invalidateJobs: async () => undefined, invalidateReadings: async () => undefined }),
 }));
@@ -61,10 +69,16 @@ async function mount() {
   roots.push(root);
   const onClose = vi.fn();
   await act(async () => root.render(<DepartureCaptureDialog stint={stint} onClose={onClose} />));
-  const save = [...document.querySelectorAll('button')].find((button) => button.textContent?.trim() === 'Save');
-  if (!save) throw new Error('Save action missing');
-  return { save, onClose };
+  return { onClose };
 }
+
+const button = (label: string) =>
+  [...document.querySelectorAll('button')].find((item) => item.textContent?.trim() === label);
+const press = async (label: string) => {
+  const target = button(label);
+  if (!target) throw new Error(`Button missing: ${label}`);
+  await act(async () => target.click());
+};
 
 async function enter(name: string, value: string) {
   const input = document.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[name="${name}"]`);
@@ -76,48 +90,28 @@ async function enter(name: string, value: string) {
   });
 }
 
-async function enterReadAt(date: string, time: string) {
-  const earlier = [...document.querySelectorAll('button')].find((item) => item.textContent === 'Earlier…');
-  if (earlier?.getAttribute('aria-pressed') === 'false') await act(async () => earlier.click());
-  for (const [name, value] of [
-    ['readAt', date],
-    ['readAt-time', time],
-  ] as const) {
-    await enter(name, value);
-    await act(async () => {
-      document.querySelector(`[name="${name}"]`)?.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
-    });
-  }
+async function vouch(value: string) {
+  await press('Today');
+  await enter('value', value);
+  await press('Date looks good');
 }
 
 it('saves a departure without a comment', async () => {
-  const { save, onClose } = await mount();
-  await enter('value', '131');
-  await act(async () => save.click());
+  const { onClose } = await mount();
+  await vouch('131');
+  await press('Save reading');
   expect(capture).toHaveBeenCalledWith(
-    expect.objectContaining({ role: 'departure', value: 131, comment: null }),
+    expect.objectContaining({ role: 'departure', assignmentId: stint.id, value: 131, comment: null }),
     'Unable to capture departure reading.',
   );
   expect(onClose).toHaveBeenCalled();
 });
 
-it('keeps Save enabled for invalid readings and presents field validation on submit', async () => {
-  const { save } = await mount();
-  await enter('value', '');
-  await enter('comment', 'Camera unavailable');
-  expect(save.disabled).toBe(false);
-  await act(async () => save.click());
-  expect(capture).not.toHaveBeenCalled();
-  expect(document.querySelector('[name="value"]')?.getAttribute('aria-invalid')).toBe('true');
-  expect(save.disabled).toBe(false);
-});
-
 it('shows a refused capture inside the dialog and stays open', async () => {
   capture.mockRejectedValueOnce(new Error('This Machine Assignment is not on site.'));
-  const { save, onClose } = await mount();
-  await enter('value', '131');
-  await enter('comment', 'Camera unavailable');
-  await act(async () => save.click());
+  const { onClose } = await mount();
+  await vouch('131');
+  await press('Save reading');
   const alert = [...document.querySelectorAll('[role="alert"]')].find((item) =>
     item.textContent?.includes('This Machine Assignment is not on site.'),
   );
@@ -127,97 +121,27 @@ it('shows a refused capture inside the dialog and stays open', async () => {
   expect(refetchLatest).toHaveBeenCalledOnce();
 });
 
-it('offers the dispute for a departure below the latest reading and posts the handshake', async () => {
-  const { save } = await mount();
-  await enter('value', '126');
-  // The warning waits for the reading to lose focus, as it does when the person moves on to the comment.
-  await act(async () => document.querySelector<HTMLTextAreaElement>('[name="comment"]')?.focus());
-  await enter('comment', 'Camera unavailable');
-  expect(document.body.textContent).toContain(
-    `Record ${formatHours(126)} and dispute the ${formatHours(130)} reading.`,
-  );
-  expect(save.disabled).toBe(true);
-  const dispute = document.querySelector<HTMLElement>('#confirmedDispute');
-  if (!dispute) throw new Error('Dispute checkbox missing');
-  await act(async () => dispute.click());
-  expect(save.disabled).toBe(false);
-  await act(async () => save.click());
-  expect(capture).toHaveBeenCalledWith(
-    expect.objectContaining({
-      role: 'departure',
-      value: 126,
-      comment: 'Camera unavailable',
-      disputePrevious: true,
-      expectedPreviousId: latestId,
-    }),
-    'Unable to capture departure reading.',
-  );
-});
-
-it('posts a departure read before the latest reading, leaving its neighbours to the server', async () => {
-  const { save } = await mount();
-  await enter('value', '126');
-  await enterReadAt('2026-09-16', '16:00');
-  await act(async () => document.querySelector<HTMLTextAreaElement>('[name="comment"]')?.focus());
-  await enter('comment', 'Entered a day late');
-  expect(document.querySelector('#confirmedDispute')).toBeNull();
-  await act(async () => save.click());
-  expect(capture).toHaveBeenCalledWith(
-    expect.objectContaining({
-      role: 'departure',
-      value: 126,
-      disputePrevious: false,
-      capturedAt: new Date(2026, 8, 16, 16, 0).toISOString(),
-    }),
-    'Unable to capture departure reading.',
-  );
-});
-
-it('offers only Read earlier… below a John Deere latest, and lets the server answer the value', async () => {
+it('reopens the date on the Read At a refusal proposes, and posts it once confirmed again', async () => {
   latestProvider.current = 'john-deere';
-  const { save } = await mount();
-  await enter('value', '126');
-  await act(async () => document.querySelector<HTMLTextAreaElement>('[name="comment"]')?.focus());
-  await enter('comment', 'Entered a day late');
-  expect(document.body.textContent).toContain(
-    `Below John Deere's ${formatHours(130)} at ${formatDate(new Date('2026-09-17T12:00:00.000Z'), 'medium')}.`,
-  );
-  expect(document.querySelector('#confirmedDispute')).toBeNull();
-  expect(save.disabled).toBe(false);
-  const readEarlier = [...document.querySelectorAll('button')].find((item) => item.textContent === 'Read earlier…');
-  await act(async () => readEarlier?.click());
-  expect(document.querySelector('[name="readAt"]')).not.toBeNull();
-  // Earlier… with no time picked yet posts nothing.
-  expect(save.disabled).toBe(true);
-});
-
-it('proposes the Read At John Deere puts a refused value at, and posts it on the second Save', async () => {
   // Seconds the picker cannot show: the second Save still posts the proposal's own instant.
   const readAt = new Date(2026, 8, 16, 9, 30, 27);
-  const floor = { value: 125, capturedAt: new Date(2026, 8, 16, 9, 0).toISOString(), telematicsProvider: 'john-deere' };
-  const ceiling = {
-    value: 127,
-    capturedAt: new Date(2026, 8, 16, 10, 0).toISOString(),
-    telematicsProvider: 'john-deere',
-  };
+  const floor = { value: 125, capturedAt: new Date(2026, 8, 16, 9, 0).toISOString(), telematicsProvider: null };
   capture.mockRejectedValueOnce(
-    new RouteRefusedError(`John Deere reported ${formatHours(127)}. Check the time or the value.`, {
+    new RouteRefusedError(`A reading of ${formatHours(127)} is higher. Check the time or the value.`, {
       appCode: 'reading.below_latest',
-      suggestedReadAt: { readAt: readAt.toISOString(), floor, ceiling },
+      suggestedReadAt: { kind: 'human', readAt: readAt.toISOString(), floor, ceiling: null, overAWeek: false },
     }),
   );
-  const { save, onClose } = await mount();
-  await enter('value', '131');
-  await enter('comment', 'Entered a day late');
-  await act(async () => save.click());
+  const { onClose } = await mount();
+  await vouch('126');
+  await press('Save reading');
   expect(onClose).not.toHaveBeenCalled();
-  expect(document.querySelector<HTMLInputElement>('[name="readAt-time"]')?.value).toBe('09:30');
-  expect(document.body.textContent).toContain(
-    `John Deere puts this reading between ${formatDate(new Date(floor.capturedAt), 'medium')} and ${formatDate(new Date(ceiling.capturedAt), 'medium')}.`,
-  );
-  await act(async () => save.click());
+  expect(document.querySelector('[name="comment"]')).toBeNull();
+  expect(button(`Read on ${formatDate(readAt, 'medium')}`)).toBeDefined();
+  await press('Date looks good');
+  await press('Save reading');
   expect(capture).toHaveBeenLastCalledWith(
-    expect.objectContaining({ value: 131, capturedAt: readAt.toISOString() }),
+    expect.objectContaining({ value: 126, capturedAt: readAt.toISOString() }),
     'Unable to capture departure reading.',
   );
 });

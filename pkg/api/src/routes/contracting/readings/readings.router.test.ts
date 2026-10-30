@@ -136,3 +136,37 @@ test('foremen can find active Machines and read field history without fleet mana
     context.createCaller(mockSession('admin')).contractingReadings.latest({ machineId: machine.id }),
   ).rejects.toMatchObject({ code: 'FORBIDDEN' });
 });
+
+test('estimates a Read At for anyone who captures, behind the business wall', async ({ context }) => {
+  const adminSession = mockSession(null);
+  adminSession.user.contractingRole = 'contracting-admin';
+  const admin = context.createCaller(adminSession);
+  const category = await admin.contractingFleet.categories.create({ name: 'Tractors', kind: 'machine' });
+  const machine = await admin.contractingFleet.machines.create({
+    code: 'EST-1',
+    make: 'Deere',
+    model: '6140',
+    categoryId: category.id,
+  });
+  const foremanSession = mockSession(null);
+  foremanSession.user.contractingRole = 'foreman';
+  const input = { machineId: machine.id, role: 'spot', value: 120 } as const;
+  expect(await context.createCaller(foremanSession).contractingReadings.estimateReadAt(input)).toEqual({
+    kind: 'none',
+  });
+  await captureReading({
+    db: context.db,
+    actor: accessForRole('contracting-admin', adminSession.user.id),
+    input: {
+      machineId: machine.id,
+      role: 'spot',
+      value: 100,
+      capturedAt: '2026-09-07T08:00:00Z',
+      disputePrevious: false,
+    },
+  });
+  expect(await admin.contractingReadings.estimateReadAt(input)).toEqual({ kind: 'now' });
+  await expect(
+    context.createCaller(mockSession('admin')).contractingReadings.estimateReadAt(input),
+  ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+});

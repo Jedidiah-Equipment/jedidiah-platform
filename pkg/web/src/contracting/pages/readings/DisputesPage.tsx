@@ -1,6 +1,6 @@
 import { formatHours } from '@pkg/domain';
 import { assignmentAttentionLevelColorClassNames, readingRoleLabels, stintWindowLabel } from '@pkg/domain/contracting';
-import type { ReadingException, ReadingExceptionRow, ReadingStint } from '@pkg/schema/contracting';
+import type { ReadingDispute, ReadingStint } from '@pkg/schema/contracting';
 import { IconAlertTriangle } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
@@ -11,73 +11,51 @@ import { type DataTableColumnDef, useDataTable } from '@/components/data-table/f
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Button } from '@/components/ui/button.js';
 import { CategoryLabel } from '@/contracting/components/CategoryIcon.js';
-import { NoReadableMeterResult, readingEvidence } from '@/contracting/components/ReadingEvidence.js';
 import { useReadingReview } from '@/contracting/hooks/use-reading-review.js';
-import { ReadingDialog } from '@/contracting/pages/jobs/ReadingDialog.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
 import { DisputeResolveDialog } from './DisputeResolveDialog.js';
 
-const rowId = (row: ReadingExceptionRow) => (row.kind === 'dispute' ? row.dispute.id : row.reading.id);
-const rowMachine = (row: ReadingExceptionRow) => (row.kind === 'dispute' ? row.dispute : row.reading);
-const rowReadings = (row: ReadingExceptionRow) => (row.kind === 'dispute' ? row.dispute.readings : [row.reading]);
-
-/** The distinct stints a row's readings bound, in ledger order. */
-function rowStints(row: ReadingExceptionRow): ReadingStint[] {
+/** The distinct stints a Dispute's readings bound, in ledger order. */
+function disputeStints(dispute: ReadingDispute): ReadingStint[] {
   const stints = new Map<string, ReadingStint>();
-  for (const { stint } of rowReadings(row)) if (stint) stints.set(stint.assignmentId, stint);
+  for (const { stint } of dispute.readings) if (stint) stints.set(stint.assignmentId, stint);
   return [...stints.values()];
 }
 
-const rowJobNumbers = (row: ReadingExceptionRow) => [...new Set(rowStints(row).map((stint) => stint.jobNumber))];
+const disputeJobNumbers = (dispute: ReadingDispute) => [
+  ...new Set(disputeStints(dispute).map((stint) => stint.jobNumber)),
+];
 
-function AiFinding({ reading }: { reading: ReadingException }) {
-  const evidence = readingEvidence(reading);
-  return (
-    <div className="space-y-0.5">
-      {evidence.resultConfidencePercent !== null ? (
-        <NoReadableMeterResult confidencePercent={evidence.resultConfidencePercent} />
-      ) : (
-        <div>AI read {evidence.resultLabel}</div>
-      )}
-      {evidence.confidenceLabel ? <div className="text-muted-foreground">{evidence.confidenceLabel}</div> : null}
-      {reading.aiHint ? <div className="text-muted-foreground">{reading.aiHint}</div> : null}
-    </div>
-  );
-}
-
-export function ReadingExceptionsPage() {
+export function DisputesPage() {
   const trpc = useTRPC();
-  // Tracked by id so the dialogs follow the refreshed row, and close once the row resolves.
+  // Tracked by id so the dialog follows the refreshed row, and closes once the Dispute resolves.
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [globalFilter, setGlobalFilter] = useState('');
-  const query = useQuery(trpc.contractingReadings.listExceptions.queryOptions());
+  const query = useQuery(trpc.contractingReadings.listDisputes.queryOptions());
   const { amend } = useReadingReview();
-  const selected = query.data?.find((row) => rowId(row) === selectedId) ?? null;
-  const columns = useMemo<DataTableColumnDef<ReadingExceptionRow>[]>(
+  const selected = query.data?.find((dispute) => dispute.id === selectedId) ?? null;
+  const columns = useMemo<DataTableColumnDef<ReadingDispute>[]>(
     () => [
       {
         id: 'machine',
-        accessorFn: (row) => rowMachine(row).machineCode,
+        accessorFn: (dispute) => dispute.machineCode,
         header: 'Machine',
-        cell: ({ row }) => {
-          const machine = rowMachine(row.original);
-          return (
-            <CategoryLabel
-              icon={machine.categoryIcon}
-              colour={machine.categoryColour}
-              name={machine.machineCode}
-              size={16}
-            />
-          );
-        },
+        cell: ({ row: { original: dispute } }) => (
+          <CategoryLabel
+            icon={dispute.categoryIcon}
+            colour={dispute.categoryColour}
+            name={dispute.machineCode}
+            size={16}
+          />
+        ),
       },
       {
         id: 'jobs',
-        accessorFn: (row) => rowJobNumbers(row).join(' '),
+        accessorFn: (dispute) => disputeJobNumbers(dispute).join(' '),
         header: 'Job(s)',
         cell: ({ row }) => {
-          const codes = rowJobNumbers(row.original);
+          const codes = disputeJobNumbers(row.original);
           return codes.length ? (
             <div className="flex flex-col gap-0.5">
               {codes.map((code) => (
@@ -100,7 +78,7 @@ export function ReadingExceptionsPage() {
         id: 'stintWindow',
         header: 'Stint window',
         cell: ({ row }) => {
-          const stints = rowStints(row.original);
+          const stints = disputeStints(row.original);
           return stints.length ? (
             <div className="flex flex-col gap-0.5 whitespace-nowrap">
               {stints.map((stint) => (
@@ -117,7 +95,7 @@ export function ReadingExceptionsPage() {
         header: 'Hours',
         cell: ({ row }) => (
           <div className="flex flex-wrap items-center gap-x-1.5 whitespace-nowrap">
-            {rowReadings(row.original).map((reading, index) => (
+            {row.original.readings.map((reading, index) => (
               <span className="inline-flex items-center gap-1" key={reading.id}>
                 {index > 0 ? <span aria-hidden>·</span> : null}
                 {readingRoleLabels[reading.role]} {formatHours(reading.value)}
@@ -136,12 +114,7 @@ export function ReadingExceptionsPage() {
       {
         id: 'why',
         header: 'Why',
-        cell: ({ row: { original: row } }) =>
-          row.kind === 'dispute' ? (
-            <div className="max-w-xs">{row.dispute.reason}</div>
-          ) : (
-            <AiFinding reading={row.reading} />
-          ),
+        cell: ({ row }) => <div className="max-w-xs">{row.original.reason}</div>,
       },
       {
         id: 'actions',
@@ -152,7 +125,7 @@ export function ReadingExceptionsPage() {
             size="sm"
             onClick={() => {
               amend.reset();
-              setSelectedId(rowId(row.original));
+              setSelectedId(row.original.id);
             }}
           >
             Resolve
@@ -165,42 +138,32 @@ export function ReadingExceptionsPage() {
   const table = useDataTable({
     data: query.data ?? [],
     columns,
-    getRowId: rowId,
+    getRowId: (dispute) => dispute.id,
     state: { globalFilter },
     onGlobalFilterChange: setGlobalFilter,
   });
   const close = () => setSelectedId(null);
   return (
     <>
-      <PageLayout
-        title="Reading exceptions"
-        description="Resolve Disputes by correcting hours or Read At, and review photo verification warnings."
-      >
-        <ErrorMessage error={query.error} fallbackMessage="Unable to load Reading Exceptions." />
+      <PageLayout title="Disputes" description="Resolve Disputes by correcting hours or Read At.">
+        <ErrorMessage error={query.error} fallbackMessage="Unable to load Disputes." />
         <DataTable
           table={table}
           paginationMode="incremental"
           total={query.data?.length ?? 0}
           isLoading={query.isPending}
-          emptyMessage="No Reading Exceptions."
+          emptyMessage="No Disputes."
           globalFilterPlaceholder="Search machines and Jobs..."
         />
       </PageLayout>
       <DisputeResolveDialog
-        dispute={selected?.kind === 'dispute' ? selected.dispute : null}
+        dispute={selected}
         onOpenChange={(open) => {
           if (!open) close();
         }}
         onResolve={(input) => amend.mutateAsync(input)}
         onResolved={close}
         error={amend.error}
-      />
-      <ReadingDialog
-        selected={selected?.kind === 'ai-flagged' ? { reading: selected.reading, machine: selected.reading } : null}
-        onClose={close}
-        // The route admits only those who may amend readings.
-        amendReadings
-        amendDescription="Check the photo. Confirm or correct the value and Read At, and give a reason. This acknowledges the current evidence warning."
       />
     </>
   );

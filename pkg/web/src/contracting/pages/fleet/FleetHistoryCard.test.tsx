@@ -22,7 +22,7 @@ const telematicsReading: FleetHistoryRow = {
   at: DateIso.parse('2026-10-26T12:00:00.000Z'),
   title: 'Spot · 1 001.0 h',
   detail: null,
-  evidence: 'John Deere',
+  source: 'John Deere',
   readingRole: 'spot',
   breakdown: null,
   opens: null,

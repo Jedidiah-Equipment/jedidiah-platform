@@ -17,6 +17,7 @@ import {
   MachinePatchInput,
   MachineYear,
   NEXT_SERVICE_DUE_BELOW_READING_MESSAGE,
+  OpenServiceValues,
   ServiceDueSoonThresholdHours,
   type ServiceDueStatus,
   ServiceIntervalHours,
@@ -119,22 +120,11 @@ export function closeServiceInput(id: string, values: CloseServiceValues): Servi
     primaryMechanicUserId: values.primaryMechanicUserId || null,
   });
 }
-export const OpenServiceValues = z.object({
-  startDate: requiredSelection(DateOnlyIso, 'Choose the start date'),
-  primaryMechanicUserId: emptyStringOr(AuthId),
-  notes: z.string(),
-});
-export type OpenServiceValues = z.input<typeof OpenServiceValues>;
 /** The Book a service dialog: a service in the workshop, on the Machine it was opened for or the one picked. */
 export const BookServiceValues = OpenServiceValues.extend({
   machineId: requiredSelection(UUID, 'Choose the Machine'),
 });
 export type BookServiceValues = z.input<typeof BookServiceValues>;
-export const openServiceFields = (values: OpenServiceValues) => ({
-  startDate: DateOnlyIso.parse(values.startDate),
-  primaryMechanicUserId: values.primaryMechanicUserId || null,
-  notes: values.notes,
-});
 
 export const SERVICE_COLUMN_ID = 'nextServiceDue';
 /** The Machines list's Service filter: Needs attention is due soon or overdue, the rest name one status. */

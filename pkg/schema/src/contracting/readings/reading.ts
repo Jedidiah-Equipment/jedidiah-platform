@@ -5,13 +5,7 @@ import { CursorQueryInput, createCursorQueryResult } from '../../common/paginati
 import { UUID } from '../../common/uuid.js';
 import { CategoryColour, CategoryIconKey } from '../fleet/fleet.js';
 import { RefusedJobAction } from '../jobs/job-actions.js';
-import {
-  readingExceptionTypes,
-  readingMethods,
-  readingRoles,
-  readingVerifications,
-  telematicsProviders,
-} from './reading-enums.js';
+import { readingMethods, readingRoles, telematicsProviders } from './reading-enums.js';
 import { ReadingValue } from './reading-value.js';
 
 export { ReadingValue };
@@ -49,48 +43,6 @@ export const ReadingCaptureInput = z
       });
   });
 export type ReadingCaptureInput = z.infer<typeof ReadingCaptureInput>;
-type ReadingCaptureFields = z.input<typeof ReadingCaptureInput>;
-export const readingCaptureFieldNames = ReadingCaptureInput.keyof().options;
-
-/**
- * The multipart wire form of {@link ReadingCaptureInput}: every field travels as a string beside the
- * photo part. `readingCaptureMultipartFields` encodes and `ReadingCaptureMultipart` decodes, so the
- * mobile uploader and the API route share one definition of blank-means-null and how booleans and
- * numbers are spelled.
- */
-export function readingCaptureMultipartFields(input: ReadingCaptureFields): [string, string][] {
-  return readingCaptureFieldNames.flatMap((field) => {
-    const value = input[field];
-    return value === undefined
-      ? []
-      : [[field, value === null ? '' : typeof value === 'object' ? JSON.stringify(value) : String(value)]];
-  });
-}
-const blankAsNull = (value: unknown) => (value === '' ? null : value);
-export const ReadingCaptureMultipart = z.preprocess((fields) => {
-  if (typeof fields !== 'object' || fields === null) return fields;
-  const record = { ...(fields as Record<string, unknown>) };
-  if (typeof record.value === 'string' && record.value.trim() !== '') record.value = Number(record.value);
-  if (record.disputePrevious === 'true') record.disputePrevious = true;
-  if (record.disputePrevious === 'false') record.disputePrevious = false;
-  record.expectedPreviousId = blankAsNull(record.expectedPreviousId);
-  record.assignmentId = blankAsNull(record.assignmentId);
-  const overrides = blankAsNull(record.stintOverrides);
-  if (typeof overrides === 'string' && overrides.trim() !== '') {
-    try {
-      record.stintOverrides = JSON.parse(overrides);
-    } catch {
-      record.stintOverrides = overrides;
-    }
-  } else record.stintOverrides = overrides;
-  record.comment = blankAsNull(record.comment);
-  if (record.expectedPreviousId === undefined) delete record.expectedPreviousId;
-  if (record.assignmentId === undefined) delete record.assignmentId;
-  if (record.stintOverrides === undefined) delete record.stintOverrides;
-  if (record.comment === undefined) delete record.comment;
-  return record;
-}, ReadingCaptureInput);
-
 export const ReadingAmendment = z
   .object({ id: UUID, value: ReadingValue, capturedAt: z.iso.datetime({ offset: true }) })
   .strict();
@@ -102,10 +54,7 @@ export const ReadingAmendInput = z
   .object({ amendments: ReadingAmendment.array().min(1).max(READING_AMENDMENTS_MAX), reason: ReadingReason })
   .strict();
 export type ReadingAmendInput = z.infer<typeof ReadingAmendInput>;
-export const ReadingIdInput = z.object({ id: UUID });
 export const ReadingMachineInput = z.object({ machineId: UUID });
-export const MeterExtraction = z.object({ value: ReadingValue.nullable(), confidence: z.number().min(0).max(1) });
-export type MeterExtraction = z.infer<typeof MeterExtraction>;
 
 export const HourReading = z.object({
   id: UUID,
@@ -121,17 +70,9 @@ export const HourReading = z.object({
   method: z.enum(readingMethods),
   telematicsProvider: z.enum(telematicsProviders).nullable(),
   comment: z.string().nullable(),
-  photo: z
-    .object({ byteSize: z.number(), contentType: z.string(), storageKey: z.string(), updatedAt: z.string() })
-    .nullable(),
-  aiHint: z.string().nullable(),
-  aiValue: ReadingValue.nullable(),
-  aiConfidence: z.number().min(0).max(1).nullable(),
-  aiVerification: z.enum(readingVerifications),
   disputed: z.boolean(),
   disputeReason: z.string().nullable(),
   disputedPreviousId: UUID.nullable(),
-  evidenceReviewedAt: DateIso.nullable(),
   amendedBy: AuthId.nullable(),
   amendedAt: DateIso.nullable(),
   amendmentReason: z.string().nullable(),
@@ -147,20 +88,11 @@ export const ReadingStint = z.object({
 });
 export type ReadingStint = z.infer<typeof ReadingStint>;
 export const DisputeReading = HourReading.extend({
-  photoBacked: z.boolean(),
   capturedByName: z.string().nullable(),
   /** Null for a spot reading. */
   stint: ReadingStint.nullable(),
 });
 export type DisputeReading = z.infer<typeof DisputeReading>;
-export const ReadingException = DisputeReading.extend({
-  exceptionTypes: z.array(z.enum(readingExceptionTypes)).min(1),
-  amendedByName: z.string().nullable(),
-  machineCode: z.string(),
-  categoryIcon: CategoryIconKey,
-  categoryColour: CategoryColour,
-});
-export type ReadingException = z.infer<typeof ReadingException>;
 /** A Dispute: a connected group of Disputed readings on one Machine, resolved at once. */
 export const ReadingDispute = z.object({
   /** The first reading's id: stable while the group stands. */
@@ -177,12 +109,6 @@ export const ReadingDispute = z.object({
   reason: z.string(),
 });
 export type ReadingDispute = z.infer<typeof ReadingDispute>;
-/** One row of Reading Exceptions: a Dispute, or one AI-flagged reading that is not Disputed. */
-export const ReadingExceptionRow = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('dispute'), dispute: ReadingDispute }),
-  z.object({ kind: z.literal('ai-flagged'), reading: ReadingException }),
-]);
-export type ReadingExceptionRow = z.infer<typeof ReadingExceptionRow>;
 
 /** The Machine's latest reading, the one a capture is judged against. */
 export const LatestReading = HourReading.pick({
@@ -238,7 +164,7 @@ export const FieldReading = HourReading.pick({
   capturedAt: true,
   disputed: true,
   telematicsProvider: true,
-}).extend({ photoBacked: z.boolean() });
+}).extend({ capturedByName: z.string().nullable() });
 export type FieldReading = z.infer<typeof FieldReading>;
 /** One page of a Machine's Hour Readings, newest first, for the phone's Readings tab. */
 export const FieldReadingPageInput = CursorQueryInput.extend({ machineId: UUID });

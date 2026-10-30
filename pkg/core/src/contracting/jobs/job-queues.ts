@@ -33,20 +33,18 @@ export async function summarizeJobQueues({ db, actor }: { db: Db; actor: JobActo
       looksFinished: jobSql.looksFinished,
       count: sql<number>`count(*)::integer`,
       openGapFlags: sql<number>`sum(${jobSql.openGapFlags})::integer`,
-      critical: sql<number>`sum(${jobSql.readingsNeedingALookAt('critical')})::integer`,
-      warning: sql<number>`sum(${jobSql.readingsNeedingALookAt('warning')})::integer`,
+      critical: sql<number>`sum(${jobSql.disputedReadings})::integer`,
     })
     .from(contractingJobs)
     .where(readableBy(reader))
     .groupBy(contractingJobs.status, jobSql.looksFinished);
-  const totals = new Map(jobQueues.map((queue) => [queue, { count: 0, critical: 0, warning: 0 }]));
-  for (const { openGapFlags, critical, warning, count, ...row } of rows) {
+  const totals = new Map(jobQueues.map((queue) => [queue, { count: 0, critical: 0 }]));
+  for (const { openGapFlags, critical, count, ...row } of rows) {
     const total = totals.get(jobQueueOf(row));
     if (!total) continue;
-    const attention = jobAssignmentAttentionCounts(openGapFlags, { critical, warning });
+    const attention = jobAssignmentAttentionCounts(openGapFlags, { critical });
     total.count += count;
     total.critical += attention.critical;
-    total.warning += attention.warning;
   }
   const queues = [...totals];
   return JobQueueSummary.parse({
@@ -123,8 +121,7 @@ export async function listJobs({
         openGapFlags: jobSql.openGapFlags,
         total: sql<number>`count(*) over ()`.mapWith(Number),
         readings: {
-          critical: jobSql.readingsNeedingALookAt('critical'),
-          warning: jobSql.readingsNeedingALookAt('warning'),
+          critical: jobSql.disputedReadings,
         },
       })
       .from(contractingJobs)

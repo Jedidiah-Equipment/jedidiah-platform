@@ -11,18 +11,18 @@ import { DASHBOARD_REFETCH_INTERVAL_MS } from '@/contracting/lib/dashboard-refre
 import { useAccess, useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 
-export const ReadingExceptionsNavIndicator: React.FC = () => {
+export const DisputesNavIndicator: React.FC = () => {
   const trpc = useTRPC();
   const readingAccess = useCan('contracting_reading:update');
-  const exceptionsQuery = useQuery({
-    ...trpc.contractingReadings.listExceptions.queryOptions(),
+  const disputesQuery = useQuery({
+    ...trpc.contractingReadings.listDisputes.queryOptions(),
     enabled: readingAccess.can,
     refetchInterval: DASHBOARD_REFETCH_INTERVAL_MS,
   });
-  const count = exceptionsQuery.data?.length ?? 0;
+  const count = disputesQuery.data?.length ?? 0;
 
   return count > 0 ? (
-    <NavWarningDot label={`${countPhrase(count, 'reading exception needs', 'reading exceptions need')} review`} />
+    <NavWarningDot label={`${countPhrase(count, 'Dispute needs', 'Disputes need')} resolving`} />
   ) : null;
 };
 

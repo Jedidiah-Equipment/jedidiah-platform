@@ -7,7 +7,6 @@ import {
   isBackdated,
   READ_AT_NOW,
   type ReadAtChoice,
-  readAtAfterPhoto,
   readAtAfterRefusal,
   readAtAfterValueEdit,
   readAtOf,
@@ -28,7 +27,6 @@ import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/ui/text-input';
 import { useVoiceSession } from '@/components/voice/use-voice-session';
 import { VoiceTextArea } from '@/components/voice/VoiceTextArea';
-import { type MeterPhoto, MeterPhotoField } from '@/contracting/components/MeterPhotoField';
 import { ReadAtField, type ReadAtFieldHandle } from '@/contracting/components/ReadAtField';
 import { type PlannedStint, StintOverrideCard, useStintOverrides } from '@/contracting/components/StintOverrideCard';
 import { recordReadingCaptured } from '@/contracting/observability';
@@ -110,9 +108,6 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
   const queryClient = useQueryClient();
   const trpc = useTRPC();
   const canCapture = useSessionPermission('contracting_reading:capture');
-  const management = useSessionPermission('contracting_job:work-any');
-  const [cameraOpen, setCameraOpen] = useState(false);
-  const [photo, setPhoto] = useState<MeterPhoto | null>(null);
   const [readAt, setReadAt] = useState<ReadAtChoice>(READ_AT_NOW);
   const proposal = readAtProposal(readAt);
   const scroll = useRef<ScrollViewInstance>(null);
@@ -124,22 +119,21 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
   const voice = useVoiceSession({ business: 'contracting', purpose: 'capture comment' });
   const [disputedReadingId, setDisputedReadingId] = useState<string | null>(null);
   const overrides = useStintOverrides(target.kind === 'stint' ? target.planned : null);
-  const action = useBusyAction();
-  const { busy, error, run } = action;
+  const { busy, error, run } = useBusyAction();
   const attempt = useRef<AttemptIdentity | null>(null);
   // Undefined while it loads: the request then names no latest, and the server judges against its own.
   const latest = latestQuery.canRead ? latestQuery.data : undefined;
   const stintOverrides = target.kind === 'stint' && target.role === 'arrival' ? overrides.value : undefined;
   const form = deriveCaptureForm(
-    { latest, management, hasPhoto: photo !== null, now: new Date() },
+    { latest, now: new Date() },
     { role, value, disputedReadingId, comment, readAt, stintOverrides },
   );
-  const { parsed, below, disputable, disputeConfirmed, commentRequired, futureReadAt } = form;
+  const { parsed, below, disputable, disputeConfirmed, futureReadAt } = form;
   const readEarlier = () => {
     scroll.current?.scrollTo({ y: 0 });
     readAtField.current?.open();
   };
-  const canSave = form.request !== null && canCapture && !!machine && !cameraOpen;
+  const canSave = form.request !== null && canCapture && !!machine;
   function save() {
     const request = form.request;
     if (!canSave || voice.busy || !request) return;
@@ -150,7 +144,6 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
         role,
         assignmentId,
         value: request.value,
-        photo: photo?.uri ?? null,
         comment,
         disputedReadingId,
         stintOverrides: stintOverrides ?? null,
@@ -161,16 +154,17 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
     const capturedAt = capturedAtFor(readAtOf(readAt), attemptedAt);
     const captured = {
       role,
-      hasPhoto: photo !== null,
-      photoSource: photo?.source ?? null,
       backdated: isBackdated(readAtOf(readAt), attemptedAt),
     };
     return run(async () => {
       try {
-        await captureReading(
-          { localId, machineId, ...(assignmentId ? { assignmentId } : {}), ...request, capturedAt },
-          photo?.uri ?? null,
-        );
+        await captureReading({
+          localId,
+          machineId,
+          ...(assignmentId ? { assignmentId } : {}),
+          ...request,
+          capturedAt,
+        });
       } catch (error) {
         // The busy action shows a refusal's sentence and reports anything else; the ledger's own refusals also refetch.
         if (error instanceof UploadRefusedError) {
@@ -252,16 +246,6 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
           onChange={setReadAt}
         />
       </FieldShell>
-      <MeterPhotoField
-        photo={photo}
-        cameraOpen={cameraOpen}
-        onCameraOpenChange={setCameraOpen}
-        action={action}
-        onChange={(next, takenAt) => {
-          setPhoto(next);
-          setReadAt((current) => readAtAfterPhoto(current, takenAt));
-        }}
-      />
       <FieldShell
         label={
           <View className="flex-row items-baseline justify-between gap-3">
@@ -298,12 +282,10 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
           }}
         />
       </FieldShell>
-      <Divider label={photo === null ? 'photo or' : null} />
-      <FieldShell label={commentLabel(role, commentRequired)}>
-        {/* Sized by its rows, so swapping the placeholder when a photo is attached never moves the form. */}
+      <FieldShell label={COMMENT_LABEL}>
         <VoiceTextArea
-          accessibilityLabel={commentLabel(role, commentRequired)}
-          placeholder={photo === null ? 'No photo? Say why…' : 'Anything management should know about this reading'}
+          accessibilityLabel={COMMENT_LABEL}
+          placeholder="Anything management should know about this reading"
           editable={!busy}
           rows={COMMENT_ROWS}
           value={comment}
@@ -319,28 +301,6 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
   );
 }
 
-/** Web's wording: a departure asks for a reason, every other reading for a comment. */
-function commentLabel(role: Exclude<ReadingRole, 'baseline'>, required: boolean) {
-  if (role === 'departure') return required ? 'Reason' : 'Reason (optional)';
-  return required ? 'Comment' : 'Comment (optional)';
-}
+const COMMENT_LABEL = 'Comment (optional)';
 
 const COMMENT_ROWS = 3;
-
-/** Points, not rem: the rule keeps one height with or without its word, so nothing below it moves. */
-const DIVIDER_HEIGHT = 20;
-
-/** A rule across the form, with a short word in its middle when there is one. */
-function Divider({ label }: { label: string | null }) {
-  return (
-    <View className="flex-row items-center gap-3" style={{ height: DIVIDER_HEIGHT }}>
-      <View className="h-px flex-1 bg-border" />
-      {label ? (
-        <>
-          <Text className="text-xs text-muted-foreground">{label}</Text>
-          <View className="h-px flex-1 bg-border" />
-        </>
-      ) : null}
-    </View>
-  );
-}

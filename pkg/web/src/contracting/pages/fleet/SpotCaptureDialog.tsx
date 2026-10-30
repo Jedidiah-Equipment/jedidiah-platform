@@ -18,7 +18,7 @@ const SpotValues = z.object({
 type SpotValues = z.infer<typeof SpotValues>;
 
 /**
- * A spot Hour Reading on one Machine, captured in the office from a photo of its meter: no Assignment, no billing
+ * A spot Hour Reading on one Machine, captured in the office: no Assignment, no billing
  * effect, only the Machine's hours kept current. Read At says when the meter was read. Mounted while
  * the reading is being captured, so closing unmounts it.
  */
@@ -65,7 +65,7 @@ export function SpotCaptureDialog({
             fields={{ value: 'value', confirmedDispute: 'confirmedDispute' }}
             capture={capture}
           />
-          <ReadingCaptureDetails id={`spot-photo-${machine.id}`} {...capture.details}>
+          <ReadingCaptureDetails {...capture.details}>
             <form.AppField name="comment">
               {(field) => <field.TextareaField label="Comment (optional)" />}
             </form.AppField>

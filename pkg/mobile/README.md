@@ -47,8 +47,7 @@ a page is missing from that catalog.
 The named event catalog is:
 
 - Auth: `signed in`, `sign in failed` (`reason` category only), `signed out`, `password reset requested`.
-- Contracting: `reading captured` (`role`, `hasPhoto`, `photoSource` — `camera`, `gallery`, or `null` without
-  a photo, `backdated` — Read At more than 5 minutes before the attempt, and `refused` — the refusal's app
+- Contracting: `reading captured` (`role`, `backdated` — Read At more than 5 minutes before the attempt, and `refused` — the refusal's app
   code, or `null` when saved), once per capture the server saves or refuses; `machine added to job` (`jobId`,
   `machineId`), emitted by the central mutation cache like the Equipment mutations; and `field note created` (`hasPhoto`, `photoCount`, `hasDescription`), `field note closed`,
   `field note reopened`, `field note deleted`, which never carry a note's words or photos. A capture that
@@ -63,7 +62,8 @@ The named event catalog is:
   `hasJob`) once per Breakdown the server accepts; and from the mutation cache `breakdown updated` (`id`,
   `urgency` when changed), `mechanic assigned` (`id`, `mechanicUserId`), `breakdown started` (`id`), `breakdown
   solved` (`id`), `breakdown photo removed` (`id`, `photoId`) and `breakdown note added` (`breakdownId`). None
-  carries a description, a note, a close-out note or the coordinates.
+  carries a description, a note, a close-out note or the coordinates. `service booked` (`machineId`,
+  `primaryMechanicUserId` when chosen) comes from the mutation cache too, never with the service's notes.
 - Equipment mutations: `quote created`, `quote updated`, `quote cancelled`, `quote document generated`,
   `department timing started`, `department timing updated`, `department timing completed`, `part checked out`,
   `part returned to store`, `part received`, `part returned to supplier`, `stock count posted`,
@@ -103,9 +103,8 @@ query strings, or any form value.
    lifecycle breadcrumbs and resolves to repository source. Confirm Reload recovers the boundary.
 4. Sign out and sign in as a second internal user. Confirm the first event after the switch uses only the
    second internal user ID and carries no profile properties.
-5. Capture one reading the server refuses (below the latest) with and without a photo. Confirm the
-   `reading captured` event carries `refused`, `hasPhoto`, and `role` alongside the shared properties, and no
-   machine, photo-path, or comment data.
+5. Capture one reading the server refuses (below the latest). Confirm the `reading captured` event carries
+   `refused`, `backdated`, and `role` alongside the shared properties, and no machine or comment data.
 6. Publish with `ota:staging`. The script uploads that run's Hermes maps before EAS Update; force another exception
    and confirm its OTA stack resolves to repository source.
 

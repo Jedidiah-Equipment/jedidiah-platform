@@ -7,13 +7,13 @@ export const JobCardVariant = z.enum(['internal', 'customer']);
 export type JobCardVariant = z.infer<typeof JobCardVariant>;
 export const JobCardQuery = z.object({ variant: JobCardVariant.default('customer') }).strict();
 
-export const jobCardReadingMarkers = ['verified', 'photo', 'no-photo', 'disputed', 'amended'] as const;
+export const jobCardReadingMarkers = ['disputed', 'amended'] as const;
 export type JobCardReadingMarker = (typeof jobCardReadingMarkers)[number];
 
 const JobCardReading = z.object({
   value: ReadingValue,
   capturedAt: DateIso,
-  /** Internal copy only; null on the customer copy. */
+  /** Internal copy only: Disputed or amended, else null. */
   marker: z.enum(jobCardReadingMarkers).nullable(),
   /** Internal copy only. */
   comment: z.string().nullable(),

@@ -44,7 +44,7 @@ function mapJobReading(row: LoadedReading | null, capturedByName: string | null,
         ...readingToWire(row),
         capturedByName,
         amendedByName,
-        attention: readingAttentionKinds({ ...row, photoBacked: row.photo !== null }),
+        attention: readingAttentionKinds(row),
       }
     : null;
 }

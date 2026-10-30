@@ -26,6 +26,14 @@ describe('breakdownPushMessage', () => {
 
     expect(message.body).toBe('Flat tyre. Reported by Sipho.');
   });
+
+  test('a Breakdown changed to Code Red reads "Now Code Red" with the same body', () => {
+    expect(breakdownPushMessage(breakdown, { escalated: true })).toMatchObject({
+      title: 'Now Code Red · JD6140M-2',
+      body: 'Hydraulic leak at Scott Farm, CJOB-00042. Reported by Sipho.',
+      channelId: 'workshop',
+    });
+  });
 });
 
 describe('serviceDueSoonPushMessage', () => {

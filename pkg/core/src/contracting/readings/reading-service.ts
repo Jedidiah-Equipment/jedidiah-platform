@@ -1,5 +1,4 @@
-import { randomUUID } from 'node:crypto';
-import { type DatabaseTransaction, type Db, type StoredFile, user, withPagination } from '@pkg/db';
+import { type DatabaseTransaction, type Db, user, withPagination } from '@pkg/db';
 import {
   contractingCategories,
   contractingHourReadings,
@@ -7,7 +6,7 @@ import {
   contractingMachineAssignments,
   contractingMachines,
 } from '@pkg/db/contracting';
-import { groupBy, hasPermission, validateFile } from '@pkg/domain';
+import { groupBy, hasPermission } from '@pkg/domain';
 import {
   amendmentJobs,
   assignmentState,
@@ -24,21 +23,17 @@ import {
   groupDisputes,
   isReported,
   type JobActor,
-  jobReadStatuses,
   judgeCapture,
   ledgerOrder,
   NEXT_CAPTURE_DISPUTES,
   PREVIOUS_READING_WRONG,
   proposesReadAt,
-  READING_PHOTO_POLICY,
   type ReportNeighbour,
-  readingExceptionTypes,
-  readingVerification,
   resolveReadingAmendments,
   suggestReadAt,
   type ValueBracket,
 } from '@pkg/domain/contracting';
-import { type AuthId, getNextCursor } from '@pkg/schema';
+import { getNextCursor } from '@pkg/schema';
 import {
   FieldReading,
   type FieldReadingPageInput,
@@ -50,12 +45,10 @@ import {
 import { and, asc, eq, getTableColumns, gt, inArray, isNotNull, lte, or } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { recordAuditCreate } from '../../audit/audit-writer.js';
-import { filePolicyViolation } from '../../files/file-errors.js';
-import { readStoredObject, type StorageAdapter } from '../../storage/storage-adapter.js';
 import { reopenPricingWithin } from '../jobs/pricing-service.js';
 import { getContractingSettings } from '../settings/settings-service.js';
 import { attachReadingToStint, resolveCaptureStint } from './capture-stint.js';
-import { type ReadingRow as Row, readingDescriptor, updateAudited, withHint } from './reading-audit.js';
+import { type ReadingRow as Row, readingDescriptor, updateAudited } from './reading-audit.js';
 import {
   amendmentRefused,
   assertAmendReadings,
@@ -63,64 +56,35 @@ import {
   ReadingError,
   withCaptureConstraints,
 } from './reading-errors.js';
-import { type MeterMeasurement, measureMeterPhoto, type ReadMeterPhoto } from './reading-evidence.js';
-import { newestFirst, oldestFirst, readingNeedsALookSql } from './reading-sql.js';
+import { newestFirst, oldestFirst } from './reading-sql.js';
 import { readingToWire } from './reading-wire.js';
 
 const isTelematics = eq(contractingHourReadings.method, 'telematics');
 
 /** A Machine's ledger, newest Read At first. */
 export async function listReadingsByMachine({ db, machineId }: { db: Db; machineId: string }) {
-  const rows = await db
+  return db
     .select()
     .from(contractingHourReadings)
     .where(eq(contractingHourReadings.machineId, machineId))
     .orderBy(...newestFirst);
-  return rows.map((row) => withHint(row));
-}
-
-/** A photo capture: the bytes and where they are kept. The AI checks them after the capture lands. */
-export type ReadingEvidence = { storage: StorageAdapter; photoBytes: Uint8Array };
-type AiVerdict = { aiValue: number | null; aiConfidence: number | null; aiVerification: Row['aiVerification'] };
-const manualVerdict: AiVerdict = { aiValue: null, aiConfidence: null, aiVerification: 'not-applicable' };
-/** A photo capture lands pending; `verifyCapturedReading` replaces it with the AI's verdict. */
-const awaitingVerdict: AiVerdict = { aiValue: null, aiConfidence: null, aiVerification: 'pending' };
-
-async function storeMeterPhoto({ storage, photoBytes }: ReadingEvidence): Promise<StoredFile> {
-  const validation = validateFile(photoBytes, READING_PHOTO_POLICY);
-  if (!validation.ok) throw filePolicyViolation(validation);
-  const photo: StoredFile = {
-    byteSize: validation.byteSize,
-    contentType: validation.contentType,
-    storageKey: `contracting/readings/${randomUUID()}`,
-    updatedAt: new Date().toISOString(),
-  };
-  await storage.put({
-    key: photo.storageKey,
-    body: photoBytes,
-    byteSize: photo.byteSize,
-    contentType: photo.contentType,
-  });
-  return photo;
 }
 
 /**
  * `serviceDueSoonCrossed` is true when this capture, never a replay, took the Machine into Service Due Soon; the
  * caller decides who hears of it, once the write has committed.
  */
-export type ReadingCapture = { reading: ReturnType<typeof withHint>; serviceDueSoonCrossed: boolean };
+export type ReadingCapture = { reading: Row; serviceDueSoonCrossed: boolean };
 
 export async function captureReading({
   db,
   actor,
   input: raw,
-  evidence,
   now = new Date(),
 }: {
   db: Db;
   actor: JobActor;
   input: ReadingCaptureInput;
-  evidence?: ReadingEvidence;
   now?: Date;
 }): Promise<ReadingCapture> {
   const actorUserId = actor.userId;
@@ -139,181 +103,157 @@ export async function captureReading({
       row.capturedAt.getTime() !== Date.parse(input.capturedAt)
     )
       throw new ReadingError('reading.capture_id_conflict', 'This capture identifier has already been used.');
-    return { reading: withHint(row), serviceDueSoonCrossed: false };
+    return { reading: row, serviceDueSoonCrossed: false };
   }
   const delivered = await replay(db);
   if (delivered) return delivered;
-  const photo = evidence ? await storeMeterPhoto(evidence) : null;
-  try {
-    const verdict = photo ? awaitingVerdict : manualVerdict;
-    const result = await withCaptureConstraints(() =>
-      db.transaction(async (tx): Promise<ReadingCapture> => {
-        const [machine] = await tx
-          .select()
-          .from(contractingMachines)
-          .where(eq(contractingMachines.id, input.machineId))
-          .for('update');
-        if (!machine) throw new ReadingError('reading.not_found', 'Machine not found.');
-        const delivered = await replay(tx);
-        if (delivered) return delivered;
-        const stint = await resolveCaptureStint(tx, { actor, input });
-        const readAt = new Date(input.capturedAt);
-        const onMachine = eq(contractingHourReadings.machineId, input.machineId);
-        const arrivalReadingId = input.role === 'departure' ? (stint?.stint.arrivalReadingId ?? null) : null;
-        const [[latest], [previous], [next], [previousTelematics], [nextTelematics], [lastDeparture], [stintArrival]] =
-          await Promise.all([
-            tx
-              .select()
-              .from(contractingHourReadings)
-              .where(onMachine)
-              .orderBy(...newestFirst)
-              .limit(1),
-            tx
-              .select()
-              .from(contractingHourReadings)
-              .where(and(onMachine, lte(contractingHourReadings.capturedAt, readAt)))
-              .orderBy(...newestFirst)
-              .limit(1),
-            tx
-              .select()
-              .from(contractingHourReadings)
-              .where(and(onMachine, gt(contractingHourReadings.capturedAt, readAt)))
-              .orderBy(...oldestFirst)
-              .limit(1),
-            tx
-              .select()
-              .from(contractingHourReadings)
-              .where(and(onMachine, isTelematics, lte(contractingHourReadings.capturedAt, readAt)))
-              .orderBy(...newestFirst)
-              .limit(1),
-            tx
-              .select()
-              .from(contractingHourReadings)
-              .where(and(onMachine, isTelematics, gt(contractingHourReadings.capturedAt, readAt)))
-              .orderBy(...oldestFirst)
-              .limit(1),
-            input.role === 'arrival'
-              ? tx
-                  .select({ capturedAt: contractingHourReadings.capturedAt })
-                  .from(contractingHourReadings)
-                  .where(and(onMachine, eq(contractingHourReadings.role, 'departure')))
-                  .orderBy(...newestFirst)
-                  .limit(1)
-              : [],
-            arrivalReadingId
-              ? tx
-                  .select({ capturedAt: contractingHourReadings.capturedAt })
-                  .from(contractingHourReadings)
-                  .where(eq(contractingHourReadings.id, arrivalReadingId))
-              : [],
-          ]);
-        const neighbours: Pick<CaptureWorld, 'latest' | 'previous' | 'next' | 'previousTelematics' | 'nextTelematics'> =
-          {
-            latest: latest ? { id: latest.id, value: latest.value } : null,
-            previous: previous ? toNeighbour(previous) : null,
-            next: next ? toNeighbour(next) : null,
-            previousTelematics: previousTelematics ? toNeighbour(previousTelematics) : null,
-            nextTelematics: nextTelematics ? toNeighbour(nextTelematics) : null,
-          };
-        const world: CaptureWorld = {
-          ...neighbours,
-          stint: stint ? assignmentState(stint.stint) : null,
-          stintArrivedAt: stintArrival?.capturedAt ?? null,
-          lastDepartedAt: lastDeparture?.capturedAt ?? null,
-          jobVerdict: stint?.jobVerdict ?? null,
-          management: hasPermission(actor, 'contracting_job:work-any'),
-          mayBaseline: hasPermission(actor, 'contracting_reading:capture-baseline'),
-          machineRetired: machine.retiredAt !== null,
-          implementValid: stint?.implementValid ?? true,
-          driverValid: stint?.driverValid ?? true,
-          hasPhoto: !!evidence,
-          now,
-          futureToleranceMs: FUTURE_READ_AT_TOLERANCE_MS,
-        };
-        const attempt: CaptureAttempt = {
+  return withCaptureConstraints(() =>
+    db.transaction(async (tx): Promise<ReadingCapture> => {
+      const [machine] = await tx
+        .select()
+        .from(contractingMachines)
+        .where(eq(contractingMachines.id, input.machineId))
+        .for('update');
+      if (!machine) throw new ReadingError('reading.not_found', 'Machine not found.');
+      const delivered = await replay(tx);
+      if (delivered) return delivered;
+      const stint = await resolveCaptureStint(tx, { actor, input });
+      const readAt = new Date(input.capturedAt);
+      const onMachine = eq(contractingHourReadings.machineId, input.machineId);
+      const arrivalReadingId = input.role === 'departure' ? (stint?.stint.arrivalReadingId ?? null) : null;
+      const [[latest], [previous], [next], [previousTelematics], [nextTelematics], [lastDeparture], [stintArrival]] =
+        await Promise.all([
+          tx
+            .select()
+            .from(contractingHourReadings)
+            .where(onMachine)
+            .orderBy(...newestFirst)
+            .limit(1),
+          tx
+            .select()
+            .from(contractingHourReadings)
+            .where(and(onMachine, lte(contractingHourReadings.capturedAt, readAt)))
+            .orderBy(...newestFirst)
+            .limit(1),
+          tx
+            .select()
+            .from(contractingHourReadings)
+            .where(and(onMachine, gt(contractingHourReadings.capturedAt, readAt)))
+            .orderBy(...oldestFirst)
+            .limit(1),
+          tx
+            .select()
+            .from(contractingHourReadings)
+            .where(and(onMachine, isTelematics, lte(contractingHourReadings.capturedAt, readAt)))
+            .orderBy(...newestFirst)
+            .limit(1),
+          tx
+            .select()
+            .from(contractingHourReadings)
+            .where(and(onMachine, isTelematics, gt(contractingHourReadings.capturedAt, readAt)))
+            .orderBy(...oldestFirst)
+            .limit(1),
+          input.role === 'arrival'
+            ? tx
+                .select({ capturedAt: contractingHourReadings.capturedAt })
+                .from(contractingHourReadings)
+                .where(and(onMachine, eq(contractingHourReadings.role, 'departure')))
+                .orderBy(...newestFirst)
+                .limit(1)
+            : [],
+          arrivalReadingId
+            ? tx
+                .select({ capturedAt: contractingHourReadings.capturedAt })
+                .from(contractingHourReadings)
+                .where(eq(contractingHourReadings.id, arrivalReadingId))
+            : [],
+        ]);
+      const neighbours: Pick<CaptureWorld, 'latest' | 'previous' | 'next' | 'previousTelematics' | 'nextTelematics'> = {
+        latest: latest ? { id: latest.id, value: latest.value } : null,
+        previous: previous ? toNeighbour(previous) : null,
+        next: next ? toNeighbour(next) : null,
+        previousTelematics: previousTelematics ? toNeighbour(previousTelematics) : null,
+        nextTelematics: nextTelematics ? toNeighbour(nextTelematics) : null,
+      };
+      const world: CaptureWorld = {
+        ...neighbours,
+        stint: stint ? assignmentState(stint.stint) : null,
+        stintArrivedAt: stintArrival?.capturedAt ?? null,
+        lastDepartedAt: lastDeparture?.capturedAt ?? null,
+        jobVerdict: stint?.jobVerdict ?? null,
+        mayBaseline: hasPermission(actor, 'contracting_reading:capture-baseline'),
+        machineRetired: machine.retiredAt !== null,
+        implementValid: stint?.implementValid ?? true,
+        driverValid: stint?.driverValid ?? true,
+        now,
+        futureToleranceMs: FUTURE_READ_AT_TOLERANCE_MS,
+      };
+      const attempt: CaptureAttempt = {
+        role: input.role,
+        value: input.value,
+        readAt,
+        disputePrevious: input.disputePrevious,
+        expectedPreviousId: input.expectedPreviousId,
+      };
+      const judgement = judgeCapture(world, attempt);
+      if (!judgement.ok) {
+        // Only a value refusal proposes a Read At, so only one reads the Telematics Readings bracketing the value.
+        const suggestion = proposesReadAt(judgement.rule)
+          ? suggestReadAt(
+              input.value,
+              await valueBracketFor(tx, input.machineId, input.value),
+              earliestReadAtFor(input.role, world),
+            )
+          : null;
+        throw new ReadingError(judgement.reason, judgement.message, {
+          refused: judgement.refused,
+          suggestedReadAt: suggestion ? ReadAtSuggestion.parse(suggestion) : undefined,
+        });
+      }
+      const disputed = judgement.disputes !== null;
+      if (disputed && latest)
+        await updateAudited(tx, actorUserId, latest, {
+          disputed: true,
+          disputeReason: NEXT_CAPTURE_DISPUTES,
+        });
+      const { serviceDueSoonThresholdHours } = await getContractingSettings({ db: tx });
+      const [row] = await tx
+        .insert(contractingHourReadings)
+        .values({
+          ...(input.localId ? { id: input.localId } : {}),
+          machineId: input.machineId,
           role: input.role,
           value: input.value,
-          readAt,
-          disputePrevious: input.disputePrevious,
-          expectedPreviousId: input.expectedPreviousId,
+          capturedAt: readAt,
+          capturedByUserId: actorUserId,
+          method: 'manual',
           comment: input.comment ?? null,
-        };
-        const judgement = judgeCapture(world, attempt);
-        if (!judgement.ok) {
-          // Only a value refusal proposes a Read At, so only one reads the Telematics Readings bracketing the value.
-          const suggestion = proposesReadAt(judgement.rule)
-            ? suggestReadAt(
-                input.value,
-                await valueBracketFor(tx, input.machineId, input.value),
-                earliestReadAtFor(input.role, world),
-              )
-            : null;
-          throw new ReadingError(judgement.reason, judgement.message, {
-            refused: judgement.refused,
-            suggestedReadAt: suggestion ? ReadAtSuggestion.parse(suggestion) : undefined,
-          });
-        }
-        const disputed = judgement.disputes !== null;
-        if (disputed && latest)
-          await updateAudited(tx, actorUserId, latest, {
-            disputed: true,
-            disputeReason: NEXT_CAPTURE_DISPUTES,
-          });
-        const { serviceDueSoonThresholdHours } = await getContractingSettings({ db: tx });
-        const [row] = await tx
-          .insert(contractingHourReadings)
-          .values({
-            ...(input.localId ? { id: input.localId } : {}),
-            machineId: input.machineId,
-            role: input.role,
-            value: input.value,
-            capturedAt: readAt,
-            capturedByUserId: actorUserId,
-            method: photo ? 'photo' : 'manual',
-            comment: input.comment ?? null,
-            photo,
-            ...verdict,
-            disputed,
-            disputedPreviousId: judgement.disputes,
-            disputeReason: disputed ? PREVIOUS_READING_WRONG : null,
-          })
-          .returning();
-        if (!row) throw new Error('Reading insert returned no row');
-        await recordAuditCreate({ db: tx, actorUserId, descriptor: readingDescriptor, input: row });
-        if (stint)
-          await attachReadingToStint(tx, {
-            ...stint,
-            actor,
-            machineCode: machine.code,
-            input,
-            readingId: row.id,
-            acceptedAt: row.createdAt,
-          });
-        return {
-          reading: withHint(row),
-          serviceDueSoonCrossed: captureCrossesServiceDueSoon(neighbours, {
-            newHours: row.value,
-            nextServiceDueHours: machine.nextServiceDueHours,
-            threshold: effectiveServiceAlertHours(machine, serviceDueSoonThresholdHours),
-          }),
-        };
-      }),
-    );
-    // A replay that won the lock inside the transaction leaves this upload orphaned.
-    if (photo && evidence && result.reading.photo?.storageKey !== photo.storageKey) {
-      await evidence.storage.deleteObject(photo.storageKey);
-    }
-    return result;
-  } catch (error) {
-    if (photo && evidence) {
-      try {
-        await evidence.storage.deleteObject(photo.storageKey);
-      } catch (cleanupError) {
-        throw new AggregateError([error, cleanupError], 'Reading failed and uploaded photo cleanup failed');
-      }
-    }
-    throw error;
-  }
+          disputed,
+          disputedPreviousId: judgement.disputes,
+          disputeReason: disputed ? PREVIOUS_READING_WRONG : null,
+        })
+        .returning();
+      if (!row) throw new Error('Reading insert returned no row');
+      await recordAuditCreate({ db: tx, actorUserId, descriptor: readingDescriptor, input: row });
+      if (stint)
+        await attachReadingToStint(tx, {
+          ...stint,
+          actor,
+          machineCode: machine.code,
+          input,
+          readingId: row.id,
+          acceptedAt: row.createdAt,
+        });
+      return {
+        reading: row,
+        serviceDueSoonCrossed: captureCrossesServiceDueSoon(neighbours, {
+          newHours: row.value,
+          nextServiceDueHours: machine.nextServiceDueHours,
+          threshold: effectiveServiceAlertHours(machine, serviceDueSoonThresholdHours),
+        }),
+      };
+    }),
+  );
 }
 
 /**
@@ -358,17 +298,16 @@ const toNeighbour = ({ id, role, value, capturedAt, telematicsProvider }: Row): 
   telematicsProvider,
 });
 
-const capturer = alias(user, 'exception_capturer');
-const amender = alias(user, 'exception_amender');
-const stintAssignment = alias(contractingMachineAssignments, 'exception_stint');
-const stintArrival = alias(contractingHourReadings, 'exception_stint_arrival');
-const stintDeparture = alias(contractingHourReadings, 'exception_stint_departure');
+const capturer = alias(user, 'dispute_capturer');
+const stintAssignment = alias(contractingMachineAssignments, 'dispute_stint');
+const stintArrival = alias(contractingHourReadings, 'dispute_stint_arrival');
+const stintDeparture = alias(contractingHourReadings, 'dispute_stint_departure');
 
 /**
- * Reading Exceptions as rows: one per Dispute (a connected group of Disputed readings on one Machine, with the
- * Telematics Reading it contradicts) and one per AI-flagged reading that is not Disputed, newest first.
+ * Disputes, newest first: each a connected group of Disputed readings on one Machine, with the Telematics Reading it
+ * contradicts.
  */
-export async function listReadingExceptions({ db }: { db: Db }) {
+export async function listDisputes({ db }: { db: Db }) {
   const rows = await db
     .select({
       ...getTableColumns(contractingHourReadings),
@@ -376,7 +315,6 @@ export async function listReadingExceptions({ db }: { db: Db }) {
       categoryIcon: contractingCategories.icon,
       categoryColour: contractingCategories.colour,
       capturedByName: capturer.name,
-      amendedByName: amender.name,
       assignmentId: stintAssignment.id,
       jobId: contractingJobs.id,
       jobCode: contractingJobs.code,
@@ -387,7 +325,6 @@ export async function listReadingExceptions({ db }: { db: Db }) {
     .innerJoin(contractingMachines, eq(contractingMachines.id, contractingHourReadings.machineId))
     .innerJoin(contractingCategories, eq(contractingCategories.id, contractingMachines.categoryId))
     .leftJoin(capturer, eq(capturer.id, contractingHourReadings.capturedByUserId))
-    .leftJoin(amender, eq(amender.id, contractingHourReadings.amendedBy))
     .leftJoin(
       stintAssignment,
       or(
@@ -398,19 +335,16 @@ export async function listReadingExceptions({ db }: { db: Db }) {
     .leftJoin(contractingJobs, eq(contractingJobs.id, stintAssignment.jobId))
     .leftJoin(stintArrival, eq(stintArrival.id, stintAssignment.arrivalReadingId))
     .leftJoin(stintDeparture, eq(stintDeparture.id, stintAssignment.departureReadingId))
-    .where(readingNeedsALookSql(contractingHourReadings))
+    .where(eq(contractingHourReadings.disputed, true))
     .orderBy(...newestFirst);
-  const readings = rows.map(({ jobId, jobCode, arrivedAt, departedAt, ...row }) => ({
-    ...withHint(row),
-    exceptionTypes: readingExceptionTypes(row),
-    photoBacked: row.photo !== null,
-    stint:
-      row.assignmentId && jobId && jobCode !== null
-        ? { assignmentId: row.assignmentId, jobId, jobNumber: formatJobNumber(jobCode), arrivedAt, departedAt }
-        : null,
-  }));
   const disputedByMachine = groupBy(
-    readings.filter((row) => row.disputed),
+    rows.map(({ jobId, jobCode, arrivedAt, departedAt, ...row }) => ({
+      ...row,
+      stint:
+        row.assignmentId && jobId && jobCode !== null
+          ? { assignmentId: row.assignmentId, jobId, jobNumber: formatJobNumber(jobCode), arrivedAt, departedAt }
+          : null,
+    })),
     (row) => row.machineId,
   );
   // A Dispute's report is the nearest Telematics Reading it contradicts, so only reports are read.
@@ -436,27 +370,20 @@ export async function listReadingExceptions({ db }: { db: Db }) {
         group.map((reading) => reading.id),
       );
       return {
-        kind: 'dispute' as const,
-        dispute: {
-          id: first.id,
-          machineId,
-          machineCode: first.machineCode,
-          categoryIcon: first.categoryIcon,
-          categoryColour: first.categoryColour,
-          readings: group,
-          reported,
-          reason: disputeGroupReason(group, reported),
-        },
+        id: first.id,
+        machineId,
+        machineCode: first.machineCode,
+        categoryIcon: first.categoryIcon,
+        categoryColour: first.categoryColour,
+        readings: group,
+        reported,
+        reason: disputeGroupReason(group, reported),
       };
     }),
   );
-  const aiFlagged = readings
-    .filter((reading) => !reading.disputed && reading.exceptionTypes.includes('ai-flagged'))
-    .map((reading) => ({ kind: 'ai-flagged' as const, reading }));
-  const firstReading = (row: (typeof disputes)[number] | (typeof aiFlagged)[number]) =>
-    row.kind === 'dispute' ? row.dispute.readings[0] : row.reading;
-  return [...disputes, ...aiFlagged].sort((left, right) => ledgerOrder(firstReading(right), firstReading(left)));
+  return disputes.sort((left, right) => ledgerOrder(right.readings[0], left.readings[0]));
 }
+
 export async function amendReadings({ db, actor, input: raw }: { db: Db; actor: JobActor; input: ReadingAmendInput }) {
   const actorUserId = actor.userId;
   const input = ReadingAmendInput.parse(raw);
@@ -510,18 +437,14 @@ export async function amendReadings({ db, actor, input: raw }: { db: Db; actor: 
           ? {
               value: amendment.value,
               capturedAt: amendment.capturedAt,
-              aiVerification: row.photo
-                ? readingVerification(amendment.value, row.aiValue, row.aiConfidence)
-                : 'not-applicable',
               amendedBy: actorUserId,
               amendedAt: now,
               amendmentReason: input.reason,
-              evidenceReviewedAt: now,
             }
           : {}),
       });
     }
-    // Only a Job whose hours moved returns to Completed: an acknowledgement moves none.
+    // Only a Job whose hours moved returns to Completed: a settled Dispute moves none.
     for (const job of affected.filter((candidate) => candidate.status === 'priced' && jobs.moved.has(candidate.id)))
       await reopenPricingWithin(
         tx,
@@ -533,7 +456,7 @@ export async function amendReadings({ db, actor, input: raw }: { db: Db; actor: 
       .select()
       .from(contractingHourReadings)
       .where(inArray(contractingHourReadings.id, [...ids]));
-    const byId = new Map(amended.map((row) => [row.id, withHint(row)]));
+    const byId = new Map(amended.map((row) => [row.id, row]));
     return [...ids].flatMap((id) => byId.get(id) ?? []);
   });
 }
@@ -571,136 +494,7 @@ async function lockJobs(tx: DatabaseTransaction, jobIds: ReadonlySet<string>) {
 export async function getReading({ db, id }: { db: Db | DatabaseTransaction; id: string }) {
   const row = await db.query.contractingHourReadings.findFirst({ where: eq(contractingHourReadings.id, id) });
   if (!row) throw notFound();
-  return withHint(row);
-}
-
-/** The reading whose evidence this person may open: fleet readers any, a Foreman only those on his readable Jobs. */
-export async function getReadingForEvidence({ db, actor, id }: { db: Db; actor: JobActor; id: string }) {
-  if (hasPermission(actor, 'contracting_machine:read')) return getReading({ db, id });
-  const ownJobReading =
-    hasPermission(actor, 'contracting_job:read-own') &&
-    (await readingBelongsToForemanJob({ db, id, foremanUserId: actor.userId }));
-  if (!ownJobReading) throw new ReadingError('reading.forbidden', 'You cannot view Hour Reading evidence.');
-  return getReading({ db, id });
-}
-
-/** Scope a field user's evidence read to readings attached to one of their visible Jobs. */
-async function readingBelongsToForemanJob({
-  db,
-  id,
-  foremanUserId,
-}: {
-  db: Db;
-  id: string;
-  foremanUserId: AuthId;
-}): Promise<boolean> {
-  const [assignment] = await db
-    .select({ id: contractingMachineAssignments.id })
-    .from(contractingMachineAssignments)
-    .innerJoin(contractingJobs, eq(contractingJobs.id, contractingMachineAssignments.jobId))
-    .where(
-      and(
-        eq(contractingJobs.foremanUserId, foremanUserId),
-        inArray(contractingJobs.status, jobReadStatuses.own),
-        or(
-          eq(contractingMachineAssignments.arrivalReadingId, id),
-          eq(contractingMachineAssignments.departureReadingId, id),
-        ),
-      ),
-    )
-    .limit(1);
-  return !!assignment;
-}
-async function measureStoredPhoto(storage: StorageAdapter, photo: StoredFile, readPhoto: ReadMeterPhoto) {
-  const stored = await readStoredObject(storage, photo.storageKey);
-  return measureMeterPhoto(stored.bytes, stored.contentType, readPhoto);
-}
-
-const verificationFailed = () =>
-  new ReadingError(
-    'reading.verification_failed',
-    'AI verification failed. Previous evidence has been kept; try again.',
-  );
-
-/**
- * Lands the AI's measurement under the Machine's lock, judged against the reading's value as it stands then, so an
- * amendment made while the AI was reading is respected. A fresh verdict reopens the evidence for review, even one
- * reviewed before the AI had looked. With `onlyIfPendingOn`, it lands only while the reading still awaits a check on
- * that photo.
- */
-async function recordVerdict(
-  db: Db,
-  reading: Row,
-  measurement: MeterMeasurement,
-  actorUserId: AuthId | null,
-  onlyIfPendingOn?: string,
-) {
-  return db.transaction(async (tx) => {
-    await tx.select().from(contractingMachines).where(eq(contractingMachines.id, reading.machineId)).for('update');
-    const before = await getReading({ db: tx, id: reading.id });
-    const stale =
-      onlyIfPendingOn !== undefined &&
-      (before.aiVerification !== 'pending' || before.photo?.storageKey !== onlyIfPendingOn);
-    if (stale) return before;
-    return updateAudited(tx, actorUserId, before, {
-      ...measurement,
-      evidenceReviewedAt: null,
-      aiVerification: readingVerification(before.value, measurement.aiValue, measurement.aiConfidence),
-    });
-  });
-}
-
-/**
- * Checks a just-captured reading's photo and records the AI's verdict, as the System. It runs after the capture has
- * answered, so the person capturing never waits on the AI, and a re-verify in the meantime wins. A failed check
- * throws for the caller to log and leaves the reading pending, for Re-verify or the next start-up to finish.
- */
-export async function verifyCapturedReading({
-  db,
-  id,
-  storage,
-  readPhoto,
-}: {
-  db: Db;
-  id: string;
-  storage: StorageAdapter;
-  readPhoto: ReadMeterPhoto;
-}) {
-  const captured = await getReading({ db, id });
-  if (!captured.photo || captured.aiVerification !== 'pending') return captured;
-  const measurement = await measureStoredPhoto(storage, captured.photo, readPhoto);
-  if (!measurement) throw verificationFailed();
-  return recordVerdict(db, captured, measurement, null, captured.photo.storageKey);
-}
-
-/** Photo readings still waiting on their AI check, such as those a restart interrupted. */
-export async function listReadingsAwaitingVerification({ db }: { db: Db }) {
-  const rows = await db
-    .select({ id: contractingHourReadings.id })
-    .from(contractingHourReadings)
-    .where(eq(contractingHourReadings.aiVerification, 'pending'))
-    .orderBy(contractingHourReadings.sequence);
-  return rows.map((row) => row.id);
-}
-
-export async function reverifyReading({
-  db,
-  actorUserId,
-  id,
-  storage,
-  readPhoto,
-}: {
-  db: Db;
-  actorUserId: AuthId;
-  id: string;
-  storage: StorageAdapter;
-  readPhoto: ReadMeterPhoto;
-}) {
-  const owner = await getReading({ db, id });
-  if (!owner.photo) throw new ReadingError('reading.no_photo', 'This reading has Missing Photo Evidence.');
-  const measurement = await measureStoredPhoto(storage, owner.photo, readPhoto);
-  if (!measurement) throw verificationFailed();
-  return recordVerdict(db, owner, measurement, actorUserId);
+  return row;
 }
 
 /** The Machine's latest reading by Read At, the one a dispute names; null while the ledger is empty. */
@@ -718,8 +512,9 @@ export async function latestReading({ db, machineId }: { db: Db; machineId: stri
 export async function listFieldReadingsPage({ db, input }: { db: Db; input: FieldReadingPageInput }) {
   const onMachine = eq(contractingHourReadings.machineId, input.machineId);
   const query = db
-    .select()
+    .select({ ...getTableColumns(contractingHourReadings), capturedByName: user.name })
     .from(contractingHourReadings)
+    .leftJoin(user, eq(user.id, contractingHourReadings.capturedByUserId))
     .where(onMachine)
     .orderBy(...newestFirst)
     .$dynamic();
@@ -728,7 +523,7 @@ export async function listFieldReadingsPage({ db, input }: { db: Db; input: Fiel
     db.$count(contractingHourReadings, onMachine),
   ]);
   return {
-    items: rows.map((row) => FieldReading.parse(readingToWire(row))),
+    items: rows.map(({ capturedByName, ...row }) => FieldReading.parse({ ...readingToWire(row), capturedByName })),
     nextCursor: getNextCursor({ count: rows.length, cursor: input.cursor, total }),
     total,
   };

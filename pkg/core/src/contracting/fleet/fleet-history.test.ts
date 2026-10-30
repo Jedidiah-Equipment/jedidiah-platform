@@ -71,7 +71,6 @@ const test = createTester(async ({ db }) => {
       capturedAt: new Date('2026-09-02T08:00:00Z'),
       method: 'telematics',
       telematicsProvider: 'john-deere',
-      aiVerification: 'not-applicable',
     })
     .returning();
   const implementCategory = await createCategory({
@@ -122,7 +121,7 @@ test('lists readings, Breakdowns and services as one newest-first timeline, a se
         at: '2026-09-02T08:00:00.000Z',
         title: 'Spot · 1 002.0 h',
         detail: null,
-        evidence: 'John Deere',
+        source: 'John Deere',
         readingRole: 'spot',
         breakdown: null,
         opens: null,
@@ -133,7 +132,7 @@ test('lists readings, Breakdowns and services as one newest-first timeline, a se
         at: '2026-09-02',
         title: 'Service · 1 001.0 h',
         detail: 'Next service due set to 1 501.0 h',
-        evidence: null,
+        source: null,
         readingRole: null,
         breakdown: null,
         opens: { to: 'service' },
@@ -144,7 +143,7 @@ test('lists readings, Breakdowns and services as one newest-first timeline, a se
         at: '2026-09-01T12:00:00.000Z',
         title: 'Hydraulic leak',
         detail: `${job.jobNumber} · reported by Jed`,
-        evidence: null,
+        source: null,
         readingRole: null,
         breakdown: { urgency: 'code-red', status: 'open' },
         opens: { to: 'breakdown', id: breakdown.id },
@@ -153,7 +152,7 @@ test('lists readings, Breakdowns and services as one newest-first timeline, a se
         id: stint.departureReadingId,
         title: 'Departure · 1 001.0 h',
         detail: job.jobNumber,
-        evidence: 'Missing Photo Evidence',
+        source: 'Sipho',
         opens: { to: 'job', jobNumber: job.jobNumber },
       }),
       expect.objectContaining({ id: stint.arrivalReadingId, title: 'Arrival · 1 000.0 h', detail: job.jobNumber }),

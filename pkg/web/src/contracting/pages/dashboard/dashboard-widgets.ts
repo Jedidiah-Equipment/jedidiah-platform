@@ -6,6 +6,7 @@ import {
   filterDashboardWidgets,
 } from '@/components/common/dashboard/dashboard-widget-types.js';
 import { DailyHoursWidget } from './widgets/DailyHoursWidget.js';
+import { DisputesTile } from './widgets/DisputesTile.js';
 import {
   ActiveJobsTile,
   AwaitingInvoiceTile,
@@ -14,7 +15,6 @@ import {
 } from './widgets/JobQueueTiles.js';
 import { JobsNeedingALookWidget } from './widgets/JobsNeedingALookWidget.js';
 import { MachinesOnJobTile } from './widgets/MachinesOnJobTile.js';
-import { ReadingExceptionsTile } from './widgets/ReadingExceptionsTile.js';
 import { ServiceDueWidget } from './widgets/ServiceDueWidget.js';
 import { WorkshopWidget } from './widgets/WorkshopWidget.js';
 
@@ -43,11 +43,11 @@ export const contractingDashboardRows = [
       title: jobQueueLabels['awaiting-invoice'],
     },
     {
-      Component: ReadingExceptionsTile,
-      id: 'reading-exceptions',
+      Component: DisputesTile,
+      id: 'disputes',
       requires: 'contracting_reading:update',
       size: 'xs',
-      title: 'Reading exceptions',
+      title: 'Disputes',
     },
   ],
   [

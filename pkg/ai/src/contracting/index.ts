@@ -1,1 +1,2 @@
-export * from './meter-reading.js';
+// Jedidiah Contracting has no modules yet; this entrypoint exists so the two businesses are symmetric.
+export {};

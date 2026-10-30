@@ -11,7 +11,6 @@ import {
   type CaptureWorld,
   captureCrossesServiceDueSoon,
   captureIsBelowLatest,
-  captureNeedsComment,
   captureRefusals,
   captureValueVerdict,
   deriveCaptureForm,
@@ -52,12 +51,10 @@ const world = (overrides: Partial<CaptureWorld> = {}): CaptureWorld => ({
   stintArrivedAt: null,
   lastDepartedAt: null,
   jobVerdict: { allowed: true },
-  management: false,
   mayBaseline: false,
   machineRetired: false,
   implementValid: true,
   driverValid: true,
-  hasPhoto: true,
   now,
   futureToleranceMs: 0,
   ...overrides,
@@ -69,7 +66,6 @@ const capture = (overrides: Partial<CaptureAttempt> = {}): CaptureAttempt => ({
   readAt: now,
   disputePrevious: false,
   expectedPreviousId: undefined,
-  comment: null,
   ...overrides,
 });
 
@@ -81,7 +77,6 @@ describe('judgeCapture', () => {
     ['job-refused', { jobVerdict: refusedJob }, {}],
     ['implement-invalid', { implementValid: false }, {}],
     ['driver-invalid', { driverValid: false }, {}],
-    ['comment-required', { management: true, hasPhoto: false, stint: 'on-site' }, { role: 'departure' }],
     ['already-arrived', { stint: 'on-site' }, {}],
     ['not-on-site', { stint: 'planned' }, { role: 'departure' }],
     ['departs-before-arrival', { stint: 'on-site', stintArrivedAt: now }, { role: 'departure', readAt: anHourAgo }],
@@ -110,18 +105,7 @@ describe('judgeCapture', () => {
       'latest',
     ],
     ['a dispute that is not below the latest, disputing nothing', {}, { value: 110, disputePrevious: true }, null],
-    [
-      'a Foreman’s photo-less departure without a comment',
-      { stint: 'on-site', hasPhoto: false },
-      { role: 'departure' },
-      null,
-    ],
-    [
-      'a manager’s photo-less departure that says why',
-      { stint: 'on-site', management: true, hasPhoto: false },
-      { role: 'departure', comment: 'Camera broken' },
-      null,
-    ],
+    ['a departure from a Machine on site', { stint: 'on-site' }, { role: 'departure' }, null],
     ['a spot reading with no stint', { stint: null, jobVerdict: null }, { role: 'spot' }, null],
     [
       'a Read At within the server’s tolerance',
@@ -431,10 +415,6 @@ describe('captureRefusals', () => {
       'retired-machine': { code: 'reading.retired_machine', message: 'Cannot capture readings for a retired Machine.' },
       'implement-invalid': { code: 'reading.invalid_role', message: 'The selected Implement is no longer available.' },
       'driver-invalid': { code: 'reading.invalid_role', message: 'Select a person with the Contracting driver role.' },
-      'comment-required': {
-        code: 'reading.invalid_role',
-        message: 'A reason is required for a photo-less departure reading.',
-      },
       'already-arrived': { code: 'reading.invalid_role', message: 'This Machine Assignment already arrived.' },
       'not-on-site': { code: 'reading.invalid_role', message: 'This Machine Assignment is not on site.' },
       'departs-before-arrival': {
@@ -482,8 +462,6 @@ describe('captureCrossesServiceDueSoon', () => {
 describe('deriveCaptureForm', () => {
   const formWorld = (overrides: Partial<CaptureFormWorld> = {}): CaptureFormWorld => ({
     latest: { id: 'latest', value: 100, capturedAt: anHourAgo.toISOString(), telematicsProvider: null },
-    management: false,
-    hasPhoto: true,
     now,
     ...overrides,
   });
@@ -560,13 +538,11 @@ describe('deriveCaptureForm', () => {
     });
   });
 
-  test('withholds a manager’s photo-less departure until it says why', () => {
-    const photoLess = formWorld({ management: true, hasPhoto: false });
-    expect(deriveCaptureForm(photoLess, draft({ role: 'departure' }))).toMatchObject({
-      commentRequired: true,
-      request: null,
+  test('posts a departure with no comment', () => {
+    expect(deriveCaptureForm(formWorld(), draft({ role: 'departure' })).request).toMatchObject({
+      role: 'departure',
+      comment: null,
     });
-    expect(deriveCaptureForm(photoLess, draft({ role: 'departure', comment: 'Camera broken' })).request).not.toBeNull();
   });
 
   test('withholds a Read At still to come', () => {
@@ -615,13 +591,6 @@ describe('capture hints', () => {
     expect(captureIsBelowLatest(90, { value: 100 })).toBe(true);
     expect(captureIsBelowLatest(100, { value: 100 })).toBe(false);
     expect(captureIsBelowLatest(90, null)).toBe(false);
-  });
-
-  test("only management's photo-less departure needs a comment", () => {
-    expect(captureNeedsComment('departure', { management: true, hasPhoto: false })).toBe(true);
-    expect(captureNeedsComment('departure', { management: true, hasPhoto: true })).toBe(false);
-    expect(captureNeedsComment('departure', { management: false, hasPhoto: false })).toBe(false);
-    expect(captureNeedsComment('arrival', { management: true, hasPhoto: false })).toBe(false);
   });
 });
 

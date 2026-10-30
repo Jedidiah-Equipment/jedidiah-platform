@@ -1,16 +1,11 @@
 import type { DatabaseTransaction } from '@pkg/db';
 import { contractingHourReadings } from '@pkg/db/contracting';
-import { meterDisagreementHint } from '@pkg/domain/contracting';
 import type { AuthId } from '@pkg/schema';
 import { defineAuditDescriptor } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
 import { readingNotFound } from './reading-errors.js';
 
 export type ReadingRow = typeof contractingHourReadings.$inferSelect;
-
-export function withHint<T extends ReadingRow>(row: T) {
-  return { ...row, aiHint: meterDisagreementHint(row) };
-}
 
 export const readingDescriptor = defineAuditDescriptor<ReadingRow>({
   entityType: 'contracting_reading',
@@ -22,7 +17,6 @@ export const readingDescriptor = defineAuditDescriptor<ReadingRow>({
     ...row,
     capturedAt: row.capturedAt.toISOString(),
     amendedAt: row.amendedAt?.toISOString() ?? null,
-    evidenceReviewedAt: row.evidenceReviewedAt?.toISOString() ?? null,
   }),
 });
 
@@ -44,6 +38,6 @@ export async function updateAudited(
     notFound: readingNotFound,
     set: () => patch,
     ...(summary ? { summary } : {}),
-    project: (_tx, row) => withHint(row),
+    project: (_tx, row) => row,
   });
 }

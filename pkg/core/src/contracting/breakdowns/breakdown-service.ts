@@ -502,6 +502,7 @@ function writeBreakdown<TPrepared = void>({
   );
 }
 
+/** Answers whether the write escalated the Breakdown from Code Green to Code Red, which alerts as Code Red again. */
 export async function patchBreakdown({
   db,
   actor,
@@ -510,23 +511,27 @@ export async function patchBreakdown({
   db: Db;
   actor: BreakdownActor;
   input: BreakdownPatchInput;
-}): Promise<BreakdownDetail> {
+}): Promise<{ breakdown: BreakdownDetail; escalated: boolean }> {
   const input = BreakdownPatchInput.parse(raw);
-  return writeBreakdown({
+  let escalated = false;
+  const breakdown = await writeBreakdown({
     db,
     actor,
     id: input.id,
     action: 'editReport',
-    assert: (tx, before) =>
-      input.jobId === undefined || input.jobId === before.jobId
+    assert: (tx, before) => {
+      escalated = before.urgency === 'code-green' && input.urgency === 'code-red';
+      return input.jobId === undefined || input.jobId === before.jobId
         ? Promise.resolve(before.jobId)
-        : resolveJob(tx, actor, breakdownSubjectRef(before), input.jobId),
+        : resolveJob(tx, actor, breakdownSubjectRef(before), input.jobId);
+    },
     set: (before, jobId) => ({
       description: input.description ?? before.description,
       urgency: input.urgency ?? before.urgency,
       jobId,
     }),
   });
+  return { breakdown, escalated };
 }
 
 export async function assignMechanic({

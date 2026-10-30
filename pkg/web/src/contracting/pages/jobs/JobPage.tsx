@@ -1,7 +1,6 @@
 import { type JobSheet, jobSheet } from '@pkg/domain/contracting';
 import { requiredTrimmedText } from '@pkg/schema';
-import type { JobDetail } from '@pkg/schema/contracting';
-import { JobCreateValues, toJobCreateInput } from '@pkg/schema/contracting';
+import { JobCreateValues, type JobDetail, toJobCreateInput } from '@pkg/schema/contracting';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -18,7 +17,6 @@ import { ActivityCard } from '@/contracting/components/activity/ActivityCard.js'
 import { HoursHeatMapCard } from '@/contracting/components/hours-heat-map/HoursHeatMapCard.js';
 import { jobHoursEnd } from '@/contracting/components/hours-heat-map/job-hours-end.js';
 import { ReasonDialog } from '@/contracting/components/ReasonDialog.js';
-import { useAiVerdictRefetchInterval } from '@/contracting/hooks/use-ai-verdict-polling.js';
 import { useResetOnOpen } from '@/contracting/hooks/use-contracting-write.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -33,10 +31,7 @@ import { useJobWrite } from './use-job-write.js';
 
 export function JobPage({ code }: { code: string }) {
   const trpc = useTRPC();
-  const refetchInterval = useAiVerdictRefetchInterval((job: JobDetail) =>
-    job.assignments.flatMap((assignment) => [assignment.arrival, assignment.departure]),
-  );
-  const query = useQuery(trpc.contractingJobs.jobs.get.queryOptions({ code }, { refetchInterval }));
+  const query = useQuery(trpc.contractingJobs.jobs.get.queryOptions({ code }));
   const sheet = query.data ? jobSheet(query.data) : null;
   return (
     <PageLayout

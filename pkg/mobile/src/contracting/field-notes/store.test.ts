@@ -44,10 +44,10 @@ test('refuses an empty note and keeps a trimmed description or a photo', async (
   const notes = store();
   await expect(notes.create({ description: '   ', photos: [] })).rejects.toThrow(NOTE_NEEDS_CONTENT);
 
-  const { note: written } = await notes.create({ description: '  T12 at Rietfontein, 4211.5  ', photos: [] });
-  const { note: photographed } = await notes.create({
+  const written = await notes.create({ description: '  T12 at Rietfontein, 4211.5  ', photos: [] });
+  const photographed = await notes.create({
     description: '',
-    photos: [{ uri: 'file:///camera/1.jpg', inGallery: false }],
+    photos: [{ uri: 'file:///camera/1.jpg' }],
   });
 
   expect(written).toMatchObject({ description: 'T12 at Rietfontein, 4211.5', status: 'open', photos: [] });
@@ -60,7 +60,7 @@ test('refuses an empty note and keeps a trimmed description or a photo', async (
 test('closes, reopens, and deletes a note with its files', async () => {
   const files = fakeFiles();
   const notes = store(undefined, files);
-  const { note } = await notes.create({ description: 'Meter fogged', photos: [] });
+  const note = await notes.create({ description: 'Meter fogged', photos: [] });
 
   await notes.close(note.id);
   expect((await notes.list())[0]?.status).toBe('closed');
@@ -75,12 +75,9 @@ test('closes, reopens, and deletes a note with its files', async () => {
 test('refuses to remove the last photo of a note without a description', async () => {
   const files = fakeFiles();
   const notes = store(undefined, files);
-  const { note } = await notes.create({
+  const note = await notes.create({
     description: '',
-    photos: [
-      { uri: 'file:///camera/1.jpg', inGallery: false },
-      { uri: 'file:///gallery/2.jpg', inGallery: true },
-    ],
+    photos: [{ uri: 'file:///camera/1.jpg' }, { uri: 'file:///gallery/2.jpg' }],
   });
   const [first, second] = note.photos;
 
@@ -91,29 +88,12 @@ test('refuses to remove the last photo of a note without a description', async (
   expect((await notes.list())[0]?.photos).toEqual([second]);
 });
 
-test('a photo the gallery refused stays on the note and is reported once', async () => {
-  const notes = store();
-  const { note, galleryFailed } = await notes.create({
-    description: '',
-    photos: [{ uri: 'file:///camera/1.jpg', inGallery: false }],
-  });
-  expect(galleryFailed).toBe(true);
-  expect(note.photos).toHaveLength(1);
-
-  const added = await notes.addPhotos(note.id, [{ uri: 'file:///gallery/2.jpg', inGallery: true }]);
-  expect(added.galleryFailed).toBe(false);
-  expect((await notes.list())[0]?.photos).toHaveLength(2);
-});
-
 test('keeps at most the photo limit on a note', async () => {
   const files = fakeFiles({ photoLimit: 2 });
   const notes = store(undefined, files);
-  const { note } = await notes.create({ description: 'x', photos: [{ uri: 'file:///1.jpg', inGallery: false }] });
+  const note = await notes.create({ description: 'x', photos: [{ uri: 'file:///1.jpg' }] });
 
-  await notes.addPhotos(note.id, [
-    { uri: 'file:///2.jpg', inGallery: true },
-    { uri: 'file:///3.jpg', inGallery: true },
-  ]);
+  await notes.addPhotos(note.id, [{ uri: 'file:///2.jpg' }, { uri: 'file:///3.jpg' }]);
 
   expect((await notes.list())[0]?.photos).toHaveLength(2);
   expect(files.keep).toHaveBeenCalledTimes(2);
@@ -138,7 +118,7 @@ test('serializes concurrent writes so none is lost', async () => {
 
 test('corrupt storage falls back to an empty list and drops rows that no longer parse', async () => {
   const key = 'contracting:field-notes:v1:https://api.test:user-1';
-  const { note } = await store(key).create({ description: 'valid', photos: [] });
+  const note = await store(key).create({ description: 'valid', photos: [] });
   const raw = JSON.parse((await AsyncStorage.getItem(key)) ?? '[]');
   await AsyncStorage.setItem(key, JSON.stringify([...raw, { id: 'not-a-note' }]));
   expect((await store(key).list()).map((row) => row.id)).toEqual([note.id]);
@@ -152,7 +132,7 @@ test('names refusals as Field Note errors', async () => {
 });
 
 test('the snapshot is null until the first subscription reads storage', async () => {
-  const { note } = await store().create({ description: 'T12 at Rietfontein', photos: [] });
+  const note = await store().create({ description: 'T12 at Rietfontein', photos: [] });
   const notes = store();
   expect(notes.getSnapshot()).toBeNull();
 
@@ -167,7 +147,7 @@ test('a write publishes what it wrote, and the snapshot keeps its identity until
   notes.subscribe(listener);
   await vi.waitFor(() => expect(listener).toHaveBeenCalledTimes(1));
 
-  const { note } = await notes.create({ description: 'Meter fogged', photos: [] });
+  const note = await notes.create({ description: 'Meter fogged', photos: [] });
   expect(listener).toHaveBeenCalledTimes(2);
   const created = notes.getSnapshot();
   expect(notes.getSnapshot()).toBe(created);

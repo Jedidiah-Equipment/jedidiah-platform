@@ -53,7 +53,7 @@ export const assignmentState = (stint: {
 export function deriveStintHours(stint: StintReadings, threshold: number): StintHours {
   const state = stateOf(stint.arrival !== null, stint.departure !== null);
   // A disputed reading may deliberately move the ledger backwards. Keep the Job readable while the
-  // evidence is reviewed, but do not present a negative duration as meaningful operational hours.
+  // Dispute is resolved, but do not present a negative duration as meaningful operational hours.
   const workHours =
     stint.arrival && stint.departure ? nonnegativeDifference(stint.departure.value, stint.arrival.value) : null;
   const gapHours =

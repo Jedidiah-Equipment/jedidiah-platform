@@ -88,11 +88,10 @@ const at = (job: ActivityJobRef | null) => (job ? ` at ${job.jobNumber}` : '');
 const READ_AT_TOLERANCE_MS = 60_000;
 
 /** The hours, plus the Read At when it differs from the accepted instant by more than a minute. */
-function hoursDetail(item: { hours: number; readAt: string; occurredAt: string; photoBacked: boolean }): string {
+function hoursDetail(item: { hours: number; readAt: string; occurredAt: string }): string {
   const parts = [formatHours(item.hours)];
   if (Math.abs(Date.parse(item.readAt) - Date.parse(item.occurredAt)) > READ_AT_TOLERANCE_MS)
     parts.push(`read ${formatDate(item.readAt, 'medium')}`);
-  if (item.photoBacked) parts.push('photo');
   return parts.join(' · ');
 }
 

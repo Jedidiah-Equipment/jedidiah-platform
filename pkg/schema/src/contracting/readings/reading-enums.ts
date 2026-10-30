@@ -2,22 +2,11 @@
 export const readingRoles = ['baseline', 'arrival', 'departure', 'spot'] as const;
 export type ReadingRole = (typeof readingRoles)[number];
 export const readingCaptureRoles = ['baseline', 'spot'] as const;
-export const readingMethods = ['photo', 'manual', 'telematics'] as const;
+export const readingMethods = ['manual', 'telematics'] as const;
 export type ReadingMethod = (typeof readingMethods)[number];
 /** Who a Telematics Reading's hours came from. */
 export const telematicsProviders = ['john-deere'] as const;
 export type TelematicsProvider = (typeof telematicsProviders)[number];
-export const readingVerifications = ['pending', 'agrees', 'disagrees', 'low-confidence', 'not-applicable'] as const;
-export type ReadingVerification = (typeof readingVerifications)[number];
-/** An unreviewed reading with one of these verdicts is AI-flagged: the AI could not confirm the typed value. */
-export const aiFlaggedVerifications = [
-  'pending',
-  'disagrees',
-  'low-confidence',
-] as const satisfies readonly ReadingVerification[];
-export type AiFlaggedVerification = (typeof aiFlaggedVerifications)[number];
-export const readingExceptionTypes = ['disputed', 'ai-flagged'] as const;
-export type ReadingExceptionType = (typeof readingExceptionTypes)[number];
 
 /** Every refusal a reading write can carry, as the server sends it. */
 export const readingErrorCodes = [
@@ -34,8 +23,6 @@ export const readingErrorCodes = [
   'reading.invalid_role',
   'reading.machine_on_site',
   'reading.implement_on_site',
-  'reading.no_photo',
-  'reading.verification_failed',
   'reading.job_invoiced',
   'reading.future_read_at',
   'reading.outruns_clock',

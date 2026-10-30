@@ -14,7 +14,7 @@ vi.mock('@/hooks/use-api-mutation-error-toast.js', () => ({
   useApiMutationErrorToast: () => () => undefined,
 }));
 vi.mock('@/contracting/hooks/use-reading-review.js', () => ({
-  useReadingReview: () => ({ amend: idle, reverify: idle }),
+  useReadingReview: () => ({ amend: idle }),
 }));
 vi.mock('@tanstack/react-query', async (original) => ({
   ...(await original<typeof import('@tanstack/react-query')>()),
@@ -34,18 +34,13 @@ const reading: DialogReading = {
   capturedByUserId: 'henk',
   capturedByName: 'Henk Botha',
   method: 'manual',
+  telematicsProvider: null,
   comment: null,
-  aiValue: null,
-  aiConfidence: null,
-  aiVerification: 'not-applicable',
-  aiHint: null,
   disputed: false,
   disputeReason: null,
-  evidenceReviewedAt: null,
   amendedAt: null,
   amendedByName: null,
   amendmentReason: null,
-  photoBacked: false,
 };
 
 afterEach(async () => {
@@ -76,11 +71,4 @@ it('says when a backdated reading was saved, and only then', async () => {
   const text = await show({ createdAt: savedAt });
   expect(text).toContain(`Read At ${formatDate(readAt, 'medium')}`);
   expect(text).toContain(`saved ${formatDate(savedAt, 'medium')}`);
-});
-
-it('shows the AI assessment only for a reading with a photo', async () => {
-  expect(await show({})).not.toContain('AI assessment of the photo');
-  expect(await show({ photoBacked: true, method: 'photo', aiVerification: 'pending' })).toContain(
-    'AI assessment of the photo',
-  );
 });

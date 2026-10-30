@@ -42,7 +42,6 @@ const capture = (
       value,
       capturedAt: new Date(Date.parse('2026-09-01T06:00:00Z') + ++halfDay * 12 * 3_600_000).toISOString(),
       disputePrevious: false,
-      comment: 'Photo unavailable',
     },
   });
 

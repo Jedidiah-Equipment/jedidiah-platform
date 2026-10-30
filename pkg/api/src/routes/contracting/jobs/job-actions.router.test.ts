@@ -118,7 +118,6 @@ const test = createTester(async ({ db }) => {
           value,
           capturedAt: new Date(Date.parse('2026-09-01T06:00:00Z') + ++sequence * 60_000).toISOString(),
           disputePrevious: false,
-          ...(role === 'departure' ? { comment: 'Photo unavailable' } : {}),
         },
       });
     const fixture: Fixture = {
@@ -237,11 +236,14 @@ const attempts: Record<
       ? null
       : getReading({ db, id: arrivalReadingId }).then(({ capturedAt }) =>
           caller.contractingReadings.amend({
-            amendments: [{ id: arrivalReadingId, value: 100, capturedAt: capturedAt.toISOString() }],
-            reason: 'Checked the photo',
+            // A minute earlier: an amendment must change something.
+            amendments: [
+              { id: arrivalReadingId, value: 100, capturedAt: new Date(capturedAt.getTime() - 60_000).toISOString() },
+            ],
+            reason: 'Captured late',
           }),
         ),
-  // Capture arrives over multipart HTTP, so it is judged where that route hands over: the core capture.
+  // Capture arrives over HTTP, so it is judged where that route hands over: the core capture.
   capture: (_caller, { stint }, { db }, role) =>
     captureReading({
       db,
@@ -363,7 +365,6 @@ const stintCapture = (db: Db, role: ContractingRole, stint: StintFixture, readin
       value: reading === 'arrival' ? 500 : 600,
       capturedAt: reading === 'arrival' ? '2026-09-20T08:00:00Z' : '2026-09-25T08:00:00Z',
       disputePrevious: false,
-      comment: 'Photo unavailable',
     },
   });
 
@@ -374,7 +375,7 @@ const stintAttempts: Record<
 > = {
   remove: (caller, stint) => caller.contractingJobs.assignments.remove({ id: stint.id }),
   changeResources: (caller, stint) => caller.contractingJobs.assignments.patch({ id: stint.id, driverUserId: null }),
-  // Capture arrives over multipart HTTP, so it is judged where that route hands over: the core capture.
+  // Capture arrives over HTTP, so it is judged where that route hands over: the core capture.
   captureArrival: (_caller, stint, { db }, role) => stintCapture(db, role, stint, 'arrival'),
   captureDeparture: (_caller, stint, { db }, role) => stintCapture(db, role, stint, 'departure'),
   editMeasures: (caller, stint, { loadsId }) =>

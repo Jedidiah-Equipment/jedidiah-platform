@@ -59,7 +59,7 @@ export function TabRootList<T>({
   pagination?: TabRootListPagination;
   renderItem: (item: T) => ReactNode;
   sections: readonly TabRootListSection<T>[];
-  /** A tab's list pushed as a secondary page, as a Machine's Service history is, sits under that toolbar's border. */
+  /** A tab's list pushed as a secondary page sits under that toolbar's border. */
   underSecondaryToolbar?: boolean;
 }) {
   const loadMoreRequestedRef = useRef(false);

@@ -25,11 +25,12 @@ import { useMachinesDueForService, useServiceFilterOptions, useServiceRecordList
 
 const STATUS_KEY = contractingStorageKey('services', 'status');
 const EVERY_MECHANIC = 'all';
+const LOADING_MESSAGE = 'Loading services…';
 
 type Row =
   | { kind: 'due'; machine: FieldMachine }
   | { kind: 'record'; record: ServiceRecord }
-  | { kind: 'empty'; message: string };
+  | { kind: 'message'; message: string };
 
 function SectionHeader({ children }: { children: string }) {
   return (
@@ -79,8 +80,8 @@ export function ServicesList({ scope }: { scope: { machineId: string; bookable: 
   const recordRows: Row[] = records.length
     ? records.map((record) => ({ kind: 'record', record }))
     : // Under pinned rows the list is not empty, so the records say why they are missing themselves.
-      pinned.length && !initialLoading
-      ? [{ kind: 'empty', message: emptyMessage }]
+      pinned.length
+      ? [{ kind: 'message', message: initialLoading ? LOADING_MESSAGE : emptyMessage }]
       : [];
   const canBookHere = canBook && (scope?.bookable ?? true);
   return (
@@ -160,7 +161,7 @@ export function ServicesList({ scope }: { scope: { machineId: string; bookable: 
           )
         }
         initialLoading={initialLoading}
-        loadingContent={<Text className="text-muted-foreground">Loading services…</Text>}
+        loadingContent={<Text className="text-muted-foreground">{LOADING_MESSAGE}</Text>}
         emptyContent={<Text className="text-muted-foreground">{emptyMessage}</Text>}
         underSecondaryToolbar={scope !== null}
       />

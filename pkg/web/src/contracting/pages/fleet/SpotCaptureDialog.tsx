@@ -20,10 +20,7 @@ export function SpotCaptureDialog({
   machine: Pick<Machine, 'id' | 'code' | 'categoryIcon' | 'categoryColour'>;
   onClose: () => void;
 }) {
-  const capture = useReadingCapture({ role: 'spot', machineId: machine.id }, (values: SpotValues) => ({
-    ...values,
-    stintOverrides: undefined,
-  }));
+  const capture = useReadingCapture<SpotValues>({ role: 'spot', machineId: machine.id });
 
   return (
     <CreateEntityDialog
@@ -32,27 +29,15 @@ export function SpotCaptureDialog({
         if (!open) onClose();
       }}
       title={<MachineDialogTitle machine={machineDialogSubject(machine)}>Capture hours</MachineDialogTitle>}
-      contentClassName="sm:max-w-md"
-      submitLabel="Save reading"
-      showSubmit={capture.verdict.step === 'details'}
+      {...capture.dialogProps}
       defaultValues={{ comment: '' }}
       validator={SpotValues}
-      canSubmit={capture.canSubmit}
-      onBeforeCreate={capture.canSubmit}
-      onCreate={async (values) => {
-        await capture.submit(values);
-        return true;
-      }}
       onCreated={onClose}
     >
       {(form) => (
-        <>
-          <CaptureWizard capture={capture}>
-            <form.AppField name="comment">
-              {(field) => <field.TextareaField label="Comment (optional)" />}
-            </form.AppField>
-          </CaptureWizard>
-        </>
+        <CaptureWizard capture={capture}>
+          <form.AppField name="comment">{(field) => <field.TextareaField label="Comment (optional)" />}</form.AppField>
+        </CaptureWizard>
       )}
     </CreateEntityDialog>
   );

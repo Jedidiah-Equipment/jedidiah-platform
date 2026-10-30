@@ -46,7 +46,7 @@ vi.mock('@/contracting/readings/use-fleet', () => ({
   useReadAtEstimate: (_target: unknown, value: number | null) => ({
     estimate: value === null ? undefined : { kind: 'now' },
     working: false,
-    isError: false,
+    error: null,
   }),
 }));
 vi.mock('@/lib/auth-session', () => ({ useSessionPermission: () => true }));

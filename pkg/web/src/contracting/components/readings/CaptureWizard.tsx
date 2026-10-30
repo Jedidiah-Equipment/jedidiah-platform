@@ -58,7 +58,7 @@ function WhenButtons({ capture }: { capture: WizardCapture }) {
           <Button
             aria-pressed={when === choice}
             key={choice}
-            onClick={() => capture.chooseWhen(choice)}
+            onClick={() => capture.dispatch({ type: 'when', when: choice })}
             size="lg"
             type="button"
             variant={when === choice ? 'default' : 'outline'}
@@ -136,17 +136,21 @@ function DateStep({ capture }: { capture: WizardCapture }) {
           onChange={(value) => {
             const at = readAtFromPicker(value, date.readAt);
             setTyped(at ? '' : value);
-            if (at) capture.pickReadAt(at);
-            else capture.unconfirmDate();
+            capture.dispatch(at ? { type: 'date-picked', readAt: at } : { type: 'date-unconfirmed' });
           }}
           value={typed || readAtInputValue(date.readAt ?? new Date())}
         />
       ) : (
-        <Button className="w-full justify-start" onClick={capture.openDate} type="button" variant="outline">
+        <Button
+          className="w-full justify-start"
+          onClick={() => capture.dispatch({ type: 'date-opened' })}
+          type="button"
+          variant="outline"
+        >
           {date.line}
         </Button>
       )}
-      {verdict.futureReadAt ? (
+      {date.futureReadAt ? (
         <p className="text-sm text-destructive" role="alert">
           {captureRefusals['future-read-at'].message}
         </p>
@@ -165,7 +169,7 @@ function DateStep({ capture }: { capture: WizardCapture }) {
         <Button
           className="w-full"
           disabled={!date.confirmable || typed !== ''}
-          onClick={capture.confirmDate}
+          onClick={() => capture.dispatch({ type: 'date-confirmed', verdict })}
           type="button"
         >
           Date looks good
@@ -183,18 +187,28 @@ function DisputeFork({ capture, dispute }: { capture: WizardCapture; dispute: Ca
       {dispute.confirmed ? (
         <div className="flex items-center justify-between gap-3">
           <span className="text-sm font-medium">Previous reading disputed</span>
-          <Button onClick={() => capture.dispute(null)} size="sm" type="button" variant="outline">
+          <Button
+            onClick={() => capture.dispatch({ type: 'dispute', readingId: null })}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
             Undo
           </Button>
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-2">
-          <Button className={wrapping} onClick={capture.readEarlier} type="button" variant="outline">
+          <Button
+            className={wrapping}
+            onClick={() => capture.dispatch({ type: 'read-earlier', estimate: capture.estimateQuery.estimate })}
+            type="button"
+            variant="outline"
+          >
             Read earlier
           </Button>
           <Button
             className={wrapping}
-            onClick={() => capture.dispute(dispute.readingId)}
+            onClick={() => capture.dispatch({ type: 'dispute', readingId: dispute.readingId })}
             type="button"
             variant="outline"
           >

@@ -3,24 +3,21 @@ import {
   CAPTURE_STEPS_START,
   CAPTURE_VALUE_INVALID,
   type CaptureFormVerdict,
-  type CaptureSteps,
+  type CaptureStepAction,
   type CaptureWhen,
   capturedAtFor,
   captureRefusals,
-  confirmCaptureDate,
+  captureStepsReducer,
   deriveCaptureForm,
   isBackdated,
+  ledgerMoved,
   parseCaptureValue,
   readingProviderSuffix,
-  stepsAfterReadEarlier,
-  stepsAfterRefusal,
-  stepsAfterValueEdit,
-  stepsAfterWhen,
 } from '@pkg/domain/contracting';
-import { ReadingComment, type ReadingErrorCode, type ReadingRole, readingRefusalOf } from '@pkg/schema/contracting';
+import { ReadingComment, type ReadingRole, readingRefusalOf } from '@pkg/schema/contracting';
 import { useQueryClient } from '@tanstack/react-query';
 import { type Href, router, useLocalSearchParams, useNavigation } from 'expo-router';
-import { type RefObject, useRef, useState } from 'react';
+import { type Dispatch, type RefObject, useReducer, useRef, useState } from 'react';
 import { Pressable, type ScrollViewInstance, View } from 'react-native';
 import { FormPage } from '@/components/FormPage';
 import { FieldLabel, FieldShell } from '@/components/form/fields/FieldShell';
@@ -40,13 +37,6 @@ import { useSessionPermission } from '@/lib/auth-session';
 import { UploadRefusedError } from '@/lib/multipart-upload';
 import { useTRPC } from '@/lib/trpc';
 import { useBusyAction } from '@/lib/use-busy-action';
-
-/** Refusals that mean the ledger moved under the form: its latest reading must be fetched again. */
-const LEDGER_MOVED = new Set<string>([
-  'reading.below_latest',
-  'reading.above_next',
-  'reading.previous_changed',
-] satisfies ReadingErrorCode[]);
 
 type CaptureTarget =
   | { kind: 'machine'; machineId: string }
@@ -111,7 +101,7 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
   const queryClient = useQueryClient();
   const trpc = useTRPC();
   const canCapture = useSessionPermission('contracting_reading:capture');
-  const [steps, setSteps] = useState<CaptureSteps>(CAPTURE_STEPS_START);
+  const [steps, dispatch] = useReducer(captureStepsReducer, CAPTURE_STEPS_START);
   const scroll = useRef<ScrollViewInstance>(null);
   const readAtField = useRef<ReadAtFieldHandle>(null);
   const [value, setValue] = useState('');
@@ -131,18 +121,18 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
     { latest, now: new Date() },
     { role, value, estimate, ...steps, comment, stintOverrides },
   );
-  const { parsed, date } = form;
+  const { parsed, date, request, answers } = form;
   const readAt = date?.readAt ?? null;
   const readEarlier = () => {
-    const next = stepsAfterReadEarlier(steps, estimate);
-    setSteps(next);
+    const action: CaptureStepAction = { type: 'read-earlier', estimate };
     // No date to read at: the picker opens on its own once it shows.
-    if (next.dateOpened && !steps.dateOpened) requestAnimationFrame(() => readAtField.current?.open());
+    const opens = !steps.dateOpened && captureStepsReducer(steps, action).dateOpened;
+    dispatch(action);
+    if (opens) requestAnimationFrame(() => readAtField.current?.open());
   };
-  const canSave = form.request !== null && canCapture && !!machine;
+  const canSave = request !== null && canCapture && !!machine;
   function save() {
-    const request = form.request;
-    if (!canSave || voice.busy || !request || !steps.when || !estimate) return;
+    if (!canSave || voice.busy || !request || !answers) return;
     // Only what the Foreman entered: a reconnect refetches the latest, and a retry after it must still replay.
     attempt.current = captureAttempt(
       attempt.current,
@@ -158,13 +148,7 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
     );
     const { localId, attemptedAt } = attempt.current;
     const capturedAt = capturedAtFor(readAt, attemptedAt);
-    const captured = {
-      role,
-      backdated: isBackdated(readAt, attemptedAt),
-      when: steps.when,
-      estimateKind: estimate.kind,
-      dateEdited: date?.source === 'picked',
-    };
+    const captured = { role, backdated: isBackdated(readAt, attemptedAt), ...answers };
     return run(async () => {
       try {
         await captureReading({
@@ -177,11 +161,11 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
       } catch (error) {
         // The busy action shows a refusal's sentence and reports anything else; the ledger's own refusals also refetch.
         if (error instanceof UploadRefusedError) {
-          recordReadingCaptured({ ...captured, refused: error.data.appCode });
+          const code = error.data.appCode;
+          recordReadingCaptured({ ...captured, refused: code });
           // Nothing is saved until the person checks the date the ledger puts the value at and saves again.
-          setSteps((current) => stepsAfterRefusal(current, readingRefusalOf(error.data).suggestedReadAt));
-          if (LEDGER_MOVED.has(error.data.appCode)) {
-            setSteps((current) => ({ ...current, disputedReadingId: null }));
+          dispatch({ type: 'refused', code, proposal: readingRefusalOf(error.data).suggestedReadAt });
+          if (ledgerMoved(code)) {
             void queryClient.invalidateQueries({
               queryKey: trpc.contractingReadings.latest.queryKey({ machineId }),
             });
@@ -223,7 +207,7 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
               primary={date.confirmable && !busy}
               title="Date looks good"
               disabled={busy || !date.confirmable}
-              onPress={() => setSteps((current) => ({ ...current, dateConfirmed: confirmCaptureDate(form) }))}
+              onPress={() => dispatch({ type: 'date-confirmed', verdict: form })}
             />
           ) : form.step === 'details' ? (
             <Button
@@ -238,11 +222,7 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
         </>
       }
     >
-      <WhenButtons
-        when={steps.when}
-        disabled={busy}
-        onChoose={(when) => setSteps((current) => stepsAfterWhen(current, when))}
-      />
+      <WhenButtons when={steps.when} disabled={busy} onChoose={(when) => dispatch({ type: 'when', when })} />
       {form.step !== 'when' ? (
         <FieldShell
           label={
@@ -271,27 +251,19 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
             onBlur={() => setValueFocused(false)}
             onChangeText={(text) => {
               setValue(text);
-              setSteps(stepsAfterValueEdit);
+              dispatch({ type: 'value-edited' });
             }}
           />
           <EstimateLine
             line={form.estimateLine}
             impossible={estimate?.kind === 'impossible'}
             working={estimateQuery.working}
-            failed={estimateQuery.isError}
+            failed={estimateQuery.error !== null}
           />
         </FieldShell>
       ) : null}
       {date ? (
-        <DateStep
-          form={form}
-          busy={busy}
-          readAtField={readAtField}
-          onOpen={() => setSteps((current) => ({ ...current, dateOpened: true }))}
-          onPick={(at) => setSteps((current) => ({ ...current, pickedReadAt: at }))}
-          onReadEarlier={readEarlier}
-          onDispute={(readingId) => setSteps((current) => ({ ...current, disputedReadingId: readingId }))}
-        />
+        <DateStep form={form} busy={busy} readAtField={readAtField} dispatch={dispatch} onReadEarlier={readEarlier} />
       ) : null}
       {form.step === 'details' ? (
         <>
@@ -378,31 +350,33 @@ function DateStep({
   form,
   busy,
   readAtField,
-  onOpen,
-  onPick,
+  dispatch,
   onReadEarlier,
-  onDispute,
 }: {
   form: CaptureFormVerdict;
   busy: boolean;
   readAtField: RefObject<ReadAtFieldHandle | null>;
-  onOpen: () => void;
-  onPick: (at: Date | null) => void;
+  dispatch: Dispatch<CaptureStepAction>;
+  /** Read earlier also opens the picker when the ledger names no date, so the screen owns it. */
   onReadEarlier: () => void;
-  onDispute: (readingId: string | null) => void;
 }) {
   const { date } = form;
   if (!date) return null;
   return (
-    <FieldShell label="Date" errors={form.futureReadAt ? [{ message: captureRefusals['future-read-at'].message }] : []}>
+    <FieldShell label="Date" errors={date.futureReadAt ? [{ message: captureRefusals['future-read-at'].message }] : []}>
       {date.awaitsFork ? null : date.locked ? (
         <Text className="text-foreground" weight="semibold">
           {date.line}
         </Text>
       ) : date.open ? (
-        <ReadAtField ref={readAtField} value={date.readAt} onPick={onPick} disabled={busy} />
+        <ReadAtField
+          ref={readAtField}
+          value={date.readAt}
+          onPick={(at) => dispatch({ type: 'date-picked', readAt: at })}
+          disabled={busy}
+        />
       ) : (
-        <Button title={date.line} onPress={onOpen} disabled={busy} />
+        <Button title={date.line} onPress={() => dispatch({ type: 'date-opened' })} disabled={busy} />
       )}
       {date.warningLines.length ? (
         <View className="gap-2 rounded-xl border border-warning p-4">
@@ -417,13 +391,17 @@ function DateStep({
         <View className="gap-3 rounded-xl border border-danger p-4">
           <Text className="text-foreground">{date.dispute.sentence}</Text>
           {date.dispute.confirmed ? (
-            <Button title="Previous reading disputed · undo" onPress={() => onDispute(null)} disabled={busy} />
+            <Button
+              title="Previous reading disputed · undo"
+              onPress={() => dispatch({ type: 'dispute', readingId: null })}
+              disabled={busy}
+            />
           ) : (
             <>
               <Button title="Read earlier" onPress={onReadEarlier} disabled={busy} />
               <Button
                 title="The previous reading is wrong"
-                onPress={() => onDispute(date.dispute?.readingId ?? null)}
+                onPress={() => dispatch({ type: 'dispute', readingId: date.dispute?.readingId ?? null })}
                 disabled={busy}
               />
             </>

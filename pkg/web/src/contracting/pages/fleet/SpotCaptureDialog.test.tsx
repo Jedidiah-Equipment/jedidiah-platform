@@ -1,8 +1,8 @@
 /** @vitest-environment jsdom */
 
-import { formatHours } from '@pkg/domain';
+import { formatDate, formatHours } from '@pkg/domain';
 import { captureRefusals } from '@pkg/domain/contracting';
-import type { Machine } from '@pkg/schema/contracting';
+import type { Machine, ReadAtEstimate } from '@pkg/schema/contracting';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -18,6 +18,14 @@ vi.mock('@/contracting/components/readings/use-latest-reading.js', () => ({
     isPending: false,
     error: null,
     data: { id: latestId, role: 'departure', value: 130, capturedAt: '2026-10-17T12:00:00.000Z' },
+  }),
+}));
+const estimates = vi.hoisted(() => ({ for: (_value: number | null): ReadAtEstimate | undefined => ({ kind: 'now' }) }));
+vi.mock('@/contracting/components/readings/use-read-at-estimate.js', () => ({
+  useReadAtEstimate: (_target: unknown, value: number | null) => ({
+    estimate: value === null ? undefined : estimates.for(value),
+    working: false,
+    error: null,
   }),
 }));
 vi.mock('@/contracting/hooks/use-query-invalidation.js', () => ({
@@ -39,7 +47,22 @@ afterEach(async () => {
   });
   document.body.replaceChildren();
   capture.mockClear();
+  estimates.for = () => ({ kind: 'now' });
 });
+
+const estimated = (kind: 'telematics' | 'human', readAt: Date): ReadAtEstimate => ({
+  kind,
+  readAt: readAt.toISOString() as never,
+  floor: {
+    value: 120,
+    capturedAt: readAt.toISOString() as never,
+    telematicsProvider: kind === 'telematics' ? 'john-deere' : null,
+  },
+  ceiling: null,
+  overAWeek: false,
+});
+const deere = (readAt: Date) => estimated('telematics', readAt);
+const guess = (readAt: Date) => estimated('human', readAt);
 
 async function mount() {
   const container = document.createElement('div');
@@ -48,10 +71,18 @@ async function mount() {
   roots.push(root);
   const onClose = vi.fn();
   await act(async () => root.render(<SpotCaptureDialog machine={machine} onClose={onClose} />));
-  const save = [...document.querySelectorAll('button')].find((button) => button.textContent?.trim() === 'Capture');
-  if (!save) throw new Error('Capture action missing');
+  const save = button('Save reading');
+  if (!save) throw new Error('Save action missing');
   return { save, onClose };
 }
+
+const button = (label: string) =>
+  [...document.querySelectorAll('button')].find((item) => item.textContent?.trim() === label);
+const press = async (label: string) => {
+  const target = button(label);
+  if (!target) throw new Error(`Button missing: ${label}`);
+  await act(async () => target.click());
+};
 
 async function enter(name: string, value: string) {
   const input = document.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[name="${name}"]`);
@@ -64,8 +95,6 @@ async function enter(name: string, value: string) {
 }
 
 async function enterReadAt(date: string, time: string) {
-  const earlier = [...document.querySelectorAll('button')].find((item) => item.textContent === 'Earlier…');
-  if (earlier?.getAttribute('aria-pressed') === 'false') await act(async () => earlier.click());
   for (const [name, value] of [
     ['readAt', date],
     ['readAt-time', time],
@@ -77,68 +106,98 @@ async function enterReadAt(date: string, time: string) {
   }
 }
 
-it('posts a spot reading for the Machine, on no Assignment, read when the meter was read', async () => {
-  const { save, onClose } = await mount();
+it('opens on the question alone, then reveals hours, the date and the details in turn', async () => {
+  const { save } = await mount();
+  expect(document.body.textContent).toContain('When was the meter read?');
+  expect(document.querySelector('[name="value"]')).toBeNull();
+  expect(button('Today')?.getAttribute('aria-pressed')).toBe('false');
+  await press('Today');
+  expect(document.querySelector('[name="value"]')).not.toBeNull();
+  expect(button('Date looks good')).toBeUndefined();
   await enter('value', '140');
-  await enterReadAt('2026-10-20', '09:30');
+  expect(document.body.textContent).toContain('Read now');
+  expect(document.querySelector('[name="comment"]')).toBeNull();
+  expect(save.disabled).toBe(true);
+  await press('Date looks good');
+  expect(document.querySelector('[name="comment"]')).not.toBeNull();
+  await enter('comment', 'Gate open');
   await act(async () => save.click());
-
-  expect(capture).toHaveBeenCalledOnce();
-  const [fields] = capture.mock.calls[0] ?? [];
-  expect(fields).toEqual({
+  expect(capture.mock.calls[0]?.[0]).toMatchObject({
     role: 'spot',
     machineId: machine.id,
     value: 140,
-    comment: null,
+    comment: 'Gate open',
     disputePrevious: false,
     expectedPreviousId: latestId,
-    capturedAt: new Date(2026, 9, 20, 9, 30).toISOString(),
   });
-  expect(onClose).toHaveBeenCalled();
 });
 
-it('captures a time typed without leaving the time box', async () => {
+it('stops at the hours with the sentence when the meter cannot have got there', async () => {
+  estimates.for = () => ({ kind: 'impossible', sentence: 'The meter cannot have reached 165.0 h yet.' });
+  await mount();
+  await press('Today');
+  await enter('value', '165');
+  expect(document.querySelector('[role="alert"]')?.textContent).toBe('The meter cannot have reached 165.0 h yet.');
+  expect(button('Date looks good')).toBeUndefined();
+});
+
+it('locks a date John Deere brackets and posts it to the second', async () => {
+  const readAt = new Date(2026, 9, 16, 9, 30, 27);
+  estimates.for = () => deere(readAt);
   const { save } = await mount();
-  await enter('value', '140');
-  await enterReadAt('2026-10-20', '09:30');
-  await enter('readAt-time', '10:15');
+  await press('Earlier');
+  await enter('value', '126');
+  expect(document.body.textContent).toContain(`Read on ${formatDate(readAt, 'medium')} per John Deere`);
+  expect(document.querySelector('[name="readAt"]')).toBeNull();
+  await press('Date looks good');
   await act(async () => save.click());
-
-  expect(capture.mock.calls[0]?.[0]).toMatchObject({ capturedAt: new Date(2026, 9, 20, 10, 15).toISOString() });
+  expect(capture.mock.calls[0]?.[0]).toMatchObject({ value: 126, capturedAt: readAt.toISOString() });
 });
 
-it('keeps a wrong time on screen and refuses to capture until it is fixed', async () => {
-  const { save } = await mount();
+it('warns under Today when the guessed date is another day, and lets the person correct it', async () => {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date(2026, 9, 20, 12, 0));
+  try {
+    estimates.for = () => guess(new Date(2026, 9, 18, 8, 0));
+    await mount();
+    await press('Today');
+    await enter('value', '135');
+    expect(document.body.textContent).toContain(
+      `This reading looks like it was read on ${formatDate(new Date(2026, 9, 18), 'short')}, not today.`,
+    );
+    await press(`Read about ${formatDate(new Date(2026, 9, 18, 8, 0), 'medium')}`);
+    await enterReadAt('2026-10-20', '09:30');
+    expect(document.body.textContent).not.toContain('not today');
+    await press('Date looks good');
+    const save = button('Save reading');
+    await act(async () => save?.click());
+    expect(capture.mock.calls[0]?.[0]).toMatchObject({ capturedAt: new Date(2026, 9, 20, 9, 30).toISOString() });
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it('keeps a wrong time on screen and holds Date looks good until it is fixed', async () => {
+  await mount();
+  await press('Earlier');
   await enter('value', '140');
   await enterReadAt('2026-10-20', '25:00');
-
   expect(document.querySelector<HTMLInputElement>('[name="readAt-time"]')?.value).toBe('25:00');
   expect(document.body.textContent).toContain('Enter the time as HH:mm');
-  expect(save.disabled).toBe(true);
-  expect(capture).not.toHaveBeenCalled();
+  expect(button('Date looks good')?.disabled).toBe(true);
 });
 
-it('picks no time from one the time box refuses, even one a browser would roll over', async () => {
+it('offers the dispute below a human latest, which posts the handshake', async () => {
+  estimates.for = () => guess(new Date('2026-10-17T10:00:00.000Z'));
   const { save } = await mount();
-  await enter('value', '140');
-  await enterReadAt('2026-10-20', '24:00');
-
-  expect(document.body.textContent).toContain('Enter the time as HH:mm');
-  expect(save.disabled).toBe(true);
-  expect(capture).not.toHaveBeenCalled();
-});
-
-it('offers the dispute for a reading below the latest one', async () => {
-  const { save } = await mount();
+  await press('Today');
   await enter('value', '126');
-  await act(async () => document.querySelector<HTMLTextAreaElement>('[name="comment"]')?.focus());
   expect(document.body.textContent).toContain(
-    `Record ${formatHours(126)} and dispute the ${formatHours(130)} reading.`,
+    `This is below the latest reading of ${formatHours(130)} at ${formatDate(new Date('2026-10-17T12:00:00.000Z'), 'medium')}.`,
   );
-  expect(save.disabled).toBe(true);
-  const dispute = document.querySelector<HTMLElement>('#confirmedDispute');
-  if (!dispute) throw new Error('Dispute checkbox missing');
-  await act(async () => dispute.click());
+  expect(button('Date looks good')?.disabled).toBe(true);
+  await press('The previous reading is wrong');
+  await press('Date looks good');
   await act(async () => save.click());
   expect(capture).toHaveBeenCalledWith(
     expect.objectContaining({ role: 'spot', value: 126, disputePrevious: true, expectedPreviousId: latestId }),
@@ -146,16 +205,29 @@ it('offers the dispute for a reading below the latest one', async () => {
   );
 });
 
+it('reads earlier at the guessed date from the dispute fork', async () => {
+  const readAt = new Date('2026-10-17T10:00:00.000Z');
+  estimates.for = () => guess(readAt);
+  const { save } = await mount();
+  await press('Earlier');
+  await enter('value', '126');
+  await press('Read earlier');
+  expect(document.body.textContent).not.toContain('This is below the latest reading');
+  await press('Date looks good');
+  await act(async () => save.click());
+  expect(capture.mock.calls[0]?.[0]).toMatchObject({ disputePrevious: false, capturedAt: readAt.toISOString() });
+});
+
 it('refuses a Read At still to come', async () => {
   vi.useFakeTimers({ toFake: ['Date'] });
   vi.setSystemTime(new Date(2026, 9, 20, 12, 0));
   try {
-    const { save } = await mount();
+    await mount();
+    await press('Earlier');
     await enter('value', '140');
     await enterReadAt('2026-10-20', '18:00');
     expect(document.body.textContent).toContain(captureRefusals['future-read-at'].message);
-    expect(save.disabled).toBe(true);
-    expect(capture).not.toHaveBeenCalled();
+    expect(button('Date looks good')?.disabled).toBe(true);
   } finally {
     vi.useRealTimers();
   }

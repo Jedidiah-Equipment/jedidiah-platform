@@ -120,26 +120,44 @@ export const LatestReading = HourReading.pick({
 });
 export type LatestReading = z.infer<typeof LatestReading>;
 
-const SuggestingReport = z.object({
-  value: ReadingValue,
-  capturedAt: DateIso,
-  telematicsProvider: z.enum(telematicsProviders),
-});
-/** When John Deere puts a refused capture's value, as the refusal carries it: the report it matched, or the two it fell between. */
-export const ReadAtSuggestion = z.object({
+/** What the capture form asks the ledger for: when `value` was on the Machine's meter, for this role and stint. */
+export const ReadAtEstimateInput = z
+  .object({
+    machineId: UUID,
+    role: z.enum(readingRoles).exclude(['baseline']),
+    assignmentId: UUID.nullable().optional(),
+    value: ReadingValue,
+  })
+  .strict();
+export type ReadAtEstimateInput = z.infer<typeof ReadAtEstimateInput>;
+const EstimateNeighbour = HourReading.pick({ value: true, capturedAt: true, telematicsProvider: true });
+const EstimatedReadAt = {
   readAt: DateIso,
-  floor: SuggestingReport,
-  ceiling: SuggestingReport.nullable(),
-});
-export type ReadAtSuggestion = z.infer<typeof ReadAtSuggestion>;
+  floor: EstimateNeighbour,
+  ceiling: EstimateNeighbour.nullable(),
+  overAWeek: z.boolean(),
+};
+/**
+ * When the ledger says a value was on the meter: nothing to go on, now, no date at all (with the sentence why), or a
+ * moment between two readings, locked when John Deere reported both and a guess otherwise.
+ */
+export const ReadAtEstimate = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('none') }),
+  z.object({ kind: z.literal('now') }),
+  z.object({ kind: z.literal('impossible'), sentence: z.string() }),
+  z.object({ kind: z.literal('telematics'), ...EstimatedReadAt }),
+  z.object({ kind: z.literal('human'), ...EstimatedReadAt }),
+]);
+export type ReadAtEstimate = z.infer<typeof ReadAtEstimate>;
 
 /**
- * What a Reading refusal carries beside its sentence and `appCode`: the Job Action a Job refused, the Read At John
- * Deere puts a refused value at, and the reading an amendment of several was refused on.
+ * What a Reading refusal carries beside its sentence and `appCode`: the Job Action a Job refused, the Read At the
+ * ledger puts a refused value at (only ever a `telematics` or `human` estimate), and the reading an amendment of
+ * several was refused on.
  */
 export const ReadingRefusal = z.object({
   refused: RefusedJobAction.optional(),
-  suggestedReadAt: ReadAtSuggestion.optional(),
+  suggestedReadAt: ReadAtEstimate.optional(),
   readingId: UUID.optional(),
 });
 export type ReadingRefusal = z.infer<typeof ReadingRefusal>;

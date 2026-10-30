@@ -1,12 +1,20 @@
 # Capture a reading
 
 1. Open the Machine and choose **Capture reading**, or start or stop a Machine from its Job.
-2. Choose **Now** if you are reading the meter now, or **Earlier…** and set when it was read. Read At cannot be in the future, and a reading dated earlier must fit between the readings taken before and after it.
-3. Type the **Current reading**, including the decimal digit. **Previous reading** is the Machine's latest reading, the lowest value allowed now.
-4. On an arrival, check the **Implement & driver** and choose **Change** if they differ from the plan.
-5. If the value is below the previous reading, correct it, choose **Read earlier…** and set when the meter was read, or choose **The previous reading is wrong** to dispute that reading. A John Deere reading cannot be disputed: below one, only the time can fix it. An equal value is accepted.
-6. Optionally, add a **Comment** if management should know something about this reading, such as a damaged meter or a replaced display. You can [say it as a Voice Note](./record-a-voice-note) instead of typing it.
-7. Choose **Save reading**. The reading is saved on the server at once; if it is refused, the reason is shown and you can correct the value or its Read At, or dispute the previous reading. When John Deere's readings put the value at an earlier time, **Earlier…** is filled in with that time and the reports it came from: check it, change it if you know better, and choose **Save reading** again. Nothing is saved until you do.
+2. Answer **When was the meter read?** with **Today** or **Earlier**. Nothing else is asked until you do.
+3. Type the **Hours on the meter**, including the decimal digit. **Previous reading** is the Machine's latest reading. Under the hours, the form works out from the Machine's previous readings when those hours were on the meter:
+   - **Read now** when the hours are at or above the latest reading.
+   - **Read on … per John Deere** when John Deere's readings bracket the hours. That date is fixed.
+   - **Read about …** when only captured readings bracket them. That date is a guess.
+   - When no date can be right, the form says why instead, such as hours the meter cannot have reached yet, or hours John Deere puts before the stint began. Check the hours and type them again.
+4. Check the date. Under **Earlier** the picker is open; under **Today** tap the date to change it. A date John Deere fixes cannot be changed. Read At cannot be in the future.
+   - Under **Today**, a date that is not today says so: check the hours, or change the date.
+   - A date more than a week ago asks you to check the hours. It never stops you.
+   - Below a captured latest reading, choose **Read earlier** to take the guessed date, or **The previous reading is wrong** to dispute that reading. A John Deere reading cannot be disputed.
+5. Choose **Date looks good**. Changing the hours afterwards asks for the date again.
+6. On an arrival, check the **Implement & driver** and choose **Change** if they differ from the plan.
+7. Optionally, add a **Comment** if management should know something about this reading, such as a damaged meter or a replaced display. You can [say it as a Voice Note](./record-a-voice-note) instead of typing it.
+8. Choose **Save reading**. The reading is saved on the server at once; if it is refused, the reason is shown. When the Machine's readings put the hours at another date, the date step opens again with that date: check it, choose **Date looks good** and **Save reading** again. Nothing is saved until you do.
 
 Capturing needs a connection. Without one, [keep a Field Note](./keep-a-field-note) and capture the reading when you are back online.
 
@@ -15,6 +23,4 @@ Capturing needs a connection. Without one, [keep a Field Note](./keep-a-field-no
 Management can capture a spot reading from the office, from a meter value someone sends in.
 
 1. Open **Fleet → Machines** and open the Machine.
-2. Choose **Capture hours**. Choose **Now**, or **Earlier…** and set **Read At** to when the meter was read. It cannot be in the future.
-3. Type the **Current reading**; **Previous reading** is the lowest value allowed now, and a lower value offers **Read earlier…** and the same dispute as on the phone.
-4. Add a **Comment** if needed and choose **Capture**. A time John Deere proposes for a refused value fills in **Earlier…** as on the phone; check it and choose **Capture** again.
+2. Choose **Capture hours**, then follow the same steps as on the phone: **Today** or **Earlier**, the **Hours on the meter**, the date to check, **Date looks good**, an optional **Comment**, and **Save reading**.

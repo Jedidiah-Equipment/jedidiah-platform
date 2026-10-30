@@ -1,5 +1,6 @@
 import {
   amendReadings,
+  estimateReadAtFor,
   latestReading,
   listDisputes,
   listFieldMachines,
@@ -11,6 +12,8 @@ import {
   FieldReadingPageInput,
   HourReading,
   LatestReading,
+  ReadAtEstimate,
+  ReadAtEstimateInput,
   ReadingAmendInput,
   ReadingDispute,
   ReadingMachineInput,
@@ -32,6 +35,10 @@ export const contractingReadingsRouter = router({
     .input(FieldReadingPageInput)
     .output(FieldReadingPage)
     .query(({ ctx, input }) => listFieldReadingsPage({ db: ctx.db, input })),
+  estimateReadAt: authorizedProcedure('contracting_reading:capture')
+    .input(ReadAtEstimateInput)
+    .output(ReadAtEstimate)
+    .query(({ ctx, input }) => estimateReadAtFor({ db: ctx.db, input })),
   listDisputes: authorizedProcedure('contracting_reading:update')
     .output(ReadingDispute.array())
     .query(({ ctx }) => listDisputes({ db: ctx.db })),

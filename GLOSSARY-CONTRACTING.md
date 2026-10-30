@@ -163,10 +163,12 @@ context's `JOB-xxxxx`.
 **Hour Reading** is one captured value of a Machine's hour meter: the value, when the meter was
 read (its **Read At** time) and by whom. Whoever captures it types the value —
 the Foreman in the field, an administrator for a Baseline Reading — or the Machine's telematics reports
-it (a Telematics Reading). Read At defaults to the moment of capture: every capture form asks first whether
-the meter is being read **now** or was read **earlier**, and a value that falls below John Deere's readings
-has the form propose the moment John Deere puts it at, which the capturer confirms or corrects before
-anything is saved. It is never in the future. Read At orders a Machine's readings:
+it (a Telematics Reading). Every capture form asks first whether the meter was read **today** or **earlier**,
+then takes the hours and works out from the Machine's previous readings when those hours were on the meter:
+fixed when John Deere's readings bracket them, a guess when only captured readings do, now when they are at or
+above the latest; the capturer confirms that date, correcting it where it is a guess, before anything else is
+asked. Hours the meter cannot have reached, or that John Deere puts before the stint began, are refused at the
+hours step. Read At is never in the future. Read At orders a Machine's readings:
 the **latest reading** is the one with the latest Read At, and every capture is judged against its
 **time neighbours** — it must be at or above the nearest reading before its Read At and at or below
 the nearest reading after it. A late-entered reading takes its place in time, so a departure dated

@@ -3,6 +3,7 @@ import { describe, expect, test } from 'vitest';
 import { formatDate } from '../formatting/date.js';
 import { formatHours } from '../formatting/number.js';
 import {
+  CAPTURE_STEPS_START,
   type CaptureAttempt,
   type CaptureDraft,
   type CaptureFormWorld,
@@ -12,17 +13,21 @@ import {
   captureCrossesServiceDueSoon,
   captureIsBelowLatest,
   captureRefusals,
-  captureValueVerdict,
+  confirmCaptureDate,
   deriveCaptureForm,
+  type EstimateFacts,
+  type EstimateNeighbour,
   earliestReadAtFor,
+  estimateReadAt,
+  estimateSentence,
   judgeCapture,
   proposesReadAt,
-  type ReportNeighbour,
-  readAtSuggestionSentence,
-  suggestReadAt,
-  type ValueBracket,
+  stepsAfterReadEarlier,
+  stepsAfterRefusal,
+  stepsAfterValueEdit,
+  stepsAfterWhen,
 } from './capture.js';
-import { FUTURE_READ_AT_TOLERANCE_MS, isFutureReadAt, READ_AT_NOW } from './read-at.js';
+import { FUTURE_READ_AT_TOLERANCE_MS, isFutureReadAt } from './read-at.js';
 
 const now = new Date('2026-10-09T08:00:00Z');
 const refusedJob: JobActionVerdict = {
@@ -287,54 +292,13 @@ describe('judgeCapture', () => {
 
   describe('proposing a Read At', () => {
     const at = (time: string) => new Date(`2026-10-08T${time}:00Z`);
-    const report = (id: string, value: number, time: string): ReportNeighbour => ({
-      ...reading(id, value, at(time)),
-      telematicsProvider: 'john-deere',
-    });
-    const floor = report('deere-floor', 1000, '10:00');
-    const ceiling = report('deere-ceiling', 1010, '11:00');
-    const bracket: ValueBracket = { floor, ceiling: { ...ceiling, createdAt: ceiling.capturedAt } };
 
-    test('is the floor’s Read At when the value matches it', () => {
-      expect(suggestReadAt(1000, bracket, null)).toEqual({ readAt: floor.capturedAt, floor, ceiling: null });
-    });
-
-    test('interpolates on hours between the bracketing reports', () => {
-      expect(suggestReadAt(1005, bracket, null)).toEqual({ readAt: at('10:30'), floor, ceiling: bracket.ceiling });
-    });
-
-    test('bounds the interpolation by when the ceiling’s value was first reported', () => {
-      const moved = { ...ceiling, capturedAt: at('15:00'), createdAt: at('11:00') };
-      expect(suggestReadAt(1005, { floor, ceiling: moved }, null)).toMatchObject({
-        readAt: at('10:30'),
-        ceiling: { capturedAt: at('11:00') },
-      });
-    });
-
-    test('proposes nothing without a floor, or above a floor with no ceiling', () => {
-      expect(suggestReadAt(1005, { floor: null, ceiling: bracket.ceiling }, null)).toBeNull();
-      expect(suggestReadAt(1005, { floor, ceiling: null }, null)).toBeNull();
-    });
-
-    test('proposes nothing that would break the stint’s time order', () => {
-      expect(suggestReadAt(1005, bracket, at('10:45'))).toBeNull();
+    test('stays within the stint: a departure’s arrival, an arrival’s last departure', () => {
       expect(earliestReadAtFor('departure', { stintArrivedAt: at('10:45'), lastDepartedAt: at('09:00') })).toEqual(
         at('10:45'),
       );
       expect(earliestReadAtFor('arrival', { stintArrivedAt: null, lastDepartedAt: at('09:00') })).toEqual(at('09:00'));
       expect(earliestReadAtFor('spot', { stintArrivedAt: at('10:45'), lastDepartedAt: at('09:00') })).toBeNull();
-    });
-
-    test('says which reports the proposal came from, by the provider that reported them', () => {
-      expect(readAtSuggestionSentence({ floor, ceiling })).toBe(
-        `John Deere puts this reading between ${formatDate(floor.capturedAt, 'medium')} and ${formatDate(ceiling.capturedAt, 'medium')}.`,
-      );
-      expect(
-        readAtSuggestionSentence({
-          floor: { value: 1000, capturedAt: floor.capturedAt.toISOString(), telematicsProvider: 'john-deere' },
-          ceiling: null,
-        }),
-      ).toBe(`John Deere read ${formatHours(1000)} at ${formatDate(floor.capturedAt, 'medium')}.`);
     });
 
     test('is offered for the three value refusals, and only those', () => {
@@ -459,7 +423,116 @@ describe('captureCrossesServiceDueSoon', () => {
   });
 });
 
+describe('estimateReadAt', () => {
+  const at = (time: string) => new Date(`2026-10-08T${time}:00Z`);
+  const later = new Date('2026-10-08T20:00:00Z');
+  const neighbour = (
+    id: string,
+    value: number,
+    time: string,
+    telematicsProvider: CaptureNeighbour['telematicsProvider'] = null,
+  ): EstimateNeighbour => ({ ...reading(id, value, at(time), telematicsProvider), createdAt: at(time) });
+  const deereFloor = neighbour('deere-floor', 1000, '10:00', 'john-deere');
+  const deereCeiling = neighbour('deere-ceiling', 1010, '11:00', 'john-deere');
+  const facts = (overrides: Partial<EstimateFacts> = {}): EstimateFacts => ({
+    role: 'spot',
+    latest: reading('latest', 1020, at('12:00'), 'john-deere'),
+    floor: deereFloor,
+    ceiling: deereCeiling,
+    notBefore: null,
+    now: later,
+    ...overrides,
+  });
+
+  test('has nothing to go on with an empty ledger', () => {
+    expect(estimateReadAt(1005, facts({ latest: null }))).toEqual({ kind: 'none' });
+  });
+
+  test('is now at or above the latest, and impossible when the meter cannot have got there yet', () => {
+    expect(estimateReadAt(1020, facts())).toEqual({ kind: 'now' });
+    expect(estimateReadAt(1028, facts())).toEqual({ kind: 'now' });
+    const latest = reading('latest', 1232.8, now);
+    expect(estimateReadAt(1258.2, facts({ latest, now: new Date(now.getTime() + 2 * 60_000) }))).toEqual({
+      kind: 'impossible',
+      sentence: `The meter cannot have reached ${formatHours(1258.2)} yet: ${formatHours(25.4)} since ${formatHours(1232.8)} at ${formatDate(now, 'medium')}. Check the hours.`,
+    });
+  });
+
+  test('locks an exact John Deere match at the floor’s Read At', () => {
+    expect(estimateReadAt(1000, facts())).toEqual({
+      kind: 'telematics',
+      readAt: at('10:00'),
+      floor: deereFloor,
+      ceiling: null,
+      overAWeek: false,
+    });
+  });
+
+  test('locks a value between two John Deere reports, bounded by when the ceiling’s value was first seen', () => {
+    expect(estimateReadAt(1005, facts())).toMatchObject({ kind: 'telematics', readAt: at('10:30') });
+    const moved = { ...deereCeiling, capturedAt: at('15:00'), createdAt: at('11:00') };
+    expect(estimateReadAt(1005, facts({ ceiling: moved }))).toMatchObject({
+      kind: 'telematics',
+      readAt: at('10:30'),
+      ceiling: { capturedAt: at('11:00') },
+    });
+  });
+
+  test('guesses between readings of which one is human', () => {
+    const human = neighbour('human', 1010, '11:00');
+    expect(estimateReadAt(1005, facts({ ceiling: human }))).toMatchObject({ kind: 'human', readAt: at('10:30') });
+    expect(
+      estimateReadAt(1005, facts({ floor: neighbour('human-floor', 1000, '10:00'), ceiling: human })),
+    ).toMatchObject({ kind: 'human', readAt: at('10:30') });
+  });
+
+  test('has nothing without a floor, or above a floor with no ceiling', () => {
+    expect(estimateReadAt(1005, facts({ floor: null }))).toEqual({ kind: 'none' });
+    expect(estimateReadAt(1005, facts({ ceiling: null }))).toEqual({ kind: 'none' });
+  });
+
+  test('refuses a locked date before the stint, and drops a guess there', () => {
+    expect(estimateReadAt(1005, facts({ role: 'departure', notBefore: at('10:45') }))).toEqual({
+      kind: 'impossible',
+      sentence: `John Deere puts ${formatHours(1005)} before this stint's arrival at ${formatDate(at('10:45'), 'medium')}. Check the hours.`,
+    });
+    expect(estimateReadAt(1005, facts({ role: 'arrival', notBefore: at('10:45') }))).toMatchObject({
+      sentence: expect.stringContaining("before the Machine's last departure"),
+    });
+    expect(estimateReadAt(1005, facts({ ceiling: neighbour('human', 1010, '11:00'), notBefore: at('10:45') }))).toEqual(
+      { kind: 'none' },
+    );
+  });
+
+  test('flags a date over a week ago', () => {
+    expect(estimateReadAt(1005, facts({ now: new Date('2026-10-15T10:31:00Z') }))).toMatchObject({ overAWeek: true });
+    expect(estimateReadAt(1005, facts({ now: new Date('2026-10-15T10:29:00Z') }))).toMatchObject({ overAWeek: false });
+  });
+
+  test('says the date on the estimate line', () => {
+    expect(estimateSentence({ kind: 'now' })).toBe('Read now');
+    expect(estimateSentence(estimateReadAt(1005, facts()))).toBe(
+      `Read on ${formatDate(at('10:30'), 'medium')} per John Deere`,
+    );
+    expect(estimateSentence(estimateReadAt(1005, facts({ ceiling: neighbour('human', 1010, '11:00') })))).toBe(
+      `Read about ${formatDate(at('10:30'), 'medium')}`,
+    );
+  });
+});
+
 describe('deriveCaptureForm', () => {
+  const iso = (date: Date) => date.toISOString() as never;
+  const wireNeighbour = { value: 100, capturedAt: iso(anHourAgo), telematicsProvider: null };
+  const guess = (readAt: Date) =>
+    ({ kind: 'human', readAt: iso(readAt), floor: wireNeighbour, ceiling: null, overAWeek: false }) as const;
+  const deere = (readAt: Date) =>
+    ({
+      kind: 'telematics',
+      readAt: iso(readAt),
+      floor: { ...wireNeighbour, telematicsProvider: 'john-deere' },
+      ceiling: null,
+      overAWeek: false,
+    }) as const;
   const formWorld = (overrides: Partial<CaptureFormWorld> = {}): CaptureFormWorld => ({
     latest: { id: 'latest', value: 100, capturedAt: anHourAgo.toISOString(), telematicsProvider: null },
     now,
@@ -467,12 +540,18 @@ describe('deriveCaptureForm', () => {
   });
   const draft = (overrides: Partial<CaptureDraft> = {}): CaptureDraft => ({
     role: 'arrival',
+    ...CAPTURE_STEPS_START,
+    when: 'today',
     value: '120',
-    disputedReadingId: null,
+    estimate: { kind: 'now' },
     comment: '',
-    readAt: READ_AT_NOW,
     stintOverrides: undefined,
     ...overrides,
+  });
+  /** The draft with its date vouched for, as Date looks good leaves it. */
+  const confirmed = (given: CaptureDraft, world = formWorld()): CaptureDraft => ({
+    ...given,
+    dateConfirmed: confirmCaptureDate(deriveCaptureForm(world, given)),
   });
 
   test('parses a typed value, comma or point, and nothing when blank or too precise', () => {
@@ -481,108 +560,160 @@ describe('deriveCaptureForm', () => {
     expect(deriveCaptureForm(formWorld(), draft({ value: '12.34' }))).toMatchObject({ parsed: null, request: null });
   });
 
-  test('builds the request a passing draft posts, naming the latest it was judged against', () => {
-    expect(deriveCaptureForm(formWorld(), draft({ comment: '  Gate open  ' })).request).toEqual({
-      role: 'arrival',
-      value: 120,
-      comment: 'Gate open',
-      disputePrevious: false,
-      expectedPreviousId: 'latest',
+  test('reveals when, then hours, then the date, then the details', () => {
+    expect(deriveCaptureForm(formWorld(), draft({ when: null })).step).toBe('when');
+    expect(deriveCaptureForm(formWorld(), draft({ value: '' })).step).toBe('hours');
+    expect(deriveCaptureForm(formWorld(), draft({ estimate: undefined }))).toMatchObject({
+      step: 'hours',
+      estimateLine: null,
     });
-  });
-
-  test('withholds a below-latest value until the latest is disputed', () => {
-    expect(deriveCaptureForm(formWorld(), draft({ value: '90' }))).toMatchObject({
-      below: true,
-      disputeConfirmed: false,
-      request: null,
-    });
-    expect(deriveCaptureForm(formWorld(), draft({ value: '90', disputedReadingId: 'latest' }))).toMatchObject({
-      disputeConfirmed: true,
-      request: { disputePrevious: true, expectedPreviousId: 'latest' },
-    });
-    expect(deriveCaptureForm(formWorld(), draft({ value: '90', disputedReadingId: 'older' })).request).toBeNull();
-  });
-
-  test('posts a draft below a Telematics latest, which the server answers with a Read At, and offers no dispute', () => {
-    const deere = formWorld({
-      latest: { id: 'deere', value: 100, capturedAt: anHourAgo.toISOString(), telematicsProvider: 'john-deere' },
-    });
-    expect(deriveCaptureForm(deere, draft({ value: '90' }))).toMatchObject({
-      below: true,
-      disputable: false,
-      request: { value: 90, disputePrevious: false },
-    });
-    expect(captureValueVerdict(deere.latest, 90, 'deere', null)).toEqual({
-      below: true,
-      disputable: false,
-      disputeConfirmed: false,
-    });
-  });
-
-  test('leaves a Read At before the latest to the server, and pre-judges one at or after it', () => {
-    expect(
-      deriveCaptureForm(
-        formWorld(),
-        draft({ value: '90', readAt: { kind: 'earlier', at: new Date('2026-10-09T06:59:00Z'), by: 'hand' } }),
-      ),
-    ).toMatchObject({
-      below: false,
-      request: { value: 90, disputePrevious: false },
-    });
-    expect(
-      deriveCaptureForm(formWorld(), draft({ value: '90', readAt: { kind: 'earlier', at: anHourAgo, by: 'hand' } })),
-    ).toMatchObject({
-      below: true,
-      request: null,
-    });
-  });
-
-  test('posts a departure with no comment', () => {
-    expect(deriveCaptureForm(formWorld(), draft({ role: 'departure' })).request).toMatchObject({
-      role: 'departure',
-      comment: null,
-    });
-  });
-
-  test('withholds a Read At still to come', () => {
-    expect(
-      deriveCaptureForm(
-        formWorld(),
-        draft({ readAt: { kind: 'earlier', at: new Date('2026-10-09T08:00:01Z'), by: 'hand' } }),
-      ),
-    ).toMatchObject({
-      futureReadAt: true,
-      request: null,
-    });
-  });
-
-  test('waits on a time once Earlier… is chosen, and on a dispute below a human latest', () => {
-    expect(deriveCaptureForm(formWorld(), draft({ readAt: { kind: 'earlier', at: null } }))).toMatchObject({
+    expect(deriveCaptureForm(formWorld(), draft())).toMatchObject({
+      step: 'date',
+      estimateLine: 'Read now',
+      date: { readAt: null, locked: false, warnings: [], confirmable: true },
       awaitingPerson: true,
       request: null,
     });
-    expect(deriveCaptureForm(formWorld(), draft({ value: '90' })).awaitingPerson).toBe(true);
-    // A missing reason or a bad value is said on submit, not waited on.
-    expect(deriveCaptureForm(formWorld(), draft({ value: '' }))).toMatchObject({
+    expect(deriveCaptureForm(formWorld(), confirmed(draft({ comment: '  Gate open  ' })))).toMatchObject({
+      step: 'details',
       awaitingPerson: false,
+      request: {
+        role: 'arrival',
+        value: 120,
+        comment: 'Gate open',
+        disputePrevious: false,
+        expectedPreviousId: 'latest',
+      },
+    });
+  });
+
+  test('stops at the hours with the sentence when no date can be right', () => {
+    const impossible = { kind: 'impossible', sentence: 'The meter cannot have reached 145.0 h yet.' } as const;
+    expect(deriveCaptureForm(formWorld(), confirmed(draft({ value: '145', estimate: impossible })))).toMatchObject({
+      step: 'hours',
+      estimateLine: impossible.sentence,
+      date: null,
       request: null,
     });
   });
 
+  test('re-asks for the date when the hours or Today / Earlier change', () => {
+    const done = confirmed(draft());
+    expect(deriveCaptureForm(formWorld(), { ...done, value: '121' }).step).toBe('date');
+    expect(deriveCaptureForm(formWorld(), { ...done, ...stepsAfterWhen(done, 'earlier') }).step).toBe('date');
+    const picked = confirmed(draft({ value: '90', pickedReadAt: aDayAgo, disputedReadingId: 'latest' }));
+    expect(stepsAfterValueEdit(picked)).toMatchObject({ ...CAPTURE_STEPS_START, when: 'today' });
+  });
+
+  test('locks a John Deere date, ignoring a pick, and posts it once confirmed', () => {
+    const given = draft({ value: '90', estimate: deere(aDayAgo), pickedReadAt: anHourAgo });
+    expect(deriveCaptureForm(formWorld(), given)).toMatchObject({
+      date: { readAt: aDayAgo, locked: true, open: false, disputeOffered: false, dispute: null },
+      below: false,
+    });
+    expect(deriveCaptureForm(formWorld(), { ...given, when: 'earlier' }).date?.open).toBe(false);
+    expect(deriveCaptureForm(formWorld(), confirmed(given))).toMatchObject({ step: 'details', request: { value: 90 } });
+  });
+
+  test('takes a guess below a John Deere latest, and lets the person change it', () => {
+    const deereLatest = formWorld({
+      latest: { id: 'deere', value: 100, capturedAt: anHourAgo.toISOString(), telematicsProvider: 'john-deere' },
+    });
+    const guessed = draft({ value: '90', estimate: guess(aDayAgo) });
+    expect(deriveCaptureForm(deereLatest, guessed).date).toMatchObject({
+      readAt: aDayAgo,
+      source: 'estimate',
+      line: `Read about ${formatDate(aDayAgo, 'medium')}`,
+      locked: false,
+      open: false,
+    });
+    expect(deriveCaptureForm(deereLatest, { ...guessed, dateOpened: true }).date?.open).toBe(true);
+    expect(deriveCaptureForm(deereLatest, { ...guessed, when: 'earlier' }).date?.open).toBe(true);
+    const twoDaysAgo = new Date(aDayAgo.getTime() - 86_400_000);
+    expect(deriveCaptureForm(deereLatest, { ...guessed, pickedReadAt: twoDaysAgo }).date).toMatchObject({
+      readAt: twoDaysAgo,
+      source: 'picked',
+      line: `Read on ${formatDate(twoDaysAgo, 'medium')}`,
+    });
+  });
+
+  test('offers the dispute only below a human latest, until the person reads earlier or disputes', () => {
+    const below = draft({ value: '90', estimate: guess(aDayAgo) });
+    expect(deriveCaptureForm(formWorld(), below)).toMatchObject({
+      step: 'date',
+      date: {
+        readAt: null,
+        line: 'Read now',
+        disputeOffered: true,
+        dispute: { readingId: 'latest', confirmed: false },
+        confirmable: false,
+      },
+    });
+    const readEarlier = { ...below, ...stepsAfterReadEarlier(below, below.estimate) };
+    expect(deriveCaptureForm(formWorld(), readEarlier).date).toMatchObject({
+      readAt: aDayAgo,
+      source: 'estimate',
+      disputeOffered: false,
+      dispute: null,
+    });
+    expect(stepsAfterReadEarlier(below, { kind: 'none' })).toMatchObject({ pickedReadAt: null, dateOpened: true });
+    const disputed = confirmed({ ...below, disputedReadingId: 'latest' });
+    expect(deriveCaptureForm(formWorld(), disputed)).toMatchObject({
+      step: 'details',
+      request: { disputePrevious: true, expectedPreviousId: 'latest' },
+    });
+    // Undoing the dispute after Date looks good asks again.
+    expect(deriveCaptureForm(formWorld(), { ...disputed, disputedReadingId: null }).step).toBe('date');
+  });
+
+  test('warns outside today only under Today, and over a week whichever was chosen', () => {
+    const yesterday = draft({ estimate: guess(aDayAgo), value: '90' });
+    const deereLatest = formWorld({
+      latest: { id: 'deere', value: 100, capturedAt: anHourAgo.toISOString(), telematicsProvider: 'john-deere' },
+    });
+    expect(deriveCaptureForm(deereLatest, yesterday).date).toMatchObject({
+      warnings: ['outside-today'],
+      warningLines: [`This reading looks like it was read on ${formatDate(aDayAgo, 'short')}, not today.`],
+    });
+    expect(deriveCaptureForm(deereLatest, { ...yesterday, when: 'earlier' }).date?.warnings).toEqual([]);
+    const lastMonth = new Date('2026-09-09T08:00:00Z');
+    expect(
+      deriveCaptureForm(deereLatest, { ...yesterday, when: 'earlier', pickedReadAt: lastMonth }).date?.warnings,
+    ).toEqual(['over-a-week']);
+  });
+
+  test('holds Date looks good on a date still to come', () => {
+    const future = draft({ pickedReadAt: new Date('2026-10-09T08:00:01Z') });
+    expect(deriveCaptureForm(formWorld(), future)).toMatchObject({
+      futureReadAt: true,
+      date: { confirmable: false },
+    });
+    expect(confirmCaptureDate(deriveCaptureForm(formWorld(), future))).toBeNull();
+  });
+
+  test('reopens the date on a refusal that proposes a Read At, and on nothing else', () => {
+    const done = confirmed(draft());
+    expect(stepsAfterRefusal(done, guess(aDayAgo))).toMatchObject({ pickedReadAt: aDayAgo, dateConfirmed: null });
+    expect(stepsAfterRefusal(done, undefined)).toBe(done);
+  });
+
   test('names the latest only once it is known, and an empty ledger as null', () => {
-    expect(deriveCaptureForm(formWorld({ latest: undefined }), draft()).request).not.toHaveProperty(
-      'expectedPreviousId',
-    );
-    expect(deriveCaptureForm(formWorld({ latest: null }), draft()).request).toMatchObject({ expectedPreviousId: null });
+    expect(
+      deriveCaptureForm(formWorld({ latest: undefined }), confirmed(draft(), formWorld({ latest: undefined }))).request,
+    ).not.toHaveProperty('expectedPreviousId');
+    expect(
+      deriveCaptureForm(formWorld({ latest: null }), confirmed(draft(), formWorld({ latest: null }))).request,
+    ).toMatchObject({
+      expectedPreviousId: null,
+    });
   });
 
   test('passes stint overrides through only when given', () => {
     const overrides = { implementId: null, driverUserId: 'driver-1' };
-    expect(deriveCaptureForm(formWorld(), draft({ stintOverrides: overrides })).request).toMatchObject({
+    expect(deriveCaptureForm(formWorld(), confirmed(draft({ stintOverrides: overrides }))).request).toMatchObject({
       stintOverrides: overrides,
     });
-    expect(deriveCaptureForm(formWorld(), draft()).request).not.toHaveProperty('stintOverrides');
+    expect(deriveCaptureForm(formWorld(), confirmed(draft())).request).not.toHaveProperty('stintOverrides');
   });
 });
 

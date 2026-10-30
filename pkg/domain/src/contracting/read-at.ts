@@ -1,5 +1,3 @@
-import type { ReadAtSuggestion } from '@pkg/schema/contracting';
-
 const BACKDATED_AFTER_MS = 5 * 60_000;
 
 /** Phone clocks drift; a Read At this far ahead of the server is still the Foreman's "now". */
@@ -16,59 +14,6 @@ export const isBackdated = (readAt: Date | null, attemptedAt: Date) =>
   readAt !== null && attemptedAt.getTime() - readAt.getTime() > BACKDATED_AFTER_MS;
 
 export const capturedAtFor = (readAt: Date | null, attemptedAt: Date) => (readAt ?? attemptedAt).toISOString();
-
-/**
- * When the meter was read, as every capture form holds it: Now, or Earlier… with the time picked by hand or the time
- * the server proposed for a refused value. Earlier… with no time yet posts nothing until one is
- * picked. A proposal stays beside whatever time is picked until the value changes or Now is chosen, so the form keeps
- * saying which reports it came from.
- */
-export type ReadAtChoice =
-  | { kind: 'now' }
-  | { kind: 'earlier'; at: null; proposal?: ReadAtSuggestion }
-  | { kind: 'earlier'; at: Date; by: 'hand' | 'proposal'; proposal?: ReadAtSuggestion };
-
-export const READ_AT_NOW: ReadAtChoice = { kind: 'now' };
-
-/** The Read At a choice posts; null is now, and so is Earlier… while no time is picked. */
-export const readAtOf = (choice: ReadAtChoice): Date | null => (choice.kind === 'earlier' ? choice.at : null);
-
-/** The proposal a choice holds, which the picker says the reports of. */
-export const readAtProposal = (choice: ReadAtChoice): ReadAtSuggestion | null =>
-  (choice.kind === 'earlier' && choice.proposal) || null;
-
-const keepProposal = (choice: ReadAtChoice) => {
-  const proposal = readAtProposal(choice);
-  return proposal ? { proposal } : {};
-};
-
-/** Earlier… chosen with no time picked yet: the form holds Save until one is. */
-export const readAtPending = (choice: ReadAtChoice): boolean => choice.kind === 'earlier' && choice.at === null;
-
-/** Earlier… chosen: a time already set stays, otherwise none is picked yet. */
-export const readAtEarlier = (choice: ReadAtChoice): ReadAtChoice =>
-  choice.kind === 'earlier' ? choice : { kind: 'earlier', at: null };
-
-/** A time the person picked, null while the picker names none; the instant already held, or proposed, keeps who set it. */
-export function readAtPicked(choice: ReadAtChoice, at: Date | null): ReadAtChoice {
-  if (at === null) return { kind: 'earlier', at: null, ...keepProposal(choice) };
-  if (readAtOf(choice)?.getTime() === at.getTime()) return choice;
-  const proposal = readAtProposal(choice);
-  const proposed = proposal !== null && new Date(proposal.readAt).getTime() === at.getTime();
-  return { kind: 'earlier', at, by: proposed ? 'proposal' : 'hand', ...keepProposal(choice) };
-}
-
-/** A refusal that proposes a Read At flips the choice to Earlier… with it; nothing is saved until the next Save. */
-export const readAtAfterRefusal = (
-  choice: ReadAtChoice,
-  proposal: ReadAtSuggestion | null | undefined,
-): ReadAtChoice => (proposal ? { kind: 'earlier', at: new Date(proposal.readAt), by: 'proposal', proposal } : choice);
-
-/** A proposal belongs to the value refused: typing a new value drops it and keeps its time as the person's own. */
-export function readAtAfterValueEdit(choice: ReadAtChoice): ReadAtChoice {
-  if (choice.kind !== 'earlier' || !choice.proposal) return choice;
-  return choice.at ? { kind: 'earlier', at: choice.at, by: 'hand' } : { kind: 'earlier', at: null };
-}
 
 /** A Read At as a `datetime-local` input holds it: the browser's local wall time as 'YYYY-MM-DDTHH:mm'. */
 export const readAtInputValue = (date: Date) => {
@@ -88,14 +33,3 @@ export function readAtFromInput(value: string): Date | null {
  */
 export const readAtFromPicker = (value: string, held: Date | null): Date | null =>
   held && value === readAtInputValue(held) ? held : readAtFromInput(value);
-
-/**
- * A minute picker's value picked over the choice: while it shows the minute of the time held, or of the proposal, that
- * instant keeps its seconds.
- */
-export function readAtPickedFromPicker(choice: ReadAtChoice, value: string): ReadAtChoice {
-  const proposal = readAtProposal(choice);
-  const proposed = proposal ? new Date(proposal.readAt) : null;
-  const held = proposed && value === readAtInputValue(proposed) ? proposed : readAtOf(choice);
-  return readAtPicked(choice, readAtFromPicker(value, held));
-}

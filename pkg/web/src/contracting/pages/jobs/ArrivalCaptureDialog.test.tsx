@@ -18,6 +18,13 @@ vi.mock('@/contracting/components/readings/use-latest-reading.js', () => ({
     data: { id: latestId, role: 'spot', value: 130, capturedAt: '2026-09-17T12:00:00.000Z' },
   }),
 }));
+vi.mock('@/contracting/components/readings/use-read-at-estimate.js', () => ({
+  useReadAtEstimate: (_target: unknown, value: number | null) => ({
+    estimate: value === null ? undefined : { kind: 'now' },
+    working: false,
+    error: null,
+  }),
+}));
 vi.mock('./use-assignment-options.js', () => ({
   useAssignmentOptions: () => ({ implementOptions: [], driverOptions: [], ready: true, error: null }),
 }));
@@ -55,9 +62,10 @@ async function enter(name: string, value: string) {
   });
 }
 
+const button = (label: string) =>
+  [...document.querySelectorAll('button')].find((item) => item.textContent?.trim() === label);
+
 async function enterReadAt(date: string, time: string) {
-  const earlier = [...document.querySelectorAll('button')].find((item) => item.textContent === 'Earlier…');
-  if (earlier?.getAttribute('aria-pressed') === 'false') await act(async () => earlier.click());
   for (const [name, value] of [
     ['readAt', date],
     ['readAt-time', time],
@@ -75,13 +83,15 @@ it('posts an arrival read before the latest reading, leaving its neighbours to t
   const root = createRoot(container);
   roots.push(root);
   await act(async () => root.render(<ArrivalCaptureDialog stint={stint} onClose={vi.fn()} />));
-  const save = [...document.querySelectorAll('button')].find((button) => button.textContent?.trim() === 'Save');
+  const save = button('Save reading');
   if (!save) throw new Error('Save action missing');
 
+  await act(async () => button('Earlier')?.click());
   await enter('value', '126');
   await enterReadAt('2026-09-16', '16:00');
-  await act(async () => document.querySelector<HTMLTextAreaElement>('[name="comment"]')?.focus());
-  expect(document.querySelector('#confirmedDispute')).toBeNull();
+  expect(document.body.textContent).not.toContain('This is below the latest reading');
+  await act(async () => button('Date looks good')?.click());
+  expect(document.body.textContent).toContain('Starting assignment');
   await act(async () => save.click());
 
   expect(capture).toHaveBeenCalledWith(

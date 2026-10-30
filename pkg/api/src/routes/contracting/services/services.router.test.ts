@@ -112,7 +112,7 @@ test('booking a Machine in serves it as Booked In until its Service Record close
 
   expect(await connor.contractingFleet.machines.get({ id: booked.id })).toMatchObject({
     serviceDueStatus: 'overdue',
-    serviceBookedIn: true,
+    bookedInServiceId: bookedIn.id,
   });
 
   await connor.contractingServices.close({
@@ -125,7 +125,7 @@ test('booking a Machine in serves it as Booked In until its Service Record close
   });
   expect(await connor.contractingFleet.machines.get({ id: booked.id })).toMatchObject({
     serviceDueStatus: 'ok',
-    serviceBookedIn: false,
+    bookedInServiceId: null,
   });
 });
 

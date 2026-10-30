@@ -56,6 +56,28 @@ describe('TabRootList', () => {
     expect(renderedItem.type).toBe('ListRow');
   });
 
+  test("says why a section is empty under another section's rows, and leaves an all-empty list to emptyContent", () => {
+    const list = (pinned: { id: string }[]) =>
+      asElement(
+        TabRootList({
+          emptyContent: <ViewMarker kind="empty" />,
+          keyOf: (item: { id: string }) => item.id,
+          renderItem: (item) => <ViewMarker kind={item.id} />,
+          sections: [
+            { data: pinned, key: 'pinned' },
+            { data: [], empty: <ViewMarker kind="none" />, key: 'records' },
+          ],
+        }),
+      ).props.data as { key: string; kind: string }[];
+
+    expect(list([{ id: 'pinned-1' }]).map((row) => [row.kind, row.key])).toEqual([
+      ['item', 'item:pinned:pinned-1'],
+      ['section-separator', 'separator:records'],
+      ['section-empty', 'empty:records'],
+    ]);
+    expect(list([])).toEqual([]);
+  });
+
   test('loads near the end once per request only when another page is available and idle', () => {
     const onLoadMore = vi.fn();
     const ready = tabRootList({ hasNextPage: true, loadingMore: false, onLoadMore });

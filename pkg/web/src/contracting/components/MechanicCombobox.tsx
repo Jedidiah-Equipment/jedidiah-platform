@@ -1,8 +1,5 @@
-import {
-  SearchableCombobox,
-  type SearchableComboboxOption,
-  withCurrentOption,
-} from '@/components/common/SearchableCombobox.js';
+import { withRecordMechanic } from '@pkg/domain/contracting';
+import { SearchableCombobox, type SearchableComboboxOption } from '@/components/common/SearchableCombobox.js';
 
 const NO_MECHANIC: SearchableComboboxOption = { value: '', label: 'No mechanic' };
 
@@ -11,10 +8,7 @@ export function mechanicFieldOptions(
   options: readonly SearchableComboboxOption[],
   current?: { primaryMechanicUserId: string | null; mechanicName: string | null },
 ): SearchableComboboxOption[] {
-  const offered = current
-    ? withCurrentOption(options, current.primaryMechanicUserId, current.mechanicName ?? 'Unavailable mechanic')
-    : options;
-  return [NO_MECHANIC, ...offered];
+  return [NO_MECHANIC, ...withRecordMechanic(options, current)];
 }
 
 /** Assigns a Mechanic in place; `inRow` keeps the picker from opening the table row it sits in. */

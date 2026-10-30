@@ -1,6 +1,11 @@
 import { getPlantDateNow } from '@pkg/domain';
-import { suggestedNextServiceDue } from '@pkg/domain/contracting';
-import { CloseServiceValues, closeServiceInput, type ServiceRecord } from '@pkg/schema/contracting';
+import { nextServiceDueHint, suggestedNextServiceDueValue } from '@pkg/domain/contracting';
+import {
+  CloseServiceValues,
+  closeServiceDefaults,
+  closeServiceInput,
+  type ServiceRecord,
+} from '@pkg/schema/contracting';
 import { revalidateLogic } from '@tanstack/react-form';
 import { useRef } from 'react';
 import { useAppForm } from '@/components/form';
@@ -30,15 +35,8 @@ export function CloseServiceSheet({
   const showToast = useAppToast();
   const { busy, error, run } = useBusyAction();
   const dueEdited = useRef(false);
-  const defaultValues: CloseServiceValues = {
-    endDate: getPlantDateNow(),
-    readingAtServiceHours: Number.NaN,
-    primaryMechanicUserId: record.primaryMechanicUserId ?? '',
-    notes: record.notes ?? '',
-    nextServiceDueHours: Number.NaN,
-  };
   const form = useAppForm({
-    defaultValues,
+    defaultValues: closeServiceDefaults(record, getPlantDateNow()),
     validationLogic: revalidateLogic(),
     validators: { onDynamic: CloseServiceValues },
     onSubmit: ({ value }) =>
@@ -65,8 +63,9 @@ export function CloseServiceSheet({
         listeners={{
           onChange: ({ value }) => {
             if (dueEdited.current) return;
-            const suggested = Number.isNaN(value) ? null : suggestedNextServiceDue(value, serviceIntervalHours);
-            form.setFieldValue('nextServiceDueHours', suggested ?? Number.NaN, { dontRunListeners: true });
+            form.setFieldValue('nextServiceDueHours', suggestedNextServiceDueValue(value, serviceIntervalHours), {
+              dontRunListeners: true,
+            });
           },
         }}
       >
@@ -94,11 +93,7 @@ export function CloseServiceSheet({
       >
         {(field) => <field.NumberField label="Next service due (hours)" />}
       </form.AppField>
-      <Text className="-mt-2 text-xs text-muted-foreground">
-        {serviceIntervalHours === null
-          ? 'The hour reading printed on the sticker.'
-          : 'The hour reading printed on the sticker. Suggested from the service interval; change it if the sticker says otherwise.'}
-      </Text>
+      <Text className="-mt-2 text-xs text-muted-foreground">{nextServiceDueHint(serviceIntervalHours)}</Text>
     </ModalSheet>
   );
 }

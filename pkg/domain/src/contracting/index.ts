@@ -19,6 +19,7 @@ export * from './job-transitions.js';
 export * from './jobs.js';
 export * from './john-deere.js';
 export * from './mechanic-performance.js';
+export * from './mechanics.js';
 export * from './note-threads.js';
 export * from './notifications.js';
 export * from './pricing.js';

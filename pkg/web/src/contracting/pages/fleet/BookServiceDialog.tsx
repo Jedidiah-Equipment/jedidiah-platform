@@ -36,7 +36,10 @@ export function BookServiceDialog({
   const machines = useQuery(
     trpc.contractingFleet.machines.list.queryOptions({ status: 'active' }, { enabled: picksMachine }),
   );
-  const bookable = useMemo(() => (machines.data ?? []).filter((machine) => !machine.serviceBookedIn), [machines.data]);
+  const bookable = useMemo(
+    () => (machines.data ?? []).filter((machine) => machine.bookedInServiceId === null),
+    [machines.data],
+  );
   const defaultValues: BookServiceValues = {
     machineId: machineId ?? '',
     startDate: getPlantDateNow(),

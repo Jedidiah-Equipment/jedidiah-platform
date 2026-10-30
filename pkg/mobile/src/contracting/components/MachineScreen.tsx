@@ -1,5 +1,5 @@
 import { formatHours, getFirstName } from '@pkg/domain';
-import { machineBusyWith, readingProviderSuffix, readingRoleLabels, readingSourceLabel } from '@pkg/domain/contracting';
+import { machineBusyWith, readingRoleLabels, readingSourceLabel } from '@pkg/domain/contracting';
 import type { FieldMachine, FieldReading } from '@pkg/schema/contracting';
 
 type BusyWith = { job: NonNullable<FieldMachine['busyOnJob']> | null; jobNumber: string };
@@ -23,13 +23,13 @@ import { useFleet, useMachineReadingPages } from '@/contracting/readings/use-fle
 import { BookServiceSheet } from '@/contracting/services/BookServiceSheet';
 import { MachineServiceCard } from '@/contracting/services/MachineServiceCard';
 import { serviceRecordHref } from '@/contracting/services/service-routes';
-import { useMachineOpenServices } from '@/contracting/services/use-services';
 import { BreakdownRow } from '@/contracting/workshop/BreakdownRow';
 import { useMachineBreakdowns } from '@/contracting/workshop/use-breakdowns';
 import { useSessionPermission } from '@/lib/auth-session';
 import { usePersistedState } from '@/lib/use-persisted-state';
 import { BreakdownIcon } from './BreakdownSubjectIcons';
 import { CategoryIcon } from './CategoryIcon';
+import { MachineLatestReading } from './MachineLatestReading';
 
 type MachineTab = 'details' | 'readings';
 const MACHINE_TABS: readonly SubTabOption<MachineTab>[] = [
@@ -43,6 +43,20 @@ function SectionTitle({ children }: { children: string }) {
     <Text className="text-lg text-foreground" weight="bold">
       {children}
     </Text>
+  );
+}
+
+/** Book a service, or, once the Machine is Booked In, open the service it is in for. */
+function ServiceButton({ machine, onBook }: { machine: FieldMachine; onBook: () => void }) {
+  const serviceId = machine.bookedInServiceId;
+  if (serviceId === null) return <Button icon={IconCalendarPlus} title="Book a service" onPress={onBook} />;
+  return (
+    <Button
+      icon={IconCalendarPlus}
+      title="Booked in"
+      trailingIcon={IconChevronRight}
+      onPress={() => router.push(serviceRecordHref(serviceId))}
+    />
   );
 }
 
@@ -162,8 +176,6 @@ export default function MachineScreen() {
   const canReport = useSessionPermission('contracting_breakdown:report');
   const canBook = useSessionPermission('contracting_service:update');
   const [booking, setBooking] = useState(false);
-  // Two open records on one Machine are not refused on the server; the newest start is the one in the workshop.
-  const bookedIn = useMachineOpenServices(machine).data?.items[0];
   const canReadBreakdowns = useSessionPermission('contracting_breakdown:read');
   const breakdowns = useMachineBreakdowns(id);
   const canOpenJobs = useCanReadJobs();
@@ -205,16 +217,7 @@ export default function MachineScreen() {
             {machine?.serialNumber ? (
               <Text className="text-sm text-muted-foreground">Serial number {machine.serialNumber}</Text>
             ) : null}
-            <Text className="text-3xl text-foreground" weight="bold">
-              {machine?.latestReadingHours != null ? formatHours(machine.latestReadingHours) : 'No known reading'}
-            </Text>
-            {machine?.latestReadingAt ? (
-              <Text className="text-sm text-muted-foreground">
-                Read{' '}
-                <DateText className="text-sm text-muted-foreground" date={machine.latestReadingAt} format="medium" />
-                {readingProviderSuffix(machine.latestReadingProvider)}
-              </Text>
-            ) : null}
+            <MachineLatestReading machine={machine} />
           </View>
           {canCapture && machine ? (
             <Button
@@ -247,17 +250,7 @@ export default function MachineScreen() {
               ) : null}
               {canBook ? (
                 <View className="flex-1">
-                  {machine.serviceBookedIn ? (
-                    <Button
-                      icon={IconCalendarPlus}
-                      title="Booked in"
-                      trailingIcon={IconChevronRight}
-                      disabled={!bookedIn}
-                      onPress={() => bookedIn && router.push(serviceRecordHref(bookedIn.id))}
-                    />
-                  ) : (
-                    <Button icon={IconCalendarPlus} title="Book a service" onPress={() => setBooking(true)} />
-                  )}
+                  <ServiceButton machine={machine} onBook={() => setBooking(true)} />
                 </View>
               ) : null}
             </View>

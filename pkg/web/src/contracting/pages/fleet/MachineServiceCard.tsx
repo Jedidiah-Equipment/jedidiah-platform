@@ -1,5 +1,4 @@
-import { formatDate, getFirstName } from '@pkg/domain';
-import { machineServiceBadge } from '@pkg/domain/contracting';
+import { machineServiceBadge, serviceRecordSummary } from '@pkg/domain/contracting';
 import type { Machine } from '@pkg/schema/contracting';
 import { useQuery } from '@tanstack/react-query';
 import { type ReactNode, useState } from 'react';
@@ -58,10 +57,7 @@ export function MachineServiceCard({ machine, children }: { machine: Machine; ch
         <ErrorMessage error={records.error ?? mechanics.error} fallbackMessage="Unable to load Service Records." />
         {records.data?.items.map((record) => (
           <div key={record.id} className="flex items-center justify-between gap-2 rounded-md border p-3 text-sm">
-            <span className="font-medium">
-              Booked in since {formatDate(record.startDate, 'short')}
-              {record.mechanicName ? ` · ${getFirstName(record.mechanicName)}` : null}
-            </span>
+            <span className="font-medium">{serviceRecordSummary(record)}</span>
             <PrimaryLink to="/contracting/services/$id" params={{ id: record.id }}>
               Open service
             </PrimaryLink>

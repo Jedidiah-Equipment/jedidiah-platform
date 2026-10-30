@@ -27,6 +27,9 @@ vi.mock('@tanstack/react-query', async (original) => ({
 const roots: Root[] = [];
 const record = {
   id: '00000000-0000-4000-8000-000000000001',
+  machineCode: 'JD6140M-2',
+  categoryIcon: 'tractor',
+  categoryColour: 'lime',
   primaryMechanicUserId: null,
   mechanicName: null,
   notes: null,
@@ -45,14 +48,15 @@ async function mount(serviceIntervalHours: number | null) {
   document.body.append(container);
   const root = createRoot(container);
   roots.push(root);
-  const machine = {
-    code: 'JD6140M-2',
-    categoryIcon: 'tractor',
-    categoryColour: 'lime',
-    serviceIntervalHours,
-  } as const;
   await act(async () =>
-    root.render(<CloseServiceRecordDialog machine={machine} record={record} mechanicOptions={[]} onClose={vi.fn()} />),
+    root.render(
+      <CloseServiceRecordDialog
+        record={record}
+        serviceIntervalHours={serviceIntervalHours}
+        mechanicOptions={[]}
+        onClose={vi.fn()}
+      />,
+    ),
   );
   const submit = [...document.querySelectorAll('button')].find(
     (button) => button.textContent?.trim() === 'Close service',

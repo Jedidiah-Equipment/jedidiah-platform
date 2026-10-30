@@ -40,7 +40,7 @@ export type ReadingAttentionFacts = { disputed: boolean };
 export const readingAttentionKinds = (reading: ReadingAttentionFacts): JobReadingAttentionKind[] =>
   reading.disputed ? ['disputed'] : [];
 
-/** The level a reading needs a look at, or null when it does not. Core's SQL twins this. */
+/** The level a reading needs a look at, or null when it does not. */
 export const readingNeedsALookLevel = (reading: ReadingAttentionFacts): NeedsALookLevel | null =>
   reading.disputed ? 'critical' : null;
 

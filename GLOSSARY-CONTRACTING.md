@@ -180,7 +180,7 @@ refuse, and show its sentence when it does. Disputes surface to management as **
 reading is **Disputed** when it belongs to an unresolved out-of-sequence pair or a Telematics Reading
 contradicts it. Disputes never return to the Foreman, who is never
 re-interrupted in the field. A reading may carry the capturer's
-optional comment, shown wherever management reviews it; the capture screen shows the
+optional **capture comment**, shown wherever management reviews it; the capture screen shows the
 minimum value the meter can now read. A field reading plays one of three roles:
 **arrival** (machine on site) and **departure** (machine leaving) on a Machine Assignment, or
 **spot** — an ad-hoc capture with no billing effect, existing to keep a Machine's known

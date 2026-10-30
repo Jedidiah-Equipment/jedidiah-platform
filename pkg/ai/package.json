@@ -11,6 +11,10 @@
     "./equipment": {
       "types": "./dist/equipment/index.d.ts",
       "import": "./dist/equipment/index.js"
+    },
+    "./contracting": {
+      "types": "./dist/contracting/index.d.ts",
+      "import": "./dist/contracting/index.js"
     }
   },
   "scripts": {

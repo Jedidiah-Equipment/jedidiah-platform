@@ -176,7 +176,7 @@ function rowleyDam(
     leftStints: 3,
     looksFinished: false,
     openGapFlags: 0,
-    assignmentAttention: { critical: 0, warning: 0 },
+    assignmentAttention: { critical: 0 },
     startDate: '2026-09-01',
     endDate: '2026-09-06',
     pricedAt: '2026-09-08T12:00:00.000Z',

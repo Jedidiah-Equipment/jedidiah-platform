@@ -8,6 +8,7 @@
       "@/*": ["./src/*"],
       "@pkg/ai": ["./src/index.ts"],
       "@pkg/ai/equipment": ["./src/equipment/index.ts"],
+      "@pkg/ai/contracting": ["./src/contracting/index.ts"],
       "@pkg/core": ["../core/src/index.ts"],
       "@pkg/core/equipment": ["../core/src/equipment/index.ts"],
       "@pkg/core/contracting": ["../core/src/contracting/index.ts"],

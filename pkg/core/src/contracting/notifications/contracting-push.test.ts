@@ -8,7 +8,7 @@ import { describe, expect } from 'vitest';
 import { setPushPreferences } from '../../push/push-preference-service.js';
 import type { PushMessage } from '../../push/push-sender.js';
 import { createTester } from '../../test/create-tester.js';
-import { reportBreakdown } from '../breakdowns/breakdown-service.js';
+import { patchBreakdown, reportBreakdown } from '../breakdowns/breakdown-service.js';
 import { patchMachine } from '../fleet/machine-service.js';
 import { cancelJob, createJob, patchJob } from '../jobs/job-service.js';
 import { addNote } from '../notes/note-service.js';
@@ -296,6 +296,42 @@ describe('Contracting push fan-out', () => {
 
     expect(await report(db, excavator.id, 'code-green')).toEqual([]);
     expect(recipients(await report(db, excavator.id, 'code-red'))).toContain('ExponentPushToken[wendy-1]');
+  });
+
+  test('a Breakdown changed to Code Red alerts like a fresh Code Red, never whoever changed it', async ({
+    context: { db, excavator },
+  }) => {
+    const { breakdown } = await reportBreakdown({
+      db,
+      actor: admin,
+      input: {
+        subject: { kind: 'machine', id: excavator.id },
+        urgency: 'code-green',
+        description: 'Leak',
+        jobId: null,
+      },
+    });
+    const mo = accessForRole('contracting-manager', 'mo');
+    const event = { kind: 'breakdown.escalated', breakdownId: breakdown.id, byUserId: 'mo' } as const;
+    await patchBreakdown({ db, actor: mo, input: { id: breakdown.id, urgency: 'code-red' } });
+    const messages = await buildContractingPush({ db, event });
+
+    expect(recipients(messages)).toEqual([
+      'ExponentPushToken[jed]',
+      'ExponentPushToken[sam]',
+      'ExponentPushToken[wendy-1]',
+      'ExponentPushToken[wendy-2]',
+    ]);
+    expect(messages[0]).toMatchObject({
+      title: 'Now Code Red · CAT320-1',
+      body: 'Leak. Reported by Jed.',
+      channelId: 'workshop',
+    });
+    await setPushPreferences({ db, userId: 'wendy', input: { muted: ['contracting.breakdown.code-red'] } });
+    expect(recipients(await buildContractingPush({ db, event }))).not.toContain('ExponentPushToken[wendy-1]');
+    // Queued after commit: changed back to Code Green in between, there is nothing left to escalate.
+    await patchBreakdown({ db, actor: mo, input: { id: breakdown.id, urgency: 'code-green' } });
+    expect(await buildContractingPush({ db, event })).toEqual([]);
   });
 
   test('Service Due Soon reaches the workshop managers and management with the hours left', async ({

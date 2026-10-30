@@ -12,25 +12,30 @@ export const SERVICE_DUE_SOON_PUSH_KIND: PushKind = 'contracting.service-due-soo
 
 export type ContractingPushEvent =
   | { kind: 'breakdown.reported'; breakdownId: string }
+  | { kind: 'breakdown.escalated'; breakdownId: string; byUserId: string }
   | { kind: 'machine.service-due-soon'; machineId: string }
   | { kind: 'note.added'; thread: NoteThreadKind; noteId: string };
 
 /** A push that names a Contracting record, so a Contracting builder cannot point the phone at the other business. */
 export type ContractingPushContent = PushContent & { data: { business: 'contracting' } };
 
-export function breakdownPushMessage(breakdown: {
-  id: string;
-  urgency: BreakdownUrgency;
-  subjectCode: string;
-  firstLine: string;
-  farmName: string | null;
-  jobNumber: string | null;
-  reporterName: string;
-}): ContractingPushContent {
+/** A reported Breakdown's alert; one changed to Code Red afterwards says so with "Now" and is otherwise the same. */
+export function breakdownPushMessage(
+  breakdown: {
+    id: string;
+    urgency: BreakdownUrgency;
+    subjectCode: string;
+    firstLine: string;
+    farmName: string | null;
+    jobNumber: string | null;
+    reporterName: string;
+  },
+  { escalated = false }: { escalated?: boolean } = {},
+): ContractingPushContent {
   const where = [breakdown.farmName, breakdown.jobNumber].filter((part) => part !== null).join(', ');
   const what = breakdown.firstLine.replace(/[.!?…\s]+$/, '');
   return {
-    title: `${breakdownUrgencyLabels[breakdown.urgency]} · ${breakdown.subjectCode}`,
+    title: `${escalated ? 'Now ' : ''}${breakdownUrgencyLabels[breakdown.urgency]} · ${breakdown.subjectCode}`,
     body: `${what}${where ? ` at ${where}` : ''}. Reported by ${breakdown.reporterName}.`,
     data: {
       business: 'contracting',

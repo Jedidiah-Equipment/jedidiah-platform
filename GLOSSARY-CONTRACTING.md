@@ -281,8 +281,9 @@ close-out note. The subject's Breakdown history is
 permanent. The dispatch cross-reference — other fleet on the same Job with open Breakdowns —
 is derived, never stored. A new Breakdown notifies by push notification: Code Green reaches
 the workshop-manager role; Code Red also reaches contracting-manager, contracting-admin and
-super-admin. The reporter never receives their own ping, and anyone may mute a Push Kind in App
-Settings (see [GLOSSARY-MAP.md](GLOSSARY-MAP.md)).
+super-admin. The reporter never receives their own ping. A Breakdown changed from Code Green to Code Red
+notifies as Code Red again ("Now Code Red"), excluding whoever changed it; a change back to Code Green is
+silent. Anyone may mute a Push Kind in App Settings (see [GLOSSARY-MAP.md](GLOSSARY-MAP.md)).
 
 **Breakdown Note** is one entry in a Breakdown's Note Thread. Whoever may update Breakdowns may add one to
 any Breakdown, and whoever may report them may add one to a Breakdown that is theirs — reported by them or

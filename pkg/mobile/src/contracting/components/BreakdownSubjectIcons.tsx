@@ -76,14 +76,29 @@ export function BreakdownSubjectIcons({
   urgency,
   subject,
   size = 20,
+  onPressUrgency,
 }: {
   urgency: BreakdownUrgency;
   subject: Pick<BreakdownSubject, 'categoryIcon' | 'categoryColour'>;
   size?: IconSize;
+  /** Makes the urgency flag a button, for someone who may change it. */
+  onPressUrgency?: () => void;
 }) {
+  const flag = <BreakdownUrgencyIcon urgency={urgency} tile={categoryTileSize(size)} />;
   return (
     <View className="shrink-0 flex-row items-center gap-1.5">
-      <BreakdownUrgencyIcon urgency={urgency} tile={categoryTileSize(size)} />
+      {onPressUrgency ? (
+        <Pressable
+          accessibilityLabel={`${breakdownUrgencyLabels[urgency]}: change urgency`}
+          accessibilityRole="button"
+          hitSlop={8}
+          onPress={onPressUrgency}
+        >
+          {flag}
+        </Pressable>
+      ) : (
+        flag
+      )}
       <CategoryIcon icon={subject.categoryIcon} colour={subject.categoryColour} size={size} />
     </View>
   );

@@ -14,7 +14,7 @@ A Breakdown is one problem on one Machine or Implement. Reporting one needs a co
 5. Choose **Take photo** or **Choose from gallery** to add up to six photos. Photos you take here are also saved to the **Jedidiah** album in your gallery.
 6. Choose **Send report**. The phone attaches your location when it can.
 
-Once it is sent, you go back to where you started — the Job, the Machine or **Workshop** — and the workshop manager sees it in the Workshop queue. Follow it from **Workshop** or **Activity**: questions and answers go on the Breakdown's **Activity** — choose **Add Note**, typed or as a Voice Note, and **Send**. You can change the description and add photos until the Breakdown is Fixed.
+Once it is sent, you go back to where you started — the Job, the Machine or **Workshop** — and the workshop manager sees it in the Workshop queue. Follow it from **Workshop** or **Activity**: questions and answers go on the Breakdown's **Activity** — choose **Add Note**, typed or as a Voice Note, and **Send**. You can change the urgency, the description and add photos until the Breakdown is Fixed. To change the urgency on the phone, tap the red or green flag beside the Machine or Implement at the top of the Breakdown and choose **Change to Code Green** or **Change to Code Red**. Changing it to Code Red alerts the workshop manager and management as a Code Red does; see [Who gets alerts](./who-gets-workshop-alerts).
 
 Foremen see only the Breakdowns they reported and those on their own Jobs. The workshop manager sees them all.
 

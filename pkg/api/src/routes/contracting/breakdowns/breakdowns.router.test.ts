@@ -11,6 +11,7 @@ import {
   reportBreakdown,
 } from '@pkg/core/contracting';
 import { user } from '@pkg/db';
+import type { ContractingPushEvent } from '@pkg/domain/contracting';
 import { accessForRole } from '@pkg/domain/testing';
 import type { ContractingRole } from '@pkg/schema';
 import { MachineCreateInput } from '@pkg/schema/contracting';
@@ -77,6 +78,19 @@ test('a Foreman lists only his own Breakdowns; the workshop manager lists and so
     counts: { open: 1, 'in-progress': 0, solved: 1 },
     codeRedUnsolved: 1,
   });
+});
+
+test('changing a Breakdown to Code Red schedules its escalation; changing it to Code Green does not', async ({
+  context,
+}) => {
+  const events: ContractingPushEvent[] = [];
+  const contracting = { push: { schedule: (event: ContractingPushEvent) => events.push(event) } };
+  const connor = context.createCaller(sessionAs('connor', 'workshop-manager'), { contracting }).contractingBreakdowns;
+  const { id } = context.siphos;
+  expect(await connor.patch({ id, urgency: 'code-green' })).toMatchObject({ id, urgency: 'code-green' });
+  expect(events).toEqual([]);
+  await connor.patch({ id, urgency: 'code-red' });
+  expect(events).toEqual([{ kind: 'breakdown.escalated', breakdownId: id, byUserId: 'connor' }]);
 });
 
 test('Contracting invoicing cannot see Breakdowns', async ({ context }) => {

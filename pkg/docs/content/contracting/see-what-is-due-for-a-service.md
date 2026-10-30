@@ -8,4 +8,4 @@ The Services page lists the services Booked in, with the Machines due for a serv
 4. To close the service when the Machine leaves, select its row to open the service and choose **Close service**, then follow [Book a service](./book-a-service) from step 4. A highlighted row still opens the Machine.
 5. Below the highlighted rows, read the services Booked in, newest first. To look back at closed services, pick **Closed** in the **Status** column filter. Search by Machine or Mechanic, and filter the **Machine** or **Mechanic** column to narrow it further. None of this hides the highlighted rows.
 
-On the phone, the **Services** tab shows the same list: the Machines due at the top, the services Booked in below, the **Status** and **Mechanic** filters, and **Book a service**; a Machine's **Service history** is under its Service card.
+On the phone, open the **Services** tab and follow the same steps, using its **Status** and **Mechanic** filters. To read one Machine's services, open the Machine and choose **Service history**.

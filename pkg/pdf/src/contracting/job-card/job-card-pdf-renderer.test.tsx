@@ -34,12 +34,13 @@ describe('Job Card PDF', () => {
     expect(text).not.toMatch(evidence);
   });
 
-  test('the internal copy adds the travel split, a clamped Travel note, reading markers, comments and sign-off notes', () => {
+  test('the internal copy adds the travel split, each needs-a-look kind, reading markers, comments and sign-off notes', () => {
     const text = collectText(JobCardPdf({ document: jobCardFixture('internal') })).join('\n');
 
     for (const expected of [
       '42.4 h + 2.1 h travel',
-      'Travel set to 0 h',
+      'Travel set to 0.0 h',
+      'John Deere differs',
       "Foreman's note: meter glass cracked",
       'Driver: Thabo',
       'by Sipho',

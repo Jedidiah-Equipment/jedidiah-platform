@@ -33,8 +33,8 @@ import {
   type FleetHistoryReadingRole,
   FleetHistoryRow,
   fleetHistoryKinds,
-  type StintReadingRole,
-  stintReadingRoles,
+  type JobHoursRole,
+  jobHoursRoles,
 } from '@pkg/schema/contracting';
 import { and, eq, inArray, isNotNull, type SQL, type SQLWrapper, sql } from 'drizzle-orm';
 import { alias, unionAll } from 'drizzle-orm/pg-core';
@@ -113,7 +113,7 @@ export async function listFleetHistory({
   const { subject, search } = input;
   const days = { from: input.from, to: input.to };
 
-  const stintLeaf = (role: StintReadingRole) => {
+  const stintLeaf = (role: JobHoursRole) => {
     const side = stintSide[role];
     return db
       .select({
@@ -330,7 +330,7 @@ async function loadHistoryRows(db: Db, rows: readonly HistoryKey[]) {
     );
   for (const stint of stintRows) {
     const jobNumber = formatJobNumber(stint.jobCode);
-    for (const role of stintReadingRoles) {
+    for (const role of jobHoursRoles) {
       const side = stint[role];
       if (side.at === null || side.hours === null) continue;
       loaded.set(

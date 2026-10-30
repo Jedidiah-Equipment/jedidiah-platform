@@ -212,8 +212,9 @@ automatic reading, JDLink reading, API reading.
 
 **Assignment Attention** is everything that flags a Machine Assignment for a person, at one level, **needs a
 look** (amber): Travel Hours over the Travel Flag threshold, Travel clamped from a negative, or a John Deere
-difference over its threshold. It is counted on the Jobs list and the Dashboard and filtered for, borders nothing
-red, and blocks nothing. _Avoid_: bare "attention", alert, issue, critical.
+difference over its threshold. Travel set by hand has been looked at, so it clears both Travel kinds. It is counted
+on the Jobs list and the Dashboard and filtered for, borders nothing red, and blocks nothing. _Avoid_: bare
+"attention", alert, issue, critical.
 
 **Field Note** is a generic note a Foreman keeps on his phone — when the app cannot take a capture,
 without signal, typically — and later acts on himself: a description, one or more photos, and the

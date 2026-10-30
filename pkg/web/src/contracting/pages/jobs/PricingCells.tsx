@@ -1,5 +1,5 @@
 import { formatCurrency, formatHours, formatNumber, formatPercent } from '@pkg/domain';
-import { stintAmount } from '@pkg/domain/contracting';
+import { assignmentAttentionKindLabel, needsALookColorClassNames, stintAmount } from '@pkg/domain/contracting';
 import { type Assignment, type DiscountKind, JobDiscountInput } from '@pkg/schema/contracting';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -7,6 +7,7 @@ import { SearchableCombobox } from '@/components/common/SearchableCombobox.js';
 import type { DataTableColumnDef } from '@/components/data-table/features.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
+import { cn } from '@/lib/utils.js';
 import { MoneyInput } from './MoneyInput.js';
 import {
   type AdjustmentRow,
@@ -64,6 +65,19 @@ function StintHoursCell({ row }: { row: MachinePricingRow }) {
       <span className="block text-muted-foreground text-xs">
         work {formatHours(stint.workHours ?? 0)} + travel {formatHours(stint.travelHours ?? 0)}
       </span>
+      {stint.attention.map((kind) => (
+        <Badge
+          className={cn(
+            'mt-1 h-auto whitespace-normal',
+            needsALookColorClassNames.chip,
+            needsALookColorClassNames.text,
+          )}
+          key={kind}
+          variant="outline"
+        >
+          {assignmentAttentionKindLabel(kind)}
+        </Badge>
+      ))}
     </div>
   ) : null;
 }

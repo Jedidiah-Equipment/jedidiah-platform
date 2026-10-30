@@ -4,10 +4,10 @@ import { createCursorQueryResult, createSearchedSortedCursorQueryInput } from '.
 import { UUID } from '../../common/uuid.js';
 import { BreakdownSubjectRef } from '../breakdowns/breakdown.js';
 import { breakdownStatuses, breakdownUrgencies } from '../breakdowns/breakdown-enums.js';
-import { stintReadingRoles } from '../jobs/stint-hours.js';
+import { jobHoursRoles } from '../jobs/stint-hours.js';
 
 /** A History row's hours: a spot or Telematics Reading from the ledger, or one of a stint's Job Hours. */
-export const fleetHistoryReadingRoles = ['spot', ...stintReadingRoles] as const;
+export const fleetHistoryReadingRoles = ['spot', ...jobHoursRoles] as const;
 export type FleetHistoryReadingRole = (typeof fleetHistoryReadingRoles)[number];
 
 export const fleetHistoryKinds = ['reading', 'breakdown', 'service'] as const;

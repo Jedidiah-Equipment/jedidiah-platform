@@ -15,7 +15,7 @@ const before = (a: Reading, b: Reading) => {
 /**
  * A snapshot read before migration 0185 keeps Job Hours as arrival and departure readings in the ledger. Fold them onto
  * their stints the way the migration did, Travel included, and drop them from the ledger. A current snapshot passes
- * through unchanged.
+ * through unchanged. Temporary: delete this fold once the snapshot is regenerated after 0185 runs in production.
  */
 export function foldLegacyJobHours(rowsByTable: Map<string, SnapshotRow[]>): void {
   const readings = (rowsByTable.get(READINGS) ?? []) as Reading[];

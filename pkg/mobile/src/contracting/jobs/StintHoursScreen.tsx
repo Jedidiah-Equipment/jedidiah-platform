@@ -6,9 +6,18 @@ import {
   johnDeereDifferenceWarning,
   johnDeereLine,
   judgeStintHours,
+  needsALookColorClassNames,
   parseCaptureValue,
 } from '@pkg/domain/contracting';
-import { type AssignmentDetail, type JobDetail, ReadingComment, ReadingReason } from '@pkg/schema/contracting';
+import {
+  type AssignmentDetail,
+  type JobDetail,
+  ReadingComment,
+  StintHoursCaptureValues,
+  StintHoursEditValues,
+  toStintHoursCaptureInput,
+  toStintHoursEditInput,
+} from '@pkg/schema/contracting';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { type ReactNode, useState } from 'react';
 import { View } from 'react-native';
@@ -23,6 +32,7 @@ import { VoiceTextArea } from '@/components/voice/VoiceTextArea';
 import { StintOverrideCard, useStintOverrides } from '@/contracting/components/StintOverrideCard';
 import { useLatestTelematics } from '@/contracting/readings/use-fleet';
 import { useBusyAction } from '@/lib/use-busy-action';
+import { useColorMode } from '@/theme/use-color-mode';
 import { useJob, useStintHoursWrites } from './use-jobs';
 
 type Mode = 'arrival' | 'departure' | 'edit';
@@ -33,7 +43,6 @@ const TITLES: Record<Mode, string> = {
 };
 const SAVE_FAILED = 'Could not save the hours. Check your connection and try again.';
 const COMMENT_ROWS = 3;
-const commentOrNull = (comment: string) => comment.trim() || null;
 const typed = (hours: number | undefined) => (hours === undefined ? '' : String(hours));
 
 /** `/contracting/jobs/[jobId]/capture`: a stint's arrival or departure hours, or an edit of both. */
@@ -88,17 +97,18 @@ function CaptureHours({ side, job, stint, toolbar, onSaved }: FormProps & { side
     side === 'departure' && stint.arrival && parsed !== null
       ? judgeStintHours({ arrival: stint.arrival.hours, departure: parsed })
       : null;
-  const canSave = parsed !== null && refusal?.ok !== false && !busy && !voice.busy;
+  const values = StintHoursCaptureValues.safeParse({ hours: parsed, comment });
+  const canSave = values.success && refusal?.ok !== false && !busy && !voice.busy;
   const save = () => {
-    if (!canSave || parsed === null) return;
+    if (!canSave || !values.success) return;
     void run(async () => {
-      await writes.capture.mutateAsync({
-        assignmentId: stint.id,
-        role: side,
-        hours: parsed,
-        comment: commentOrNull(comment),
-        ...(side === 'arrival' && overrides.value ? { stintOverrides: overrides.value } : {}),
-      });
+      await writes.capture.mutateAsync(
+        toStintHoursCaptureInput(
+          { assignmentId: stint.id, role: side },
+          values.data,
+          side === 'arrival' ? overrides.value : undefined,
+        ),
+      );
       voice.reportSaved();
       onSaved();
     }, SAVE_FAILED);
@@ -147,22 +157,23 @@ function EditHours({ job, stint, toolbar, onSaved }: FormProps) {
   const arrivalHours = parseCaptureValue(arrival);
   const departureHours = stint.departure ? parseCaptureValue(departure) : null;
   const verdict = arrivalHours === null ? null : judgeStintHours({ arrival: arrivalHours, departure: departureHours });
+  const values = StintHoursEditValues.safeParse({
+    arrivalHours,
+    departureHours,
+    arrivalComment,
+    departureComment,
+    reason,
+  });
   const canSave =
+    values.success &&
     verdict?.ok === true &&
     (!stint.departure || departureHours !== null) &&
-    (!needsReason || ReadingReason.safeParse(reason).success) &&
+    (!needsReason || reason.trim() !== '') &&
     !busy;
   const save = () => {
-    if (!canSave || arrivalHours === null) return;
+    if (!canSave || !values.success) return;
     void run(async () => {
-      await writes.edit.mutateAsync({
-        assignmentId: stint.id,
-        arrivalHours,
-        departureHours,
-        arrivalComment: commentOrNull(arrivalComment),
-        departureComment: stint.departure ? commentOrNull(departureComment) : undefined,
-        ...(needsReason ? { reason: reason.trim() } : {}),
-      });
+      await writes.edit.mutateAsync(toStintHoursEditInput(stint.id, values.data));
       onSaved();
     }, SAVE_FAILED);
   };
@@ -240,6 +251,7 @@ function HoursField({
   threshold: number;
   refusal: string | null;
 }) {
+  const { resolved } = useColorMode();
   const telematics = useLatestTelematics(machineId).data ?? null;
   const parsed = parseCaptureValue(value);
   const difference = parsed === null ? null : johnDeereDifference(parsed, telematics, threshold);
@@ -257,8 +269,10 @@ function HoursField({
       />
       {telematics ? <Text className="text-xs text-muted-foreground">{johnDeereLine(telematics, now)}</Text> : null}
       {telematics && difference?.over ? (
-        <View className="rounded-xl border border-warning bg-warning/10 px-4 py-3">
-          <Text className="text-foreground">{johnDeereDifferenceWarning(difference.hours, telematics, now)}</Text>
+        <View className={`rounded-xl border px-4 py-3 ${needsALookColorClassNames.chip}`}>
+          <Text className={needsALookColorClassNames.textByScheme[resolved]}>
+            {johnDeereDifferenceWarning(difference.hours, telematics, now)}
+          </Text>
         </View>
       ) : null}
     </FieldShell>

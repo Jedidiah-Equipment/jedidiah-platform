@@ -98,16 +98,21 @@ export function useDrivers() {
   );
 }
 
-/** A stint's Job Hours writes; each refreshes the Job and what reads Known Hours. */
+/** A stint's Job Hours writes; each refreshes the Job, its reports and Activity, and wherever Known Hours show. */
 export function useStintHoursWrites() {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const onSuccess = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: trpc.contractingJobs.pathKey() }),
-      queryClient.invalidateQueries({ queryKey: trpc.contractingReadings.pathKey() }),
-      queryClient.invalidateQueries({ queryKey: trpc.contractingServices.pathKey() }),
-    ]);
+    await Promise.all(
+      [
+        trpc.contractingJobs,
+        trpc.contractingReports,
+        trpc.contractingActivity,
+        trpc.contractingReadings,
+        trpc.contractingFleet,
+        trpc.contractingServices,
+      ].map((router) => queryClient.invalidateQueries({ queryKey: router.pathKey() })),
+    );
   };
   return {
     capture: useMutation(trpc.contractingJobs.assignments.captureHours.mutationOptions({ onSuccess })),

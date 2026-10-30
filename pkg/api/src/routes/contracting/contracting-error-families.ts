@@ -71,6 +71,7 @@ export const readingErrorFamily = defineCoreErrorFamily<ReadingError>({
 export const jobErrorFamily = defineCoreErrorFamily<JobError>({
   codes: {
     'contracting_job.departure_before_arrival': 'BAD_REQUEST',
+    'contracting_job.departure_not_editable': 'BAD_REQUEST',
     'contracting_job.duplicate': 'CONFLICT',
     'contracting_job.forbidden': 'FORBIDDEN',
     'contracting_job.has_on_site_stints': 'CONFLICT',

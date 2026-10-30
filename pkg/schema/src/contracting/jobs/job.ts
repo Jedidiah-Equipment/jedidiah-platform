@@ -17,7 +17,7 @@ import {
   jobStatuses,
   needsALookLevels,
 } from './job-enums.js';
-import { StintReading } from './stint-hours.js';
+import { JobHoursValue } from './stint-hours.js';
 
 export const Hours = z.number().nonnegative().max(999999999.9).multipleOf(0.1);
 export const Litres = z.number().nonnegative().max(9999999999.99).multipleOf(0.01);
@@ -190,8 +190,8 @@ export const Assignment = z.object({
   driverName: z.string().nullable(),
   state: z.enum(assignmentStates),
   createdAt: DateIso,
-  arrival: StintReading.nullable(),
-  departure: StintReading.nullable(),
+  arrival: JobHoursValue.nullable(),
+  departure: JobHoursValue.nullable(),
   /** Snapshot at arrival, hand-set after; null until the Machine arrives. */
   travelHours: Hours.nullable(),
   /** The arrival was below the Machine's previous departure, so Travel was stored as 0. */

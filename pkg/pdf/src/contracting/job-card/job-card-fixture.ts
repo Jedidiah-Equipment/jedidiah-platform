@@ -1,4 +1,4 @@
-import { JobCardModel, type JobCardVariant } from '@pkg/schema/contracting';
+import { type AssignmentAttentionKind, JobCardModel, type JobCardVariant } from '@pkg/schema/contracting';
 
 /** Spec #1378 scenario 1 — Mr Rowley's dam, Priced at R 77 265.00 ex VAT — in either variant. */
 export function jobCardFixture(variant: JobCardVariant): JobCardModel {
@@ -10,9 +10,9 @@ export function jobCardFixture(variant: JobCardVariant): JobCardModel {
     comment: internal ? comment : null,
     byName: internal ? 'Sipho' : null,
   });
-  const hours = (work: number, travel: number, travelClamped = false) =>
+  const hours = (work: number, travel: number, attention: AssignmentAttentionKind[] = []) =>
     internal
-      ? { variant: 'internal' as const, work, travel, travelClamped }
+      ? { variant: 'internal' as const, work, travel, attention }
       : { variant: 'customer' as const, total: Math.round((work + travel) * 10) / 10 };
 
   return JobCardModel.parse({
@@ -36,7 +36,7 @@ export function jobCardFixture(variant: JobCardVariant): JobCardModel {
         driverName: internal ? 'Sipho' : null,
         arrival: reading(4002.6, '2026-09-01T07:00:00.000Z'),
         departure: reading(4051.2, '2026-09-06T16:00:00.000Z', 'amended'),
-        hours: hours(48.6, 0, true),
+        hours: hours(48.6, 0, ['travel-clamped', 'john-deere-difference']),
         measures: [],
         rate: { name: 'Excavator, supervised', unitAmount: 600, per: 'h' },
         noCharge: false,

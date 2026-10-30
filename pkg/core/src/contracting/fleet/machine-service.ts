@@ -73,15 +73,17 @@ type JohnDeereRow = {
 };
 type MachineColumns = typeof contractingMachines._.columns;
 
-/** One field of the Machine's newest ledger reading, as a correlated subselect. */
+/** The Machine's newest ledger reading, as a row source for a correlated subselect. */
+const ledgerLatest = (machineId: SQLWrapper) => sql`(
+  select reading.value, reading.captured_at as at, reading.method
+  from contracting.hour_reading reading
+  where reading.machine_id = ${machineId}
+  order by reading.captured_at desc, reading.sequence desc
+  limit 1
+)`;
+
 const ledgerLatestField = <T>(machine: MachineColumns, expression: string, alias: string) =>
-  sql<T>`(
-    select ${sql.raw(expression)}
-    from contracting.hour_reading latest
-    where latest.machine_id = ${machine.id}
-    order by latest.captured_at desc, latest.sequence desc
-    limit 1
-  )`.as(alias);
+  sql<T>`(select ${sql.raw(expression)} from ${ledgerLatest(machine.id)} latest)`.as(alias);
 
 /**
  * The Machine's latest ledger reading (spot or Telematics) and its Read At: the floor spot capture is held to, and
@@ -89,22 +91,14 @@ const ledgerLatestField = <T>(machine: MachineColumns, expression: string, alias
  */
 export const ledgerLatestColumns = (machine: MachineColumns) => ({
   latestReadingHours: ledgerLatestField<number | null>(machine, 'latest.value::float8', 'latest_reading_hours'),
-  latestReadingAt: ledgerLatestField<string | null>(
-    machine,
-    "to_json(latest.captured_at) #>> '{}'",
-    'latest_reading_at',
-  ),
+  latestReadingAt: ledgerLatestField<string | null>(machine, "to_json(latest.at) #>> '{}'", 'latest_reading_at'),
 });
 
-/** The candidates for Known Hours: the ledger's latest reading, and each stint's higher Job Hours. */
+/** The candidates for Known Hours: the ledger's latest reading, and the highest Job Hours on any stint. */
 const knownHoursCandidates = (machineId: SQLWrapper) => sql`(
   (
-    select latest.value, latest.captured_at as at,
-      case when latest.method = 'telematics' then 'telematics' else 'spot' end as source
-    from contracting.hour_reading latest
-    where latest.machine_id = ${machineId}
-    order by latest.captured_at desc, latest.sequence desc
-    limit 1
+    select latest.value, latest.at, case when latest.method = 'telematics' then 'telematics' else 'spot' end as source
+    from ${ledgerLatest(machineId)} latest
   )
   union all
   (
@@ -130,7 +124,6 @@ const knownHoursSelect = (machineId: SQLWrapper) => sql<KnownHoursRow | null>`(
   limit 1
 )`;
 
-/** A Machine's Known Hours now, as a write reads it under its lock. */
 async function knownHoursOf(db: Db | DatabaseTransaction, machineId: string): Promise<number | null> {
   const [row] = await db
     .select({ known: knownHoursSelect(contractingMachines.id) })

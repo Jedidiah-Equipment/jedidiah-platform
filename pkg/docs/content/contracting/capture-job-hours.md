@@ -22,25 +22,10 @@ Capturing needs a connection. Without one, [keep a Field Note](./keep-a-field-no
 
 1. Open the Job. Each Machine on the **Machines** card shows its arrival and departure hours, who captured them and when, and what John Deere had read at that moment.
 2. Choose **Start — capture arrival** or **Stop — capture departure** on the Machine, then follow the same steps as on the phone and choose **Save hours**.
-3. To correct hours, choose **Edit hours** (the pencil beside the hours).
+3. To correct hours, choose **Edit hours** on the Machine.
    - Management can edit hours until the Job is Invoiced.
    - Once the Job is signed off, a **Reason** is required. The internal Job Card marks the stint amended.
    - Editing hours on a Priced Job returns it to **Completed**, and its amounts are recomputed.
+4. To change a Machine's Travel Hours, choose **Set Travel Hours** on the Machine, type the hours and choose **Save Travel Hours**.
 
-## Travel Hours
-
-- Travel Hours are worked out when the Machine arrives: its arrival hours less its last departure hours on any Job.
-- A Machine with no earlier departure, or one moved by truck, has 0 travel.
-- When the arrival is below the Machine's last departure, Travel is set to 0 and the Machine is marked as needing a look.
-- Travel is billed at the Machine's rate.
-- To change it, choose **Set Travel Hours** (the pencil beside **Travel**). Nothing recalculates Travel once it has been set by hand.
-
-## Needs a look
-
-A Machine is marked amber when:
-
-- Its Travel Hours are over the Travel Flag threshold in [Settings](./maintain-contracting-settings).
-- Its Travel was set to 0 because the arrival was below the last departure.
-- Its hours are further from John Deere's reading than the John Deere difference threshold.
-
-None of these stops the Job. The only thing that stops sign-off is a Machine still on site.
+How Travel is worked out, and when a Machine is marked amber, is in [Travel Hours and needs a look](./travel-hours-and-needs-a-look).

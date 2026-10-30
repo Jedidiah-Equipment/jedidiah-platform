@@ -16,4 +16,4 @@ A Machine Assignment's arrival and departure hours used to be Hour Readings in t
 - The only Completion gate on hours is that no Assignment is still on site; Travel and the John Deere difference never block.
 - Reports per Machine read the ledger, so an unlinked Machine with no spot readings shows no Daily Hours; a Job's hours are spread evenly over its dates and marked estimated. Utilisation is coarser.
 - Service Due Soon is judged against Known Hours, so a Job capture that brings it inside the threshold sends the same push a spot reading does.
-- ADR 0021's online-only capture stands. Its consequence that the ledger is ordered by Read At now holds for spot readings only; for Job Hours the question is moot.
+- ADR 0029 keeps capture online only; its ledger ordered by Read At holds for spot readings, and Job Hours carry no Read At.

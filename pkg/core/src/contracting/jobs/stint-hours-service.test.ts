@@ -211,7 +211,10 @@ describe('editing Job Hours and Travel', () => {
     });
     await expect(
       editStintHours({ db, actor: foreman, input: { assignmentId: stint.id, arrivalHours: 159, departureHours: 170 } }),
-    ).rejects.toMatchObject({ code: 'contracting_job.wrong_status', message: 'Capture the departure to record it.' });
+    ).rejects.toMatchObject({
+      code: 'contracting_job.departure_not_editable',
+      message: 'Capture the departure to record it.',
+    });
     await expect(
       setTravelHours({ db, actor: foreman, input: { assignmentId: stint.id, travelHours: 1 } }),
     ).rejects.toMatchObject({ code: 'contracting_job.forbidden' });
@@ -230,7 +233,7 @@ describe('editing Job Hours and Travel', () => {
       });
 
     await expect(edit(160)).rejects.toMatchObject({ code: 'contracting_job.reason_required' });
-    await expect(edit(null, 'Never left')).rejects.toMatchObject({ code: 'contracting_job.wrong_status' });
+    await expect(edit(null, 'Never left')).rejects.toMatchObject({ code: 'contracting_job.departure_not_editable' });
     await expect(
       editStintHours({ db, actor: foreman, input: { assignmentId: stint.id, arrivalHours: 100, departureHours: 160 } }),
     ).rejects.toMatchObject({ code: 'contracting_job.wrong_status' });

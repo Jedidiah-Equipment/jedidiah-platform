@@ -5,8 +5,8 @@ import { UUID } from '../../common/uuid.js';
 import { ReadingComment, ReadingReason, ReadingValue } from '../readings/reading.js';
 
 /** The two Job Hours a Machine Assignment holds. */
-export const stintReadingRoles = ['arrival', 'departure'] as const;
-export type StintReadingRole = (typeof stintReadingRoles)[number];
+export const jobHoursRoles = ['arrival', 'departure'] as const;
+export type JobHoursRole = (typeof jobHoursRoles)[number];
 
 /** What an arrival may change on its stint as it lands: the Implement and Driver the phone confirmed. */
 export const StintOverrides = z
@@ -17,7 +17,7 @@ export type StintOverrides = z.infer<typeof StintOverrides>;
 export const StintHoursCaptureInput = z
   .object({
     assignmentId: UUID,
-    role: z.enum(stintReadingRoles),
+    role: z.enum(jobHoursRoles),
     hours: ReadingValue,
     comment: ReadingComment.nullable().optional(),
     /** Only an arrival changes the stint's Implement and Driver. */
@@ -49,7 +49,7 @@ export const LatestTelematics = z.object({ hours: ReadingValue, at: DateIso });
 export type LatestTelematics = z.infer<typeof LatestTelematics>;
 
 /** One of a stint's Job Hours as it was captured: who saved it, when, and what John Deere had last read then. */
-export const StintReading = z.object({
+export const JobHoursValue = z.object({
   hours: ReadingValue,
   at: DateIso,
   byUserId: AuthId,
@@ -58,4 +58,4 @@ export const StintReading = z.object({
   /** What John Deere had last read when this was captured; null for an unlinked Machine. */
   telematics: LatestTelematics.nullable(),
 });
-export type StintReading = z.infer<typeof StintReading>;
+export type JobHoursValue = z.infer<typeof JobHoursValue>;

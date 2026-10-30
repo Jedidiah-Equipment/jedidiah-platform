@@ -7,9 +7,16 @@ import {
   needsALookColorClassNames,
 } from '@pkg/domain/contracting';
 import { AuthId, emptyStringOr, UUID } from '@pkg/schema';
-import { type Assignment, type JobDetail, ReadingComment, ReadingReason, ReadingValue } from '@pkg/schema/contracting';
+import {
+  type Assignment,
+  type JobDetail,
+  StintHoursCaptureValues,
+  StintHoursEditValues,
+  toStintHoursCaptureInput,
+  toStintHoursEditInput,
+} from '@pkg/schema/contracting';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { z } from 'zod';
+import type { z } from 'zod';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
@@ -23,9 +30,6 @@ import { AssignmentEditorDialog, changesAssignment } from './AssignmentEditorDia
 import { useAssignmentOptions } from './use-assignment-options.js';
 
 export type StintHoursMode = 'arrival' | 'departure' | 'edit';
-
-const OptionalComment = z.union([z.string().trim().length(0), ReadingComment]);
-const commentOrNull = (comment: string) => comment.trim() || null;
 
 type JobFacts = Pick<JobDetail, 'status' | 'johnDeereDifferenceThresholdHours'>;
 
@@ -61,15 +65,12 @@ function JohnDeereHint({ machineId, hours, threshold }: { machineId: string; hou
   );
 }
 
-/** The one Job Hours rule's sentence, under the hours while they break it. */
 function StintHoursRefusal(hours: { arrival: number; departure: number | null }) {
   const verdict = judgeStintHours(hours);
   return verdict.ok ? null : <FieldError>{verdict.refusal.message}</FieldError>;
 }
 
-const CaptureValues = z.object({
-  hours: ReadingValue,
-  comment: OptionalComment,
+const CaptureValues = StintHoursCaptureValues.extend({
   implementId: emptyStringOr(UUID),
   driverUserId: emptyStringOr(AuthId),
 });
@@ -127,20 +128,15 @@ function CaptureHoursDialog({
       onBeforeCreate={canSave}
       onCreate={(values) =>
         stint
-          ? capture.mutateAsync({
-              assignmentId: stint.id,
-              role,
-              hours: values.hours,
-              comment: commentOrNull(values.comment),
-              ...(arrival && changesAssignment(stint, values)
-                ? {
-                    stintOverrides: {
-                      implementId: values.implementId || null,
-                      driverUserId: values.driverUserId || null,
-                    },
-                  }
-                : {}),
-            })
+          ? capture.mutateAsync(
+              toStintHoursCaptureInput(
+                { assignmentId: stint.id, role },
+                values,
+                arrival && changesAssignment(stint, values)
+                  ? { implementId: values.implementId || null, driverUserId: values.driverUserId || null }
+                  : undefined,
+              ),
+            )
           : Promise.resolve()
       }
       onCreated={onClose}
@@ -221,15 +217,6 @@ function CaptureHoursDialog({
   );
 }
 
-const EditValues = z.object({
-  arrivalHours: ReadingValue,
-  departureHours: ReadingValue.nullable(),
-  arrivalComment: OptionalComment,
-  departureComment: OptionalComment,
-  reason: z.union([z.string().trim().length(0), ReadingReason]),
-});
-type EditValues = z.infer<typeof EditValues>;
-
 function EditHoursDialog({ stint, job, onClose }: { stint: Assignment | null; job: JobFacts; onClose: () => void }) {
   const trpc = useTRPC();
   const write = useStintHoursWrite();
@@ -237,7 +224,7 @@ function EditHoursDialog({ stint, job, onClose }: { stint: Assignment | null; jo
   useResetOnOpen(edit, !!stint);
   const needsReason = hoursEditNeedsReason(job.status);
   const left = stint?.departure !== null && stint?.departure !== undefined;
-  const canSave = (values: EditValues) =>
+  const canSave = (values: StintHoursEditValues) =>
     Number.isFinite(values.arrivalHours) &&
     (!left || (values.departureHours !== null && Number.isFinite(values.departureHours))) &&
     judgeStintHours({ arrival: values.arrivalHours, departure: values.departureHours }).ok &&
@@ -259,21 +246,10 @@ function EditHoursDialog({ stint, job, onClose }: { stint: Assignment | null; jo
         departureComment: stint?.departure?.comment ?? '',
         reason: '',
       }}
-      validator={EditValues}
+      validator={StintHoursEditValues}
       canSubmit={canSave}
       onBeforeCreate={canSave}
-      onCreate={(values) =>
-        stint
-          ? edit.mutateAsync({
-              assignmentId: stint.id,
-              arrivalHours: values.arrivalHours,
-              departureHours: values.departureHours,
-              arrivalComment: commentOrNull(values.arrivalComment),
-              departureComment: left ? commentOrNull(values.departureComment) : undefined,
-              ...(values.reason.trim() ? { reason: values.reason.trim() } : {}),
-            })
-          : Promise.resolve()
-      }
+      onCreate={(values) => (stint ? edit.mutateAsync(toStintHoursEditInput(stint.id, values)) : Promise.resolve())}
       onCreated={onClose}
     >
       {(form) => (
@@ -282,6 +258,17 @@ function EditHoursDialog({ stint, job, onClose }: { stint: Assignment | null; jo
             <form.AppField name="arrivalHours">
               {(field) => <field.NumberField label="Arrival hours" decimals={1} min={0} unit="hours" />}
             </form.AppField>
+            {stint ? (
+              <form.Subscribe selector={(state) => state.values.arrivalHours}>
+                {(hours) => (
+                  <JohnDeereHint
+                    hours={hours}
+                    machineId={stint.machineId}
+                    threshold={job.johnDeereDifferenceThresholdHours}
+                  />
+                )}
+              </form.Subscribe>
+            ) : null}
             <form.AppField name="arrivalComment">
               {(field) => <field.TextareaField label="Arrival comment (optional)" />}
             </form.AppField>
@@ -291,27 +278,27 @@ function EditHoursDialog({ stint, job, onClose }: { stint: Assignment | null; jo
               <form.AppField name="departureHours">
                 {(field) => <field.NumberField label="Departure hours" decimals={1} min={0} unit="hours" />}
               </form.AppField>
+              <form.Subscribe
+                selector={(state) => ({ arrival: state.values.arrivalHours, departure: state.values.departureHours })}
+              >
+                {({ arrival, departure }) => (
+                  <>
+                    {Number.isFinite(arrival) ? <StintHoursRefusal arrival={arrival} departure={departure} /> : null}
+                    {stint && departure !== null ? (
+                      <JohnDeereHint
+                        hours={departure}
+                        machineId={stint.machineId}
+                        threshold={job.johnDeereDifferenceThresholdHours}
+                      />
+                    ) : null}
+                  </>
+                )}
+              </form.Subscribe>
               <form.AppField name="departureComment">
                 {(field) => <field.TextareaField label="Departure comment (optional)" />}
               </form.AppField>
             </section>
           ) : null}
-          <form.Subscribe
-            selector={(state) => ({ arrival: state.values.arrivalHours, departure: state.values.departureHours })}
-          >
-            {({ arrival, departure }) => (
-              <>
-                {Number.isFinite(arrival) ? <StintHoursRefusal arrival={arrival} departure={departure} /> : null}
-                {stint ? (
-                  <JohnDeereHint
-                    hours={departure ?? arrival}
-                    machineId={stint.machineId}
-                    threshold={job.johnDeereDifferenceThresholdHours}
-                  />
-                ) : null}
-              </>
-            )}
-          </form.Subscribe>
           {needsReason ? (
             <form.AppField name="reason">{(field) => <field.TextareaField label="Reason" />}</form.AppField>
           ) : null}

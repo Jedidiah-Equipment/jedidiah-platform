@@ -18,7 +18,7 @@ import type {
 import { and, desc, eq, isNotNull, lt, ne } from 'drizzle-orm';
 import { serviceDueSoonEdge } from '../fleet/machine-service.js';
 import { latestTelematicsReading } from '../readings/telematics-reading.js';
-import { assertStintAction, JobError, wrongStatus } from './job-errors.js';
+import { assertStintAction, JobError } from './job-errors.js';
 import { lockAssignment, lockAssignmentWithMachine } from './job-lock.js';
 import { jobTransaction, writeAssignment, writeJobRow } from './job-write.js';
 import { reopenPricingWithin } from './pricing-service.js';
@@ -66,7 +66,6 @@ function arrivalResources(stint: StintRow, overrides: StintOverrides | undefined
   };
 }
 
-/** Refuses an arrival's Implement or Driver that is no longer valid. */
 async function assertArrivalResources(
   tx: DatabaseTransaction,
   { implementId, driverUserId }: ReturnType<typeof arrivalResources>,
@@ -177,9 +176,9 @@ export async function editStintHours({
     if (hoursEditNeedsReason(job.status) && !reason)
       throw new JobError('contracting_job.reason_required', HOURS_EDIT_REASON_REQUIRED);
     if (stint.departureHours !== null && input.departureHours === null)
-      throw wrongStatus('A captured departure cannot be cleared.');
+      throw new JobError('contracting_job.departure_not_editable', 'A captured departure cannot be cleared.');
     if (stint.departureHours === null && input.departureHours !== null)
-      throw wrongStatus('Capture the departure to record it.');
+      throw new JobError('contracting_job.departure_not_editable', 'Capture the departure to record it.');
     assertDepartureAfterArrival(input.arrivalHours, input.departureHours);
     const arrivalMoved = input.arrivalHours !== stint.arrivalHours;
     const departureMoved = input.departureHours !== stint.departureHours;

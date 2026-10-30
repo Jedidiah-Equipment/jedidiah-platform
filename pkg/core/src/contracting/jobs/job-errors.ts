@@ -30,6 +30,7 @@ export type JobErrorCode =
   | 'contracting_job.stint_not_planned'
   | 'contracting_job.has_on_site_stints'
   | 'contracting_job.departure_before_arrival'
+  | 'contracting_job.departure_not_editable'
   | 'contracting_job.reason_required'
   | 'contracting_job.pricing_incomplete'
   | 'contracting_job.total_changed'

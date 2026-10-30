@@ -14,7 +14,7 @@ import {
   needsALookColorClassNames,
   travelProvenance,
 } from '@pkg/domain/contracting';
-import type { Assignment, BreakdownSummary, BreakdownUrgency, StintReading } from '@pkg/schema/contracting';
+import type { Assignment, BreakdownSummary, BreakdownUrgency, JobHoursValue } from '@pkg/schema/contracting';
 import {
   IconAlertTriangle,
   IconCheck,
@@ -52,7 +52,7 @@ import { useJobWrite } from './use-job-write.js';
 type Opens = { onOpen: (dialog: MachineDialog) => void };
 
 /** The hours, when and by whom they were captured, and what John Deere had last read then. */
-function ReadingDetail({ reading }: { reading: StintReading }) {
+function ReadingDetail({ reading }: { reading: JobHoursValue }) {
   const captured = `captured ${formatDate(reading.at, 'medium')} by ${getFirstName(reading.byName)}`;
   const deere = reading.telematics
     ? `John Deere ${formatHours(reading.telematics.hours)} at ${formatDate(reading.telematics.at, 'medium')}`

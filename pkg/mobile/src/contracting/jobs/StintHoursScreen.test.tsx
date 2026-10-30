@@ -28,6 +28,7 @@ vi.mock('@/components/TopToolbar', () => ({ SecondaryToolbar: 'Toolbar' }));
 vi.mock('@/components/ui/button', () => ({ Button: 'Button' }));
 vi.mock('@/components/ui/text', () => ({ Text: 'Text' }));
 vi.mock('@/components/ui/text-input', () => ({ TextInput: 'TextInput' }));
+vi.mock('@/theme/use-color-mode', () => ({ useColorMode: () => ({ resolved: 'light' }) }));
 vi.mock('@/components/voice/use-voice-session', () => ({
   useVoiceSession: () => ({ busy: false, reportSaved: vi.fn() }),
 }));
@@ -55,7 +56,8 @@ import StintHoursScreen from './StintHoursScreen';
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 const reading = (hours: number) => ({ hours, at: '2026-10-28T08:00:00.000Z', comment: null });
-const stint = { id: 's1', machineId: 'm1', machineCode: 'JD8R-1', arrival: reading(4400), departure: null };
+const STINT_ID = '00000000-0000-4000-8000-000000000001';
+const stint = { id: STINT_ID, machineId: 'm1', machineCode: 'JD8R-1', arrival: reading(4400), departure: null };
 const renderers: ReactTestRenderer[] = [];
 afterEach(async () => {
   for (const renderer of renderers.splice(0)) await act(async () => renderer.unmount());
@@ -64,7 +66,7 @@ afterEach(async () => {
 });
 
 async function mount(screen: Record<string, string>, status = 'active', assignment: object = stint) {
-  params.current = { jobId: 'j1', assignmentId: 's1', ...screen };
+  params.current = { jobId: 'j1', assignmentId: STINT_ID, ...screen };
   job.current = { status, johnDeereDifferenceThresholdHours: 10, assignments: [assignment] };
   let renderer!: ReactTestRenderer;
   await act(async () => {
@@ -91,7 +93,12 @@ test('a departure shows John Deere, refuses one below the arrival and warns far 
   expect(texts(renderer).some((line) => line.startsWith('That is 32.0 h away from John Deere'))).toBe(true);
   expect(saveButton(renderer).props.disabled).toBe(false);
   await act(async () => saveButton(renderer).props.onPress());
-  expect(writes.capture).toHaveBeenCalledWith({ assignmentId: 's1', role: 'departure', hours: 4480, comment: null });
+  expect(writes.capture).toHaveBeenCalledWith({
+    assignmentId: STINT_ID,
+    role: 'departure',
+    hours: 4480,
+    comment: null,
+  });
 });
 
 test('editing hours on a Completed Job asks for a reason before it saves', async () => {

@@ -9,9 +9,9 @@ import {
   type JobCardStintLine,
   type JobCardVariant,
   type JobDetail,
+  type JobHoursValue,
   type JobStatus,
   type StintPricing,
-  type StintReading,
 } from '@pkg/schema/contracting';
 import { formatPercent } from '../formatting/number.js';
 import { round1 } from './hours.js';
@@ -27,7 +27,7 @@ export const jobCardPath = (jobNumber: string, variant: JobCardVariant) =>
 export const jobCardFilename = (jobNumber: string, variant: JobCardVariant) => `${jobNumber}-job-card-${variant}.pdf`;
 
 /** Each reading on the card; the internal copy adds when and by whom, the comment, and the amended marker. */
-function cardReading(reading: StintReading | null, internal: boolean, amended: boolean): JobCardReading | null {
+function cardReading(reading: JobHoursValue | null, internal: boolean, amended: boolean): JobCardReading | null {
   if (!reading) return null;
   return {
     hours: reading.hours,
@@ -61,7 +61,7 @@ function stintLine(stint: Assignment, internal: boolean, priced: boolean): JobCa
           variant: 'internal',
           work: stint.workHours,
           travel: stint.travelHours ?? 0,
-          travelClamped: stint.travelClamped,
+          attention: stint.attention,
         }
       : { variant: 'customer', total: stint.billableHours },
     measures: stint.measures.map((measure) => ({ name: measure.measureTypeName, quantity: measure.quantity })),

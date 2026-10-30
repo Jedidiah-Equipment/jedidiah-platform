@@ -8,6 +8,7 @@ import {
   type JobSheetStint,
   jobSheet,
   mostUrgentBreakdown,
+  needsALookColorClassNames,
 } from '@pkg/domain/contracting';
 import type { AssignmentDetail, BreakdownSummary, JobCardVariant } from '@pkg/schema/contracting';
 import { IconPencil, IconPlayerPlay, IconPlayerStop, IconPlus } from '@tabler/icons-react-native';
@@ -31,6 +32,7 @@ import { jobCardShareAction } from '@/contracting/lib/job-card';
 import { useJobBreakdowns } from '@/contracting/workshop/use-breakdowns';
 import { shareDocument } from '@/lib/document-actions';
 import { useBusyAction } from '@/lib/use-busy-action';
+import { useColorMode } from '@/theme/use-color-mode';
 import { JobStatusChip } from './JobStatusChip';
 import { useJob } from './use-jobs';
 
@@ -205,6 +207,7 @@ function StintCard({
   onReport: () => void;
   thresholds: AttentionThresholds | undefined;
 }) {
+  const { resolved } = useColorMode();
   return (
     <View className={`gap-2 rounded-xl border bg-surface p-4 ${breakdownBorder(breakdown) ?? 'border-border'}`}>
       <View className="flex-row items-center justify-between gap-2">
@@ -242,9 +245,9 @@ function StintCard({
         ) : null}
       </View>
       {thresholds && stint.attention.length ? (
-        <View className="gap-1 rounded-xl border border-warning bg-warning/10 px-3 py-2">
+        <View className={`gap-1 rounded-xl border px-3 py-2 ${needsALookColorClassNames.chip}`}>
           {stint.attention.map((kind) => (
-            <Text className="text-sm text-foreground" key={kind}>
+            <Text className={`text-sm ${needsALookColorClassNames.textByScheme[resolved]}`} key={kind}>
               {assignmentAttentionSentence(kind, stint, thresholds)}
             </Text>
           ))}

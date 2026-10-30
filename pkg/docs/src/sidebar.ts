@@ -57,7 +57,10 @@ export const CONTRACTING_SECTIONS: DocsSection[] = [
   },
   {
     text: 'Contracting concepts',
-    items: [{ text: 'Who gets alerts', link: '/contracting/who-gets-workshop-alerts' }],
+    items: [
+      { text: 'Who gets alerts', link: '/contracting/who-gets-workshop-alerts' },
+      { text: 'Travel Hours and needs a look', link: '/contracting/travel-hours-and-needs-a-look' },
+    ],
   },
 ];
 

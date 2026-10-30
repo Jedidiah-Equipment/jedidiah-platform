@@ -90,12 +90,20 @@ test('lists only the Jobs needing a look when asked, the SQL agreeing with the d
     .set({ arrivalTelematicsHours: 30, arrivalTelematicsAt: new Date('2026-09-01T06:00:00Z') })
     .where(eq(contractingMachineAssignments.id, deereStint));
   await db.update(contractingJobs).set({ foremanUserId: null }).where(eq(contractingJobs.id, deere.id));
+  const handSet = await newJob(context);
+  // 10 h of Travel set by hand: management looked at it, so it no longer needs a look.
+  const { id: handSetStint } = await leftStint(db, handSet.id, tipper.id, 70, 80);
+  await db
+    .update(contractingMachineAssignments)
+    .set({ travelHours: 10, travelSetAt: new Date(), travelSetByUserId: adminId })
+    .where(eq(contractingMachineAssignments.id, handSetStint));
 
   const kinds = async (jobId: string) => (await getJob({ db, id: jobId })).assignments.flatMap((a) => a.attention);
   expect(await kinds(clean.id)).toEqual([]);
   expect(await kinds(over.id)).toEqual(['travel-over-threshold']);
   expect(await kinds(clamped.id)).toEqual(['travel-clamped']);
   expect(await kinds(deere.id)).toEqual(['john-deere-difference']);
+  expect(await kinds(handSet.id)).toEqual([]);
 
   const listed = async (actor: typeof admin) =>
     (

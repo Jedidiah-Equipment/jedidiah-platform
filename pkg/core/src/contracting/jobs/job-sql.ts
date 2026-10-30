@@ -42,7 +42,8 @@ export const assignmentAttention = sql<number>`(
   cross join contracting.settings
   where summary_assignment.job_id = ${contractingJobs.id}
     and (
-      summary_assignment.travel_hours > contracting.settings.travel_flag_threshold_hours
+      (summary_assignment.travel_hours > contracting.settings.travel_flag_threshold_hours
+        and summary_assignment.travel_set_at is null)
       or summary_assignment.travel_clamped
       or abs(summary_assignment.arrival_hours - summary_assignment.arrival_telematics_hours)
         > contracting.settings.john_deere_difference_threshold_hours
@@ -51,7 +52,6 @@ export const assignmentAttention = sql<number>`(
     )
 )`;
 
-/** The Job has a Machine Assignment that needs a look. */
 export const needsALook = sql<boolean>`(${assignmentAttention} > 0)`;
 
 /** The Machine has an Assignment on the Job, in any state. */

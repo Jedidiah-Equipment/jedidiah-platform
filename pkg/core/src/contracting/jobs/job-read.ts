@@ -35,7 +35,7 @@ export type JobLookup = { id: string } | { code: string };
 type StintRow = LoadedStint['stint'];
 
 /** One of a stint's Job Hours as the wire carries it, or null before it was captured. */
-function stintReading(
+function jobHoursValue(
   captured: { hours: number | null; at: Date | null; byUserId: string | null; comment: string | null },
   telematics: { hours: number | null; at: Date | null },
   byName: string | null,
@@ -55,14 +55,14 @@ function stintReading(
 }
 
 const arrivalOf = (stint: StintRow, byName: string | null) =>
-  stintReading(
+  jobHoursValue(
     { hours: stint.arrivalHours, at: stint.arrivalAt, byUserId: stint.arrivalByUserId, comment: stint.arrivalComment },
     { hours: stint.arrivalTelematicsHours, at: stint.arrivalTelematicsAt },
     byName,
   );
 
 const departureOf = (stint: StintRow, byName: string | null) =>
-  stintReading(
+  jobHoursValue(
     {
       hours: stint.departureHours,
       at: stint.departureAt,
@@ -105,7 +105,10 @@ function mapAssignment(row: LoadedStint, measures: readonly LoadedMeasure[], thr
     departure,
     travelSetByName: stint.travelSetAt ? row.travelSetByName : null,
     ...deriveStintHours({ arrivalHours, departureHours, travelHours }),
-    attention: stintAttentionKinds({ travelHours, travelClamped, arrival, departure }, thresholds),
+    attention: stintAttentionKinds(
+      { travelHours, travelClamped, travelSet: stint.travelSetAt !== null, arrival, departure },
+      thresholds,
+    ),
     amendment:
       stint.hoursAmendedAt && stint.hoursAmendmentReason
         ? {

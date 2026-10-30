@@ -156,7 +156,7 @@ afterAll(async () => {
 });
 
 describe('0185 job hours on the assignment', () => {
-  it('moves each stint reading onto its Assignment and bills every stint as before', async () => {
+  it('moves each arrival and departure onto its Assignment as Job Hours and bills every stint as before', async () => {
     const stints = await sql<
       {
         id: string;

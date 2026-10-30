@@ -1,10 +1,10 @@
-import type { Assignment, JobDetail, StintReading } from '@pkg/schema/contracting';
+import type { Assignment, AssignmentAttentionKind, JobDetail, JobHoursValue } from '@pkg/schema/contracting';
 import { describe, expect, test } from 'vitest';
 import { buildJobCardModel } from './job-card.js';
 
 const now = new Date('2026-09-23T10:00:00.000Z');
 
-function reading(hours: number, at: string, overrides: Partial<StintReading> = {}): StintReading {
+function reading(hours: number, at: string, overrides: Partial<JobHoursValue> = {}): JobHoursValue {
   return {
     hours,
     at,
@@ -13,7 +13,7 @@ function reading(hours: number, at: string, overrides: Partial<StintReading> = {
     comment: null,
     telematics: null,
     ...overrides,
-  } as StintReading;
+  } as JobHoursValue;
 }
 
 function stint(overrides: Partial<Assignment>): Assignment {
@@ -233,6 +233,7 @@ describe('buildJobCardModel', () => {
       ...grader,
       travelHours: 0,
       travelClamped: true,
+      attention: ['travel-clamped', 'john-deere-difference'] as AssignmentAttentionKind[],
       arrival: reading(7110, '2026-09-01T09:00:00.000Z', { comment: 'Meter glass cracked' }),
     };
     const amendedExcavator = {
@@ -254,7 +255,7 @@ describe('buildJobCardModel', () => {
         machineCode: 'CAT320-1',
         driverName: 'Sipho',
         departure: expect.objectContaining({ marker: 'amended' }),
-        hours: { variant: 'internal', work: 48.6, travel: 0, travelClamped: false },
+        hours: { variant: 'internal', work: 48.6, travel: 0, attention: [] },
       }),
       expect.objectContaining({
         machineCode: 'GRAD140K-1',
@@ -265,7 +266,7 @@ describe('buildJobCardModel', () => {
           comment: 'Meter glass cracked',
           byName: 'Sipho',
         },
-        hours: { variant: 'internal', work: 42.4, travel: 0, travelClamped: true },
+        hours: { variant: 'internal', work: 42.4, travel: 0, attention: ['travel-clamped', 'john-deere-difference'] },
       }),
     ]);
     const [customerGrader] = stintLines(job, 'customer').filter((line) => line.machineCode === 'GRAD140K-1');

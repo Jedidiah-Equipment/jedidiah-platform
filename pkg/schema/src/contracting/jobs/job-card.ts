@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { DateIso, DateOnlyIso } from '../../common/date.js';
 import { ReadingValue } from '../readings/reading.js';
 import { Hours, JobNumber, Litres, Money, Quantity } from './job.js';
+import { assignmentAttentionKinds } from './job-enums.js';
 
 export const JobCardVariant = z.enum(['internal', 'customer']);
 export type JobCardVariant = z.infer<typeof JobCardVariant>;
@@ -39,7 +40,8 @@ const JobCardStintLine = z.object({
       variant: z.literal('internal'),
       work: Hours.nullable(),
       travel: Hours,
-      travelClamped: z.boolean(),
+      /** Every reason the stint needs a look. */
+      attention: z.array(z.enum(assignmentAttentionKinds)),
     }),
   ]),
   measures: z.array(z.object({ name: z.string(), quantity: Quantity })),

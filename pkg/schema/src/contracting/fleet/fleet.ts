@@ -114,7 +114,6 @@ export const Machine = MachineCreateInput.extend({
   currentDriverName: z.string().nullable(),
   /** Known Hours: the higher of the ledger's latest reading and the Machine's latest Job Hours. */
   knownHours: ReadingValue.nullable(),
-  /** When those hours were read or captured. */
   knownHoursAt: DateIso.nullable(),
   /** Where Known Hours came from: a Telematics Reading, a spot reading, or a Job's hours. */
   knownHoursSource: z.enum(knownHoursSources).nullable(),

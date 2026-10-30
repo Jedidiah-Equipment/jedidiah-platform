@@ -1,5 +1,5 @@
 import { formatCurrency, formatDate, formatHours, formatNumber } from '@pkg/domain';
-import { assignmentAttentionKindLabels, JEDIDIAH_CONTRACTING_BUSINESS_DETAILS } from '@pkg/domain/contracting';
+import { assignmentAttentionKindLabel, JEDIDIAH_CONTRACTING_BUSINESS_DETAILS } from '@pkg/domain/contracting';
 import type {
   JobCardModel,
   JobCardReading,
@@ -202,9 +202,11 @@ function HoursCell({ line }: { line: JobCardStintLine }) {
               hours.travel > 0 ? ` + ${formatHours(hours.travel)} travel` : ''
             }`}
           </Text>
-          {hours.travelClamped ? (
-            <Text style={styles.muted}>{assignmentAttentionKindLabels['travel-clamped']}</Text>
-          ) : null}
+          {hours.attention.map((kind) => (
+            <Text key={kind} style={styles.muted}>
+              {assignmentAttentionKindLabel(kind)}
+            </Text>
+          ))}
         </>
       )}
       {line.measures.map((measure) => (

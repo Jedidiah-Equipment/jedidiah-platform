@@ -6,6 +6,7 @@ const at = '2026-10-28T12:05:00Z';
 const stint = {
   travelHours: 2,
   travelClamped: false,
+  travelSet: false,
   arrival: { hours: 4480, telematics: null },
   departure: null,
 };
@@ -25,6 +26,10 @@ describe('assignment attention', () => {
     expect(assignmentAttentionSentence('travel-over-threshold', { ...stint, travelHours: 6 }, thresholds)).toBe(
       'Travel 6.0 h is over the 4.0 h threshold',
     );
+  });
+
+  it('clears both Travel kinds once management sets Travel by hand', () => {
+    expect(stintAttentionKinds({ ...stint, travelHours: 6, travelSet: true }, thresholds)).toEqual([]);
   });
 
   it('never warns within the John Deere threshold, nor for an unlinked Machine', () => {

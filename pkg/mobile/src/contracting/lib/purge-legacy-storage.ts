@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { captureSanitizedException } from '@/lib/observability';
 import { removeLegacyReadingPhotos } from './legacy-reading-photos';
 
-// The retired reading queue and its offline copies of the fleet and Jobs (ADR 0021). The Machines list's
+// The retired reading queue and its offline copies of the fleet and Jobs (ADR 0029). The Machines list's
 // remembered filter and sort live under `contracting:machines:` and stay.
 // Expiry: in the first mobile change set on or after 1 January 2027, delete this module, its test,
 // `legacy-reading-photos.ts`, `legacy-reading-photos.web.ts` and the call in `app/(protected)/_layout.tsx`.

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import type { AppRouter } from '@pkg/api';
 import { departureBeforeArrivalSentence } from '@pkg/domain/contracting';
-import type { Assignment, JobStatus, LatestTelematics, StintReading } from '@pkg/schema/contracting';
+import type { Assignment, JobHoursValue, JobStatus, LatestTelematics } from '@pkg/schema/contracting';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createTRPCClient, httpLink } from '@trpc/client';
 import { act } from 'react';
@@ -28,7 +28,7 @@ const reading = (hours: number) =>
     byName: 'Sipho Dlamini',
     comment: null,
     telematics: null,
-  }) as StintReading;
+  }) as JobHoursValue;
 const stint = {
   id: '00000000-0000-4000-8000-000000000001',
   machineId: '00000000-0000-4000-8000-000000000002',

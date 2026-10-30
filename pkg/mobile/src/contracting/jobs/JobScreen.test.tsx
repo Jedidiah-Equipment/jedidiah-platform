@@ -7,7 +7,12 @@ vi.mock('expo-router', () => ({
 }));
 vi.mock('react-native', () => ({ Pressable: 'Pressable', ScrollView: 'ScrollView', View: 'View' }));
 vi.mock('react-native-safe-area-context', () => ({ SafeAreaView: 'SafeAreaView' }));
-vi.mock('@tabler/icons-react-native', () => ({ IconPlayerPlay: 'Play', IconPlayerStop: 'Stop', IconPlus: 'Plus' }));
+vi.mock('@tabler/icons-react-native', () => ({
+  IconPlayerPlay: 'Play',
+  IconPlayerStop: 'Stop',
+  IconPlus: 'Plus',
+  IconRuler2: 'Ruler',
+}));
 vi.mock('@/components/TopToolbar', () => ({ SecondaryToolbar: 'Toolbar' }));
 vi.mock('@/components/SubTabControl', () => ({ SubTabControl: 'Tabs' }));
 vi.mock('@/components/ui/button', () => ({ Button: 'Button' }));
@@ -25,6 +30,7 @@ vi.mock('@/contracting/components/CategoryIcon', () => ({ CategoryIcon: 'Categor
 vi.mock('@/lib/document-actions', () => ({ shareDocument: vi.fn() }));
 vi.mock('@/lib/observability', () => ({ captureException: vi.fn() }));
 vi.mock('@/contracting/workshop/use-breakdowns', () => ({ useJobBreakdowns: () => ({ data: undefined }) }));
+vi.mock('./MeasuresSheet', () => ({ MeasuresSheet: 'MeasuresSheet' }));
 vi.mock('./use-jobs', () => ({ useJob: () => ({ data: undefined, canRead: false }) }));
 
 import JobScreen from './JobScreen';

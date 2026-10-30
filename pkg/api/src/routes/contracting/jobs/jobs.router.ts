@@ -66,6 +66,8 @@ import { addThreadNote } from '../notes/notes.router.js';
 
 const readPermissions = ['contracting_job:read', 'contracting_job:read-own', 'contracting_job:read-priced'] as const;
 
+const measurePermissions = ['contracting_job:update', 'contracting_assignment:update-own'] as const;
+
 export const createContractingJobsRouter = (push: ContractingPushScheduler) =>
   router({
     field: router({
@@ -140,12 +142,12 @@ export const createContractingJobsRouter = (push: ContractingPushScheduler) =>
         ),
     }),
     measures: router({
-      set: authorizedProcedure('contracting_job:update')
+      set: authorizedProcedure(measurePermissions)
         .input(MeasureSetInput)
         .mutation(({ ctx, input }) =>
           mapCoreErrors(() => setMeasure({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
         ),
-      remove: authorizedProcedure('contracting_job:update')
+      remove: authorizedProcedure(measurePermissions)
         .input(MeasureRemoveInput)
         .mutation(({ ctx, input }) =>
           mapCoreErrors(() => removeMeasure({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
@@ -212,7 +214,7 @@ export const createContractingJobsRouter = (push: ContractingPushScheduler) =>
     }),
     options: router({
       foremen: authorizedProcedure('contracting_job:assign').query(({ ctx }) => listForemen({ db: ctx.db })),
-      measureTypes: authorizedProcedure('contracting_job:update')
+      measureTypes: authorizedProcedure(measurePermissions)
         .output(MeasureType.pick({ id: true, name: true }).array())
         .query(async ({ ctx }) => (await listMeasureTypes({ db: ctx.db })).map(({ id, name }) => ({ id, name }))),
     }),

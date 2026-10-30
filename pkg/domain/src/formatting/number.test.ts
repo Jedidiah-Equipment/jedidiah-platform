@@ -8,6 +8,7 @@ import {
   formatHours,
   formatNumber,
   formatPercent,
+  formatQuantity,
   toCsvAmount,
 } from './number.js';
 
@@ -89,6 +90,14 @@ describe('formatDays', () => {
     expect(formatDays(0.8)).toBe('0.8 days');
     expect(formatDays(12)).toBe('12.0 days');
     expect(formatDays(NaN)).toBe('');
+  });
+});
+
+describe('formatQuantity', () => {
+  it('shows whole numbers bare and anything else to two decimals', () => {
+    expect(formatQuantity(12)).toBe('12');
+    expect(formatQuantity(12.5)).toBe('12.50');
+    expect(formatQuantity(1250.333)).toBe('1 250.33');
   });
 });
 

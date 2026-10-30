@@ -1,11 +1,9 @@
-import { formatNumber } from '@pkg/domain';
-import { requiredSelection, UUID } from '@pkg/schema';
-import { type Assignment, Quantity } from '@pkg/schema/contracting';
+import { formatQuantity } from '@pkg/domain';
+import { type Assignment, MeasureValues } from '@pkg/schema/contracting';
 import { IconTrash } from '@tabler/icons-react';
 import { revalidateLogic } from '@tanstack/react-form';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useLayoutEffect } from 'react';
-import { z } from 'zod';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { useAppForm } from '@/components/form/index.js';
 import { Button } from '@/components/ui/button.js';
@@ -14,8 +12,6 @@ import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.
 import { useResetOnOpen } from '@/contracting/hooks/use-contracting-write.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { useJobWrite } from './use-job-write.js';
-
-const MeasureValues = z.object({ measureTypeId: requiredSelection(UUID, 'Choose a Measure Type'), quantity: Quantity });
 
 /** Adds, edits and removes the stint's Measures; the stint card's menu and Measures row open it. */
 export function AddMeasureDialog({
@@ -72,8 +68,7 @@ export function AddMeasureDialog({
             {stint.measures.map((measure) => (
               <div className="flex items-center justify-between gap-2" key={measure.id}>
                 <span>
-                  {formatNumber(measure.quantity, { decimals: Number.isInteger(measure.quantity) ? 0 : 2 })}{' '}
-                  {measure.measureTypeName}
+                  {formatQuantity(measure.quantity)} {measure.measureTypeName}
                 </span>
                 <Button
                   aria-label={`Remove ${measure.measureTypeName}`}

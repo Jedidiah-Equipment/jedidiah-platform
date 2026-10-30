@@ -1,4 +1,4 @@
-import { formatCurrency, formatHours, formatNumber, formatPercent } from '@pkg/domain';
+import { formatCurrency, formatHours, formatNumber, formatPercent, formatQuantity } from '@pkg/domain';
 import { stintAmount } from '@pkg/domain/contracting';
 import { type Assignment, type DiscountKind, JobDiscountInput } from '@pkg/schema/contracting';
 import { useEffect, useRef, useState } from 'react';
@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/button.js';
 import { MoneyInput } from './MoneyInput.js';
 import {
   type AdjustmentRow,
-  formatQuantity,
   formulaLabel,
   type MachinePricingRow,
   NO_CHARGE,

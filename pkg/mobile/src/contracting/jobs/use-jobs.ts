@@ -97,3 +97,13 @@ export function useDrivers() {
     useQuery(trpc.contractingJobs.field.drivers.queryOptions(undefined, { enabled: canRead })),
   );
 }
+
+/** The Measure Types a Measure names, in display order: for whoever may record Measures. */
+export function useMeasureTypes() {
+  const canRead = useSessionPermission('contracting_job:update', 'contracting_assignment:update-own');
+  const trpc = useTRPC();
+  return fieldQuery(
+    canRead,
+    useQuery(trpc.contractingJobs.options.measureTypes.queryOptions(undefined, { enabled: canRead })),
+  );
+}

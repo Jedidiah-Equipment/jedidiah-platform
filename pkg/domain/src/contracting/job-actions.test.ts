@@ -50,6 +50,7 @@ const foremanOnOwnJob: Matrix = {
   ...none,
   assign: '✓✓sscc',
   patchTravel: '✓✓sscc',
+  editMeasures: 's✓sscc',
   capture: '✓✓sscc',
   reportBreakdown: '✓✓sscc',
   addNote: '✓✓✓pss',
@@ -58,6 +59,7 @@ const foremanOnAnotherJob: Matrix = {
   ...none,
   assign: 'oooooo',
   patchTravel: 'oooooo',
+  editMeasures: 'oooooo',
   capture: 'oooooo',
   reportBreakdown: 'oooooo',
   addNote: 'oooooo',
@@ -107,6 +109,7 @@ describe('a refused verdict', () => {
     expect(refusal('patchTravel', 'completed', sipho)).toBe(
       'You can only change travel while the Job is Upcoming or Active.',
     );
+    expect(refusal('editMeasures', 'completed', sipho)).toBe('You can only change Measures while the Job is Active.');
     expect(refusal('editSignOffDetails', 'active', admin)).toBe(
       'You can only change sign-off details while the Job is Completed or Priced.',
     );

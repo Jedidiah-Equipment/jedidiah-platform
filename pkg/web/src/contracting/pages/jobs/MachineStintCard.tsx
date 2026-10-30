@@ -1,4 +1,4 @@
-import { formatDate, formatHours, formatNumber, getFirstName } from '@pkg/domain';
+import { formatDate, formatHours, formatNumber, formatQuantity, getFirstName } from '@pkg/domain';
 import {
   assignmentAttentionKindLabels,
   assignmentAttentionKindLevels,
@@ -232,14 +232,7 @@ function GapRow({
 
 function MeasureDetail({ stint }: { stint: Assignment }) {
   return (
-    <>
-      {stint.measures
-        .map(
-          (measure) =>
-            `${formatNumber(measure.quantity, { decimals: Number.isInteger(measure.quantity) ? 0 : 2 })} ${measure.measureTypeName}`,
-        )
-        .join(', ')}
-    </>
+    <>{stint.measures.map((measure) => `${formatQuantity(measure.quantity)} ${measure.measureTypeName}`).join(', ')}</>
   );
 }
 

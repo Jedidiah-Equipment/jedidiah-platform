@@ -75,6 +75,14 @@ export const CONTRACTING_MUTATION_EVENTS = {
     event: 'machine added to job',
     properties: (variables) => pickRecordIds(variables, ['jobId', 'machineId']),
   },
+  'contractingJobs.measures.set': {
+    event: 'measure set',
+    properties: (variables) => pickRecordIds(variables, ['assignmentId', 'measureTypeId']),
+  },
+  'contractingJobs.measures.remove': {
+    event: 'measure removed',
+    properties: (variables) => pickRecordIds(variables, ['assignmentId', 'measureTypeId']),
+  },
   'contractingServices.open': {
     event: 'service booked',
     properties: (variables) => pickRecordIds(variables, ['machineId', 'primaryMechanicUserId']),

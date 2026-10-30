@@ -34,9 +34,10 @@ captured and **left** when its departure is. A Machine may have **several sequen
 on the same Job** — leaving and returning, often with a different Implement — but **at most one
 on-site Assignment at a time across all Jobs**, which is what enforces that a machine is never in
 two places at once; planned Assignments never count against that. An Assignment names at most one
-**Implement**, and an Implement on a Job is always attached to exactly one Assignment. Management
-records zero or more **Measures** on an Assignment — a Measure Type and a quantity (hectares
-disked, loads hauled), at most one per Measure Type — the production figures Pricing may bill on.
+**Implement**, and an Implement on a Job is always attached to exactly one Assignment. Zero or more
+**Measures** are recorded on an Assignment once its Machine has arrived — a Measure Type and a quantity
+(hectares disked, loads hauled), at most one per Measure Type — the production figures Pricing may bill on.
+The Foreman records them on his own Job while it is Active; management records them on any Job until it is Priced.
 A planned Assignment whose Machine never arrives is removed — by the Foreman while the Job is
 open (Upcoming or Active), by management at sign-off, or by Completion itself, which removes any still waiting — and
 leaves nothing behind. The Foreman edits only his own

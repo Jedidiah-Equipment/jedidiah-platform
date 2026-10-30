@@ -7,7 +7,7 @@ import { expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
 import { createCategory } from '../fleet/category-service.js';
 import { createMachine, patchMachine, retireMachine } from '../fleet/machine-service.js';
-import { amendHours } from '../test/job-fixtures.js';
+import { amendHours, exceptionReadings } from '../test/job-fixtures.js';
 import { captureReading, latestReading, listReadingExceptions, listReadingsByMachine } from './reading-service.js';
 import { recordTelematicsReading, type TelematicsReadingResult } from './telematics-reading.js';
 
@@ -176,7 +176,7 @@ test('disputes an earlier captured reading above the report, with the reason, an
   });
   expect(rows.find((row) => row.id === late.id)?.disputed).toBe(false);
   expect(rows.find((row) => row.method === 'telematics')?.disputed).toBe(false);
-  expect((await listReadingExceptions({ db })).map((row) => row.id)).toEqual([early.id]);
+  expect((await exceptionReadings(db)).map((row) => row.id)).toEqual([early.id]);
 });
 
 test('disputes a later captured reading below the report, and never a John Deere reading', async ({ context }) => {
@@ -208,14 +208,14 @@ test('settles a contradicted reading when management amends it back into sequenc
   const report = reportFor(context);
   await report(1050, '2026-09-07T09:00:00Z');
   await report(1200, '2026-09-07T10:00:00Z');
-  expect((await listReadingExceptions({ db })).map((row) => row.id).sort()).toEqual([before.id, after.id].sort());
+  expect((await exceptionReadings(db)).map((row) => row.id).sort()).toEqual([before.id, after.id].sort());
 
   await expect(amendHours(db, actor, after.id, 1150, 'Misread')).rejects.toMatchObject({
     code: 'reading.invalid_amendment',
   });
   await amendHours(db, actor, after.id, 1200, 'Misread');
   // The other contradicted reading keeps its flag until it is amended itself.
-  expect((await listReadingExceptions({ db })).map((row) => row.id)).toEqual([before.id]);
+  expect((await exceptionReadings(db)).map((row) => row.id)).toEqual([before.id]);
   await amendHours(db, actor, before.id, 1050, 'Misread');
   expect(await listReadingExceptions({ db })).toEqual([]);
 });
@@ -256,7 +256,7 @@ test('refuses a capture that contradicts the nearest John Deere reading past a D
     captureReading({ db, actor, input: { machineId, role: 'spot', value, capturedAt, disputePrevious: false } });
   const { reading: human } = await spot(1100, '2026-09-07T12:00:00Z');
   await reportFor(context)(1200, '2026-09-07T09:00:00Z');
-  expect((await listReadingExceptions({ db })).map((row) => row.id)).toEqual([human.id]);
+  expect((await exceptionReadings(db)).map((row) => row.id)).toEqual([human.id]);
 
   // 1150 is above the Disputed 1100, but below the 1200 John Deere reported earlier.
   await expect(spot(1150, '2026-09-07T13:00:00Z')).rejects.toMatchObject({ code: 'reading.below_latest' });
@@ -346,11 +346,11 @@ test('keeps a reading John Deere contradicts disputed when its Disputed pair is 
   });
   // Both are already Disputed as a pair; John Deere then reports 85 after them, below both.
   await reportFor(context)(85, '2026-09-07T10:00:00Z');
-  expect((await listReadingExceptions({ db })).map((row) => row.id).sort()).toEqual([first.id, second.id].sort());
+  expect((await exceptionReadings(db)).map((row) => row.id).sort()).toEqual([first.id, second.id].sort());
 
   await amendHours(db, actor, first.id, 80, 'Misread');
   // The pair is settled, but 90 still sits above the 85 John Deere reported later.
-  const [remaining] = await listReadingExceptions({ db });
+  const [remaining] = await exceptionReadings(db);
   expect(remaining).toMatchObject({ id: second.id, disputed: true });
   expect(remaining?.disputeReason).toMatch(/^John Deere reported 85\.0\sh/);
 });

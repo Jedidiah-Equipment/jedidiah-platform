@@ -4,6 +4,12 @@ import {
   type AmendableReading,
   amendmentSettledFinding,
   contradictingTelematics,
+  type DisputeMember,
+  disputeGroupReason,
+  disputeReport,
+  groupDisputes,
+  NEXT_CAPTURE_DISPUTES,
+  PREVIOUS_READING_WRONG,
   type ReadingAttentionFacts,
   readingAttention,
   readingAttentionKinds,
@@ -109,6 +115,13 @@ describe('contradictingTelematics', () => {
   it('breaks a Read At tie by acceptance order', () => {
     expect(contradictingTelematics([ledger('same', 1, 9, 1010), deere], 'same')).toEqual(deere);
     expect(contradictingTelematics([deere, ledger('same', 3, 9, 1010)], 'same')).toBeNull();
+  });
+
+  it('gives a Dispute the report nearest to any of its readings that it contradicts', () => {
+    const near = ledger('near', 4, 11, 1000, 'john-deere');
+    const fine = ledger('fine', 3, 10, 1000);
+    expect(disputeReport([deere, fine, near], [fine, ledger('late', 5, 12, 990)])).toEqual(near);
+    expect(disputeReport([deere, fine, near], [fine])).toBeNull();
   });
 
   it('lists the captured readings a report leaves out of sequence, in ledger order, by the same rule', () => {
@@ -314,6 +327,84 @@ describe('resolveReadingAmendments', () => {
           "Stints stay in time order: an arrival after the Machine's previous departure, a departure after its own arrival and before the next arrival.",
       });
     });
+  });
+});
+
+describe('groupDisputes', () => {
+  const member = (
+    id: string,
+    capturedAt: Date,
+    overrides: Partial<DisputeMember & { disputeReason: string | null }> = {},
+  ) => ({
+    id,
+    sequence: capturedAt.getTime() / 60_000,
+    capturedAt,
+    value: 100,
+    telematicsProvider: null,
+    disputed: true,
+    disputedPreviousId: null,
+    assignmentId: null,
+    disputeReason: null,
+    ...overrides,
+  });
+  const ids = (groups: { id: string }[][]) => groups.map((group) => group.map((reading) => reading.id));
+
+  it('joins a pair by the reading it disputes', () => {
+    const readings = [member('later', day(2), { disputedPreviousId: 'earlier' }), member('earlier', day(1))];
+    expect(ids(groupDisputes(readings))).toEqual([['earlier', 'later']]);
+  });
+
+  it('joins two readings of one stint flagged by the same report', () => {
+    const readings = [
+      member('arrival', day(1), { assignmentId: 's1' }),
+      member('departure', day(2), { assignmentId: 's1' }),
+    ];
+    expect(ids(groupDisputes(readings))).toEqual([['arrival', 'departure']]);
+  });
+
+  it('keeps two unrelated stints apart, newest first by their first reading, ledger order inside', () => {
+    const readings = [
+      member('a1', day(1), { assignmentId: 's1' }),
+      member('b2', day(5), { assignmentId: 's2' }),
+      member('a2', day(2), { assignmentId: 's1' }),
+      member('b1', day(4), { assignmentId: 's2' }),
+    ];
+    expect(ids(groupDisputes(readings))).toEqual([
+      ['b1', 'b2'],
+      ['a1', 'a2'],
+    ]);
+  });
+
+  it('makes one group of a pair across two stints plus a reading sharing a stint with one of them', () => {
+    const readings = [
+      member('departure', day(2), { assignmentId: 's1' }),
+      member('arrival', day(3), { assignmentId: 's2', disputedPreviousId: 'departure' }),
+      member('first-arrival', day(1), { assignmentId: 's1' }),
+    ];
+    expect(ids(groupDisputes(readings))).toEqual([['first-arrival', 'departure', 'arrival']]);
+  });
+
+  it('leaves out readings that are not Disputed, and a pair whose other half settled', () => {
+    const readings = [
+      member('settled', day(1), { disputed: false }),
+      member('alone', day(2), { disputedPreviousId: 'settled' }),
+    ];
+    expect(ids(groupDisputes(readings))).toEqual([['alone']]);
+  });
+
+  it('gives a group its loudest reason: John Deere, then the previous reading is wrong, then the next capture', () => {
+    const deere = 'John Deere reported 2 927.2 h at 27 Oct 2026, 10:09.';
+    expect(
+      disputeGroupReason([{ disputeReason: NEXT_CAPTURE_DISPUTES }, { disputeReason: PREVIOUS_READING_WRONG }]),
+    ).toBe(PREVIOUS_READING_WRONG);
+    expect(
+      disputeGroupReason([
+        { disputeReason: NEXT_CAPTURE_DISPUTES },
+        { disputeReason: deere },
+        { disputeReason: PREVIOUS_READING_WRONG },
+      ]),
+    ).toBe(deere);
+    expect(disputeGroupReason([{ disputeReason: NEXT_CAPTURE_DISPUTES }])).toBe(NEXT_CAPTURE_DISPUTES);
   });
 });
 

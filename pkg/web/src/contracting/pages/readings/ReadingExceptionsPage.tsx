@@ -1,177 +1,181 @@
-import { formatDate, formatHours, toSentenceCase } from '@pkg/domain';
-import {
-  assignmentAttentionLevelColorClassNames,
-  readingExceptionTypeLabels,
-  readingExceptionTypeLevels,
-} from '@pkg/domain/contracting';
-import type { ReadingException } from '@pkg/schema/contracting';
-import { IconEye } from '@tabler/icons-react';
+import { formatHours } from '@pkg/domain';
+import { assignmentAttentionLevelColorClassNames, readingRoleLabels, stintWindowLabel } from '@pkg/domain/contracting';
+import type { ReadingException, ReadingExceptionRow, ReadingStint } from '@pkg/schema/contracting';
+import { IconAlertTriangle } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
-import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
 import { CategoryLabel } from '@/contracting/components/CategoryIcon.js';
-import { MeterPhotoPreview } from '@/contracting/components/MeterPhotoPreview.js';
 import { NoReadableMeterResult, readingEvidence } from '@/contracting/components/ReadingEvidence.js';
 import { useReadingReview } from '@/contracting/hooks/use-reading-review.js';
 import { ReadingDialog } from '@/contracting/pages/jobs/ReadingDialog.js';
-import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
+import { DisputeResolveDialog } from './DisputeResolveDialog.js';
+
+const rowId = (row: ReadingExceptionRow) => (row.kind === 'dispute' ? row.dispute.id : row.reading.id);
+const rowMachine = (row: ReadingExceptionRow) => (row.kind === 'dispute' ? row.dispute : row.reading);
+const rowReadings = (row: ReadingExceptionRow) => (row.kind === 'dispute' ? row.dispute.readings : [row.reading]);
+
+/** The distinct stints a row's readings bound, in ledger order. */
+function rowStints(row: ReadingExceptionRow): NonNullable<ReadingStint>[] {
+  const stints = new Map<string, NonNullable<ReadingStint>>();
+  for (const { stint } of rowReadings(row)) if (stint) stints.set(stint.assignmentId, stint);
+  return [...stints.values()];
+}
+
+const rowJobCodes = (row: ReadingExceptionRow) => [...new Set(rowStints(row).map((stint) => stint.jobCode))];
+
+function AiFinding({ reading }: { reading: ReadingException }) {
+  const evidence = readingEvidence(reading);
+  return (
+    <div className="space-y-0.5">
+      {evidence.resultConfidencePercent !== null ? (
+        <NoReadableMeterResult confidencePercent={evidence.resultConfidencePercent} />
+      ) : (
+        <div>AI read {evidence.resultLabel}</div>
+      )}
+      {evidence.confidenceLabel ? <div className="text-muted-foreground">{evidence.confidenceLabel}</div> : null}
+      {reading.aiHint ? <div className="text-muted-foreground">{reading.aiHint}</div> : null}
+    </div>
+  );
+}
 
 export function ReadingExceptionsPage() {
   const trpc = useTRPC();
-  // Tracked by id so the dialog follows the refreshed row, and closes once an amendment resolves the exception.
+  // Tracked by id so the dialogs follow the refreshed row, and close once the row resolves.
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [previewReading, setPreviewReading] = useState<ReadingException | null>(null);
   const [globalFilter, setGlobalFilter] = useState('');
   const query = useQuery(trpc.contractingReadings.listExceptions.queryOptions());
-  const { reverify } = useReadingReview();
-  const selected = query.data?.find((row) => row.id === selectedId) ?? null;
-  const showError = useApiMutationErrorToast();
-  const columns = useMemo<DataTableColumnDef<ReadingException>[]>(
+  const { amend } = useReadingReview();
+  const selected = query.data?.find((row) => rowId(row) === selectedId) ?? null;
+  const columns = useMemo<DataTableColumnDef<ReadingExceptionRow>[]>(
     () => [
       {
-        accessorKey: 'machineCode',
+        id: 'machine',
+        accessorFn: (row) => rowMachine(row).machineCode,
         header: 'Machine',
-        cell: ({ row }) => (
-          <CategoryLabel
-            icon={row.original.categoryIcon}
-            colour={row.original.categoryColour}
-            name={row.original.machineCode}
-            size={16}
-          />
-        ),
+        cell: ({ row }) => {
+          const machine = rowMachine(row.original);
+          return (
+            <CategoryLabel
+              icon={machine.categoryIcon}
+              colour={machine.categoryColour}
+              name={machine.machineCode}
+              size={16}
+            />
+          );
+        },
       },
       {
-        id: 'readAt',
-        header: 'Read At',
-        cell: ({ row }) => formatDate(row.original.capturedAt, 'medium'),
+        id: 'jobs',
+        accessorFn: (row) => rowJobCodes(row).join(' '),
+        header: 'Job(s)',
+        cell: ({ row }) => {
+          const codes = rowJobCodes(row.original);
+          return codes.length ? (
+            <div className="flex flex-col gap-0.5">
+              {codes.map((code) => (
+                <Link
+                  className="font-mono font-semibold whitespace-nowrap hover:underline"
+                  key={code}
+                  params={{ code }}
+                  to="/contracting/jobs/$code"
+                >
+                  {code}
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          );
+        },
       },
-      { accessorKey: 'role', header: 'Reading type', cell: ({ row }) => toSentenceCase(row.original.role) },
       {
-        id: 'exceptionType',
-        header: 'Exception type',
+        id: 'stintWindow',
+        header: 'Stint window',
+        cell: ({ row }) => {
+          const stints = rowStints(row.original);
+          return stints.length ? (
+            <div className="flex flex-col gap-0.5 whitespace-nowrap">
+              {stints.map((stint) => (
+                <span key={stint.assignmentId}>{stintWindowLabel(stint)}</span>
+              ))}
+            </div>
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          );
+        },
+      },
+      {
+        id: 'hours',
+        header: 'Hours',
         cell: ({ row }) => (
-          <div className="flex flex-wrap gap-1">
-            {row.original.exceptionTypes.map((type) => (
-              <Badge
-                key={type}
-                className={cn(
-                  assignmentAttentionLevelColorClassNames[readingExceptionTypeLevels[type]].chip,
-                  assignmentAttentionLevelColorClassNames[readingExceptionTypeLevels[type]].text,
-                )}
-                variant="outline"
-              >
-                {readingExceptionTypeLabels[type]}
-              </Badge>
+          <div className="flex flex-wrap items-center gap-x-1.5 whitespace-nowrap">
+            {rowReadings(row.original).map((reading, index) => (
+              <span className="inline-flex items-center gap-1" key={reading.id}>
+                {index > 0 ? <span aria-hidden>·</span> : null}
+                {readingRoleLabels[reading.role]} {formatHours(reading.value)}
+                {reading.disputed ? (
+                  <IconAlertTriangle
+                    aria-label="Disputed"
+                    className={cn('size-4', assignmentAttentionLevelColorClassNames.critical.text)}
+                    role="img"
+                  />
+                ) : null}
+              </span>
             ))}
           </div>
         ),
       },
-      { accessorKey: 'value', header: 'Hours', cell: ({ row }) => formatHours(row.original.value) },
       {
-        accessorKey: 'comment',
-        header: 'Capture comment',
-        cell: ({ row }) =>
-          row.original.comment ? (
-            <div className="max-w-xs whitespace-pre-wrap font-medium">{row.original.comment}</div>
+        id: 'why',
+        header: 'Why',
+        cell: ({ row: { original: row } }) =>
+          row.kind === 'dispute' ? (
+            <div className="max-w-xs">{row.dispute.reason}</div>
           ) : (
-            <span className="text-muted-foreground">No comment</span>
+            <AiFinding reading={row.reading} />
           ),
-      },
-      {
-        id: 'evidence',
-        header: 'Evidence',
-        cell: ({ row: { original: row } }) => {
-          const presentation = readingEvidence(row);
-          return (
-            <div className="space-y-1">
-              {row.photo ? (
-                <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <button
-                        type="button"
-                        className="inline-flex cursor-pointer items-center gap-1 rounded-sm text-left text-foreground hover:underline"
-                        onClick={() => setPreviewReading(row)}
-                      />
-                    }
-                  >
-                    <span>{presentation.evidenceLabel}</span>
-                    <IconEye aria-hidden className="size-[18px] shrink-0" />
-                    <span className="sr-only">. Preview meter photo for {row.machineCode}</span>
-                  </TooltipTrigger>
-                  <TooltipContent>Preview photo</TooltipContent>
-                </Tooltip>
-              ) : (
-                <div>{presentation.evidenceLabel}</div>
-              )}
-              {row.disputed ? <div>Disputed: {row.disputeReason}</div> : null}
-              <div className="text-muted-foreground">{row.aiHint}</div>
-            </div>
-          );
-        },
-      },
-      {
-        id: 'ai',
-        header: 'AI meter result',
-        cell: ({ row }) => {
-          const presentation = readingEvidence(row.original);
-          return (
-            <div>
-              {presentation.resultConfidencePercent !== null ? (
-                <NoReadableMeterResult confidencePercent={presentation.resultConfidencePercent} />
-              ) : (
-                <div>{presentation.resultLabel}</div>
-              )}
-              {presentation.confidenceLabel ? <div>{presentation.confidenceLabel}</div> : null}
-            </div>
-          );
-        },
       },
       {
         id: 'actions',
         header: 'Actions',
         meta: { cellClassName: 'text-right', headerClassName: 'text-right' },
         cell: ({ row }) => (
-          <div className="flex flex-wrap items-center justify-end gap-1">
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={!row.original.photo || reverify.isPending}
-              onClick={() =>
-                reverify.mutate(
-                  { id: row.original.id },
-                  { onError: (error) => showError(error, 'Unable to re-verify reading.') },
-                )
-              }
-            >
-              Re-verify
-            </Button>
-            <Button size="sm" onClick={() => setSelectedId(row.original.id)}>
-              Resolve
-            </Button>
-          </div>
+          <Button
+            size="sm"
+            onClick={() => {
+              amend.reset();
+              setSelectedId(rowId(row.original));
+            }}
+          >
+            Resolve
+          </Button>
         ),
       },
     ],
-    [reverify.isPending, reverify.mutate, showError],
+    [amend.reset],
   );
   const table = useDataTable({
     data: query.data ?? [],
     columns,
+    getRowId: rowId,
     state: { globalFilter },
     onGlobalFilterChange: setGlobalFilter,
   });
+  const close = () => setSelectedId(null);
   return (
     <>
-      <PageLayout title="Reading exceptions" description="Review disputed readings and photo verification warnings.">
+      <PageLayout
+        title="Reading exceptions"
+        description="Resolve Disputes by correcting hours or Read At, and review photo verification warnings."
+      >
         <ErrorMessage error={query.error} fallbackMessage="Unable to load Reading Exceptions." />
         <DataTable
           table={table}
@@ -179,20 +183,24 @@ export function ReadingExceptionsPage() {
           total={query.data?.length ?? 0}
           isLoading={query.isPending}
           emptyMessage="No Reading Exceptions."
-          globalFilterPlaceholder="Search machines..."
+          globalFilterPlaceholder="Search machines and Jobs..."
         />
       </PageLayout>
+      <DisputeResolveDialog
+        dispute={selected?.kind === 'dispute' ? selected.dispute : null}
+        onOpenChange={(open) => {
+          if (!open) close();
+        }}
+        onResolve={(input) => amend.mutateAsync(input)}
+        onResolved={close}
+        error={amend.error}
+      />
       <ReadingDialog
-        selected={selected ? { reading: selected, machine: selected } : null}
-        onClose={() => setSelectedId(null)}
+        selected={selected?.kind === 'ai-flagged' ? { reading: selected.reading, machine: selected.reading } : null}
+        onClose={close}
         // The route admits only those who may amend readings.
         amendReadings
-        amendDescription="Check the photo and both disputed readings. Confirm or correct the value and Read At, and give a reason. This acknowledges the current evidence warning."
-      />
-      <MeterPhotoPreview
-        photo={previewReading ? { readingId: previewReading.id, machineCode: previewReading.machineCode } : null}
-        description={previewReading ? `Captured ${formatDate(previewReading.capturedAt, 'medium')}` : ''}
-        onClose={() => setPreviewReading(null)}
+        amendDescription="Check the photo. Confirm or correct the value and Read At, and give a reason. This acknowledges the current evidence warning."
       />
     </>
   );

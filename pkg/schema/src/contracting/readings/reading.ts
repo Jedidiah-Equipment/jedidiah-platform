@@ -134,16 +134,53 @@ export const HourReading = z.object({
   amendmentReason: z.string().nullable(),
 });
 export type HourReading = z.infer<typeof HourReading>;
-export const ReadingException = HourReading.extend({
-  exceptionTypes: z.array(z.enum(readingExceptionTypes)).min(1),
+/** The stint an arrival or departure bounds, as its two readings' Read Ats bound it; null for a spot reading. */
+export const ReadingStint = z
+  .object({
+    assignmentId: UUID,
+    jobId: UUID,
+    jobCode: z.string(),
+    arrivedAt: DateIso.nullable(),
+    departedAt: DateIso.nullable(),
+  })
+  .nullable();
+export type ReadingStint = z.infer<typeof ReadingStint>;
+export const DisputeReading = HourReading.extend({
   photoBacked: z.boolean(),
   capturedByName: z.string().nullable(),
+  stint: ReadingStint,
+});
+export type DisputeReading = z.infer<typeof DisputeReading>;
+export const ReadingException = DisputeReading.extend({
+  exceptionTypes: z.array(z.enum(readingExceptionTypes)).min(1),
   amendedByName: z.string().nullable(),
   machineCode: z.string(),
   categoryIcon: CategoryIconKey,
   categoryColour: CategoryColour,
 });
 export type ReadingException = z.infer<typeof ReadingException>;
+/** A Dispute: a connected group of Disputed readings on one Machine, resolved at once. */
+export const ReadingDispute = z.object({
+  /** The first reading's id: stable while the group stands. */
+  id: UUID,
+  machineId: UUID,
+  machineCode: z.string(),
+  categoryIcon: CategoryIconKey,
+  categoryColour: CategoryColour,
+  /** In ledger order. */
+  readings: DisputeReading.array().min(1),
+  /** The Telematics Reading the group contradicts, shown read-only, or null for a human pair. */
+  reported: HourReading.pick({ id: true, value: true, capturedAt: true, telematicsProvider: true }).nullable(),
+  /** The loudest reason among the readings. */
+  reason: z.string(),
+});
+export type ReadingDispute = z.infer<typeof ReadingDispute>;
+/** One row of Reading Exceptions: a Dispute, or one AI-flagged reading that is not Disputed. */
+export const ReadingExceptionRow = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('dispute'), dispute: ReadingDispute }),
+  z.object({ kind: z.literal('ai-flagged'), reading: ReadingException }),
+]);
+export type ReadingExceptionRow = z.infer<typeof ReadingExceptionRow>;
 
 /** The Machine's latest reading, the one a capture is judged against. */
 export const LatestReading = HourReading.pick({

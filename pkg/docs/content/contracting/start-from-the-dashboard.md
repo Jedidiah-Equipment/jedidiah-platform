@@ -7,7 +7,7 @@ The Dashboard is the first screen of Jedidiah Contracting on the web. It shows w
    - **Looks finished** counts the Jobs whose Machines have all left, waiting for sign-off.
    - **Awaiting pricing** counts the Completed Jobs waiting to be priced.
    - **Awaiting invoice** counts the Priced Jobs waiting for an Invoice Number.
-   - **Reading exceptions** counts the readings waiting for review.
+   - **Reading exceptions** counts the Disputes and AI flagged readings waiting for review.
    - **Active jobs** counts the Active Jobs still under way; a Job whose Machines have all left counts under **Looks finished** instead.
    - **Machines On Job** counts the Machines on site on a Job now. Planned Machines that have not arrived do not count.
 3. Read **Jobs needing a look**: open Jobs with an open Gap Flag or a reading the evidence does not confirm, the critical ones first. Select a Job Number to open the Job.

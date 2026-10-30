@@ -1,9 +1,11 @@
 import { captureReading } from '@pkg/core/contracting';
 import { user } from '@pkg/db';
 import { accessForRole } from '@pkg/domain/testing';
+import { TRPCError } from '@trpc/server';
 import { expect } from 'vitest';
 import { createTester } from '@/test/create-tester.js';
 import { mockSession } from '@/test/test-utils.js';
+import { getTRPCPublicMetadata } from '@/trpc/errors.js';
 
 const test = createTester(async ({ db }) => {
   await db.insert(user).values({
@@ -29,6 +31,49 @@ test('reserves the exceptions list for managers, behind the business wall', asyn
       code: 'FORBIDDEN',
     });
   }
+});
+
+test('lists a Dispute as one row and names the reading an amendment was refused on', async ({ context }) => {
+  const managerSession = mockSession(null);
+  managerSession.user.contractingRole = 'contracting-manager';
+  const manager = context.createCaller(managerSession);
+  const category = await manager.contractingFleet.categories.create({ name: 'Tractors', kind: 'machine' });
+  const machine = await manager.contractingFleet.machines.create({
+    code: 'PAIR-1',
+    make: 'Deere',
+    model: '6140',
+    categoryId: category.id,
+  });
+  const actor = accessForRole('contracting-manager', managerSession.user.id);
+  const spot = (value: number, capturedAt: string, disputePrevious: boolean) =>
+    captureReading({
+      db: context.db,
+      actor,
+      input: { machineId: machine.id, role: 'spot', value, capturedAt, disputePrevious },
+    });
+  const { reading: previous } = await spot(1200, '2026-09-07T08:00:00Z', false);
+  const { reading: disputing } = await spot(121, '2026-09-07T09:00:00Z', true);
+  const [row] = await manager.contractingReadings.listExceptions();
+  expect(row).toMatchObject({
+    kind: 'dispute',
+    dispute: {
+      id: previous.id,
+      readings: [{ id: previous.id, stint: null }, { id: disputing.id }],
+      reported: null,
+      reason: 'The previous reading is wrong.',
+    },
+  });
+  const refusal = await manager.contractingReadings
+    .amend({
+      amendments: [
+        { id: previous.id, value: 1200, capturedAt: '2026-09-07T08:00:00Z' },
+        { id: disputing.id, value: 119, capturedAt: '2026-09-07T09:00:00Z' },
+      ],
+      reason: 'Tenths drum misread',
+    })
+    .catch((error: unknown) => error);
+  expect(refusal).toBeInstanceOf(TRPCError);
+  expect(getTRPCPublicMetadata(refusal as TRPCError)).toMatchObject({ readingId: disputing.id });
 });
 
 test('foremen can find active Machines and read field history without fleet management or AI results', async ({

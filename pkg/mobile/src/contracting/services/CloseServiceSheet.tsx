@@ -1,5 +1,10 @@
 import { getPlantDateNow } from '@pkg/domain';
-import { nextServiceDueHint, suggestedNextServiceDueValue } from '@pkg/domain/contracting';
+import {
+  nextServiceDueHint,
+  type ServiceCloseMachine,
+  suggestedNextServiceDueValue,
+  suggestedServiceCloseHours,
+} from '@pkg/domain/contracting';
 import {
   CloseServiceValues,
   closeServiceDefaults,
@@ -18,16 +23,16 @@ import { useServiceMechanicOptions, useServiceMutation } from './use-services';
 const CLOSE_FAILED = 'Could not close the service. Check your connection and try again.';
 
 /**
- * Closing a service prints the sticker: the Next Service Due is required, and the interval only suggests it. Mounted
- * while open, so each open starts from today.
+ * Closing a service prints the sticker: the reading starts at the Machine's Known Hours, the Next Service Due is
+ * required, and the interval only suggests it. Mounted while open, so each open starts from today.
  */
 export function CloseServiceSheet({
   record,
-  serviceIntervalHours,
+  machine,
   onClose,
 }: {
   record: ServiceRecord;
-  serviceIntervalHours: number | null;
+  machine: ServiceCloseMachine | undefined;
   onClose: () => void;
 }) {
   const mechanicOptions = useServiceMechanicOptions(record);
@@ -35,8 +40,9 @@ export function CloseServiceSheet({
   const showToast = useAppToast();
   const { busy, error, run } = useBusyAction();
   const dueEdited = useRef(false);
+  const serviceIntervalHours = machine?.serviceIntervalHours ?? null;
   const form = useAppForm({
-    defaultValues: closeServiceDefaults(record, getPlantDateNow()),
+    defaultValues: closeServiceDefaults(record, getPlantDateNow(), suggestedServiceCloseHours(machine)),
     validationLogic: revalidateLogic(),
     validators: { onDynamic: CloseServiceValues },
     onSubmit: ({ value }) =>

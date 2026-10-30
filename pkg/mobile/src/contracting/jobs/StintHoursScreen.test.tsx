@@ -1,4 +1,5 @@
 import { departureBeforeArrivalSentence } from '@pkg/domain/contracting';
+import { TRPCClientError } from '@trpc/client';
 import type { ReactNode } from 'react';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { afterEach, expect, test, vi } from 'vitest';
@@ -7,8 +8,9 @@ const params = vi.hoisted(() => ({ current: {} as Record<string, string> }));
 vi.mock('expo-router', () => ({ useLocalSearchParams: () => params.current, router: { dismissTo: vi.fn() } }));
 vi.mock('react-native', () => ({ View: 'View' }));
 vi.mock('@/components/FormPage', () => ({
-  FormPage: ({ children, footer }: { children: ReactNode; footer: ReactNode }) => (
+  FormPage: ({ children, error, footer }: { children: ReactNode; error: string | null; footer: ReactNode }) => (
     <>
+      {error ? <Text>{error}</Text> : null}
       {children}
       {footer}
     </>
@@ -46,13 +48,12 @@ vi.mock('./use-jobs', () => ({
   useJob: () => ({ data: job.current, gone: false }),
   useStintHoursWrites: () => ({ capture: { mutateAsync: writes.capture }, edit: { mutateAsync: writes.edit } }),
 }));
-vi.mock('@/lib/use-busy-action', () => ({
-  useBusyAction: () => ({ busy: false, error: null, run: (action: () => Promise<void>) => action() }),
-}));
+vi.mock('@/lib/observability', () => ({ captureException: vi.fn() }));
 
 import { Text } from '@/components/ui/text';
 import StintHoursScreen from './StintHoursScreen';
 
+const SAVE_FAILED = 'Could not save the hours. Check your connection and try again.';
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 const reading = (hours: number) => ({ hours, at: '2026-10-28T08:00:00.000Z', comment: null });
@@ -111,4 +112,25 @@ test('editing hours on a Completed Job asks for a reason before it saves', async
   expect(writes.edit).toHaveBeenCalledWith(
     expect.objectContaining({ arrivalHours: 4400, departureHours: 4500, reason: 'Misread the meter' }),
   );
+});
+
+test.each([
+  ['the API cannot be reached', TRPCClientError.from(new TypeError('Failed to fetch')), SAVE_FAILED],
+  [
+    'the server refuses',
+    TRPCClientError.from({
+      error: {
+        code: -32009,
+        message: 'JD8R-1 is already on site on another Job.',
+        data: { code: 'CONFLICT', appCode: 'contracting_job.machine_on_site' },
+      },
+    }),
+    'JD8R-1 is already on site on another Job.',
+  ],
+])('a save that fails because %s says so', async (_label, failure, sentence) => {
+  writes.capture.mockRejectedValueOnce(failure);
+  const renderer = await mount({ role: 'departure' });
+  await act(async () => input(renderer, 'Departure hours')?.props.onChangeText('4480'));
+  await act(async () => saveButton(renderer).props.onPress());
+  expect(texts(renderer)).toContain(sentence);
 });

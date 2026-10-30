@@ -1,3 +1,5 @@
+import { TRPCClientError } from '@trpc/client';
+
 function trpcErrorCode(error: unknown): unknown {
   if (!error || typeof error !== 'object' || !('data' in error)) return undefined;
   const data = error.data;
@@ -14,7 +16,11 @@ export function isForbiddenError(error: unknown): boolean {
   return trpcErrorCode(error) === 'FORBIDDEN';
 }
 
-/** The sentence the server refused with, when it sent one. */
+/**
+ * The sentence a failure carries: the server's when it answered, the thrown error's otherwise. A tRPC request that never
+ * got an answer (a dropped connection, a gateway in front of the API) carries none, so the caller shows its own.
+ */
 export function trpcErrorMessage(error: unknown): string | undefined {
-  return error instanceof Error ? error.message : undefined;
+  if (error instanceof TRPCClientError && error.shape === undefined) return undefined;
+  return error instanceof Error && error.message ? error.message : undefined;
 }

@@ -107,8 +107,8 @@ export const TRAVEL_HOURS_EXPLANATION =
   'Travel Hours are worked out when the Machine arrives: its arrival hours less its last departure hours on any Job. Change them here if that is wrong; nothing recalculates them once you have.';
 
 /**
- * The Job's dates as reports read them: stored when set, else from the first arrival's capture to the last departure's,
- * an open Job running to today. Null before anything arrived.
+ * The Job's dates as reports read them: stored when set, else from the first arrival's capture to the last departure's
+ * once every Machine has left, to today while one is still on site. Null before anything arrived.
  */
 export function effectiveJobDates(
   job: { startDate: DateOnlyIso | null; endDate: DateOnlyIso | null },

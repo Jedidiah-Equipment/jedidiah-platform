@@ -1,5 +1,10 @@
 import { getPlantDateNow } from '@pkg/domain';
-import { nextServiceDueHint, suggestedNextServiceDueValue } from '@pkg/domain/contracting';
+import {
+  nextServiceDueHint,
+  type ServiceCloseMachine,
+  suggestedNextServiceDueValue,
+  suggestedServiceCloseHours,
+} from '@pkg/domain/contracting';
 import {
   CloseServiceValues,
   closeServiceDefaults,
@@ -19,17 +24,18 @@ import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation
 import { useTRPC } from '@/lib/trpc.js';
 
 /**
- * Closing a service prints the sticker: the Next Service Due is required, and the Machine's interval only suggests it.
+ * Closing a service prints the sticker: the reading starts at the Machine's Known Hours, the Next Service Due is
+ * required, and the Machine's interval only suggests it.
  * The parent mounts it for the one record being closed, keyed by that record, so it opens on a fresh form.
  */
 export function CloseServiceRecordDialog({
   record,
-  serviceIntervalHours,
+  machine,
   mechanicOptions,
   onClose,
 }: {
   record: ServiceRecord;
-  serviceIntervalHours: number | null;
+  machine: ServiceCloseMachine;
   mechanicOptions: readonly SearchableComboboxOption[];
   onClose: () => void;
 }) {
@@ -37,6 +43,7 @@ export function CloseServiceRecordDialog({
   const write = useContractingWrite(useQueryInvalidation().invalidateServices);
   const close = useMutation(trpc.contractingServices.close.mutationOptions(write.dialog));
   const dueEdited = useRef(false);
+  const { serviceIntervalHours } = machine;
   return (
     <CreateEntityDialog
       open
@@ -46,7 +53,7 @@ export function CloseServiceRecordDialog({
       title={<MachineDialogTitle machine={record}>Close service</MachineDialogTitle>}
       description="Record what was done and set the Next Service Due you print on the sticker."
       submitLabel="Close service"
-      defaultValues={closeServiceDefaults(record, getPlantDateNow())}
+      defaultValues={closeServiceDefaults(record, getPlantDateNow(), suggestedServiceCloseHours(machine))}
       validator={CloseServiceValues}
       onCreate={(values) => close.mutateAsync(closeServiceInput(record.id, values))}
       onCreated={() => {

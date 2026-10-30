@@ -6,8 +6,8 @@ import { DateOnlyIso } from '@pkg/schema';
 import { and, eq, isNotNull, type SQL } from 'drizzle-orm';
 
 /**
- * The Jobs `where` keeps, each with its effective dates (stored when set, else from its capture moments, an open Job
- * running to today) and its arrived stints' Work and Travel. The dates are the Job's, so every arrived stint on a Job
+ * The Jobs `where` keeps, each with its effective dates (stored when set, else from its capture moments, running to
+ * today while a Machine is still on site) and its arrived stints' Work and Travel. The dates are the Job's, so every arrived stint on a Job
  * is read, whichever Machines are asked about.
  */
 export async function loadDatedJobs(db: Db, today: DateOnlyIso, where?: SQL) {

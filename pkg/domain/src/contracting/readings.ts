@@ -8,6 +8,7 @@ import {
   type ReadingVerification,
   type TelematicsProvider,
 } from '@pkg/schema/contracting';
+import { groupBy } from '../collections/group-by.js';
 import { formatDate } from '../formatting/date.js';
 import { formatHours } from '../formatting/number.js';
 import {
@@ -217,7 +218,8 @@ export type ReportedReading<T extends SequencedReading = SequencedReading> = T &
 const isReported = <T extends SequencedReading>(reading: T): reading is ReportedReading<T> =>
   reading.telematicsProvider !== null;
 
-const ledgerOrder = (left: SequencedReading, right: SequencedReading) =>
+/** Ledger order: Read At, then acceptance. */
+export const ledgerOrder = (left: SequencedReading, right: SequencedReading) =>
   left.capturedAt.getTime() - right.capturedAt.getTime() || left.sequence - right.sequence;
 
 /**
@@ -248,6 +250,83 @@ export function contradictingTelematics<T extends SequencedReading>(
       .filter(isReported)
       .filter((reported) => contradicts(captured, reported))
       .sort((left, right) => distance(left) - distance(right))[0] ?? null
+  );
+}
+
+/** The Telematics Reading a Dispute contradicts: the nearest any of its readings is out of sequence with, or null. */
+export function disputeReport<T extends SequencedReading>(
+  ledger: readonly T[],
+  group: readonly SequencedReading[],
+): ReportedReading<T> | null {
+  const reports = ledger.filter(isReported);
+  let nearest: ReportedReading<T> | null = null;
+  let nearestDistance = Number.POSITIVE_INFINITY;
+  for (const member of group)
+    for (const report of reports) {
+      const distance = Math.abs(report.capturedAt.getTime() - member.capturedAt.getTime());
+      if (distance < nearestDistance && contradicts(member, report)) {
+        nearest = report;
+        nearestDistance = distance;
+      }
+    }
+  return nearest;
+}
+
+/** `25 Oct 2026, 15:03 → 26 Oct 2026, 11:40`, or `→ open` while the Machine is still on site. */
+export const stintWindowLabel = ({ arrivedAt, departedAt }: { arrivedAt: string | null; departedAt: string | null }) =>
+  `${arrivedAt ? formatDate(arrivedAt, 'medium') : '—'} → ${departedAt ? formatDate(departedAt, 'medium') : 'open'}`;
+
+/** The dispute reason a capture asserting the previous reading is wrong stores on itself. */
+export const PREVIOUS_READING_WRONG = 'The previous reading is wrong.';
+/** The dispute reason that capture stores on the reading it disputes. */
+export const NEXT_CAPTURE_DISPUTES = 'The next capture disputes this reading.';
+
+export type DisputeMember = SequencedReading & {
+  disputed: boolean;
+  disputedPreviousId: string | null;
+  /** The stint this arrival or departure bounds; null for a spot reading. */
+  assignmentId: string | null;
+};
+
+/**
+ * Disputed readings in connected groups, each a Dispute: a pair joined by "the previous reading is wrong", plus any
+ * Disputed reading sharing a stint with one of them. Each group in ledger order; groups newest first by their first
+ * reading.
+ */
+export function groupDisputes<T extends DisputeMember>(readings: readonly T[]): [T, ...T[]][] {
+  const disputed = readings.filter((reading) => reading.disputed).sort(ledgerOrder);
+  const parent = new Map(disputed.map((reading) => [reading.id, reading.id]));
+  const find = (id: string): string => {
+    const up = parent.get(id) ?? id;
+    return up === id ? id : find(up);
+  };
+  const union = (left: string, right: string) => {
+    if (parent.has(left) && parent.has(right)) parent.set(find(left), find(right));
+  };
+  const firstOnStint = new Map<string, string>();
+  for (const reading of disputed) {
+    if (reading.disputedPreviousId) union(reading.id, reading.disputedPreviousId);
+    if (!reading.assignmentId) continue;
+    const first = firstOnStint.get(reading.assignmentId);
+    if (first) union(reading.id, first);
+    else firstOnStint.set(reading.assignmentId, reading.id);
+  }
+  return [...groupBy(disputed, (reading) => find(reading.id)).values()].sort((left, right) =>
+    ledgerOrder(right[0], left[0]),
+  );
+}
+
+/** What a Disputed reading says when it carries no reason of its own. */
+export const DISPUTED_WITHOUT_REASON = 'Another reading disputes this value.';
+
+const disputeReasonRank = (reason: string) =>
+  reason === NEXT_CAPTURE_DISPUTES ? 2 : reason === PREVIOUS_READING_WRONG ? 1 : 0;
+
+/** A Dispute's loudest reason: what John Deere reported, over "the previous reading is wrong", over the next capture. */
+export function disputeGroupReason(readings: readonly { disputeReason: string | null }[]): string {
+  const reasons = readings.flatMap((reading) => reading.disputeReason ?? []);
+  return (
+    reasons.sort((left, right) => disputeReasonRank(left) - disputeReasonRank(right))[0] ?? DISPUTED_WITHOUT_REASON
   );
 }
 
@@ -309,8 +388,13 @@ export function amendedLedger<T extends SequencedReading>(
     .sort(ledgerOrder);
 }
 
-/** Readings disputed on their own, with no pair: a Telematics Reading contradicted them. */
-function standaloneDisputes(readings: readonly AmendableReading[]): Set<string> {
+/**
+ * Readings disputed on their own, with no pair: a Telematics Reading contradicted them. An amendment clears one only
+ * when it names it, moved or not, so a Dispute's resolve always carries these.
+ */
+export function standaloneDisputes(
+  readings: readonly Pick<AmendableReading, 'id' | 'disputed' | 'disputedPreviousId'>[],
+): Set<string> {
   const disputedTargets = new Set(readings.flatMap((reading) => reading.disputedPreviousId ?? []));
   return new Set(
     readings

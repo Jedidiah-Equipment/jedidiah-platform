@@ -1,26 +1,21 @@
 import { formatDate, getPlantDateNow } from '@pkg/domain';
-import { FUTURE_READ_AT_REFUSAL, isFutureReadAt, readAtFromInput, readAtInputValue } from '@pkg/domain/contracting';
 import { type HourReading, type ReadingAmendInput, ReadingAmendment, ReadingReason } from '@pkg/schema/contracting';
 import type React from 'react';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
-import { localDateTimeValue } from '@/components/form/utils/form-schema.js';
 import { type MachineDialogSubject, MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
 import {
   ReadingCaptureCard,
   ReadingCaptureRow,
   ReadingValueField,
 } from '@/contracting/components/readings/ReadingCaptureFields.js';
+import {
+  CorrectedReadAt,
+  correctedCapturedAt,
+  recordedReadAtValue,
+} from '@/contracting/components/readings/read-at-correction.js';
 
-const AmendValues = ReadingAmendment.pick({ value: true }).extend({
-  readAt: localDateTimeValue
-    .refine((value) => value !== '', 'Choose when the meter was read.')
-    .refine((value) => {
-      const readAt = readAtFromInput(value);
-      return !readAt || !isFutureReadAt(readAt);
-    }, FUTURE_READ_AT_REFUSAL),
-  reason: ReadingReason,
-});
+const AmendValues = ReadingAmendment.pick({ value: true }).extend({ readAt: CorrectedReadAt, reason: ReadingReason });
 
 export function ReadingAmendDialog({
   reading,
@@ -41,7 +36,7 @@ export function ReadingAmendDialog({
   error: unknown;
   description?: React.ReactNode;
 }) {
-  const recordedReadAt = reading ? readAtInputValue(new Date(reading.capturedAt)) : '';
+  const recordedReadAt = reading ? recordedReadAtValue(reading.capturedAt) : '';
   return (
     <CreateEntityDialog
       key={reading?.id ?? 'closed'}
@@ -55,12 +50,10 @@ export function ReadingAmendDialog({
       validator={AmendValues}
       onCreate={({ value, readAt, reason }) => {
         if (!reading) return Promise.resolve();
-        // The picker holds minutes; an untouched Read At keeps the recorded one to the second.
-        const capturedAt =
-          readAt === recordedReadAt
-            ? reading.capturedAt
-            : (readAtFromInput(readAt)?.toISOString() ?? reading.capturedAt);
-        return onAmend({ amendments: [{ id: reading.id, value, capturedAt }], reason });
+        return onAmend({
+          amendments: [{ id: reading.id, value, capturedAt: correctedCapturedAt(readAt, reading.capturedAt) }],
+          reason,
+        });
       }}
       onCreated={onAmended}
     >

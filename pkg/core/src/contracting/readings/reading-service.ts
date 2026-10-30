@@ -7,7 +7,7 @@ import {
   contractingMachineAssignments,
   contractingMachines,
 } from '@pkg/db/contracting';
-import { hasPermission, validateFile } from '@pkg/domain';
+import { groupBy, hasPermission, validateFile } from '@pkg/domain';
 import {
   amendedLedger,
   assignmentState,
@@ -15,12 +15,19 @@ import {
   type CaptureNeighbour,
   type CaptureWorld,
   captureCrossesServiceDueSoon,
+  disputeGroupReason,
+  disputeReport,
   effectiveServiceAlertHours,
   FUTURE_READ_AT_TOLERANCE_MS,
+  formatJobNumber,
+  groupDisputes,
   type JobActor,
   jobReadStatuses,
   judgeCapture,
+  ledgerOrder,
+  NEXT_CAPTURE_DISPUTES,
   NO_VALUE_BRACKET,
+  PREVIOUS_READING_WRONG,
   proposesReadAt,
   READING_PHOTO_POLICY,
   readingExceptionTypes,
@@ -236,17 +243,15 @@ export async function captureReading({
             ? judgeCapture({ ...world, valueBracket: await valueBracketFor(tx, input.machineId, input.value) }, attempt)
             : judged;
         if (!judgement.ok)
-          throw new ReadingError(
-            judgement.reason,
-            judgement.message,
-            judgement.refused,
-            judgement.suggestedReadAt && ReadAtSuggestion.parse(judgement.suggestedReadAt),
-          );
+          throw new ReadingError(judgement.reason, judgement.message, {
+            refused: judgement.refused,
+            suggestedReadAt: judgement.suggestedReadAt && ReadAtSuggestion.parse(judgement.suggestedReadAt),
+          });
         const disputed = judgement.disputes !== null;
         if (disputed && latest)
           await updateAudited(tx, actorUserId, latest, {
             disputed: true,
-            disputeReason: 'The next capture disputes this reading.',
+            disputeReason: NEXT_CAPTURE_DISPUTES,
           });
         const { serviceDueSoonThresholdHours } = await getContractingSettings({ db: tx });
         const [row] = await tx
@@ -264,7 +269,7 @@ export async function captureReading({
             ...verdict,
             disputed,
             disputedPreviousId: judgement.disputes,
-            disputeReason: disputed ? 'The previous reading is wrong.' : null,
+            disputeReason: disputed ? PREVIOUS_READING_WRONG : null,
           })
           .returning();
         if (!row) throw new Error('Reading insert returned no row');
@@ -349,7 +354,14 @@ const toNeighbour = ({ id, role, value, capturedAt, telematicsProvider }: Row): 
 
 const capturer = alias(user, 'exception_capturer');
 const amender = alias(user, 'exception_amender');
+const stintAssignment = alias(contractingMachineAssignments, 'exception_stint');
+const stintArrival = alias(contractingHourReadings, 'exception_stint_arrival');
+const stintDeparture = alias(contractingHourReadings, 'exception_stint_departure');
 
+/**
+ * Reading Exceptions as rows: one per Dispute (a connected group of Disputed readings on one Machine, with the
+ * Telematics Reading it contradicts) and one per AI-flagged reading that is not Disputed, newest first.
+ */
 export async function listReadingExceptions({ db }: { db: Db }) {
   const rows = await db
     .select({
@@ -359,19 +371,81 @@ export async function listReadingExceptions({ db }: { db: Db }) {
       categoryColour: contractingCategories.colour,
       capturedByName: capturer.name,
       amendedByName: amender.name,
+      assignmentId: stintAssignment.id,
+      jobId: contractingJobs.id,
+      jobCode: contractingJobs.code,
+      arrivedAt: stintArrival.capturedAt,
+      departedAt: stintDeparture.capturedAt,
     })
     .from(contractingHourReadings)
     .innerJoin(contractingMachines, eq(contractingMachines.id, contractingHourReadings.machineId))
     .innerJoin(contractingCategories, eq(contractingCategories.id, contractingMachines.categoryId))
     .leftJoin(capturer, eq(capturer.id, contractingHourReadings.capturedByUserId))
     .leftJoin(amender, eq(amender.id, contractingHourReadings.amendedBy))
+    .leftJoin(
+      stintAssignment,
+      or(
+        eq(stintAssignment.arrivalReadingId, contractingHourReadings.id),
+        eq(stintAssignment.departureReadingId, contractingHourReadings.id),
+      ),
+    )
+    .leftJoin(contractingJobs, eq(contractingJobs.id, stintAssignment.jobId))
+    .leftJoin(stintArrival, eq(stintArrival.id, stintAssignment.arrivalReadingId))
+    .leftJoin(stintDeparture, eq(stintDeparture.id, stintAssignment.departureReadingId))
     .where(readingNeedsALookSql(contractingHourReadings))
     .orderBy(...newestFirst);
-  return rows.map((row) => ({
+  const readings = rows.map(({ jobId, jobCode, arrivedAt, departedAt, ...row }) => ({
     ...withHint(row),
     exceptionTypes: readingExceptionTypes(row),
     photoBacked: row.photo !== null,
+    stint:
+      row.assignmentId && jobId && jobCode !== null
+        ? { assignmentId: row.assignmentId, jobId, jobNumber: formatJobNumber(jobCode), arrivedAt, departedAt }
+        : null,
   }));
+  const disputedByMachine = groupBy(
+    readings.filter((row) => row.disputed),
+    (row) => row.machineId,
+  );
+  // A Dispute's report is the nearest Telematics Reading it contradicts, so only reports are read.
+  const reports = disputedByMachine.size
+    ? await db
+        .select({
+          id: contractingHourReadings.id,
+          machineId: contractingHourReadings.machineId,
+          value: contractingHourReadings.value,
+          capturedAt: contractingHourReadings.capturedAt,
+          sequence: contractingHourReadings.sequence,
+          telematicsProvider: contractingHourReadings.telematicsProvider,
+        })
+        .from(contractingHourReadings)
+        .where(and(inArray(contractingHourReadings.machineId, [...disputedByMachine.keys()]), isTelematics))
+    : [];
+  const reportsByMachine = groupBy(reports, (report) => report.machineId);
+  const disputes = [...disputedByMachine].flatMap(([machineId, disputed]) =>
+    groupDisputes(disputed).map((group) => {
+      const [first] = group;
+      return {
+        kind: 'dispute' as const,
+        dispute: {
+          id: first.id,
+          machineId,
+          machineCode: first.machineCode,
+          categoryIcon: first.categoryIcon,
+          categoryColour: first.categoryColour,
+          readings: group,
+          reported: disputeReport(reportsByMachine.get(machineId) ?? [], group),
+          reason: disputeGroupReason(group),
+        },
+      };
+    }),
+  );
+  const aiFlagged = readings
+    .filter((reading) => !reading.disputed && reading.exceptionTypes.includes('ai-flagged'))
+    .map((reading) => ({ kind: 'ai-flagged' as const, reading }));
+  const firstReading = (row: (typeof disputes)[number] | (typeof aiFlagged)[number]) =>
+    row.kind === 'dispute' ? row.dispute.readings[0] : row.reading;
+  return [...disputes, ...aiFlagged].sort((left, right) => ledgerOrder(firstReading(right), firstReading(left)));
 }
 export async function amendReadings({ db, actor, input: raw }: { db: Db; actor: JobActor; input: ReadingAmendInput }) {
   const actorUserId = actor.userId;

@@ -12,16 +12,26 @@ import { translatingConstraintViolations } from '../../errors/constraint-violati
 import type { RefusedJobAction } from '../jobs/job-errors.js';
 
 export class ReadingError extends Error {
+  readonly refused: RefusedJobAction | undefined;
+  readonly suggestedReadAt: ReadAtSuggestion | undefined;
+  readonly readingId: string | undefined;
   constructor(
     readonly code: ReadingErrorCode,
     message: string,
-    /** The Job Action a refusal refused, when a Job's status or ownership refused it. */
-    readonly refused?: RefusedJobAction,
-    /** When John Deere puts a refused capture's value, so the form can propose it. */
-    readonly suggestedReadAt?: ReadAtSuggestion,
+    context: {
+      /** The Job Action a refusal refused, when a Job's status or ownership refused it. */
+      refused?: RefusedJobAction | undefined;
+      /** When John Deere puts a refused capture's value, so the form can propose it. */
+      suggestedReadAt?: ReadAtSuggestion | undefined;
+      /** The reading an amendment of several was refused on, so the form can point at it. */
+      readingId?: string | undefined;
+    } = {},
   ) {
     super(message);
     this.name = 'ReadingError';
+    this.refused = context.refused;
+    this.suggestedReadAt = context.suggestedReadAt;
+    this.readingId = context.readingId;
   }
 }
 export const isReadingError = (error: unknown): error is ReadingError => error instanceof ReadingError;
@@ -38,7 +48,7 @@ export function assertAmendReadings(job: JobActionSubject, actor: JobActor) {
   const jobCode = readingCodeForJobRefusal(verdict.reason);
   const code: ReadingErrorCode =
     jobCode === 'reading.wrong_status' && job.status === 'invoiced' ? 'reading.job_invoiced' : jobCode;
-  throw new ReadingError(code, verdict.message, { action: 'amendReadings', reason: verdict.reason });
+  throw new ReadingError(code, verdict.message, { refused: { action: 'amendReadings', reason: verdict.reason } });
 }
 
 const amendmentRefusalCodes: Record<Exclude<ReadingAmendmentRefusal, 'not_found'>, ReadingErrorCode> = {
@@ -49,8 +59,18 @@ const amendmentRefusalCodes: Record<Exclude<ReadingAmendmentRefusal, 'not_found'
 };
 
 /** An amendment the ledger refused, in Reading terms. */
-export const amendmentRefused = ({ reason, message }: { reason: ReadingAmendmentRefusal; message: string }) =>
-  reason === 'not_found' ? readingNotFound() : new ReadingError(amendmentRefusalCodes[reason], message);
+export const amendmentRefused = ({
+  reason,
+  id,
+  message,
+}: {
+  reason: ReadingAmendmentRefusal;
+  id: string;
+  message: string;
+}) =>
+  reason === 'not_found'
+    ? readingNotFound()
+    : new ReadingError(amendmentRefusalCodes[reason], message, { readingId: id });
 
 /** A stint constraint's refusal as the Reading error the phone reports. */
 const captureRefused = (rule: CaptureConstraintRule) =>

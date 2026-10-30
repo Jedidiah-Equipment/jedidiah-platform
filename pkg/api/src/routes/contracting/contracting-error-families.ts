@@ -71,8 +71,8 @@ export const readingErrorFamily = defineCoreErrorFamily<ReadingError>({
     'reading.wrong_status': 'CONFLICT',
   },
   is: isReadingError,
-  metadata: ({ refused, suggestedReadAt }) =>
-    refused || suggestedReadAt ? { ...refused, suggestedReadAt } : undefined,
+  metadata: ({ refused, suggestedReadAt, readingId }) =>
+    refused || suggestedReadAt || readingId ? { ...refused, suggestedReadAt, readingId } : undefined,
 });
 
 export const jobErrorFamily = defineCoreErrorFamily<JobError>({

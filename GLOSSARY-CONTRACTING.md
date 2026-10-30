@@ -203,7 +203,7 @@ pre-travel opening is never captured: it is the machine's previous departure rea
 and work time are derived and no hour can vanish between Jobs. A capture strictly below the
 Machine's latest reading is refused (equal is accepted — an idle machine reads its departure value),
 unless the Foreman asserts the latest reading is wrong, which saves his value as disputed and flags
-the pair for management; a backdated capture that falls below or above its neighbours is refused
+the pair for management as a Dispute; a backdated capture that falls below or above its neighbours is refused
 outright, since the fix is its time or its value. No capture may contradict a Telematics Reading.
 **The meter cannot outrun the clock**: engine hours between two readings never exceed the wall-clock hours
 between them (an hour of slack for the dash and the phone), and a capture that would is refused naming both
@@ -229,6 +229,12 @@ management, who correct its hours or Read At back into sequence. One may move it
 same value again, so the ledger says the hours stand as of the latest report. _Avoid_: telemetry reading,
 automatic reading, JDLink reading, API reading.
 
+**Dispute** is a connected group of Disputed readings on one Machine — a pair joined by "the previous
+reading is wrong", plus any Disputed reading sharing a stint with one of them. A Dispute is one row on
+Reading Exceptions and is resolved at once: management corrects hours and Read At of each reading in it
+under one reason, and the row clears when every reading sits in sequence. A reading John Deere contradicted
+shows that report beside it; the report itself is never edited. _Avoid_: exception pair, conflict.
+
 **Hour Gap** is the derived interval between one Assignment's departure reading and the machine's
 next arrival reading; spot readings never bound a gap, and a Machine's first arrival has no
 preceding departure, so it opens the ledger with no gap and no Travel Hours. By default the whole gap is **Travel Hours**, billed to the destination Job
@@ -243,8 +249,8 @@ reports its hours as **Unresolved** until management splits it.
 **Assignment Attention** is everything that flags a Machine Assignment for a person, each kind at one
 of three levels: a **notice** is worth knowing with nothing to do (a pending AI verification, Missing
 Photo Evidence); a **warning** means the evidence does not confirm the value and someone should review
-it (AI value differs, AI confidence low); **critical** means the hours are wrong or contradictory, or
-it stops the Job moving on (an open Gap Flag, a Disputed reading). Warning and critical **need a
+it (AI value differs, AI confidence low); **critical** means the hours are wrong or contradictory (a
+Disputed reading) or it stops the Job moving on (an open Gap Flag). Warning and critical **need a
 look** — they are counted on the Jobs list, filtered for, and border the Assignment's card — while a
 notice never does. Each level has one colour everywhere: notice purple, warning orange, critical red.
 _Avoid_: bare "attention", alert, issue

@@ -11,9 +11,9 @@ export function useReadingReview() {
   return {
     amend: useMutation(
       trpc.contractingReadings.amend.mutationOptions({
-        onSuccess: async () => {
+        onSuccess: async (_amended, { amendments }) => {
           await invalidate();
-          toast.success('Reading amended');
+          toast.success(amendments.length > 1 ? 'Readings amended' : 'Reading amended');
         },
       }),
     ),

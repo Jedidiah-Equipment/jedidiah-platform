@@ -16,7 +16,7 @@ import { completeJob, createJob } from '../jobs/job-service.js';
 import { markPriced, setStintRate } from '../jobs/pricing-service.js';
 import { createMeasureType } from '../rate-card/measure-type-service.js';
 import { createRate } from '../rate-card/rate-service.js';
-import { amendReadings, captureReading, getReading } from '../readings/reading-service.js';
+import { amendReadings, captureReading, getReading, listReadingExceptions } from '../readings/reading-service.js';
 import { createWorkType } from '../work-types/work-type-service.js';
 
 export const adminId = 'fixture-admin';
@@ -189,4 +189,11 @@ export async function amendHours(db: Db, actor: JobActor, id: string, value: num
     input: { amendments: [{ id, value, capturedAt: capturedAt.toISOString() }], reason },
   });
   return amended;
+}
+
+/** The readings Reading Exceptions lists, row by row: each Dispute's readings in ledger order, then the next row. */
+export async function exceptionReadings(db: Db) {
+  return (await listReadingExceptions({ db })).flatMap((row) =>
+    row.kind === 'dispute' ? row.dispute.readings : [row.reading],
+  );
 }

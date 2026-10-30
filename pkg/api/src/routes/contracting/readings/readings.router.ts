@@ -14,7 +14,7 @@ import {
   HourReading,
   LatestReading,
   ReadingAmendInput,
-  ReadingException,
+  ReadingExceptionRow,
   ReadingIdInput,
   ReadingMachineInput,
 } from '@pkg/schema/contracting';
@@ -37,7 +37,7 @@ export function createContractingReadingsRouter(readPhoto: ReadMeterPhoto) {
       .output(FieldReadingPage)
       .query(({ ctx, input }) => listFieldReadingsPage({ db: ctx.db, input })),
     listExceptions: authorizedProcedure('contracting_reading:update')
-      .output(ReadingException.array())
+      .output(ReadingExceptionRow.array())
       .query(({ ctx }) => listReadingExceptions({ db: ctx.db })),
     amend: authorizedProcedure('contracting_reading:update')
       .input(ReadingAmendInput)

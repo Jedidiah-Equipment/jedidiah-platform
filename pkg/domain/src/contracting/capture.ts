@@ -40,7 +40,10 @@ export type CaptureWorld = {
   previousTelematics: CaptureNeighbour | null;
   /** The nearest Telematics Reading after the capture's Read At. */
   nextTelematics: CaptureNeighbour | null;
-  /** The Telematics Readings the capture's value falls between, whatever its Read At. */
+  /**
+   * The Telematics Readings the capture's value falls between, whatever its Read At. Only a refusal that
+   * `proposesReadAt` reads it, so core gathers it only for one.
+   */
   valueBracket: ValueBracket;
   /** The stint the capture lands on; null for a spot or baseline reading. */
   stint: AssignmentState | null;
@@ -200,8 +203,13 @@ const refuseOutrunsClock = (
   message: `${outrunsClockSentence(earlier, later, neighbour, side)} Check Read At on this reading, or correct that reading's Read At from its Job.`,
 });
 
-/** The Telematics Readings a value falls between: the last reported at or below it, the first reported above it. */
+/**
+ * The Telematics Readings a value falls between: the last reported at or below it, at its Read At, and the first
+ * reported above it, at the time it was first reported (a report's Read At moves on while its value stands).
+ */
 export type ValueBracket = { floor: CaptureNeighbour | null; ceiling: CaptureNeighbour | null };
+
+export const NO_VALUE_BRACKET: ValueBracket = { floor: null, ceiling: null };
 
 export type ReadAtSuggestion = {
   readAt: Date;
@@ -273,8 +281,24 @@ export const captureIsBelowLatest = (value: number, latest: { value: number } | 
 export const captureNeedsComment = (role: ReadingRole, world: Pick<CaptureWorld, 'management' | 'hasPhoto'>): boolean =>
   role === 'departure' && world.management && !world.hasPhoto;
 
-/** Whether this capture may land on the Machine's ledger as the server holds it under the lock. */
+/** The value refusals a proposed Read At can fix: the value was most likely read earlier. */
+export const proposesReadAt = (rule: CaptureRule) =>
+  rule === 'contradicts-telematics' || rule === 'below-previous' || rule === 'below-latest';
+
+/**
+ * Whether this capture may land on the Machine's ledger as the server holds it under the lock. A value refusal carries
+ * the Read At John Deere puts the value at, when the world's value bracket gives one.
+ */
 export function judgeCapture(world: CaptureWorld, capture: CaptureAttempt): CaptureVerdict {
+  const verdict = judgeCaptureRules(world, capture);
+  if (verdict.ok || !proposesReadAt(verdict.rule)) return verdict;
+  const notBefore =
+    capture.role === 'departure' ? world.stintArrivedAt : capture.role === 'arrival' ? world.lastDepartedAt : null;
+  const suggestedReadAt = suggestReadAt(capture.value, world.valueBracket, notBefore);
+  return suggestedReadAt ? { ...verdict, suggestedReadAt } : verdict;
+}
+
+function judgeCaptureRules(world: CaptureWorld, capture: CaptureAttempt): CaptureVerdict {
   if (capture.role === 'baseline' && !world.mayBaseline) return refuse('baseline-forbidden');
   if (isFutureReadAt(capture.readAt, world.now, world.futureToleranceMs)) return refuse('future-read-at');
   if (world.machineRetired) return refuse('retired-machine');
@@ -298,26 +322,19 @@ export function judgeCapture(world: CaptureWorld, capture: CaptureAttempt): Capt
   )
     return refuse('previous-changed');
   const { previous, next, previousTelematics, nextTelematics } = world;
-  // A value too low for its Read At was most likely read earlier: when John Deere brackets it, say when.
-  const notBefore =
-    capture.role === 'departure' ? world.stintArrivedAt : capture.role === 'arrival' ? world.lastDepartedAt : null;
-  const suggesting = (refusal: CaptureRefused): CaptureRefused => {
-    const suggestedReadAt = suggestReadAt(capture.value, world.valueBracket, notBefore);
-    return suggestedReadAt ? { ...refusal, suggestedReadAt } : refusal;
-  };
   // A Telematics Reading is beyond dispute, so no capture may contradict the nearest one on either side.
   if (nextTelematics && capture.value > nextTelematics.value) return refuseAgainst('above-next', nextTelematics);
   if (previousTelematics && capture.value < previousTelematics.value)
-    return suggesting(refuseAgainst('contradicts-telematics', previousTelematics));
+    return refuseAgainst('contradicts-telematics', previousTelematics);
   if (next && capture.value > next.value) return refuseAgainst('above-next', next);
   if (previous && capture.value < previous.value && previous.id !== world.latest?.id)
-    return suggesting(refuseAgainst('below-previous', previous));
+    return refuseAgainst('below-previous', previous);
   const here = { value: capture.value, capturedAt: capture.readAt };
   if (previous && outrunsClock(previous, here)) return refuseOutrunsClock(previous, here, previous, 'since');
   if (next && outrunsClock(here, next)) return refuseOutrunsClock(here, next, next, 'before');
   // Only a capture that becomes the latest is judged against it; one dated behind it answers to its neighbours.
   const below = next === null && captureIsBelowLatest(capture.value, world.latest);
-  if (below && !capture.disputePrevious) return suggesting(refuse('below-latest'));
+  if (below && !capture.disputePrevious) return refuse('below-latest');
   const beforeBaseline = previous === null && next?.role === 'baseline';
   if (capture.role === 'baseline' ? world.latest : beforeBaseline) return refuse('baseline-exists');
   return { ok: true, disputes: below && world.latest ? world.latest.id : null };

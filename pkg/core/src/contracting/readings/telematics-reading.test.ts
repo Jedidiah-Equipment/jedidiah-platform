@@ -1,5 +1,5 @@
 import { auditEvents, type Db, user } from '@pkg/db';
-import { contractingJohnDeereLinks } from '@pkg/db/contracting';
+import { contractingHourReadings, contractingJohnDeereLinks } from '@pkg/db/contracting';
 import { accessForRole } from '@pkg/domain/testing';
 import { MachineCreateInput } from '@pkg/schema/contracting';
 import { and, eq } from 'drizzle-orm';
@@ -282,6 +282,35 @@ test('proposes the Read At John Deere puts a refused value at, bracketing it by 
     suggestedReadAt: {
       readAt: '2026-09-07T10:30:00.000Z',
       floor: { value: 1000, capturedAt: '2026-09-07T10:00:00.000Z' },
+      ceiling: { value: 1010, capturedAt: '2026-09-07T11:00:00.000Z' },
+    },
+  });
+});
+
+test('bounds a proposal by when the ceiling’s value was first reported, not where its Read At moved to', async ({
+  context,
+}) => {
+  const { db, actor, machineId } = context;
+  const report = reportFor(context);
+  await report(1000, '2026-09-07T10:00:00Z');
+  const ceiling = written(await report(1010, '2026-09-07T11:00:00Z')).reading;
+  // Polled at 11:00, then the Machine stood: later polls move the report's Read At on.
+  await db
+    .update(contractingHourReadings)
+    .set({ createdAt: at('2026-09-07T11:00:00Z') })
+    .where(eq(contractingHourReadings.id, ceiling.id));
+  expect(await reportFor(context, '2026-09-10T00:00:00Z')(1010, '2026-09-09T07:00:00Z')).toMatchObject({
+    outcome: 'moved',
+  });
+  await expect(
+    captureReading({
+      db,
+      actor,
+      input: { machineId, role: 'spot', value: 1005, capturedAt: '2026-09-09T08:00:00Z', disputePrevious: false },
+    }),
+  ).rejects.toMatchObject({
+    suggestedReadAt: {
+      readAt: '2026-09-07T10:30:00.000Z',
       ceiling: { value: 1010, capturedAt: '2026-09-07T11:00:00.000Z' },
     },
   });

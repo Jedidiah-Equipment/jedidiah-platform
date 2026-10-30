@@ -1,4 +1,10 @@
-import { capturedAtFor, captureValueVerdict, deriveCaptureForm, parseCaptureValue } from '@pkg/domain/contracting';
+import {
+  capturedAtFor,
+  captureValueVerdict,
+  deriveCaptureForm,
+  parseCaptureValue,
+  readAtInputValue,
+} from '@pkg/domain/contracting';
 import { UUID } from '@pkg/schema';
 import { type Assignment, ReadAtSuggestion, type ReadingCaptureInput, ReadingValue } from '@pkg/schema/contracting';
 import { useState } from 'react';
@@ -62,6 +68,14 @@ export function useReadingCapture<TValues>(target: CaptureTarget, toDraft: (valu
   const [readAtFocus, setReadAtFocus] = useState(0);
   const [suggestion, setSuggestion] = useState<ReadAtSuggestion | null>(null);
   const latest = latestQuery.isSuccess ? latestQuery.data : undefined;
+  // The picker holds minutes; while it still shows the proposal, the proposal's own instant is the Read At, so a
+  // departure proposed seconds after its arrival is not posted before it.
+  const withProposedReadAt = (draft: CaptureFormDraft): CaptureFormDraft => {
+    const proposed = suggestion ? new Date(suggestion.readAt) : null;
+    return proposed && draft.readAt && readAtInputValue(draft.readAt) === readAtInputValue(proposed)
+      ? { ...draft, readAt: proposed }
+      : draft;
+  };
   const judgeDraft = (draft: CaptureFormDraft) => {
     const verdict = deriveCaptureForm(
       { latest, management, hasPhoto: photo !== null, now: new Date() },
@@ -83,7 +97,7 @@ export function useReadingCapture<TValues>(target: CaptureTarget, toDraft: (valu
     /** The latest once loaded: null when the ledger is empty, undefined while loading or failed. */
     latest,
     photo,
-    judge: (values: TValues) => judgeDraft(toDraft(values)),
+    judge: (values: TValues) => judgeDraft(withProposedReadAt(toDraft(values))),
     /** Whether the value is below the latest and its dispute confirmed: all the reading card needs. */
     judgeValue: (value: CaptureValue & { readAt: Date | null }) =>
       captureValueVerdict(latest, parseFormValue(value.value), disputedReadingId(value), value.readAt),
@@ -111,7 +125,7 @@ export function useReadingCapture<TValues>(target: CaptureTarget, toDraft: (valu
     },
     /** Judges the values once more and posts what that judgement built, read when the draft's Read At says. */
     submit: async (values: TValues) => {
-      const draft = toDraft(values);
+      const draft = withProposedReadAt(toDraft(values));
       const { request } = judgeDraft(draft);
       if (!machineId || !request) throw new Error('This reading cannot be captured yet.');
       setError('');

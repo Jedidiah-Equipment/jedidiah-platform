@@ -236,7 +236,8 @@ it('offers only Read earlier… below a John Deere latest, and lets the server a
 });
 
 it('proposes the Read At John Deere puts a refused value at, and posts it on the second Save', async () => {
-  const readAt = new Date(2026, 8, 16, 9, 30);
+  // Seconds the picker cannot show: the second Save still posts the proposal's own instant.
+  const readAt = new Date(2026, 8, 16, 9, 30, 27);
   const floor = { value: 125, capturedAt: new Date(2026, 8, 16, 9, 0).toISOString() };
   const ceiling = { value: 127, capturedAt: new Date(2026, 8, 16, 10, 0).toISOString() };
   capture.mockRejectedValueOnce(

@@ -11,6 +11,7 @@ import { hasPermission, validateFile } from '@pkg/domain';
 import {
   amendedLedger,
   assignmentState,
+  type CaptureAttempt,
   type CaptureNeighbour,
   type CaptureWorld,
   captureCrossesServiceDueSoon,
@@ -19,10 +20,13 @@ import {
   type JobActor,
   jobReadStatuses,
   judgeCapture,
+  NO_VALUE_BRACKET,
+  proposesReadAt,
   READING_PHOTO_POLICY,
   readingExceptionTypes,
   readingVerification,
   resolveReadingAmendments,
+  type ValueBracket,
 } from '@pkg/domain/contracting';
 import { type AuthId, getNextCursor } from '@pkg/schema';
 import {
@@ -146,117 +150,91 @@ export async function captureReading({
         const readAt = new Date(input.capturedAt);
         const onMachine = eq(contractingHourReadings.machineId, input.machineId);
         const arrivalReadingId = input.role === 'departure' ? (stint?.stint.arrivalReadingId ?? null) : null;
-        const [
-          [latest],
-          [previous],
-          [next],
-          [previousTelematics],
-          [nextTelematics],
-          [floor],
-          [lastDeparture],
-          [stintArrival],
-        ] = await Promise.all([
-          tx
-            .select()
-            .from(contractingHourReadings)
-            .where(onMachine)
-            .orderBy(...newestFirst)
-            .limit(1),
-          tx
-            .select()
-            .from(contractingHourReadings)
-            .where(and(onMachine, lte(contractingHourReadings.capturedAt, readAt)))
-            .orderBy(...newestFirst)
-            .limit(1),
-          tx
-            .select()
-            .from(contractingHourReadings)
-            .where(and(onMachine, gt(contractingHourReadings.capturedAt, readAt)))
-            .orderBy(...oldestFirst)
-            .limit(1),
-          tx
-            .select()
-            .from(contractingHourReadings)
-            .where(and(onMachine, isTelematics, lte(contractingHourReadings.capturedAt, readAt)))
-            .orderBy(...newestFirst)
-            .limit(1),
-          tx
-            .select()
-            .from(contractingHourReadings)
-            .where(and(onMachine, isTelematics, gt(contractingHourReadings.capturedAt, readAt)))
-            .orderBy(...oldestFirst)
-            .limit(1),
-          // The value bracket's floor: the last report at or below the value, found walking back from the latest.
-          tx
-            .select()
-            .from(contractingHourReadings)
-            .where(and(onMachine, isTelematics, lte(contractingHourReadings.value, input.value)))
-            .orderBy(...newestFirst)
-            .limit(1),
-          input.role === 'arrival'
-            ? tx
-                .select({ capturedAt: contractingHourReadings.capturedAt })
-                .from(contractingHourReadings)
-                .where(and(onMachine, eq(contractingHourReadings.role, 'departure')))
-                .orderBy(...newestFirst)
-                .limit(1)
-            : [],
-          arrivalReadingId
-            ? tx
-                .select({ capturedAt: contractingHourReadings.capturedAt })
-                .from(contractingHourReadings)
-                .where(eq(contractingHourReadings.id, arrivalReadingId))
-            : [],
-        ]);
-        // Every report after the floor reads above the value, so the ceiling is the next one; without a floor, none.
-        const [ceiling] =
-          floor && floor.value !== input.value
-            ? await tx
-                .select()
-                .from(contractingHourReadings)
-                .where(and(onMachine, isTelematics, gt(contractingHourReadings.capturedAt, floor.capturedAt)))
-                .orderBy(...oldestFirst)
-                .limit(1)
-            : [];
-        const neighbours: Pick<
-          CaptureWorld,
-          'latest' | 'previous' | 'next' | 'previousTelematics' | 'nextTelematics' | 'valueBracket'
-        > = {
-          latest: latest ? { id: latest.id, value: latest.value } : null,
-          previous: previous ? toNeighbour(previous) : null,
-          next: next ? toNeighbour(next) : null,
-          previousTelematics: previousTelematics ? toNeighbour(previousTelematics) : null,
-          nextTelematics: nextTelematics ? toNeighbour(nextTelematics) : null,
-          valueBracket: {
-            floor: floor ? toNeighbour(floor) : null,
-            ceiling: ceiling ? toNeighbour(ceiling) : null,
-          },
+        const [[latest], [previous], [next], [previousTelematics], [nextTelematics], [lastDeparture], [stintArrival]] =
+          await Promise.all([
+            tx
+              .select()
+              .from(contractingHourReadings)
+              .where(onMachine)
+              .orderBy(...newestFirst)
+              .limit(1),
+            tx
+              .select()
+              .from(contractingHourReadings)
+              .where(and(onMachine, lte(contractingHourReadings.capturedAt, readAt)))
+              .orderBy(...newestFirst)
+              .limit(1),
+            tx
+              .select()
+              .from(contractingHourReadings)
+              .where(and(onMachine, gt(contractingHourReadings.capturedAt, readAt)))
+              .orderBy(...oldestFirst)
+              .limit(1),
+            tx
+              .select()
+              .from(contractingHourReadings)
+              .where(and(onMachine, isTelematics, lte(contractingHourReadings.capturedAt, readAt)))
+              .orderBy(...newestFirst)
+              .limit(1),
+            tx
+              .select()
+              .from(contractingHourReadings)
+              .where(and(onMachine, isTelematics, gt(contractingHourReadings.capturedAt, readAt)))
+              .orderBy(...oldestFirst)
+              .limit(1),
+            input.role === 'arrival'
+              ? tx
+                  .select({ capturedAt: contractingHourReadings.capturedAt })
+                  .from(contractingHourReadings)
+                  .where(and(onMachine, eq(contractingHourReadings.role, 'departure')))
+                  .orderBy(...newestFirst)
+                  .limit(1)
+              : [],
+            arrivalReadingId
+              ? tx
+                  .select({ capturedAt: contractingHourReadings.capturedAt })
+                  .from(contractingHourReadings)
+                  .where(eq(contractingHourReadings.id, arrivalReadingId))
+              : [],
+          ]);
+        const neighbours: Pick<CaptureWorld, 'latest' | 'previous' | 'next' | 'previousTelematics' | 'nextTelematics'> =
+          {
+            latest: latest ? { id: latest.id, value: latest.value } : null,
+            previous: previous ? toNeighbour(previous) : null,
+            next: next ? toNeighbour(next) : null,
+            previousTelematics: previousTelematics ? toNeighbour(previousTelematics) : null,
+            nextTelematics: nextTelematics ? toNeighbour(nextTelematics) : null,
+          };
+        const world: CaptureWorld = {
+          ...neighbours,
+          valueBracket: NO_VALUE_BRACKET,
+          stint: stint ? assignmentState(stint.stint) : null,
+          stintArrivedAt: stintArrival?.capturedAt ?? null,
+          lastDepartedAt: lastDeparture?.capturedAt ?? null,
+          jobVerdict: stint?.jobVerdict ?? null,
+          management: hasPermission(actor, 'contracting_job:work-any'),
+          mayBaseline: hasPermission(actor, 'contracting_reading:capture-baseline'),
+          machineRetired: machine.retiredAt !== null,
+          implementValid: stint?.implementValid ?? true,
+          driverValid: stint?.driverValid ?? true,
+          hasPhoto: !!evidence,
+          now,
+          futureToleranceMs: FUTURE_READ_AT_TOLERANCE_MS,
         };
-        const judgement = judgeCapture(
-          {
-            ...neighbours,
-            stint: stint ? assignmentState(stint.stint) : null,
-            stintArrivedAt: stintArrival?.capturedAt ?? null,
-            lastDepartedAt: lastDeparture?.capturedAt ?? null,
-            jobVerdict: stint?.jobVerdict ?? null,
-            management: hasPermission(actor, 'contracting_job:work-any'),
-            mayBaseline: hasPermission(actor, 'contracting_reading:capture-baseline'),
-            machineRetired: machine.retiredAt !== null,
-            implementValid: stint?.implementValid ?? true,
-            driverValid: stint?.driverValid ?? true,
-            hasPhoto: !!evidence,
-            now,
-            futureToleranceMs: FUTURE_READ_AT_TOLERANCE_MS,
-          },
-          {
-            role: input.role,
-            value: input.value,
-            readAt,
-            disputePrevious: input.disputePrevious,
-            expectedPreviousId: input.expectedPreviousId,
-            comment: input.comment ?? null,
-          },
-        );
+        const attempt: CaptureAttempt = {
+          role: input.role,
+          value: input.value,
+          readAt,
+          disputePrevious: input.disputePrevious,
+          expectedPreviousId: input.expectedPreviousId,
+          comment: input.comment ?? null,
+        };
+        const judged = judgeCapture(world, attempt);
+        // Only a value refusal proposes a Read At, so only one reads the Telematics Readings bracketing the value.
+        const judgement =
+          !judged.ok && proposesReadAt(judged.rule)
+            ? judgeCapture({ ...world, valueBracket: await valueBracketFor(tx, input.machineId, input.value) }, attempt)
+            : judged;
         if (!judgement.ok)
           throw new ReadingError(
             judgement.reason,
@@ -325,6 +303,40 @@ export async function captureReading({
     }
     throw error;
   }
+}
+
+/**
+ * The Telematics Readings `value` falls between. Every report after the floor reads above the value, so the ceiling is
+ * the next one, at the time its value was first reported: its Read At moves on while the value stands, and the row was
+ * inserted by the poll that first saw it.
+ */
+async function valueBracketFor(tx: DatabaseTransaction, machineId: string, value: number): Promise<ValueBracket> {
+  const onMachine = and(eq(contractingHourReadings.machineId, machineId), isTelematics);
+  const [floor] = await tx
+    .select()
+    .from(contractingHourReadings)
+    .where(and(onMachine, lte(contractingHourReadings.value, value)))
+    .orderBy(...newestFirst)
+    .limit(1);
+  if (!floor) return NO_VALUE_BRACKET;
+  const [ceiling] =
+    floor.value === value
+      ? []
+      : await tx
+          .select()
+          .from(contractingHourReadings)
+          .where(and(onMachine, gt(contractingHourReadings.capturedAt, floor.capturedAt)))
+          .orderBy(...oldestFirst)
+          .limit(1);
+  return {
+    floor: toNeighbour(floor),
+    ceiling: ceiling
+      ? {
+          ...toNeighbour(ceiling),
+          capturedAt: new Date(Math.min(ceiling.createdAt.getTime(), ceiling.capturedAt.getTime())),
+        }
+      : null,
+  };
 }
 
 const toNeighbour = ({ id, role, value, capturedAt, telematicsProvider }: Row): CaptureNeighbour => ({

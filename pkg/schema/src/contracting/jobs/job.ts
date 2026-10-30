@@ -75,7 +75,7 @@ export const JobListInput = createSearchedSortedCursorQueryInput({
     invoicedFrom: DateOnlyIso.optional(),
     /** Keep only Jobs invoiced on or before this South African calendar day; a Job not yet invoiced drops out. */
     invoicedTo: DateOnlyIso.optional(),
-    /** Keep only Jobs whose Machine Assignment attention needs a look: an open Gap Flag, or a warning or critical reading. */
+    /** Keep only Jobs whose Machine Assignment attention needs a look: an open Gap Flag, or a Disputed reading. */
     needsALook: z.boolean().optional(),
     /** Keep only Jobs this Machine has an Assignment on, in any state: planned, on site, or left. */
     machineId: UUID.optional(),
@@ -158,15 +158,8 @@ export const ChargeLine = z.object({
 });
 export type ChargeLine = z.infer<typeof ChargeLine>;
 
-export const jobReadingAttentionKinds = [
-  'disputed',
-  'ai-pending',
-  'ai-disagrees',
-  'ai-low-confidence',
-  'missing-photo',
-] as const;
+export const jobReadingAttentionKinds = ['disputed'] as const;
 export type JobReadingAttentionKind = (typeof jobReadingAttentionKinds)[number];
-/** The sign-off projection carries evidence without exposing photo storage metadata. */
 export const JobReading = HourReading.pick({
   id: true,
   role: true,
@@ -176,20 +169,15 @@ export const JobReading = HourReading.pick({
   capturedByUserId: true,
   method: true,
   comment: true,
-  aiValue: true,
-  aiConfidence: true,
-  aiVerification: true,
-  aiHint: true,
+  telematicsProvider: true,
   disputed: true,
   disputeReason: true,
-  evidenceReviewedAt: true,
   amendedAt: true,
   amendmentReason: true,
 }).extend({
-  photoBacked: z.boolean(),
   capturedByName: z.string().nullable(),
   amendedByName: z.string().nullable(),
-  /** Every attention kind on the reading, notices included; the domain assigns each its level. */
+  /** Every attention kind on the reading; the domain assigns each its level. */
   attention: z.array(z.enum(jobReadingAttentionKinds)),
 });
 export type JobReading = z.infer<typeof JobReading>;
@@ -276,8 +264,8 @@ const jobSummaryShape = {
   leftStints: z.number().int().nonnegative(),
   looksFinished: z.boolean(),
   openGapFlags: z.number().int().nonnegative(),
-  /** The Job's Machine Assignment attention that needs a look, counted at each level: notices never count. */
-  assignmentAttention: z.object({ critical: z.number().int().nonnegative(), warning: z.number().int().nonnegative() }),
+  /** The Job's Machine Assignment attention that needs a look: each open Gap Flag and Disputed reading. */
+  assignmentAttention: z.object({ critical: z.number().int().nonnegative() }),
   startDate: DateOnlyIso.nullable(),
   endDate: DateOnlyIso.nullable(),
   pricedAt: DateIso.nullable(),

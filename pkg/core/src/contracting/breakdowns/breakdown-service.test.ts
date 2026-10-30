@@ -80,7 +80,6 @@ async function arrive(
       value: 100,
       capturedAt: '2026-09-01T08:00:00+02:00',
       disputePrevious: false,
-      comment: 'Photo unavailable',
     },
   });
 }

@@ -1,11 +1,11 @@
 /** @vitest-environment jsdom */
 
-import { createUserAccessSummary, formatHours } from '@pkg/domain';
+import { formatHours } from '@pkg/domain';
 import { captureRefusals } from '@pkg/domain/contracting';
 import type { Machine } from '@pkg/schema/contracting';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, expect, it, vi } from 'vitest';
 import { SpotCaptureDialog } from './SpotCaptureDialog.js';
 
 const capture = vi.hoisted(() => vi.fn(async (..._args: unknown[]) => undefined));
@@ -23,15 +23,6 @@ vi.mock('@/contracting/components/readings/use-latest-reading.js', () => ({
 vi.mock('@/contracting/hooks/use-query-invalidation.js', () => ({
   useQueryInvalidation: () => ({ invalidateJobs: async () => undefined, invalidateReadings: async () => undefined }),
 }));
-const access = vi.hoisted(() => ({ current: null as unknown }));
-vi.mock('@/hooks/use-access.js', async () => {
-  const { hasPermission } = await import('@pkg/domain');
-  return {
-    useCan: (permission: Parameters<typeof hasPermission>[1]) => ({
-      can: hasPermission(access.current as Parameters<typeof hasPermission>[0], permission),
-    }),
-  };
-});
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 const roots: Root[] = [];
@@ -41,14 +32,6 @@ const machine: Pick<Machine, 'id' | 'code' | 'categoryIcon' | 'categoryColour'> 
   categoryIcon: 'tractor',
   categoryColour: 'lime',
 };
-
-beforeEach(() => {
-  access.current = createUserAccessSummary({
-    userId: 'manager',
-    equipmentRole: null,
-    contractingRole: 'contracting-manager',
-  });
-});
 
 afterEach(async () => {
   await act(async () => {
@@ -101,7 +84,7 @@ it('posts a spot reading for the Machine, on no Assignment, read when the meter 
   await act(async () => save.click());
 
   expect(capture).toHaveBeenCalledOnce();
-  const [fields, photo] = capture.mock.calls[0] ?? [];
+  const [fields] = capture.mock.calls[0] ?? [];
   expect(fields).toEqual({
     role: 'spot',
     machineId: machine.id,
@@ -111,7 +94,6 @@ it('posts a spot reading for the Machine, on no Assignment, read when the meter 
     expectedPreviousId: latestId,
     capturedAt: new Date(2026, 9, 20, 9, 30).toISOString(),
   });
-  expect(photo).toBeNull();
   expect(onClose).toHaveBeenCalled();
 });
 
@@ -160,7 +142,6 @@ it('offers the dispute for a reading below the latest one', async () => {
   await act(async () => save.click());
   expect(capture).toHaveBeenCalledWith(
     expect.objectContaining({ role: 'spot', value: 126, disputePrevious: true, expectedPreviousId: latestId }),
-    null,
     'Unable to capture the reading.',
   );
 });

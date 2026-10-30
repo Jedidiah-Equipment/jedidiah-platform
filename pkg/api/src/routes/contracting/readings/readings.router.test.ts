@@ -18,16 +18,16 @@ const test = createTester(async ({ db }) => {
   });
   return { db };
 });
-test('reserves the exceptions list for managers, behind the business wall', async ({ context }) => {
+test('reserves Disputes for managers, behind the business wall', async ({ context }) => {
   const managerSession = mockSession(null);
   managerSession.user.contractingRole = 'contracting-manager';
   const manager = context.createCaller(managerSession);
-  expect(await manager.contractingReadings.listExceptions()).toEqual([]);
+  expect(await manager.contractingReadings.listDisputes()).toEqual([]);
   for (const session of [
     mockSession('admin'),
     Object.assign(mockSession(null), { user: { ...mockSession(null).user, contractingRole: 'foreman' as const } }),
   ]) {
-    await expect(context.createCaller(session).contractingReadings.listExceptions()).rejects.toMatchObject({
+    await expect(context.createCaller(session).contractingReadings.listDisputes()).rejects.toMatchObject({
       code: 'FORBIDDEN',
     });
   }
@@ -53,22 +53,16 @@ test('lists a Dispute as one row and names the reading an amendment was refused 
     });
   const { reading: previous } = await spot(1200, '2026-09-07T08:00:00Z', false);
   const { reading: disputing } = await spot(121, '2026-09-07T09:00:00Z', true);
-  const [row] = await manager.contractingReadings.listExceptions();
+  const [row] = await manager.contractingReadings.listDisputes();
   expect(row).toMatchObject({
-    kind: 'dispute',
-    dispute: {
-      id: previous.id,
-      readings: [{ id: previous.id, stint: null }, { id: disputing.id }],
-      reported: null,
-      reason: 'The previous reading is wrong.',
-    },
+    id: previous.id,
+    readings: [{ id: previous.id, stint: null }, { id: disputing.id }],
+    reported: null,
+    reason: 'The previous reading is wrong.',
   });
   const refusal = await manager.contractingReadings
     .amend({
-      amendments: [
-        { id: previous.id, value: 1200, capturedAt: '2026-09-07T08:00:00Z' },
-        { id: disputing.id, value: 119, capturedAt: '2026-09-07T09:00:00Z' },
-      ],
+      amendments: [{ id: disputing.id, value: 119, capturedAt: '2026-09-07T09:00:00Z' }],
       reason: 'Tenths drum misread',
     })
     .catch((error: unknown) => error);
@@ -76,9 +70,7 @@ test('lists a Dispute as one row and names the reading an amendment was refused 
   expect(getTRPCPublicMetadata(refusal as TRPCError)).toMatchObject({ readingId: disputing.id });
 });
 
-test('foremen can find active Machines and read field history without fleet management or AI results', async ({
-  context,
-}) => {
+test('foremen can find active Machines and read field history without fleet management', async ({ context }) => {
   const adminSession = mockSession(null);
   adminSession.user.contractingRole = 'contracting-admin';
   const admin = context.createCaller(adminSession);

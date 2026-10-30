@@ -436,7 +436,6 @@ async function hydrateActivityKeys(db: Db, keys: ActivityKey[]): Promise<Activit
       machine: machine(key),
       hours: row.value,
       readAt: row.capturedAt.toISOString(),
-      photoBacked: row.method === 'photo',
     };
   };
 

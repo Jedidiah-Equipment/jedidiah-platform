@@ -356,7 +356,7 @@ test('provides Measure Type choices to managers without granting Rate Card acces
   ).rejects.toMatchObject({ code: 'FORBIDDEN' });
 });
 
-test('counts queue tabs by read mode and exposes capture evidence on Job details', async ({ context }) => {
+test('counts queue tabs by read mode and exposes each reading’s attention on Job details', async ({ context }) => {
   const manager = context.createCaller(contractingSession('contracting-manager')).contractingJobs.jobs;
   const foreman = context.createCaller(contractingSession('foreman')).contractingJobs.jobs;
   const invoicing = context.createCaller(contractingSession('contracting-invoicing')).contractingJobs.jobs;
@@ -375,24 +375,21 @@ test('counts queue tabs by read mode and exposes capture evidence on Job details
     invoiced: 0,
   });
   expect((await invoicing.queues()).counts).toMatchObject({ upcoming: 0, active: 0, 'awaiting-pricing': 1 });
-  // A missing photo is a notice, so it never needs a look.
   expect((await manager.queues()).attention).toMatchObject({ active: null, 'awaiting-pricing': null });
   expect((await foreman.queues()).attention.active).toBeNull();
   expect(await manager.get({ id: context.otherJob.id })).toMatchObject({
-    assignments: [
-      { arrival: { comment: null, aiConfidence: null, capturedByName: 'Other', attention: ['missing-photo'] } },
-    ],
+    assignments: [{ arrival: { comment: null, capturedByName: 'Other', attention: [] } }],
   });
   const arrivalId = (await manager.get({ id: context.otherJob.id })).assignments[0]?.arrival?.id;
   if (!arrivalId) throw new Error('Expected arrival reading');
   await context.db
     .update(contractingHourReadings)
-    .set({ aiValue: 101, aiConfidence: 0.87, aiVerification: 'disagrees' })
+    .set({ disputed: true, disputeReason: 'The next capture disputes this reading.' })
     .where(eq(contractingHourReadings.id, arrivalId));
-  expect((await manager.queues()).attention).toMatchObject({ active: 'warning', 'awaiting-pricing': null });
+  expect((await manager.queues()).attention).toMatchObject({ active: 'critical', 'awaiting-pricing': null });
   expect((await foreman.queues()).attention.active).toBeNull();
   expect(await manager.get({ id: context.otherJob.id })).toMatchObject({
-    assignments: [{ arrival: { aiConfidence: 0.87, attention: ['ai-disagrees', 'missing-photo'] } }],
+    assignments: [{ arrival: { attention: ['disputed'] } }],
   });
   const departure = {
     machineId: context.otherMachine.id,
@@ -405,12 +402,9 @@ test('counts queue tabs by read mode and exposes capture evidence on Job details
   await expect(
     captureReading({ db: context.db, actor: foremanActor, input: { ...departure, comment: 'Shift ended' } }),
   ).rejects.toMatchObject({ code: 'reading.forbidden' });
-  await expect(captureReading({ db: context.db, actor: managerActor, input: departure })).rejects.toMatchObject({
-    code: 'reading.invalid_role',
-  });
-  await captureReading({ db: context.db, actor: managerActor, input: { ...departure, comment: 'Shift ended' } });
+  await captureReading({ db: context.db, actor: managerActor, input: departure });
   expect(await manager.get({ id: context.otherJob.id })).toMatchObject({
-    assignments: [{ departure: { capturedByName: 'Henk', comment: 'Shift ended', photoBacked: false } }],
+    assignments: [{ departure: { capturedByName: 'Henk', comment: null } }],
   });
 });
 

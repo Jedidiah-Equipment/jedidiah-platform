@@ -149,7 +149,6 @@ test.for(['invoiced', 'cancelled'] as const)(
           value: 150,
           capturedAt: '2026-09-20T08:00:00+02:00',
           disputePrevious: false,
-          comment: 'Photo unavailable',
         },
       }),
       'a capture on its stint',

@@ -11,7 +11,6 @@ export function captureAttemptPayload(form: {
   role: string;
   assignmentId: string | null;
   value: number;
-  photo: string | null;
   comment: string;
   disputedReadingId: string | null;
   stintOverrides: unknown;
@@ -21,7 +20,6 @@ export function captureAttemptPayload(form: {
     form.role,
     form.assignmentId,
     form.value,
-    form.photo,
     form.comment.trim(),
     form.disputedReadingId,
     form.stintOverrides,

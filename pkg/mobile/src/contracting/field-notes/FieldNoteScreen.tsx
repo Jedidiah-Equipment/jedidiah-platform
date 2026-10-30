@@ -35,7 +35,6 @@ export default function FieldNoteScreen() {
 function FieldNoteDetail({ note, onLeave }: { note: FieldNote; onLeave: () => void }) {
   const { store } = useFieldNotes();
   const [description, setDescription] = useState(note.description);
-  const [galleryHint, setGalleryHint] = useState(false);
   const { busy, error, act, report } = useFieldNoteAction();
   const voice = useVoiceSession({ business: 'contracting', purpose: 'field note' });
   const { snapshotSaved } = voice;
@@ -64,9 +63,7 @@ function FieldNoteDetail({ note, onLeave }: { note: FieldNote; onLeave: () => vo
   const add = (source: () => Promise<PickedPhoto[]>) =>
     act(async () => {
       const picked = await source();
-      if (!picked.length) return;
-      const { galleryFailed } = await store.addPhotos(note.id, picked);
-      if (galleryFailed) setGalleryHint(true);
+      if (picked.length) await store.addPhotos(note.id, picked);
     }, 'The photo could not be added. Try again.');
   const removePhoto = async (photoId: string) => {
     const remove = await confirm({ title: 'Remove this photo?', confirmLabel: 'Remove', destructive: true });
@@ -75,7 +72,7 @@ function FieldNoteDetail({ note, onLeave }: { note: FieldNote; onLeave: () => vo
   const deleteNote = async () => {
     const remove = await confirm({
       title: 'Delete this Field Note?',
-      message: 'Its photos stay in your gallery.',
+      message: 'Its photos are deleted with it.',
       confirmLabel: 'Delete',
       destructive: true,
     });
@@ -132,7 +129,6 @@ function FieldNoteDetail({ note, onLeave }: { note: FieldNote; onLeave: () => vo
       <FieldNoteFields
         photos={note.photos.map((photo) => ({ id: photo.id, uri: resolveFieldNotePhotoUri(photo.uri) }))}
         busy={busy}
-        galleryHint={galleryHint}
         onTake={() => void add(takePhoto)}
         onChoose={() => void add(() => choosePhotos(fieldNoteFiles.photoLimit - note.photos.length))}
         onRemovePhoto={(photoId) => void removePhoto(photoId)}

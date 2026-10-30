@@ -67,12 +67,11 @@ describe('presentActivityEvent', () => {
   });
 
   test('shows the hours, and the Read At only when it was backdated', () => {
-    const hours = { ...base, job, machine, hours: 1234.5, photoBacked: false };
+    const hours = { ...base, job, machine, hours: 1234.5 };
     expect(present({ ...hours, type: 'machine-arrived', readAt: base.occurredAt } as never)?.detail).toBe('1 234.5 h');
-    expect(
-      present({ ...hours, type: 'machine-left', readAt: '2026-10-12T15:00:00.000Z', photoBacked: true } as never)
-        ?.detail,
-    ).toMatch(/^1 234\.5 h · read .+ · photo$/);
+    expect(present({ ...hours, type: 'machine-left', readAt: '2026-10-12T15:00:00.000Z' } as never)?.detail).toMatch(
+      /^1 234\.5 h · read .+$/,
+    );
   });
 });
 

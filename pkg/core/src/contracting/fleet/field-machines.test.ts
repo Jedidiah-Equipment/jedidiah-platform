@@ -66,7 +66,7 @@ test('pages a Machine’s readings newest first, and limit 0 reads them all', as
     },
   });
   const first = await listFieldReadingsPage({ db, input: { machineId: excavator.id, cursor: 0, limit: 1 } });
-  expect(first).toMatchObject({ total: 2, nextCursor: 1, items: [{ value: 120 }] });
+  expect(first).toMatchObject({ total: 2, nextCursor: 1, items: [{ value: 120, capturedByName: expect.any(String) }] });
   const second = await listFieldReadingsPage({ db, input: { machineId: excavator.id, cursor: 1, limit: 1 } });
   expect(second).toMatchObject({ nextCursor: null, items: [{ value: 100 }] });
   const all = await listFieldReadingsPage({ db, input: { machineId: excavator.id, cursor: 0, limit: 0 } });

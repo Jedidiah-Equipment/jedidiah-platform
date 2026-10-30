@@ -14,7 +14,7 @@ import {
   isOverGapWindow,
   type JobSheet,
   type JobSheetStint,
-  shownReadingAttention,
+  readingSourceLabel,
 } from '@pkg/domain/contracting';
 import type {
   Assignment,
@@ -29,10 +29,8 @@ import {
   IconChevronDown,
   IconEye,
   IconFlagFilled,
-  IconHourglass,
   IconPencil,
   IconPencilCheck,
-  IconPhotoOff,
   IconPlayerPlay,
   IconPlayerStop,
   IconPlus,
@@ -57,7 +55,6 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
 import { CategoryIcon } from '@/contracting/components/CategoryIcon.js';
 import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
-import { readingEvidence } from '@/contracting/components/ReadingEvidence.js';
 import { IconAction, Timeline, TimelineRow } from '@/contracting/components/Timeline.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -69,18 +66,11 @@ import { useJobWrite } from './use-job-write.js';
 
 type Opens = { onOpen: (dialog: MachineDialog) => void };
 
-const readingAttentionIcons: Record<JobReadingAttentionKind, TablerIcon> = {
-  disputed: IconAlertTriangle,
-  'ai-disagrees': IconAlertTriangle,
-  'ai-low-confidence': IconAlertTriangle,
-  'ai-pending': IconHourglass,
-  'missing-photo': IconPhotoOff,
-};
+const readingAttentionIcons: Record<JobReadingAttentionKind, TablerIcon> = { disputed: IconAlertTriangle };
 
 function ReadingActions({ reading, stint, onOpen }: { reading: JobReading; stint: Assignment } & Opens) {
   const role = reading.role === 'arrival' ? 'arrival' : 'departure';
-  const shown = shownReadingAttention(reading);
-  if (!shown.length)
+  if (!reading.attention.length)
     return (
       <IconAction
         icon={reading.amendedAt ? IconPencilCheck : IconEye}
@@ -88,7 +78,7 @@ function ReadingActions({ reading, stint, onOpen }: { reading: JobReading; stint
         onClick={() => onOpen({ kind: 'reading', stintId: stint.id, role })}
       />
     );
-  return shown.map((kind) => (
+  return reading.attention.map((kind) => (
     <IconAction
       icon={readingAttentionIcons[kind]}
       key={kind}
@@ -108,12 +98,12 @@ function amendmentSummary(reading: JobReading) {
 }
 
 function ReadingDetail({ reading }: { reading: JobReading }) {
-  const evidence = readingEvidence(reading);
   const amendment = amendmentSummary(reading);
+  const source = readingSourceLabel(reading);
   return (
     <span
       className="block truncate"
-      title={`${formatHours(reading.value)} · ${formatDate(reading.capturedAt, 'medium')} · ${evidence.evidenceLabel}`}
+      title={[formatHours(reading.value), formatDate(reading.capturedAt, 'medium'), source].filter(Boolean).join(' · ')}
     >
       <span className="font-medium text-primary">{formatHours(reading.value)}</span>
       {' · '}
@@ -127,8 +117,7 @@ function ReadingDetail({ reading }: { reading: JobReading }) {
           </Tooltip>
         </>
       ) : null}
-      {' · '}
-      {evidence.evidenceLabel}
+      {source ? ` · ${source}` : null}
     </span>
   );
 }

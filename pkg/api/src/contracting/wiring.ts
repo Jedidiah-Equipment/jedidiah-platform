@@ -1,11 +1,4 @@
-import { createOpenAiChatModel } from '@pkg/ai';
-import { readMeterPhoto as readMeterPhotoWithModel } from '@pkg/ai/contracting';
-import {
-  dispatchContractingPush,
-  listReadingsAwaitingVerification,
-  type ReadMeterPhoto,
-  verifyCapturedReading,
-} from '@pkg/core/contracting';
+import { dispatchContractingPush } from '@pkg/core/contracting';
 import type { ContractingPushEvent } from '@pkg/domain/contracting';
 import {
   JohnDeereClient,
@@ -33,7 +26,6 @@ import { serializeError } from '../trpc/errors.js';
 export type ContractingRouterDependencies = {
   johnDeere: JohnDeereDependencies | null;
   push: ContractingPushScheduler;
-  readMeterPhoto: ReadMeterPhoto;
 };
 
 /** The John Deere Connection, Links and hourly poller, or null when this environment holds no John Deere keys. */
@@ -79,18 +71,6 @@ export async function registerContracting(
   app: FastifyInstance,
   { config, db, storage, push }: BusinessWiringInput,
 ): Promise<BusinessWiring<ContractingRouterDependencies>> {
-  const chatModel = createOpenAiChatModel({ apiKey: config.OPENAI_API_KEY, model: config.OPENAI_MODEL });
-  const readMeterPhoto: ReadMeterPhoto = (input) => readMeterPhotoWithModel({ ...input, model: chatModel });
-
-  const readingVerifications = new BackgroundQueue<string>({
-    run: (id) => verifyCapturedReading({ db, id, storage, readPhoto: readMeterPhoto }),
-    onError: (error, readingId) => log.ai.error({ error, readingId }, 'Reading verification failed'),
-    resume: {
-      awaiting: () => listReadingsAwaitingVerification({ db }),
-      onError: (error) => log.ai.error({ error }, 'Resuming reading verifications failed'),
-    },
-  });
-
   // Fire-and-forget after commit by decision: no `resume`, so a restart drops what was still queued.
   const contractingPush = new BackgroundQueue<ContractingPushEvent>({
     run: async (event) => {
@@ -102,7 +82,7 @@ export async function registerContracting(
     concurrency: 1,
   });
 
-  await registerReadingHttpRoutes(app, { db, storage, verifications: readingVerifications, push: contractingPush });
+  await registerReadingHttpRoutes(app, { db, push: contractingPush });
   await registerBreakdownHttpRoutes(app, { db, storage, push: contractingPush });
   await registerJobCardHttpRoutes(app, { db, pdfRenderer: renderJobCardPdf });
   const johnDeere = createJohnDeere(config, db, contractingPush);
@@ -114,8 +94,8 @@ export async function registerContracting(
     });
 
   return {
-    routerDependencies: { johnDeere, push: contractingPush, readMeterPhoto },
+    routerDependencies: { johnDeere, push: contractingPush },
     // The poller goes before the push queue it schedules into, so a run finishing at shutdown still delivers.
-    services: [readingVerifications, ...(johnDeere ? [johnDeere.poller] : []), contractingPush],
+    services: [...(johnDeere ? [johnDeere.poller] : []), contractingPush],
   };
 }

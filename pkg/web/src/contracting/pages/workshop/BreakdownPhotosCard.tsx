@@ -10,7 +10,7 @@ import { PhotoPicker } from '@/contracting/components/PhotoPicker.js';
 import { useContractingWrite } from '@/contracting/hooks/use-contracting-write.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { breakdownPhotosUrl } from '@/contracting/lib/contracting-http-paths.js';
-import { postMultipart } from '@/contracting/lib/post-multipart.js';
+import { postMultipart } from '@/contracting/lib/post-route.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { BreakdownPhotoPreview, BreakdownPhotoThumbnail } from './BreakdownPhotoPreview.js';
 import type { BreakdownSheet } from './types.js';

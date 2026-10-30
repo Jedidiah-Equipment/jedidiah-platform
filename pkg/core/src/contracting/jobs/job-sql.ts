@@ -1,13 +1,12 @@
 import { contractingHourReadings, contractingJobs, contractingMachineAssignments } from '@pkg/db/contracting';
 import { JOB_NUMBER_DIGITS, JOB_NUMBER_PREFIX } from '@pkg/domain/contracting';
-import type { AssignmentState, NeedsALookLevel } from '@pkg/schema/contracting';
+import type { AssignmentState } from '@pkg/schema/contracting';
 import { type SQL, type SQLWrapper, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
-import { readingNeedsALookLevelSql } from '../readings/reading-sql.js';
 
 /**
  * The Job read model's derived facts, in SQL for the queues. Each mirrors a domain rule the detail read
- * computes in TypeScript (`assignmentState`, `deriveStintHours`, `looksFinished`, `readingNeedsALook`), so a
+ * computes in TypeScript (`assignmentState`, `deriveStintHours`, `looksFinished`, `readingNeedsALookLevel`), so a
  * rule changes here and there together.
  */
 
@@ -67,22 +66,21 @@ export const openGapFlags = sql<number>`(
 
 const summaryReading = alias(contractingHourReadings, 'summary_reading');
 
-/** The Job's arrival and departure readings whose loudest level needing a look is `level`. */
-export const readingsNeedingALookAt = (level: NeedsALookLevel) => sql<number>`(
+/** The Job's Disputed arrival and departure readings. */
+export const disputedReadings = sql<number>`(
   select count(*)::integer
   from contracting.machine_assignment summary_assignment
   join contracting.hour_reading summary_reading
     on summary_reading.id = summary_assignment.arrival_reading_id
     or summary_reading.id = summary_assignment.departure_reading_id
   where summary_assignment.job_id = ${contractingJobs.id}
-    and ${readingNeedsALookLevelSql(summaryReading)} = ${level}
+    and ${summaryReading.disputed}
 )`;
 
-/** The Job has Machine Assignment attention that needs a look: an open Gap Flag, or a warning or critical reading. */
+/** The Job has Machine Assignment attention that needs a look: an open Gap Flag, or a Disputed reading. */
 export const needsALook = sql<boolean>`(
   ${openGapFlags} > 0
-  or ${readingsNeedingALookAt('critical')} > 0
-  or ${readingsNeedingALookAt('warning')} > 0
+  or ${disputedReadings} > 0
 )`;
 
 /** The Machine has an Assignment on the Job, in any state. */

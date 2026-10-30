@@ -6,7 +6,7 @@ import { IconAlertTriangle } from '@tabler/icons-react';
 import { Badge } from '@/components/ui/badge.js';
 import { cn } from '@/lib/utils.js';
 
-/** A Job's Machine Assignment attention that needs a look, at its loudest level; "No issues" when none. */
+/** A Job's Machine Assignment attention that needs a look; "No issues" when none. */
 export function JobAttentionBadge({ attention }: { attention: JobSummary['assignmentAttention'] }) {
   const level = countedAssignmentAttentionLevel(attention);
   if (!level) return <span className="text-muted-foreground">No issues</span>;
@@ -19,7 +19,7 @@ export function JobAttentionBadge({ attention }: { attention: JobSummary['assign
       variant="outline"
     >
       <IconAlertTriangle aria-hidden="true" />
-      {countPhrase(attention.critical + attention.warning, 'item', 'items')} to review
+      {countPhrase(attention.critical, 'item', 'items')} to review
     </Badge>
   );
 }

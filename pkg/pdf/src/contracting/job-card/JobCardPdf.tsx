@@ -65,9 +65,6 @@ const styles = StyleSheet.create({
 const rowStyle = [documentFrameStyles.tableRow, styles.row];
 
 const markers: Record<JobCardReadingMarker, { glyph: string; meaning: string }> = {
-  verified: { glyph: '●', meaning: 'photo, AI-verified' },
-  photo: { glyph: '○', meaning: 'photo' },
-  'no-photo': { glyph: '▲', meaning: 'no photo' },
   disputed: { glyph: '!', meaning: 'disputed' },
   amended: { glyph: '~', meaning: 'amended' },
 };
@@ -173,9 +170,7 @@ export function JobCardPdf({ document }: { document: JobCardModel }) {
         ) : null}
 
         <DocumentFooter bottom={20}>
-          <Text>
-            {`Generated ${formatDate(document.generatedAt, 'medium')} · Readings are hour-meter values; meter photos are kept in the app.`}
-          </Text>
+          <Text>{`Generated ${formatDate(document.generatedAt, 'medium')} · Readings are hour-meter values.`}</Text>
           <Text>This is a works summary, not an invoice. Amounts exclude VAT; diesel is VAT-exempt.</Text>
         </DocumentFooter>
       </Page>

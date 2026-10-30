@@ -63,8 +63,6 @@ export type CaptureWorld = Placement & {
   lastDepartedAt: Date | null;
   /** The Job's own verdict on `capture`; null when there is no stint. */
   jobVerdict: JobActionVerdict | null;
-  /** Contracting management, whose photo-less departures must say why. */
-  management: boolean;
   /** May capture a Baseline Reading. */
   mayBaseline: boolean;
   machineRetired: boolean;
@@ -72,7 +70,6 @@ export type CaptureWorld = Placement & {
   implementValid: boolean;
   /** An arrival's Driver as the stint plus overrides resolve them; true when none is named. */
   driverValid: boolean;
-  hasPhoto: boolean;
   now: Date;
   /** Phone clocks drift; the server passes FUTURE_READ_AT_TOLERANCE_MS. */
   futureToleranceMs: number;
@@ -85,7 +82,6 @@ export type CaptureAttempt = {
   disputePrevious: boolean;
   /** The reading the capturer believes is latest; a dispute must name the one that actually is. */
   expectedPreviousId: string | null | undefined;
-  comment: string | null;
 };
 
 /** Every way `judgeCapture` refuses a capture, in the order it judges them. */
@@ -96,7 +92,6 @@ export type CaptureRule =
   | 'job-refused'
   | 'implement-invalid'
   | 'driver-invalid'
-  | 'comment-required'
   | 'already-arrived'
   | 'not-on-site'
   | 'departs-before-arrival'
@@ -131,10 +126,6 @@ export const captureRefusals: Record<
   'retired-machine': { code: 'reading.retired_machine', message: 'Cannot capture readings for a retired Machine.' },
   'implement-invalid': { code: 'reading.invalid_role', message: 'The selected Implement is no longer available.' },
   'driver-invalid': { code: 'reading.invalid_role', message: 'Select a person with the Contracting driver role.' },
-  'comment-required': {
-    code: 'reading.invalid_role',
-    message: 'A reason is required for a photo-less departure reading.',
-  },
   'already-arrived': { code: 'reading.invalid_role', message: assignmentActionRefusal('captureArrival') },
   'not-on-site': { code: 'reading.invalid_role', message: assignmentActionRefusal('captureDeparture') },
   'departs-before-arrival': {
@@ -351,10 +342,6 @@ const refuseJob = (verdict: Extract<JobActionVerdict, { allowed: false }>): Capt
 export const captureIsBelowLatest = (value: number, latest: { value: number } | null | undefined): boolean =>
   !!latest && value < latest.value;
 
-/** Whoever works every Job must say why a departure has no photo. */
-export const captureNeedsComment = (role: ReadingRole, world: Pick<CaptureWorld, 'management' | 'hasPhoto'>): boolean =>
-  role === 'departure' && world.management && !world.hasPhoto;
-
 /** The value refusals a proposed Read At can fix: the value was most likely read earlier. */
 export const proposesReadAt = (rule: CaptureRule) =>
   rule === 'contradicts-telematics' || rule === 'below-previous' || rule === 'below-latest';
@@ -370,7 +357,6 @@ export function judgeCapture(world: CaptureWorld, capture: CaptureAttempt): Capt
   if (world.jobVerdict && !world.jobVerdict.allowed) return refuseJob(world.jobVerdict);
   if (!world.implementValid) return refuse('implement-invalid');
   if (!world.driverValid) return refuse('driver-invalid');
-  if (captureNeedsComment(capture.role, world) && !capture.comment?.trim()) return refuse('comment-required');
   // A null stint is a Machine arriving on a Job it was never planned on, which is still an arrival.
   if (capture.role === 'arrival' && world.stint !== null && !assignmentStateAllows('captureArrival', world.stint))
     return refuse('already-arrived');
@@ -410,14 +396,12 @@ export const captureCrossesServiceDueSoon = (
   service: { newHours: number; nextServiceDueHours: number | null; threshold: number },
 ) => world.next === null && serviceDueSoonCrossed({ previousHours: world.latest?.value ?? null, ...service });
 
-/** What a capture form knows: the served latest (undefined while it loads), who is capturing, and the photo. */
+/** What a capture form knows: the served latest, undefined while it loads. */
 export type CaptureFormWorld = {
   latest:
     | { id: string; value: number; capturedAt: string; telematicsProvider: TelematicsProvider | null }
     | null
     | undefined;
-  management: boolean;
-  hasPhoto: boolean;
   now: Date;
 };
 
@@ -444,7 +428,6 @@ export type CaptureFormVerdict = {
   /** Below a human latest, which the person may dispute; below a Telematics Reading only Read At can fix it. */
   disputable: boolean;
   disputeConfirmed: boolean;
-  commentRequired: boolean;
   futureReadAt: boolean;
   /**
    * Save waits on the person before it can post anything: a dispute below a human latest, or a time under Earlier….
@@ -488,17 +471,15 @@ export function deriveCaptureForm(world: CaptureFormWorld, draft: CaptureDraft):
   const latest = world.latest ?? null;
   const readAt = readAtOf(draft.readAt);
   const { below, disputable, disputeConfirmed } = captureValueVerdict(latest, parsed, draft.disputedReadingId, readAt);
-  const commentRequired = captureNeedsComment(draft.role, world);
   const futureReadAt = readAt !== null && isFutureReadAt(readAt, world.now);
   // Below a Telematics Reading the draft posts, so the server answers with the Read At John Deere puts it at.
   const awaitingPerson = (disputable && !disputeConfirmed) || readAtPending(draft.readAt);
-  const passes = parsed !== null && !awaitingPerson && !(commentRequired && !draft.comment.trim()) && !futureReadAt;
+  const passes = parsed !== null && !awaitingPerson && !futureReadAt;
   return {
     parsed,
     below,
     disputable,
     disputeConfirmed,
-    commentRequired,
     futureReadAt,
     awaitingPerson,
     request:

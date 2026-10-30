@@ -43,7 +43,6 @@ const test = createTester(async ({ db }) => {
         value,
         capturedAt,
         disputePrevious: false,
-        ...(role === 'departure' ? { comment: 'Photo unavailable' } : {}),
       },
     });
   // The tipper: two spot readings six days apart, 12.5 h between them, then retired.
@@ -70,7 +69,7 @@ const hoursOn = (heatMap: Awaited<ReturnType<typeof getHoursHeatMap>>, day: stri
 const total = (heatMap: Awaited<ReturnType<typeof getHoursHeatMap>>) =>
   heatMap.days.reduce((sum, day) => sum + day.hours, 0);
 
-test('spreads a Machine’s photo-reading delta over the days between its readings and marks them estimated', async ({
+test('spreads a Machine’s reading delta over the days between its readings and marks them estimated', async ({
   context,
 }) => {
   const { db, tipper } = context;

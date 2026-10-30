@@ -1,5 +1,4 @@
 import { type HourReading, type ReadingAmendInput, ReadingReason } from '@pkg/schema/contracting';
-import type React from 'react';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { type MachineDialogSubject, MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
@@ -16,7 +15,6 @@ export function ReadingAmendDialog({
   onAmend,
   onAmended,
   error,
-  description = 'Hours and gaps recompute from the amended value and time.',
 }: {
   reading: Pick<HourReading, 'id' | 'value' | 'capturedAt'> | null;
   machine: MachineDialogSubject | null;
@@ -25,7 +23,6 @@ export function ReadingAmendDialog({
   onAmend: (input: ReadingAmendInput) => Promise<unknown>;
   onAmended: () => void;
   error: unknown;
-  description?: React.ReactNode;
 }) {
   return (
     <CreateEntityDialog
@@ -33,12 +30,12 @@ export function ReadingAmendDialog({
       open={open && !!reading}
       onOpenChange={onOpenChange}
       title={<MachineDialogTitle machine={machine}>Amend reading</MachineDialogTitle>}
-      description={description}
+      description="Hours and gaps recompute from the amended value and time."
       contentClassName="sm:max-w-lg"
       submitLabel="Amend reading"
       defaultValues={{ ...(reading ? recordedCorrection(reading) : { value: 0, readAt: '' }), reason: '' }}
       validator={AmendValues}
-      // An untouched correction still posts: on the Job page it acknowledges the reading's evidence.
+      // An untouched correction still posts: it settles a reading John Deere contradicted, else is refused.
       onCreate={({ value, readAt, reason }) =>
         reading
           ? onAmend({ amendments: [toAmendment({ id: reading.id, value, readAt }, reading)], reason })

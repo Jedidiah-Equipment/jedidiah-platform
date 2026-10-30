@@ -21,7 +21,8 @@ export type ReadingAmendmentRefusal =
   | 'contradicts_telematics'
   | 'out_of_order'
   | 'outruns_clock'
-  | 'future_read_at';
+  | 'future_read_at'
+  | 'nothing_to_amend';
 export type ReadingAmendmentResolution =
   | { ok: false; reason: ReadingAmendmentRefusal; id: string; message: string }
   | { ok: true; changes: ({ id: string } & ReadingDisputeState)[] };
@@ -68,11 +69,10 @@ function standaloneDisputes(
 
 /**
  * What an amendment does to its reading. It `moves` the hours or Read At. Unchanged, it `settles` a reading John Deere
- * contradicted on its own, which only an amendment naming it can clear, or else `acknowledges` the evidence warning.
- * Only what moves or settles is judged; only what moves changes a Job's hours. A Dispute's resolve leaves out what
- * would only acknowledge, so an untouched reading of a pair is not stamped as amended.
+ * contradicted on its own, which only an amendment naming it can clear, or else leaves it `unchanged`, which is
+ * refused. Only what moves changes a Job's hours. A Dispute's resolve leaves out its untouched readings.
  */
-export type AmendmentEffect = 'moves' | 'settles' | 'acknowledges';
+export type AmendmentEffect = 'moves' | 'settles' | 'unchanged';
 
 const instant = (at: Date | string) => new Date(at).getTime();
 
@@ -89,7 +89,7 @@ export function amendmentEffects(
     amendments.map(({ id, value, capturedAt }) => {
       const before = recorded.get(id);
       const moves = !before || before.value !== value || instant(before.capturedAt) !== instant(capturedAt);
-      return [id, moves ? 'moves' : standalone.has(id) ? 'settles' : 'acknowledges'];
+      return [id, moves ? 'moves' : standalone.has(id) ? 'settles' : 'unchanged'];
     }),
   );
 }
@@ -126,9 +126,9 @@ export function amendmentJobs(
 
 /**
  * Whether a set of amendments may land on a Machine's ledger (`readings`, any order), and the dispute state it leaves.
- * Each amended reading that moves or settles is judged again as a fresh capture at its new place in time, in the
- * capture rules' order: never in the future, then every stint it bounds still in time order, then the placement judge.
- * An amendment that only acknowledges the evidence warning is not judged again.
+ * An amendment that changes nothing is refused. Each amended reading is judged again as a fresh capture at its new
+ * place in time, in the capture rules' order: never in the future, then every stint it bounds still in time order,
+ * then the placement judge.
  */
 export function resolveReadingAmendments(
   readings: readonly AmendableReading[],
@@ -142,12 +142,11 @@ export function resolveReadingAmendments(
   const missing = amendments.find((amendment) => !known.has(amendment.id));
   if (missing) return refuse('not_found', missing.id, 'Hour Reading not found.');
   const effects = amendmentEffects(readings, amendments);
+  const unchanged = [...effects].find(([, effect]) => effect === 'unchanged');
+  if (unchanged) return refuse('nothing_to_amend', unchanged[0], 'Nothing to amend.');
   const amended = new Set(effects.keys());
   const ledger = amendedLedger(readings, amendments);
-  const judged = [...ledger.entries()].filter(([, reading]) => {
-    const effect = effects.get(reading.id);
-    return effect === 'moves' || effect === 'settles';
-  });
+  const judged = [...ledger.entries()].filter(([, reading]) => amended.has(reading.id));
   const future = judged.find(([, reading]) => isFutureReadAt(reading.capturedAt, now));
   if (future) return refuse('future_read_at', future[1].id, FUTURE_READ_AT_REFUSAL);
   const disorder = stintOutOfOrder(readings, ledger, stints, amended);

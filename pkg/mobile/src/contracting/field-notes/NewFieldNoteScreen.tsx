@@ -5,9 +5,7 @@ import { FormPage } from '@/components/FormPage';
 import { SecondaryToolbar } from '@/components/TopToolbar';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { useAppToast } from '@/components/ui/toast';
 import { useVoiceSession } from '@/components/voice/use-voice-session';
-import { GALLERY_HINT } from '@/contracting/components/PhotoStrip';
 import { CONTRACTING_TAB_HREF } from '@/contracting/lib/app-tabs';
 import { newLocalId } from '@/contracting/lib/local-id';
 import { recordFieldNoteCreated } from '@/contracting/observability';
@@ -21,11 +19,10 @@ import { useFieldNotes } from './use-field-notes';
 const PICK_FAILED = 'The photo could not be added. Try again.';
 const backToNotes = () => router.replace(CONTRACTING_TAB_HREF['field-notes']);
 
-/** A draft in component state: nothing reaches storage, the sandbox, or the gallery until Save note. */
+/** A draft in component state: nothing reaches storage or the sandbox until Save note. */
 export default function NewFieldNoteScreen() {
   const { store } = useFieldNotes();
   const navigation = useNavigation();
-  const showToast = useAppToast();
   const [description, setDescription] = useState('');
   const voice = useVoiceSession({ business: 'contracting', purpose: 'field note' });
   const [photos, setPhotos] = useState<(PickedPhoto & { id: string })[]>([]);
@@ -52,14 +49,13 @@ export default function NewFieldNoteScreen() {
   const save = () =>
     act(async () => {
       if (voice.busy) return;
-      const { note, galleryFailed } = await store.create({ description, photos });
+      const note = await store.create({ description, photos });
       recordFieldNoteCreated({
         hasPhoto: note.photos.length > 0,
         photoCount: note.photos.length,
         hasDescription: note.description.length > 0,
       });
       voice.reportSaved();
-      if (galleryFailed) showToast('success', `Field Note saved. ${GALLERY_HINT}`);
       setSaved(true);
     }, 'The Field Note could not be saved. Try again.');
 
@@ -89,13 +85,11 @@ export default function NewFieldNoteScreen() {
       }
     >
       <Text className="text-muted-foreground">
-        Photograph the meter and write what management needs: the Machine Code, the farm, and the meter value if you can
-        read it.
+        Write what you need to act on once you are back online, and add photos if they help.
       </Text>
       <FieldNoteFields
         photos={photos}
         busy={busy}
-        galleryHint={false}
         onTake={() => void pick(takePhoto)}
         onChoose={() => void pick(() => choosePhotos(limit - photos.length))}
         onRemovePhoto={(photoId) => setPhotos((current) => current.filter((photo) => photo.id !== photoId))}

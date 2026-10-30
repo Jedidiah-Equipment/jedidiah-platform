@@ -329,7 +329,7 @@ export default function ReportBreakdownScreen() {
         limit={BREAKDOWN_MAX_PHOTOS}
         busy={busy}
         galleryHint={galleryHint}
-        onTake={() => void addPhotos(takePhoto)}
+        onTake={() => void addPhotos(() => takePhoto({ saveToGallery: true }))}
         onChoose={() => void addPhotos(() => choosePhotos(photosLeft))}
         onRemove={(photoId) => setPhotos((current) => current.filter((photo) => photo.id !== photoId))}
       />

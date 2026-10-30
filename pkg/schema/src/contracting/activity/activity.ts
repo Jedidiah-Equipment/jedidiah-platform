@@ -99,7 +99,6 @@ const hoursShape = {
   machine: ActivityMachineRef,
   hours: z.number(),
   readAt: DateIso,
-  photoBacked: z.boolean(),
 } as const;
 export const MachineArrivedActivityItem = z.object({ type: z.literal('machine-arrived'), ...hoursShape });
 export const MachineLeftActivityItem = z.object({ type: z.literal('machine-left'), ...hoursShape });

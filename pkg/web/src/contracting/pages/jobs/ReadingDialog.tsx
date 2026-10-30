@@ -1,5 +1,5 @@
 import { formatDate, formatHours, getFirstName } from '@pkg/domain';
-import { amendmentSettledFinding, disputedReadingReason, isBackdated } from '@pkg/domain/contracting';
+import { disputedReadingReason, isBackdated } from '@pkg/domain/contracting';
 import type { JobReading } from '@pkg/schema/contracting';
 import { IconAlertTriangle, IconPencil } from '@tabler/icons-react';
 import { useState } from 'react';
@@ -16,41 +16,32 @@ import {
 } from '@/components/ui/dialog.js';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
 import { type MachineDialogSubject, MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
-import { MeterPhotoPreview } from '@/contracting/components/MeterPhotoPreview.js';
-import { MeterPhoto, ReadingAiAssessment } from '@/contracting/components/readings/ReadingAiAssessment.js';
 import { useReadingReview } from '@/contracting/hooks/use-reading-review.js';
-
 import { ReadingAmendDialog } from './ReadingAmendDialog.js';
 
-/** Everything the reading dialog shows about one Hour Reading, from a Job sheet or the Reading Exceptions list. */
+/** Everything the reading dialog shows about one Hour Reading on a Job sheet. */
 export type DialogReading = Omit<JobReading, 'attention'>;
 
 export function ReadingDialog({
   selected,
   onClose,
   amendReadings,
-  amendDescription,
 }: {
   selected: { reading: DialogReading; machine: MachineDialogSubject } | null;
   onClose: () => void;
   amendReadings: boolean;
-  /** Replaces the amend step's default description. */
-  amendDescription?: React.ReactNode;
 }) {
   const [amending, setAmending] = useState(false);
-  const [preview, setPreview] = useState(false);
   const { amend } = useReadingReview();
   const reading = selected?.reading;
   const close = () => {
     setAmending(false);
-    setPreview(false);
     onClose();
   };
   const startAmending = () => {
     amend.reset();
     setAmending(true);
   };
-  const settled = !!reading && amendmentSettledFinding(reading);
 
   return (
     <>
@@ -60,7 +51,7 @@ export function ReadingDialog({
           if (!open) close();
         }}
       >
-        <DialogContent className="sm:max-w-[780px]">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
               <MachineDialogTitle machine={selected?.machine ?? null}>{reading?.role ?? 'Reading'}</MachineDialogTitle>
@@ -74,49 +65,37 @@ export function ReadingDialog({
                   <h3 className="mb-3 text-sm font-semibold" id="recorded-reading-heading">
                     Recorded reading
                   </h3>
-                  <div className="grid gap-5 sm:grid-cols-[minmax(185px,0.8fr)_minmax(0,1.2fr)]">
-                    <div>
-                      <div className="text-xs font-medium text-muted-foreground">Hour meter value</div>
-                      <div className="my-1 text-4xl font-semibold tracking-tight">{formatHours(reading.value)}</div>
-                      <div className="text-sm text-muted-foreground">
-                        Read At {formatDate(reading.capturedAt, 'medium')}
-                        <br />
-                        by{' '}
-                        <span className="font-medium text-foreground">
-                          {reading.capturedByName ? getFirstName(reading.capturedByName) : 'Unknown'}
-                        </span>
-                        {isBackdated(new Date(reading.capturedAt), new Date(reading.createdAt)) ? (
-                          <>
-                            <br />
-                            saved {formatDate(reading.createdAt, 'medium')}
-                          </>
-                        ) : null}
+                  <div>
+                    <div className="text-xs font-medium text-muted-foreground">Hour meter value</div>
+                    <div className="my-1 text-4xl font-semibold tracking-tight">{formatHours(reading.value)}</div>
+                    <div className="text-sm text-muted-foreground">
+                      Read At {formatDate(reading.capturedAt, 'medium')}
+                      <br />
+                      by{' '}
+                      <span className="font-medium text-foreground">
+                        {reading.capturedByName ? getFirstName(reading.capturedByName) : 'Unknown'}
+                      </span>
+                      {isBackdated(new Date(reading.capturedAt), new Date(reading.createdAt)) ? (
+                        <>
+                          <br />
+                          saved {formatDate(reading.createdAt, 'medium')}
+                        </>
+                      ) : null}
+                    </div>
+                    {reading.comment ? (
+                      <div className="mt-4 border-l-2 pl-2.5 text-xs text-muted-foreground">
+                        <span className="font-medium text-foreground">Capture comment</span> · {reading.comment}
                       </div>
-                      {reading.comment ? (
-                        <div className="mt-4 border-l-2 pl-2.5 text-xs text-muted-foreground">
-                          <span className="font-medium text-foreground">Capture comment</span> · {reading.comment}
-                        </div>
-                      ) : null}
-                      {reading.disputed ? (
-                        <Alert className="mt-4 border-destructive/50 bg-destructive/10" variant="destructive">
-                          <IconAlertTriangle aria-hidden />
-                          <AlertTitle>Disputed reading</AlertTitle>
-                          <AlertDescription className="text-muted-foreground">
-                            {disputedReadingReason(reading)}
-                          </AlertDescription>
-                        </Alert>
-                      ) : null}
-                    </div>
-                    <div>
-                      <div className="text-xs font-medium text-muted-foreground">Meter photo</div>
-                      {reading.photoBacked ? (
-                        <MeterPhoto key={reading.id} reading={reading} onExpand={() => setPreview(true)} />
-                      ) : (
-                        <div className="mt-2 flex h-56 items-center justify-center rounded-lg border bg-muted/30 text-sm text-muted-foreground">
-                          No meter photo attached
-                        </div>
-                      )}
-                    </div>
+                    ) : null}
+                    {reading.disputed ? (
+                      <Alert className="mt-4 border-destructive/50 bg-destructive/10" variant="destructive">
+                        <IconAlertTriangle aria-hidden />
+                        <AlertTitle>Disputed reading</AlertTitle>
+                        <AlertDescription className="text-muted-foreground">
+                          {disputedReadingReason(reading)}
+                        </AlertDescription>
+                      </Alert>
+                    ) : null}
                   </div>
                 </section>
                 {reading.amendedAt ? (
@@ -153,15 +132,9 @@ export function ReadingDialog({
                       {reading.amendmentReason ? (
                         <blockquote className="mt-3 border-l-2 pl-2.5 text-sm">{reading.amendmentReason}</blockquote>
                       ) : null}
-                      {settled && reading.photoBacked ? (
-                        <p className="mt-3 text-xs text-muted-foreground">
-                          This amendment acknowledged the AI assessment below.
-                        </p>
-                      ) : null}
                     </div>
                   </section>
                 ) : null}
-                {reading.photoBacked ? <ReadingAiAssessment reading={reading} canReverify={amendReadings} /> : null}
               </div>
               {reading.amendedAt ? (
                 <DialogFooter>
@@ -183,17 +156,9 @@ export function ReadingDialog({
         machine={selected?.machine ?? null}
         open={amending && !!reading}
         onOpenChange={setAmending}
-        description={amendDescription}
         onAmend={(input) => amend.mutateAsync(input)}
         onAmended={() => setAmending(false)}
         error={amend.error}
-      />
-      <MeterPhotoPreview
-        photo={
-          preview && reading && selected ? { readingId: reading.id, machineCode: selected.machine.machineCode } : null
-        }
-        description="Captured meter photo"
-        onClose={() => setPreview(false)}
       />
     </>
   );

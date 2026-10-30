@@ -16,7 +16,6 @@ test('editing Read At after a failed attempt mints a new attempt, so the server 
     role: 'spot',
     assignmentId: null,
     value: 120,
-    photo: null,
     comment: ' ',
     disputedReadingId: null,
     stintOverrides: null,

@@ -29,8 +29,8 @@ export const disputeResolveDefaults = (dispute: RecordedDispute): DisputeResolve
 });
 
 /**
- * The amend a resolve posts: every reading whose correction moves it or settles it, judged together. One that would
- * only acknowledge its evidence, an untouched reading of a pair, stays out, so it is not stamped as amended.
+ * The amend a resolve posts: every reading whose correction moves it or settles it, judged together. An untouched
+ * reading of a pair stays out, so it is not stamped as amended.
  */
 export function toReadingAmendInput(values: DisputeResolveValues, dispute: RecordedDispute): ReadingAmendInput {
   const recorded = new Map(dispute.readings.map((reading) => [reading.id, reading]));
@@ -41,7 +41,7 @@ export function toReadingAmendInput(values: DisputeResolveValues, dispute: Recor
   });
   const effects = amendmentEffects(dispute.readings, amendments);
   return {
-    amendments: amendments.filter((amendment) => effects.get(amendment.id) !== 'acknowledges'),
+    amendments: amendments.filter((amendment) => effects.get(amendment.id) !== 'unchanged'),
     reason: values.reason,
   };
 }

@@ -9,9 +9,9 @@ import {
 } from '@pkg/schema/contracting';
 import { splitGraphemes } from 'unicode-segmenter/grapheme';
 import { hasPermission } from '../auth/authorization.js';
+import { DOCUMENT_JPEG_CONTENT_TYPE, DOCUMENT_PNG_CONTENT_TYPE } from '../files/file-policy.js';
 import { type BadgeColorClassNames, statusBadgeColorClassNames } from '../theme/status-badge.js';
 import { round1 } from './hours.js';
-import { READING_PHOTO_POLICY } from './reading-photo-policy.js';
 
 export const breakdownSubjectKindLabels: Record<BreakdownSubjectKind, string> = {
   machine: 'Machine',
@@ -108,8 +108,11 @@ export const breakdownPhotosPath = (breakdownId: string) =>
 export const breakdownPhotoPath = (breakdownId: string, photoId: string) =>
   `${breakdownPhotosPath(breakdownId)}/${encodeURIComponent(photoId)}`;
 
-/** Breakdown photos follow the meter-photo limits: JPEG or PNG, at most 10 MB each. */
-export const BREAKDOWN_PHOTO_POLICY = READING_PHOTO_POLICY;
+/** Breakdown photos: JPEG or PNG, at most 10 MB each. */
+export const BREAKDOWN_PHOTO_POLICY = {
+  allowedContentTypes: [DOCUMENT_JPEG_CONTENT_TYPE, DOCUMENT_PNG_CONTENT_TYPE],
+  maxBytes: 10 * 1024 * 1024,
+} as const;
 
 /** Hours from report to Fixed, the span a solved Breakdown shows as "Report to Fixed"; null while unsolved. */
 export function reportToSolvedHours({ reportedAt, solvedAt }: { reportedAt: string; solvedAt: string | null }) {

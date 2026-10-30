@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
 
-/** Amend and re-verify an Hour Reading. Both move Job hours, so both refresh Jobs and readings; the caller shows the error. */
+/** Amend Hour Readings. It moves Job hours, so it refreshes Jobs and readings; the caller shows the error. */
 export function useReadingReview() {
   const trpc = useTRPC();
   const { invalidateJobs, invalidateReadings } = useQueryInvalidation();
@@ -17,6 +17,5 @@ export function useReadingReview() {
         },
       }),
     ),
-    reverify: useMutation(trpc.contractingReadings.reverify.mutationOptions({ onSuccess: invalidate })),
   };
 }

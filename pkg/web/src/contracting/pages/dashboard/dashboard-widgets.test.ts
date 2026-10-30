@@ -10,7 +10,7 @@ vi.mock('./widgets/JobQueueTiles.js', () => ({
   AwaitingPricingTile: () => null,
   LooksFinishedTile: () => null,
 }));
-vi.mock('./widgets/ReadingExceptionsTile.js', () => ({ ReadingExceptionsTile: () => null }));
+vi.mock('./widgets/DisputesTile.js', () => ({ DisputesTile: () => null }));
 vi.mock('./widgets/MachinesOnJobTile.js', () => ({ MachinesOnJobTile: () => null }));
 vi.mock('./widgets/DailyHoursWidget.js', () => ({ DailyHoursWidget: () => null }));
 vi.mock('./widgets/JobsNeedingALookWidget.js', () => ({ JobsNeedingALookWidget: () => null }));
@@ -22,17 +22,17 @@ const visibleTo = (role: AppRole) =>
 
 it('shows each role only the blocks whose data it may read, each row of tiles on its own line', () => {
   expect(visibleTo('contracting-admin')).toEqual([
-    ['looks-finished', 'awaiting-pricing', 'awaiting-invoice', 'reading-exceptions'],
+    ['looks-finished', 'awaiting-pricing', 'awaiting-invoice', 'disputes'],
     ['active-jobs', 'machines-on-job', 'daily-hours'],
     ['jobs-needing-a-look', 'workshop', 'service-due'],
   ]);
   // Awaiting invoice is gated like the Invoicing page, which the manager does not open.
   expect(visibleTo('contracting-manager')).toEqual([
-    ['looks-finished', 'awaiting-pricing', 'reading-exceptions'],
+    ['looks-finished', 'awaiting-pricing', 'disputes'],
     ['active-jobs', 'machines-on-job', 'daily-hours'],
     ['jobs-needing-a-look', 'workshop', 'service-due'],
   ]);
-  // The workshop manager reads every Job, but has no Reading Exceptions to resolve and no invoice to stamp.
+  // The workshop manager reads every Job, but has no Disputes to resolve and no invoice to stamp.
   expect(visibleTo('workshop-manager')).toEqual([
     ['looks-finished', 'awaiting-pricing'],
     ['active-jobs', 'machines-on-job', 'daily-hours'],

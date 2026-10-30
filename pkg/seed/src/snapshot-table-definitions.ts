@@ -422,7 +422,7 @@ export const snapshotTableDefinitions = [
     // order and the writer, which cannot send it back, reissues it in the same order.
     fileName: 'contracting_hour_reading.json',
     tableName: 'contracting_hour_reading',
-    timestampColumns: ['amendedAt', 'capturedAt', 'createdAt', 'evidenceReviewedAt'],
+    timestampColumns: ['amendedAt', 'capturedAt', 'createdAt'],
     optionalReadTable: true,
     optionalReadColumns: ['telematicsLinkId', 'telematicsProvider', 'createdAt'],
     // John Deere Links are not snapshotted, so a Telematics Reading, which names its Link, is left out.
@@ -430,7 +430,6 @@ export const snapshotTableDefinitions = [
     // A source that predates acceptance stamps accepted each reading at its Read At, as the migration did.
     seedRowDefaults: (row) => ({ createdAt: row.capturedAt }),
     readOrderColumn: 'sequence',
-    storageFiles: (row) => [row.photo].map(toStorageFile).filter(isStorageFile),
     writableColumns: [
       'id',
       'machineId',
@@ -441,14 +440,9 @@ export const snapshotTableDefinitions = [
       'method',
       'telematicsProvider',
       'comment',
-      'photo',
-      'aiValue',
-      'aiConfidence',
-      'aiVerification',
       'disputed',
       'disputeReason',
       'disputedPreviousId',
-      'evidenceReviewedAt',
       'amendedBy',
       'amendedAt',
       'amendmentReason',

@@ -27,11 +27,9 @@ export const jobCardPath = (jobNumber: string, variant: JobCardVariant) =>
 
 export const jobCardFilename = (jobNumber: string, variant: JobCardVariant) => `${jobNumber}-job-card-${variant}.pdf`;
 
-function readingMarker(reading: JobReading): JobCardReadingMarker {
+function readingMarker(reading: JobReading): JobCardReadingMarker | null {
   if (reading.disputed) return 'disputed';
-  if (reading.amendedAt) return 'amended';
-  if (reading.photoBacked && reading.aiVerification === 'agrees') return 'verified';
-  return reading.photoBacked ? 'photo' : 'no-photo';
+  return reading.amendedAt ? 'amended' : null;
 }
 
 function cardReading(reading: JobReading | null, internal: boolean): JobCardReading | null {

@@ -12,18 +12,13 @@ function reading(value: number, capturedAt: string, overrides: Partial<JobReadin
     value,
     capturedAt,
     capturedByUserId: 'sipho',
-    method: 'photo',
+    method: 'manual',
+    telematicsProvider: null,
     comment: null,
-    aiValue: value,
-    aiConfidence: 0.98,
-    aiVerification: 'agrees',
-    aiHint: null,
     disputed: false,
     disputeReason: null,
-    evidenceReviewedAt: null,
     amendedAt: null,
     amendmentReason: null,
-    photoBacked: true,
     capturedByName: 'Sipho',
     attention: [],
     ...overrides,
@@ -253,7 +248,7 @@ describe('buildJobCardModel', () => {
     ]);
   });
 
-  test('the internal copy prints the work and travel split, the gap reason, evidence markers and sign-off notes', () => {
+  test('the internal copy prints the work and travel split, the gap reason, reading markers and sign-off notes', () => {
     const yardGrader = {
       ...grader,
       gapHours: 9.1,
@@ -264,9 +259,8 @@ describe('buildJobCardModel', () => {
       arrival: reading(7110, '2026-09-01T09:00:00.000Z', { comment: 'Meter glass cracked' }),
       departure: reading(7152.4, '2026-09-06T15:00:00.000Z', {
         role: 'departure',
-        method: 'manual',
-        photoBacked: false,
-        aiVerification: 'not-applicable',
+        disputed: true,
+        disputeReason: 'The previous reading is wrong.',
       }),
     };
     const amendedExcavator = {
@@ -284,18 +278,18 @@ describe('buildJobCardModel', () => {
       expect.objectContaining({
         machineCode: 'CAT320-1',
         driverName: 'Sipho',
-        arrival: expect.objectContaining({ marker: 'verified' }),
+        arrival: expect.objectContaining({ marker: null }),
         departure: expect.objectContaining({ marker: 'amended' }),
         hours: { variant: 'internal', work: 48.6, travel: 0, unaccounted: 0, gapReason: null },
       }),
       expect.objectContaining({
         machineCode: 'GRAD140K-1',
         arrival: expect.objectContaining({
-          marker: 'verified',
+          marker: null,
           comment: 'Meter glass cracked',
           capturedByName: 'Sipho',
         }),
-        departure: expect.objectContaining({ marker: 'no-photo' }),
+        departure: expect.objectContaining({ marker: 'disputed' }),
         hours: { variant: 'internal', work: 42.4, travel: 2.1, unaccounted: 7, gapReason: 'yard work at Stony Brook' },
       }),
     ]);

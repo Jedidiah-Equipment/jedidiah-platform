@@ -391,12 +391,6 @@ describe('snapshot table registry', () => {
     expect(projectWritableRow(configFor('contracting_hour_reading'), { sequence: 7 })).not.toHaveProperty('sequence');
     expect(configFor('contracting_hour_reading').readOrderColumn).toBe('sequence');
     expect(configFor('contracting_job').resetSequence?.columnName).toBe('code');
-    expect(
-      collectStorageFiles(configFor('contracting_hour_reading'), [
-        { photo: { storageKey: 'readings/r1.jpg', contentType: 'image/jpeg', byteSize: 1 } },
-        { photo: null },
-      ]),
-    ).toEqual([{ storageKey: 'readings/r1.jpg', contentType: 'image/jpeg' }]);
   });
 
   it('projects generated assembly override columns out before import', () => {

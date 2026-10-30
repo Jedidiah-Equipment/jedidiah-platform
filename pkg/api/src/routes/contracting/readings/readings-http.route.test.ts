@@ -1,5 +1,3 @@
-import multipart from '@fastify/multipart';
-import { InMemoryStorageAdapter } from '@pkg/core';
 import {
   createAssignment,
   createCategory,
@@ -9,23 +7,19 @@ import {
   createMachine,
   createWorkType,
   getJob,
-  getReading,
   listReadingsByMachine,
   patchMachine,
   recordTelematicsReading,
-  verifyCapturedReading,
 } from '@pkg/core/contracting';
 import { user } from '@pkg/db';
 import { contractingJohnDeereLinks } from '@pkg/db/contracting';
-import { fileTooLargeMessage } from '@pkg/domain';
-import { type ContractingPushEvent, READING_PHOTO_POLICY } from '@pkg/domain/contracting';
+import type { ContractingPushEvent } from '@pkg/domain/contracting';
 import { accessForRole } from '@pkg/domain/testing';
 import { MachineCreateInput } from '@pkg/schema/contracting';
 import Fastify from 'fastify';
 import { expect, vi } from 'vitest';
 import { createTester } from '@/test/create-tester.js';
 import { mockSession } from '@/test/test-utils.js';
-import { BackgroundQueue } from '../../../background-queue.js';
 import { registerReadingHttpRoutes } from './readings-http.route.js';
 
 const state = vi.hoisted(() => ({ session: null as unknown }));
@@ -73,102 +67,32 @@ const test = createTester(async ({ db, auth }) => {
   });
   const [assignment] = (await getJob({ db, id: job.id })).assignments;
   if (!assignment) throw new Error('Expected Machine Assignment');
-  const storage = new InMemoryStorageAdapter();
   const app = Fastify();
   app.decorate('auth', auth);
-  await app.register(multipart);
-  const verifications = new BackgroundQueue<string>({
-    run: (id) =>
-      verifyCapturedReading({ db, id, storage, readPhoto: async () => ({ value: 123.4, confidence: 0.91 }) }),
-  });
   const pushes: ContractingPushEvent[] = [];
-  await registerReadingHttpRoutes(app, {
-    db,
-    storage,
-    verifications,
-    push: { schedule: (event) => pushes.push(event) },
-  });
+  await registerReadingHttpRoutes(app, { db, push: { schedule: (event) => pushes.push(event) } });
   state.session = mockSession(null);
   (state.session as ReturnType<typeof mockSession>).user.contractingRole = 'foreman';
-  return { assignmentId: assignment.id, db, app, jobId: job.id, machineId: machine.id, pushes, storage, verifications };
+  return { assignmentId: assignment.id, db, app, jobId: job.id, machineId: machine.id, pushes };
 });
-function upload(
-  machineId: string,
-  photo: Buffer | Buffer[] | null,
-  close = true,
-  extra: Record<string, string | undefined> = {},
-) {
-  const boundary = 'reading-boundary';
-  const fields = { machineId, role: 'spot', value: '123.4', capturedAt: '2026-09-07T08:00:00Z', ...extra };
-  const chunks: Buffer[] = Object.entries(fields)
-    .filter(([, value]) => value !== undefined)
-    .map(([key, value]) =>
-      Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="${key}"\r\n\r\n${value}\r\n`),
-    );
-  for (const bytes of photo === null ? [] : Array.isArray(photo) ? photo : [photo])
-    chunks.push(
-      Buffer.from(
-        `--${boundary}\r\nContent-Disposition: form-data; name="photo"; filename="meter.jpg"\r\nContent-Type: image/jpeg\r\n\r\n`,
-      ),
-      bytes,
-      Buffer.from('\r\n'),
-    );
-  if (close) chunks.push(Buffer.from(`--${boundary}--\r\n`));
+function capture(machineId: string, fields: Record<string, unknown> = {}) {
   return {
     method: 'POST' as const,
     url: '/api/contracting/readings',
-    headers: { 'content-type': `multipart/form-data; boundary=${boundary}` },
-    payload: Buffer.concat(chunks),
+    payload: { machineId, role: 'spot', value: 123.4, capturedAt: '2026-09-07T08:00:00Z', ...fields },
   };
 }
-test('atomic multipart stores the complete photo and AI outcome; rejects broken and invalid uploads without a row', async ({
-  context,
-}) => {
-  const { app, db, machineId, storage, verifications } = context;
-  try {
-    for (const request of [
-      upload(machineId, Buffer.from('not a photo')),
-      upload(machineId, Buffer.from([255, 216, 255]), false),
-    ]) {
-      const response = await app.inject(request);
-      expect(response.statusCode).toBe(400);
-      expect(response.json().data.appCode).toEqual(expect.any(String));
-      expect(await listReadingsByMachine({ db, machineId })).toEqual([]);
-      expect(storage.objects.size).toBe(0);
-    }
-    const response = await app.inject(upload(machineId, Buffer.from([255, 216, 255])));
-    expect(response.statusCode).toBe(201);
-    // The capture answers before the AI has looked; the check lands once it finishes.
-    expect(response.json()).toMatchObject({
-      method: 'photo',
-      photo: { contentType: 'image/jpeg' },
-      aiValue: null,
-      aiVerification: 'pending',
-    });
-    await verifications.drain();
-    expect(await getReading({ db, id: response.json().id })).toMatchObject({
-      aiValue: 123.4,
-      aiConfidence: 0.91,
-      aiVerification: 'agrees',
-    });
-    expect(storage.objects.size).toBe(1);
-    const manual = await app.inject(upload(machineId, null));
-    expect(manual.json()).toMatchObject({ photo: null, method: 'manual', aiVerification: 'not-applicable' });
-  } finally {
-    await app.close();
-  }
-});
-test('rejects unauthenticated and Equipment-only uploads before parsing their body', async ({ context }) => {
+test('rejects unauthenticated and Equipment-only captures before parsing their body', async ({ context }) => {
   try {
     state.session = null;
-    const signedOut = await context.app.inject(upload(context.machineId, null));
+    const signedOut = await context.app.inject(capture(context.machineId));
     expect(signedOut.statusCode).toBe(401);
     expect(signedOut.json()).toEqual({
       data: { appCode: 'auth.unauthenticated' },
       message: 'Please sign in to continue.',
     });
     state.session = mockSession('admin');
-    expect((await context.app.inject(upload(context.machineId, null))).statusCode).toBe(403);
+    expect((await context.app.inject(capture(context.machineId))).statusCode).toBe(403);
   } finally {
     await context.app.close();
   }
@@ -203,7 +127,7 @@ test('a refusal John Deere brackets carries the Read At it proposes beside the a
         reportTime: new Date(reportTime),
         now: new Date('2026-09-08T00:00:00Z'),
       });
-    const refused = await app.inject(upload(machineId, null, true, { value: '122.5' }));
+    const refused = await app.inject(capture(machineId, { value: 122.5 }));
     expect(refused.statusCode).toBe(409);
     expect(refused.json()).toEqual({
       data: {
@@ -221,17 +145,17 @@ test('a refusal John Deere brackets carries the Read At it proposes beside the a
   }
 });
 
-test('reserves a Baseline Reading upload for Contracting administrators', async ({ context }) => {
+test('reserves a Baseline Reading for Contracting administrators', async ({ context }) => {
   const { app, machineId } = context;
   try {
-    const refused = await app.inject(upload(machineId, null, true, { role: 'baseline' }));
+    const refused = await app.inject(capture(machineId, { role: 'baseline' }));
     expect(refused.statusCode).toBe(403);
     expect(refused.json()).toMatchObject({ data: { appCode: 'reading.forbidden' } });
     (state.session as ReturnType<typeof mockSession>).user.contractingRole = 'contracting-admin';
-    const accepted = await app.inject(upload(machineId, null, true, { role: 'baseline' }));
+    const accepted = await app.inject(capture(machineId, { role: 'baseline' }));
     expect(accepted.statusCode).toBe(201);
-    expect(accepted.json()).toMatchObject({ role: 'baseline', photo: null });
-    const second = await app.inject(upload(machineId, null, true, { role: 'baseline' }));
+    expect(accepted.json()).toMatchObject({ role: 'baseline', method: 'manual' });
+    const second = await app.inject(capture(machineId, { role: 'baseline' }));
     expect(second.statusCode).toBe(409);
     expect(second.json()).toMatchObject({ data: { appCode: 'reading.baseline_exists' } });
   } finally {
@@ -239,21 +163,16 @@ test('reserves a Baseline Reading upload for Contracting administrators', async 
   }
 });
 
-test('accepts every mobile multipart field and retries a photo capture without duplicating it', async ({ context }) => {
-  const { app, db, machineId, storage } = context;
+test('accepts every phone field and retries a capture without duplicating it', async ({ context }) => {
+  const { app, db, machineId } = context;
   try {
     const localId = '78108c3d-4b34-44f1-bf87-4fcb00a6a233';
-    const request = upload(machineId, Buffer.from([255, 216, 255]), true, {
-      localId,
-      expectedPreviousId: '',
-      disputePrevious: 'false',
-    });
+    const request = capture(machineId, { localId, expectedPreviousId: null, disputePrevious: false, comment: null });
     const first = await app.inject(request);
     expect(first.statusCode).toBe(201);
-    expect(first.json()).toMatchObject({ id: localId, photo: { contentType: 'image/jpeg' } });
+    expect(first.json()).toMatchObject({ id: localId, method: 'manual' });
     expect((await app.inject(request)).json().id).toBe(localId);
     expect(await listReadingsByMachine({ db, machineId })).toHaveLength(1);
-    expect(storage.objects.size).toBe(1);
   } finally {
     await app.close();
   }
@@ -263,13 +182,12 @@ test('schedules Service Due Soon for the capture that crosses into the window, o
   const { app, db, machineId, pushes } = context;
   try {
     await patchMachine({ db, actorUserId: 'test-user-id', input: { id: machineId, nextServiceDueHours: 200 } });
-    const crossing = upload(machineId, null, true, { localId: '5f0d7a8e-12c4-4c55-9a43-6a2b8d1e7f10' });
+    const crossing = capture(machineId, { localId: '5f0d7a8e-12c4-4c55-9a43-6a2b8d1e7f10' });
     expect((await app.inject(crossing)).statusCode).toBe(201);
     expect((await app.inject(crossing)).statusCode).toBe(201);
-    expect(
-      (await app.inject(upload(machineId, null, true, { value: '130', capturedAt: '2026-09-08T08:00:00Z' })))
-        .statusCode,
-    ).toBe(201);
+    expect((await app.inject(capture(machineId, { value: 130, capturedAt: '2026-09-08T08:00:00Z' }))).statusCode).toBe(
+      201,
+    );
     expect(pushes).toEqual([{ kind: 'machine.service-due-soon', machineId }]);
   } finally {
     await app.close();
@@ -286,12 +204,11 @@ test("crosses into the window at the Machine's own Service Alert Hours, not the 
       actorUserId: 'test-user-id',
       input: { id: machineId, nextServiceDueHours: 200, serviceAlertHours: 50 },
     });
-    expect((await app.inject(upload(machineId, null, true, { value: '123.4' }))).statusCode).toBe(201);
+    expect((await app.inject(capture(machineId, { value: 123.4 }))).statusCode).toBe(201);
     expect(pushes).toEqual([]);
-    expect(
-      (await app.inject(upload(machineId, null, true, { value: '160', capturedAt: '2026-09-09T08:00:00Z' })))
-        .statusCode,
-    ).toBe(201);
+    expect((await app.inject(capture(machineId, { value: 160, capturedAt: '2026-09-09T08:00:00Z' }))).statusCode).toBe(
+      201,
+    );
     expect(pushes).toEqual([{ kind: 'machine.service-due-soon', machineId }]);
   } finally {
     await app.close();
@@ -304,7 +221,7 @@ test('management captures a backdated spot reading on the Machine alone, as the 
   const { app, machineId } = context;
   try {
     (state.session as ReturnType<typeof mockSession>).user.contractingRole = 'contracting-manager';
-    const response = await app.inject(upload(machineId, null, true, { capturedAt: '2026-09-07T06:30:00.000Z' }));
+    const response = await app.inject(capture(machineId, { capturedAt: '2026-09-07T06:30:00.000Z' }));
     expect(response.statusCode).toBe(201);
     expect(response.json()).toMatchObject({
       role: 'spot',
@@ -316,30 +233,21 @@ test('management captures a backdated spot reading on the Machine alone, as the 
   }
 });
 
-test('stores a trimmed capture comment and treats an empty comment field as none', async ({ context }) => {
+test('stores a trimmed capture comment', async ({ context }) => {
   const { app, machineId } = context;
   try {
-    const commented = await app.inject(
-      upload(machineId, null, true, { comment: '  Glass cracked, digits hard to read  ' }),
-    );
+    const commented = await app.inject(capture(machineId, { comment: '  Glass cracked, digits hard to read  ' }));
     expect(commented.statusCode).toBe(201);
     expect(commented.json().comment).toBe('Glass cracked, digits hard to read');
-    const blank = await app.inject(upload(machineId, null, true, { comment: '' }));
-    expect(blank.statusCode).toBe(201);
-    expect(blank.json().comment).toBeNull();
-    const wide = '燃'.repeat(2000);
-    const multibyte = await app.inject(upload(machineId, null, true, { comment: wide }));
-    expect(multibyte.statusCode).toBe(201);
-    expect(multibyte.json().comment).toBe(wide);
   } finally {
     await app.close();
   }
 });
 
-test('round-trips assignmentId through multipart and activates its Job on arrival', async ({ context }) => {
+test('takes an arrival on its Machine Assignment and activates its Job', async ({ context }) => {
   try {
     const response = await context.app.inject(
-      upload(context.machineId, null, true, {
+      capture(context.machineId, {
         role: 'arrival',
         assignmentId: context.assignmentId,
       }),
@@ -352,92 +260,16 @@ test('round-trips assignmentId through multipart and activates its Job on arriva
   }
 });
 
-test('foremen can view photos for their own Job readings but not other readings', async ({ context }) => {
-  const { app, assignmentId, machineId } = context;
+test('refuses invalid Hour Reading fields without a row', async ({ context }) => {
+  const { app, db, machineId } = context;
   try {
-    const own = await app.inject(
-      upload(machineId, Buffer.from([255, 216, 255]), true, { role: 'arrival', assignmentId }),
-    );
-    expect(own.statusCode).toBe(201);
-    const ownPhotoUrl = `/api/contracting/readings/${own.json().id}/photo`;
-    expect((await app.inject({ method: 'GET', url: ownPhotoUrl })).statusCode).toBe(200);
-
-    const unattached = await app.inject(upload(machineId, Buffer.from([255, 216, 255])));
-    expect(unattached.statusCode).toBe(201);
-    expect(
-      (await app.inject({ method: 'GET', url: `/api/contracting/readings/${unattached.json().id}/photo` })).statusCode,
-    ).toBe(403);
-
-    (state.session as ReturnType<typeof mockSession>).user.id = 'different-user-id';
-    expect((await app.inject({ method: 'GET', url: ownPhotoUrl })).statusCode).toBe(403);
-    (state.session as ReturnType<typeof mockSession>).user.contractingRole = 'contracting-admin';
-    expect((await app.inject({ method: 'GET', url: ownPhotoUrl })).statusCode).toBe(200);
-  } finally {
-    await app.close();
-  }
-});
-
-test.for([
-  [{ role: 'arrival' }, 'Choose the Machine Assignment.'],
-  [{ value: undefined }, 'Send reading fields and at most one complete photo.'],
-] as const)('refuses invalid Hour Reading fields: %j', async ([fields, message], { context }) => {
-  const { app, db, machineId, storage } = context;
-  try {
-    const response = await app.inject(upload(machineId, Buffer.from([255, 216, 255]), true, fields));
-    expect(response.statusCode).toBe(400);
-    expect(response.json()).toEqual({ data: { appCode: 'reading.invalid_upload' }, message });
-    expect(await listReadingsByMachine({ db, machineId })).toEqual([]);
-    expect(storage.objects.size).toBe(0);
-  } finally {
-    await app.close();
-  }
-});
-
-test('refuses a second reading photo and excess fields with an app code and no saved evidence', async ({ context }) => {
-  const { app, db, machineId, storage } = context;
-  try {
-    const jpeg = Buffer.from([255, 216, 255]);
-    for (const request of [
-      upload(machineId, [jpeg, jpeg]),
-      upload(machineId, jpeg, true, Object.fromEntries(Array.from({ length: 12 }, (_, i) => [`extra${i}`, 'x']))),
-    ]) {
-      const response = await app.inject(request);
+    for (const fields of [{ role: 'arrival' }, { value: undefined }, { photo: 'meter.jpg' }]) {
+      const response = await app.inject(capture(machineId, fields));
       expect(response.statusCode).toBe(400);
-      expect(response.json()).toEqual({
-        data: { appCode: 'reading.invalid_upload' },
-        message: 'Send reading fields and at most one complete photo.',
-      });
-      expect(await listReadingsByMachine({ db, machineId })).toEqual([]);
-      expect(storage.objects.size).toBe(0);
+      expect(response.json()).toEqual({ message: 'Invalid Hour Reading.' });
     }
-  } finally {
-    await app.close();
-  }
-});
-
-test('an oversized Hour Reading photo keeps the file policy refusal and stores nothing', async ({ context }) => {
-  const { app, db, machineId, storage } = context;
-  try {
-    const response = await app.inject(upload(machineId, Buffer.alloc(READING_PHOTO_POLICY.maxBytes + 1)));
-    expect(response.statusCode).toBe(400);
-    expect(response.json()).toEqual({
-      data: { appCode: 'file.too_large' },
-      message: fileTooLargeMessage(READING_PHOTO_POLICY.maxBytes),
-    });
     expect(await listReadingsByMachine({ db, machineId })).toEqual([]);
-    expect(storage.objects.size).toBe(0);
   } finally {
     await app.close();
-  }
-});
-
-test('a malformed photo download id retains its download refusal', async ({ context }) => {
-  try {
-    const response = await context.app.inject({ url: '/api/contracting/readings/not-a-uuid/photo' });
-    expect(response.statusCode).toBe(400);
-    expect(response.json()).toEqual({ message: 'Invalid Hour Reading.' });
-    expect(context.storage.objects.size).toBe(0);
-  } finally {
-    await context.app.close();
   }
 });

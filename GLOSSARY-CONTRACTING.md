@@ -47,10 +47,10 @@ Slot (an Equipment scheduling term).
 rates, and totals — reviewed at sign-off, priced, and keyed into the invoicing system. It is a
 presentation of the Job, never a second record: "send me the job card" means the document. It
 renders on demand (never stored — priced amounts are frozen, so regeneration is deterministic)
-under the Jedidiah Contracting letterhead, in two variants: **internal**, carrying evidence
-markers, gap resolutions, capture comments, and attribution; and the **customer copy**, the clean
+under the Jedidiah Contracting letterhead, in two variants: **internal**, carrying reading
+markers (Disputed, amended), gap resolutions, capture comments, and attribution; and the **customer copy**, the clean
 dispute trail of readings and amounts that shows **one total hours figure per line — never the
-work/travel split**. Reading values print; meter photos stay in the app. Diesel is shown
+work/travel split**. Reading values print. Diesel is shown
 VAT-exempt. Its ex-VAT total is a works summary — a Job Card is never an invoice.
 
 **Job Sheet** is the signed-in person's reading of one Job on a screen: the served Job Actions and Assignment
@@ -82,7 +82,7 @@ when its verdict allows it and hides it when the person lacks the permission. Bo
 the verdicts the server serves; no surface derives its own. A refused verdict carries the
 one sentence that says why; the server's refusal and the screen show that sentence. Invoiced and Cancelled
 are both closed: no Job Action is open on either. A check that judges what a write carries rather than the
-Job — the Mark as Priced gate, the invoice total, a departure reading without a photo — is not a Job Action
+Job — the Mark as Priced gate, the invoice total, a capture below the latest reading — is not a Job Action
 and stays with the write that reads that input.
 
 **Assignment Actions** are the verdicts of what one person may do to one Machine Assignment now: remove it
@@ -161,17 +161,12 @@ context's `JOB-xxxxx`.
 ## Hours
 
 **Hour Reading** is one captured value of a Machine's hour meter: the value, when the meter was
-read (its **Read At** time) and by whom, and its evidence. Whoever captures it types the value —
+read (its **Read At** time) and by whom. Whoever captures it types the value —
 the Foreman in the field, an administrator for a Baseline Reading — or the Machine's telematics reports
-it (a Telematics Reading); a photo is attached whenever
-the camera allows, taken on the spot or chosen from the phone's gallery, and a reading without
-one is stamped **Missing Photo Evidence**. Read At defaults to when a chosen photo says it was
-taken, and otherwise to the moment of capture — a photo with no usable time, or one whose time
-lies in the future, is still accepted and defaults to that moment; every capture form asks first whether
+it (a Telematics Reading). Read At defaults to the moment of capture: every capture form asks first whether
 the meter is being read **now** or was read **earlier**, and a value that falls below John Deere's readings
 has the form propose the moment John Deere puts it at, which the capturer confirms or corrects before
-anything is saved. It is never in the future. Gallery photos and Read At correction are phone affordances,
-and every web capture offers both from a photo chosen on disk. Read At orders a Machine's readings:
+anything is saved. It is never in the future. Read At orders a Machine's readings:
 the **latest reading** is the one with the latest Read At, and every capture is judged against its
 **time neighbours** — it must be at or above the nearest reading before its Read At and at or below
 the nearest reading after it. A late-entered reading takes its place in time, so a departure dated
@@ -181,24 +176,16 @@ order — no arrival is dated before its last departure, no departure before its
 needs a connection: the server judges every capture as the ledger's truth, and a Foreman without
 signal keeps a Field Note instead. Every way a capture is refused is one rule in one ordered table,
 judged under the Machine lock; the phone and the web stop only what that table says the server would
-refuse, and show its sentence when it does. Once a capture has landed the server reads
-the photo itself and records its own value and confidence as the System, so capturing never waits on it; a check
-that fails leaves the reading pending until Re-verify or the API's next start-up checks it again. A reading is
-**photo-backed** when it
-carries a photo and **AI-verified** when the server's read agrees with the typed value.
-Disagreements, low confidence, and disputes surface to management as **Reading Exceptions** — a
+refuse, and show its sentence when it does. Disputes surface to management as **Disputes** — a
 reading is **Disputed** when it belongs to an unresolved out-of-sequence pair or a Telematics Reading
-contradicts it, and **AI flagged**
-when its verification is pending, disagrees, or has low confidence and has not been reviewed. Only
-a disagreement or low confidence puts an AI flagged reading on the list: a pending verification is
-only a notice. A reading can carry both exception types. Exceptions never return to the Foreman, who is never
-re-interrupted in the field. A reading may carry the Foreman's
-optional **capture comment**, shown wherever management reviews it; the capture screen shows the
+contradicts it. Disputes never return to the Foreman, who is never
+re-interrupted in the field. A reading may carry the capturer's
+optional comment, shown wherever management reviews it; the capture screen shows the
 minimum value the meter can now read. A field reading plays one of three roles:
 **arrival** (machine on site) and **departure** (machine leaving) on a Machine Assignment, or
 **spot** — an ad-hoc capture with no billing effect, existing to keep a Machine's known
-hours current for service tracking, taken on the phone at the Machine or on the web Machine page from
-a photo of its meter; the fourth role, **Baseline Reading**, is defined below. The
+hours current for service tracking, taken on the phone at the Machine or on the web Machine page;
+the fourth role, **Baseline Reading**, is defined below. The
 pre-travel opening is never captured: it is the machine's previous departure reading, so travel
 and work time are derived and no hour can vanish between Jobs. A capture strictly below the
 Machine's latest reading is refused (equal is accepted — an idle machine reads its departure value),
@@ -216,22 +203,21 @@ Priced Job returns it to Completed for re-pricing, and Invoiced freezes everythi
 
 **Baseline Reading** is an optional, administrator-captured Hour Reading that anchors a Machine
 before its first Job — at a service, say — and must be the Machine's first reading. Most Machines
-never get one: hours are captured on site, with a photo, the first time the app sees the Machine,
+never get one: hours are captured on site the first time the app sees the Machine,
 and that first reading of whatever role opens its ledger. Hours are never collected from paper,
 stickers or memory ahead of use, because a value taken off site has no known currency. Until a
 Machine has a reading nothing derives for it — no Hour Gap, no Travel Hours, no Service Due Soon.
 
 **Telematics Reading** is an Hour Reading the Machine's own telematics reported rather than a person
 captured: role spot, its Read At the time the machine reported, its evidence the manufacturer's report,
-captured by nobody (the System). It is beyond dispute — never Disputed, never AI flagged, never Missing
-Photo Evidence, never amended — and a captured reading it contradicts is the one that becomes Disputed for
+captured by nobody (the System). It is beyond dispute — never Disputed, never amended — and a captured reading it contradicts is the one that becomes Disputed for
 management, who correct its hours or Read At back into sequence. One may move its Read At forward when the machine reports the
 same value again, so the ledger says the hours stand as of the latest report. _Avoid_: telemetry reading,
 automatic reading, JDLink reading, API reading.
 
 **Dispute** is a connected group of Disputed readings on one Machine — a pair joined by "the previous
 reading is wrong", plus any Disputed reading sharing a stint with one of them. A Dispute is one row on
-Reading Exceptions and is resolved at once: management corrects hours and Read At of each reading in it
+**Disputes** and is resolved at once: management corrects hours and Read At of each reading in it
 under one reason, and the row clears when every reading sits in sequence. A reading John Deere contradicted
 shows that report beside it; the report itself is never edited. _Avoid_: exception pair, conflict.
 
@@ -246,23 +232,20 @@ Hours and an **Unaccounted Interval** with a mandatory reason, which clears the 
 yard is an Unaccounted Interval — there are no internal Jobs. An unresolved gap over the threshold
 reports its hours as **Unresolved** until management splits it.
 
-**Assignment Attention** is everything that flags a Machine Assignment for a person, each kind at one
-of three levels: a **notice** is worth knowing with nothing to do (a pending AI verification, Missing
-Photo Evidence); a **warning** means the evidence does not confirm the value and someone should review
-it (AI value differs, AI confidence low); **critical** means the hours are wrong or contradictory (a
-Disputed reading) or it stops the Job moving on (an open Gap Flag). Warning and critical **need a
-look** — they are counted on the Jobs list, filtered for, and border the Assignment's card — while a
-notice never does. Each level has one colour everywhere: notice purple, warning orange, critical red.
+**Assignment Attention** is everything that flags a Machine Assignment for a person, at one level:
+**critical** means the hours are wrong or contradictory (a Disputed reading) or it stops the Job moving on (an
+open Gap Flag); critical **needs a look** — it is counted on the Jobs list, filtered for, and borders the
+Assignment's card — and is red everywhere.
 _Avoid_: bare "attention", alert, issue
 
-**Field Note** is evidence a Foreman keeps on his phone when the app cannot take a capture —
-without signal, typically — for entry once it can: a description, one or more photos, and the
-moment it was made. It is **Open** until the Foreman has entered what it holds and closes it, and
-may be reopened; nothing closes it but him. A Field Note lives only on the phone, per signed-in
-user, and never reaches the server — save that a Voice Note recorded into its description sends the
-recording, and the description saved with it, as that Transcription's; its photos are also saved to the phone's gallery, which is
-where a later capture picks them up. It is not a capture, a queue, or a task: the app never reads
-a Field Note back into a Job or a Machine. Its phone tab is **Field Notes**, never "Notes": a Note is a
+**Field Note** is a generic note a Foreman keeps on his phone — when the app cannot take a capture,
+without signal, typically — and later acts on himself: a description, one or more photos, and the
+moment it was made. It is **Open** until the Foreman has acted on it and closes it, and may be
+reopened; nothing closes it but him. A Field Note lives only on the phone, per signed-in user, and
+never reaches the server — save that a Voice Note recorded into its description sends the
+recording, and the description saved with it, as that Transcription's. It is not a capture, a queue,
+or a task: nothing links a Field Note to a capture, and the app never reads one back into a Job, a
+Machine or a reading. Its phone tab is **Field Notes**, never "Notes": a Note is a
 Job Note or a Breakdown Note.
 _Avoid_: task, to-do, offline capture, queued reading, note
 
@@ -379,7 +362,7 @@ its machine. Unlinking stops the feed and keeps every reading. _Avoid_: integrat
 
 The **Dashboard** is the web home: counts and lists of what needs a person now — the Jobs needing a look, the
 Breakdowns not yet Fixed, the Machines Due for Service, the Jobs waiting for sign-off, pricing or an
-Invoice Number, and the Reading Exceptions — and two counts of what is under way: the Active Jobs not yet looking
+Invoice Number, and the Disputes — and two counts of what is under way: the Active Jobs not yet looking
 finished and the Machines On Job. Each block shows only to a role holding the permission that reads what
 it lists, and it refreshes every minute. Apart from the Daily Hours heat map, a trailing six-month card for the roles that read reports, it never shows anything over a period; that is Reporting's.
 
@@ -422,7 +405,7 @@ ignores it) and never stored; **Solved** counts the `solved` status the Workshop
 readable by every role that reads all Jobs; Foremen and invoicing never see it.
 
 **Daily Hours** are a Machine's meter hours attributed to one plant-date day, derived from consecutive Hour
-Readings and spread across the days between them by elapsed time, so two photo readings three days apart average
+Readings and spread across the days between them by elapsed time, so two readings three days apart average
 out over the three days and a Telematics Reading logged hourly is exact. Unfiltered and per Machine they count every
 positive meter delta whatever the phase (yard time and hours before a first arrival included, which the Hour totals
 by kind drop); under a Job they count only Work hours inside that Job's stints, an open stint running to the

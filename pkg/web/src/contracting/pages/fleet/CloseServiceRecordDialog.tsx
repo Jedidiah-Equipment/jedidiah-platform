@@ -1,6 +1,6 @@
 import { getPlantDateNow } from '@pkg/domain';
 import { suggestedNextServiceDue } from '@pkg/domain/contracting';
-import type { Machine, ServiceRecord } from '@pkg/schema/contracting';
+import { CloseServiceValues, closeServiceInput, type Machine, type ServiceRecord } from '@pkg/schema/contracting';
 import { useMutation } from '@tanstack/react-query';
 import { useRef } from 'react';
 import { toast } from 'sonner';
@@ -12,7 +12,6 @@ import { mechanicFieldOptions } from '@/contracting/components/MechanicCombobox.
 import { useContractingWrite } from '@/contracting/hooks/use-contracting-write.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { CloseServiceValues, closeServiceInput } from './types.js';
 
 /**
  * Closing a service prints the sticker: the Next Service Due is required, and the interval only suggests it. The

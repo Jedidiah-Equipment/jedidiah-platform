@@ -8,12 +8,15 @@ export function Button({
   onPress,
   disabled = false,
   icon,
+  trailingIcon,
   primary = false,
   destructive = false,
   compact = false,
 }: {
   title: string;
   icon?: TablerIcon;
+  /** After the title, such as the chevron of a button that opens another screen. */
+  trailingIcon?: TablerIcon;
   onPress: () => void;
   disabled?: boolean;
   primary?: boolean;
@@ -35,6 +38,7 @@ export function Button({
       <Text className={`text-center text-sm ${foreground}`} weight="semibold">
         {title}
       </Text>
+      {trailingIcon ? <Icon className={foreground} icon={trailingIcon} size={16} /> : null}
     </Pressable>
   );
 }

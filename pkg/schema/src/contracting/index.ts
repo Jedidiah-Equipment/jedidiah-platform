@@ -25,6 +25,7 @@ export * from './reports/hours-heat-map.js';
 export * from './reports/mechanic-performance.js';
 export * from './reports/report-window.js';
 export * from './reports/utilisation.js';
+export * from './services/service-close-form.js';
 export * from './services/service-enums.js';
 export * from './services/service-open-form.js';
 export * from './services/service-record.js';

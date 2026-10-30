@@ -1,5 +1,5 @@
 import { type Machine, OpenServiceValues, openServiceFields, type ServiceRecord } from '@pkg/schema/contracting';
-import { useMutation } from '@tanstack/react-query';
+import { type UseQueryResult, useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { AutosaveFormFields } from '@/components/form/AutosaveFormCard.js';
@@ -17,10 +17,17 @@ import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.j
 import { useTRPC } from '@/lib/trpc.js';
 
 /**
- * A service still in the workshop: its start date, Mechanic and notes autosave until it is closed. `machine` is
- * undefined until the fleet read resolves, and closing waits for it because the dialog suggests from its interval.
+ * A service still in the workshop: its start date, Mechanic and notes autosave until it is closed. Closing waits for
+ * the Machine read, because the dialog suggests the Next Service Due from its interval.
  */
-export function OpenServiceForm({ record, machine }: { record: ServiceRecord; machine: Machine | undefined }) {
+export function OpenServiceForm({
+  record,
+  machineQuery,
+}: {
+  record: ServiceRecord;
+  machineQuery: UseQueryResult<Machine, unknown>;
+}) {
+  const machine = machineQuery.data;
   const trpc = useTRPC();
   const canUpdate = useCan('contracting_service:update').can;
   const mechanics = useServiceMechanicOptions(canUpdate);
@@ -49,7 +56,7 @@ export function OpenServiceForm({ record, machine }: { record: ServiceRecord; ma
           {canUpdate ? (
             <Button
               disabled={!machine}
-              title={machine ? undefined : 'Loading the Machine…'}
+              title={machine ? undefined : machineQuery.error ? 'Unable to load the Machine.' : 'Loading the Machine…'}
               onClick={async () => {
                 // The close dialog starts from the saved record, so a note typed a moment ago lands first.
                 if (await autosave.flush()) setClosing(true);

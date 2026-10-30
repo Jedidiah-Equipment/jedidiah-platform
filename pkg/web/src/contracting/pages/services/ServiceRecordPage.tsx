@@ -16,7 +16,6 @@ import { OpenServiceForm } from './OpenServiceForm.js';
 
 const byFirstName = (name: string | null) => (name ? ` by ${getFirstName(name)}` : '');
 
-/** When the service came in and who has it, or when it was closed and by whom. */
 function serviceRecordSummary(record: ServiceRecord) {
   if (record.status === 'closed')
     return `Closed ${formatDate(record.closedAt, 'short')}${byFirstName(record.closedByName)}`;
@@ -64,7 +63,7 @@ function ServiceRecordContent({ record }: { record: ServiceRecord }) {
     <div className="space-y-5">
       <MachineCard machineId={record.machineId} query={machine} />
       {record.status === 'open' ? (
-        <OpenServiceForm key={record.id} record={record} machine={machine.data} />
+        <OpenServiceForm key={record.id} record={record} machineQuery={machine} />
       ) : (
         <ClosedServiceCard record={record} />
       )}

@@ -19,10 +19,7 @@ import { CategoryLabel } from '@/contracting/components/CategoryIcon.js';
 import { cn } from '@/lib/utils.js';
 import { percentOrDash as percent } from './report-format.js';
 
-const hoursColumn = (
-  key: keyof HourKindTotals,
-  header: NonNullable<DataTableColumnDef<MachineUtilisation>['header']>,
-): DataTableColumnDef<MachineUtilisation> => ({
+const hoursColumn = (key: keyof HourKindTotals, header: string): DataTableColumnDef<MachineUtilisation> => ({
   accessorKey: key,
   header,
   cell: ({ row }) => <span className="tabular-nums">{formatHours(row.original[key])}</span>,
@@ -54,10 +51,6 @@ const columns: DataTableColumnDef<MachineUtilisation>[] = [
   },
   hoursColumn('workHours', 'Work'),
   hoursColumn('travelHours', 'Travel'),
-  hoursColumn('unaccountedHours', 'Unaccounted'),
-  hoursColumn('unresolvedHours', () => (
-    <span title="Hours in gaps over the Gap Flag threshold that nobody has resolved yet">Unresolved</span>
-  )),
 ];
 
 /** One Category's Machines for the window, its totals in the header; a row or the button picks the trend's subject. */

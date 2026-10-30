@@ -1,9 +1,7 @@
 import { formatDate, formatHours, formatNumber, formatQuantity, getFirstName } from '@pkg/domain';
 import {
-  assignmentAttentionKindLabels,
-  assignmentAttentionKindLevels,
-  assignmentAttentionLevelColorClassNames,
-  assignmentNeedsALookLevel,
+  type AttentionThresholds,
+  assignmentAttentionSentence,
   assignmentStateColorClassNames,
   assignmentStateLabels,
   breakdownPhases,
@@ -11,31 +9,21 @@ import {
   breakdownStatusLabels,
   breakdownUrgencyColorClassNames,
   breakdownUrgencyLabels,
-  isOverGapWindow,
   type JobSheet,
   type JobSheetStint,
-  readingSourceLabel,
+  needsALookColorClassNames,
+  travelProvenance,
 } from '@pkg/domain/contracting';
-import type {
-  Assignment,
-  BreakdownSummary,
-  BreakdownUrgency,
-  JobReading,
-  JobReadingAttentionKind,
-} from '@pkg/schema/contracting';
+import type { Assignment, BreakdownSummary, BreakdownUrgency, JobHoursValue } from '@pkg/schema/contracting';
 import {
   IconAlertTriangle,
   IconCheck,
-  IconChevronDown,
-  IconEye,
   IconFlagFilled,
   IconPencil,
-  IconPencilCheck,
   IconPlayerPlay,
   IconPlayerStop,
   IconPlus,
   IconRuler2,
-  type Icon as TablerIcon,
 } from '@tabler/icons-react';
 import { useMutation } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
@@ -48,11 +36,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu.js';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
 import { CategoryIcon } from '@/contracting/components/CategoryIcon.js';
 import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
 import { IconAction, Timeline, TimelineRow } from '@/contracting/components/Timeline.js';
@@ -66,167 +51,67 @@ import { useJobWrite } from './use-job-write.js';
 
 type Opens = { onOpen: (dialog: MachineDialog) => void };
 
-const readingAttentionIcons: Record<JobReadingAttentionKind, TablerIcon> = { disputed: IconAlertTriangle };
-
-function ReadingActions({ reading, stint, onOpen }: { reading: JobReading; stint: Assignment } & Opens) {
-  const role = reading.role === 'arrival' ? 'arrival' : 'departure';
-  if (!reading.attention.length)
-    return (
-      <IconAction
-        icon={reading.amendedAt ? IconPencilCheck : IconEye}
-        label={reading.amendedAt ? `View amended ${role} reading` : `View ${role} reading`}
-        onClick={() => onOpen({ kind: 'reading', stintId: stint.id, role })}
-      />
-    );
-  return reading.attention.map((kind) => (
-    <IconAction
-      icon={readingAttentionIcons[kind]}
-      key={kind}
-      label={`Review ${role} · ${assignmentAttentionKindLabels[kind]}`}
-      level={assignmentAttentionKindLevels[kind]}
-      onClick={() => onOpen({ kind: 'reading', stintId: stint.id, role })}
-    />
-  ));
-}
-
-/** When, by whom and why a reading was amended, or null when it never was. */
-function amendmentSummary(reading: JobReading) {
-  if (!reading.amendedAt) return null;
-  const by = reading.amendedByName ? ` by ${getFirstName(reading.amendedByName)}` : '';
-  const why = reading.amendmentReason ? ` · ${reading.amendmentReason}` : '';
-  return `Amended ${formatDate(reading.amendedAt, 'medium')}${by}${why}`;
-}
-
-function ReadingDetail({ reading }: { reading: JobReading }) {
-  const amendment = amendmentSummary(reading);
-  const source = readingSourceLabel(reading);
+/** The hours, when and by whom they were captured, and what John Deere had last read then. */
+function ReadingDetail({ reading }: { reading: JobHoursValue }) {
+  const captured = `captured ${formatDate(reading.at, 'medium')} by ${getFirstName(reading.byName)}`;
+  const deere = reading.telematics
+    ? `John Deere ${formatHours(reading.telematics.hours)} at ${formatDate(reading.telematics.at, 'medium')}`
+    : null;
+  const parts = [captured, deere, reading.comment].filter(Boolean);
   return (
-    <span
-      className="block truncate"
-      title={[formatHours(reading.value), formatDate(reading.capturedAt, 'medium'), source].filter(Boolean).join(' · ')}
-    >
-      <span className="font-medium text-primary">{formatHours(reading.value)}</span>
-      {' · '}
-      {formatDate(reading.capturedAt, 'medium')}
-      {amendment ? (
-        <>
-          {' · '}
-          <Tooltip>
-            <TooltipTrigger render={<button className="text-foreground" type="button" />}>Amended</TooltipTrigger>
-            <TooltipContent>{amendment}</TooltipContent>
-          </Tooltip>
-        </>
-      ) : null}
-      {source ? ` · ${source}` : null}
+    <span className="block truncate" title={[formatHours(reading.hours), ...parts].join(' · ')}>
+      <span className="font-medium text-primary">{formatHours(reading.hours)}</span>
+      {parts.map((part) => ` · ${part}`).join('')}
     </span>
   );
 }
 
-function GapStatus({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <Tooltip>
-      <TooltipTrigger render={<button aria-label={label} className="inline-flex p-1" type="button" />}>
-        {children}
-      </TooltipTrigger>
-      <TooltipContent>{label}</TooltipContent>
-    </Tooltip>
-  );
-}
-
-const gapFlagLevel = assignmentAttentionKindLevels['gap-flag'];
-
-function previousJobLabel(stint: Assignment) {
-  const job = stint.previousDeparture?.job;
-  return job ? `since leaving ${job.jobNumber}` : 'since its last departure';
-}
-
-/** One truncated line: the gap's hours, an optional lead phrase, then its details, with the full text on hover. */
-function GapDetail({
-  hours,
-  hoursClassName,
-  lead,
-  parts,
-}: {
-  hours: string;
-  hoursClassName: string;
-  lead?: string;
-  parts: string[];
-}) {
-  const head = lead ? ` ${lead}` : '';
-  const tail = parts.map((part) => ` · ${part}`).join('');
-  return (
-    <span className="block truncate" title={`${hours}${head}${tail}`}>
-      <span className={cn('font-medium', hoursClassName)}>{hours}</span>
-      {head}
-      {tail}
-    </span>
-  );
-}
-
-/** The Hour Gap between the Machine's previous departure and this arrival: flagged, resolved, or counted as travel. */
-function GapRow({
+/** A captured reading's edit, or the capture it is still waiting on. */
+function HoursAction({
   entry: { stint, sheet },
-  gapFlagThresholdHours,
+  side: role,
   onOpen,
-}: { entry: JobSheetStint; gapFlagThresholdHours: number } & Opens) {
-  const gapHours = stint.gapHours;
-  if (gapHours === null || gapHours === 0) return null;
-  const why = sheet.refusal('resolveGap');
-  const open = () => onOpen({ kind: 'gap', stintId: stint.id });
-  const edit = why ? null : <IconAction icon={IconPencil} label="Edit gap split" onClick={open} />;
-  const hours = formatHours(gapHours);
-  // A gap over the window keeps the Gap Flag's colour on its dot, open or resolved.
-  const tone = isOverGapWindow(gapHours, gapFlagThresholdHours) ? gapFlagLevel : ('done' as const);
-
-  if (stint.gapFlag)
-    return (
-      <TimelineRow
-        actions={
-          why ? (
-            <GapStatus label={`${assignmentAttentionKindLabels['gap-flag']} · ${hours} gap · ${why}`}>
-              <IconAlertTriangle
-                aria-hidden="true"
-                className={cn('size-5', assignmentAttentionLevelColorClassNames[gapFlagLevel].icon)}
-              />
-            </GapStatus>
-          ) : (
-            <IconAction icon={IconAlertTriangle} label={`Resolve gap · ${hours}`} level={gapFlagLevel} onClick={open} />
-          )
-        }
-        detail={
-          <GapDetail
-            hours={hours}
-            hoursClassName={assignmentAttentionLevelColorClassNames[gapFlagLevel].text}
-            lead={previousJobLabel(stint)}
-            parts={[`over the ${formatHours(gapFlagThresholdHours)} window`]}
-          />
-        }
-        title="Gap"
-        tone={tone}
+}: { entry: JobSheetStint; side: 'arrival' | 'departure' } & Opens) {
+  if (stint[role])
+    return sheet.can('editHours') ? (
+      <IconAction
+        icon={IconPencil}
+        label="Edit hours"
+        onClick={() => onOpen({ kind: 'hours', mode: 'edit', stintId: stint.id })}
       />
-    );
-
+    ) : null;
+  const capture = role === 'arrival' ? 'captureArrival' : 'captureDeparture';
+  if (!sheet.can(capture)) return null;
   return (
-    <TimelineRow
-      actions={edit}
-      detail={
-        <GapDetail
-          hours={hours}
-          hoursClassName="text-foreground"
-          parts={
-            stint.gapResolved
-              ? [
-                  `${formatHours(stint.travelHours)} travel`,
-                  `${formatHours(stint.unaccountedHours)} unaccounted`,
-                  ...(stint.gapReason ? [stint.gapReason] : []),
-                ]
-              : [stint.travelIncluded ? 'counted as travel' : 'not billed, travel excluded']
-          }
-        />
-      }
-      title="Gap"
-      tone={tone}
+    <IconAction
+      icon={role === 'arrival' ? IconPlayerPlay : IconPlayerStop}
+      label={role === 'arrival' ? 'Start — capture arrival' : 'Stop — capture departure'}
+      onClick={() => onOpen({ kind: 'hours', mode: role, stintId: stint.id })}
     />
+  );
+}
+
+/** The amber badge per reason the stint needs a look, and the latest management edit of its hours. */
+function StintAttention({ stint, thresholds }: { stint: Assignment; thresholds: AttentionThresholds }) {
+  if (!stint.attention.length && !stint.amendment) return null;
+  return (
+    <div className="mb-3 flex flex-wrap gap-2">
+      {stint.attention.map((kind) => (
+        <Badge
+          className={cn('h-auto whitespace-normal', needsALookColorClassNames.chip, needsALookColorClassNames.text)}
+          key={kind}
+          variant="outline"
+        >
+          <IconAlertTriangle aria-hidden="true" />
+          {assignmentAttentionSentence(kind, stint, thresholds)}
+        </Badge>
+      ))}
+      {stint.amendment ? (
+        <span className="text-xs text-muted-foreground">
+          {`Hours amended ${formatDate(stint.amendment.at, 'medium')} by ${getFirstName(stint.amendment.byName)} · ${stint.amendment.reason}`}
+        </span>
+      ) : null}
+    </div>
   );
 }
 
@@ -321,15 +206,15 @@ export function MachineStintCard({
   entry,
   sheet,
   breakdowns,
-  gapFlagThresholdHours,
+  thresholds,
   onOpen,
 }: {
   entry: JobSheetStint;
   sheet: JobSheet;
   /** This stint's Breakdowns on the Job, oldest first. */
   breakdowns: readonly BreakdownSummary[];
-  /** The Gap Flag threshold the server judged this Job's stints against. */
-  gapFlagThresholdHours: number;
+  /** The thresholds the server judged this Job's stints against. */
+  thresholds: AttentionThresholds;
 } & Opens) {
   const trpc = useTRPC();
   const [measuring, setMeasuring] = useState(false);
@@ -341,21 +226,17 @@ export function MachineStintCard({
   const breakdownRows = (phase: readonly BreakdownSummary[]) =>
     phase.map((breakdown) => <BreakdownRow breakdown={breakdown} key={breakdown.id} />);
   const write = useJobWrite();
-  const travel = useMutation(
-    trpc.contractingJobs.assignments.patch.mutationOptions(write.card('Unable to update Machine Assignment.')),
-  );
   const remove = useMutation(
     trpc.contractingJobs.assignments.remove.mutationOptions(write.card('Unable to remove Machine Assignment.')),
   );
   const planned = stint.state === 'planned';
   const onSite = stint.state === 'on-site';
-  const lookLevel = assignmentNeedsALookLevel(stint);
   const stintLabel = number === 1 ? 'First stint' : number === 2 ? 'Second stint' : `Stint ${formatNumber(number)}`;
   return (
     <Card
       className={cn(
         'gap-0 overflow-visible data-[size=sm]:gap-0',
-        lookLevel && assignmentAttentionLevelColorClassNames[lookLevel].border,
+        stint.attention.length > 0 && needsALookColorClassNames.border,
       )}
       size="sm"
     >
@@ -414,37 +295,16 @@ export function MachineStintCard({
             title="Planned"
             tone="done"
           />
-          <GapRow entry={entry} gapFlagThresholdHours={gapFlagThresholdHours} onOpen={onOpen} />
           {breakdownRows(phases.beforeArrival)}
           <TimelineRow
-            actions={
-              stint.arrival ? (
-                <ReadingActions reading={stint.arrival} stint={stint} onOpen={onOpen} />
-              ) : stintSheet.can('captureArrival') ? (
-                <IconAction
-                  icon={IconPlayerPlay}
-                  label="Start — capture arrival"
-                  onClick={() => onOpen({ kind: 'arrival', stintId: stint.id })}
-                />
-              ) : null
-            }
-            detail={stint.arrival ? <ReadingDetail reading={stint.arrival} /> : 'Awaiting hour reading'}
+            actions={<HoursAction entry={entry} onOpen={onOpen} side="arrival" />}
+            detail={stint.arrival ? <ReadingDetail reading={stint.arrival} /> : 'Awaiting arrival hours'}
             title="Arrival"
             tone={stint.arrival ? 'done' : planned ? 'current' : 'empty'}
           />
           {breakdownRows(phases.onSite)}
           <TimelineRow
-            actions={
-              stint.departure ? (
-                <ReadingActions reading={stint.departure} stint={stint} onOpen={onOpen} />
-              ) : stintSheet.can('captureDeparture') ? (
-                <IconAction
-                  icon={IconPlayerStop}
-                  label="Stop — capture departure"
-                  onClick={() => onOpen({ kind: 'departure', stintId: stint.id })}
-                />
-              ) : null
-            }
+            actions={<HoursAction entry={entry} onOpen={onOpen} side="departure" />}
             detail={stint.departure ? <ReadingDetail reading={stint.departure} /> : 'Not yet captured'}
             title="Departure"
             tone={stint.departure ? 'done' : onSite ? 'current' : 'empty'}
@@ -463,6 +323,7 @@ export function MachineStintCard({
             />
           ) : null}
         </Timeline>
+        <StintAttention stint={stint} thresholds={thresholds} />
         <div className="-mt-1 mb-4 flex justify-end">
           <AddMenu
             canMeasure={canMeasure}
@@ -481,43 +342,19 @@ export function MachineStintCard({
           ) : (
             <span>No hours yet</span>
           )}
-          {!planned ? (
+          {stint.travelHours !== null ? (
             <div className="ml-auto flex items-center gap-2">
               <span className="whitespace-nowrap">
                 Travel <strong className="text-foreground">{formatHours(stint.travelHours)}</strong>
+                {` · ${travelProvenance(stint)}`}
               </span>
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  aria-label={`Travel time for ${stint.machineCode}: ${stint.travelIncluded ? 'Include travel' : 'Exclude travel'}`}
-                  render={<Button disabled={!sheet.can('patchTravel')} size="xs" type="button" variant="outline" />}
-                >
-                  {stint.travelIncluded ? 'Include travel' : 'Exclude travel'}
-                  <IconChevronDown data-icon="inline-end" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-72">
-                  <DropdownMenuRadioGroup
-                    onValueChange={(value) => travel.mutate({ id: stint.id, travelIncluded: value === 'include' })}
-                    value={stint.travelIncluded ? 'include' : 'exclude'}
-                  >
-                    <DropdownMenuRadioItem className="items-start py-2 pr-8" closeOnClick value="include">
-                      <span className="flex flex-col gap-1">
-                        <span className="font-medium">Include travel</span>
-                        <span className="text-xs text-muted-foreground">
-                          Automatically count the hours between the previous departure and this arrival as travel.
-                        </span>
-                      </span>
-                    </DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem className="items-start py-2 pr-8" closeOnClick value="exclude">
-                      <span className="flex flex-col gap-1">
-                        <span className="font-medium">Exclude travel</span>
-                        <span className="text-xs text-muted-foreground">
-                          Do not automatically count those hours as travel.
-                        </span>
-                      </span>
-                    </DropdownMenuRadioItem>
-                  </DropdownMenuRadioGroup>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              {stintSheet.can('setTravel') ? (
+                <IconAction
+                  icon={IconPencil}
+                  label="Set Travel Hours"
+                  onClick={() => onOpen({ kind: 'travel', stintId: stint.id })}
+                />
+              ) : null}
             </div>
           ) : null}
         </div>

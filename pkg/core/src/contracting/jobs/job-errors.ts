@@ -25,10 +25,13 @@ export type JobErrorCode =
   | 'contracting_job.not_owner'
   | 'contracting_job.forbidden'
   | 'contracting_job.wrong_status'
+  | 'contracting_job.machine_on_site'
   | 'contracting_job.implement_on_site'
   | 'contracting_job.stint_not_planned'
   | 'contracting_job.has_on_site_stints'
-  | 'contracting_job.open_gap_flags'
+  | 'contracting_job.departure_before_arrival'
+  | 'contracting_job.departure_not_editable'
+  | 'contracting_job.reason_required'
   | 'contracting_job.pricing_incomplete'
   | 'contracting_job.total_changed'
   | 'contracting_job.rate_inactive';
@@ -62,6 +65,11 @@ export const withJobConstraints = <T>(action: () => Promise<T>) =>
   translatingConstraintViolations(
     {
       unique: (constraint) => {
+        if (constraint === 'machine_assignment_machine_on_site_unique')
+          return new JobError(
+            'contracting_job.machine_on_site',
+            'This Machine is still on site on another Job — capture its departure there first.',
+          );
         if (constraint === 'machine_assignment_implement_on_site_unique')
           return new JobError('contracting_job.implement_on_site', 'This Implement is already on site on another Job.');
         return new JobError('contracting_job.duplicate', 'That record already exists.');
@@ -88,7 +96,7 @@ export function assertJobAction(action: JobActionName, job: JobActionSubject, ac
     throw new JobError(refusalCodes[verdict.reason], verdict.message, { action, reason: verdict.reason });
 }
 
-type StintStateRow = { arrivalReadingId: string | null; departureReadingId: string | null };
+type StintStateRow = { arrivalHours: number | null; departureHours: number | null };
 
 /** Refuses unless this actor may take this Assignment Action on this stint now: its Job Action first, then its state. */
 export function assertStintAction(

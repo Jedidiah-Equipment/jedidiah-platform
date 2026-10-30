@@ -16,7 +16,8 @@ export const assignmentActionJobAction: Record<AssignmentActionName, JobActionNa
   captureArrival: 'capture',
   captureDeparture: 'capture',
   editMeasures: 'editMeasures',
-  resolveGap: 'resolveGaps',
+  editHours: 'editHours',
+  setTravel: 'setTravel',
   price: 'price',
 };
 
@@ -32,11 +33,12 @@ const rules: Record<AssignmentActionName, { states: readonly AssignmentState[]; 
     states: ['on-site', 'left'],
     refusal: 'Measures can only be recorded after the Machine has arrived.',
   },
-  resolveGap: { states: ['left'], refusal: 'The Machine Assignment must have left the Job.' },
+  editHours: { states: ['on-site', 'left'], refusal: 'The Machine has not arrived yet.' },
+  setTravel: { states: ['on-site', 'left'], refusal: 'Travel Hours exist once the Machine has arrived.' },
   price: { states: ['left'], refusal: 'Only a Machine Assignment that has left can be priced.' },
 };
 
-/** The state half alone: what this Assignment's state allows, whoever asks. The capture judgement reads this. */
+/** The state half alone: what this Assignment's state allows, whoever asks. */
 export const assignmentStateAllows = (action: AssignmentActionName, state: AssignmentState): boolean =>
   rules[action].states.includes(state);
 

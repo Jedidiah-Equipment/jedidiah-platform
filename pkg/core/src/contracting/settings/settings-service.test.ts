@@ -25,11 +25,16 @@ test('reads the migration-seeded row back as the defaults', async ({ context: { 
   expect(await getContractingSettings({ db })).toMatchObject(CONTRACTING_SETTINGS_DEFAULTS);
 });
 
-test('a save replaces all three values, stamps updatedAt and records one audit event; a no-op records none', async ({
+test('a save replaces every value, stamps updatedAt and records one audit event; a no-op records none', async ({
   context: { db, settingsEvents },
 }) => {
   const before = await getContractingSettings({ db });
-  const input = { gapFlagThresholdHours: 2.5, serviceDueSoonThresholdHours: 150, utilisationTargetPercent: 70 };
+  const input = {
+    travelFlagThresholdHours: 2.5,
+    johnDeereDifferenceThresholdHours: 15,
+    serviceDueSoonThresholdHours: 150,
+    utilisationTargetPercent: 70,
+  };
   const saved = await updateContractingSettings({ db, actorUserId, input });
   expect(saved).toMatchObject(input);
   expect(Date.parse(saved.updatedAt)).toBeGreaterThan(Date.parse(before.updatedAt));
@@ -40,7 +45,8 @@ test('a save replaces all three values, stamps updatedAt and records one audit e
     actorUserId,
     entityId: 'contracting',
     changes: {
-      gapFlagThresholdHours: { from: 4, to: 2.5 },
+      travelFlagThresholdHours: { from: 4, to: 2.5 },
+      johnDeereDifferenceThresholdHours: { from: 10, to: 15 },
       serviceDueSoonThresholdHours: { from: 100, to: 150 },
       utilisationTargetPercent: { from: null, to: 70 },
     },
@@ -53,8 +59,11 @@ test('a save replaces all three values, stamps updatedAt and records one audit e
 
 test('the database refuses a value outside the bounds and a second row', async ({ context: { db } }) => {
   const refused = (constraint: string) => ({ cause: { constraint_name: constraint } });
-  await expect(db.update(contractingSettings).set({ gapFlagThresholdHours: 0.4 })).rejects.toMatchObject(
-    refused('settings_gap_flag_threshold_bounds'),
+  await expect(db.update(contractingSettings).set({ travelFlagThresholdHours: 0.4 })).rejects.toMatchObject(
+    refused('settings_travel_flag_threshold_bounds'),
+  );
+  await expect(db.update(contractingSettings).set({ johnDeereDifferenceThresholdHours: 0.5 })).rejects.toMatchObject(
+    refused('settings_john_deere_difference_threshold_bounds'),
   );
   await expect(db.update(contractingSettings).set({ serviceDueSoonThresholdHours: 1001 })).rejects.toMatchObject(
     refused('settings_service_due_soon_threshold_bounds'),

@@ -5,13 +5,13 @@ export const finishedJobStatuses = ['completed', 'priced', 'invoiced'] as const 
 export type FinishedJobStatus = (typeof finishedJobStatuses)[number];
 /** No machine has left the plan behind yet: setup and Machine Assignments can still change. */
 export const openJobStatuses = ['upcoming', 'active'] as const satisfies readonly JobStatus[];
-/** Machines have arrived and pricing has not frozen the figures: Measures and Hour Gaps can still change. */
+/** Machines have arrived and pricing has not frozen the figures: Measures and Charge Lines can still change. */
 export const workedJobStatuses = ['active', 'completed'] as const satisfies readonly JobStatus[];
 /** Neither priced nor cancelled: a Foreman still reads it, and it can still be cancelled. */
 export const unpricedJobStatuses = ['upcoming', 'active', 'completed'] as const satisfies readonly JobStatus[];
 /** Signed off but not invoiced: the sign-off details can still be corrected. */
 export const signedOffJobStatuses = ['completed', 'priced'] as const satisfies readonly JobStatus[];
-/** Neither Invoiced nor Cancelled: its readings can still be amended. */
+/** Neither Invoiced nor Cancelled: its Job Hours and Travel Hours can still change. */
 export const unclosedJobStatuses = [
   'upcoming',
   'active',
@@ -40,9 +40,9 @@ export const jobQueues = [
 ] as const;
 export type JobQueue = (typeof jobQueues)[number];
 
-/** How loudly something on a Machine Assignment asks for a person; the domain owns what each means. */
-export const assignmentAttentionLevels = ['critical'] as const;
-export type AssignmentAttentionLevel = (typeof assignmentAttentionLevels)[number];
-/** The levels that need a look. */
-export const needsALookLevels = ['critical'] as const;
+/** Why a Machine Assignment needs a look; the domain says how each is worded. */
+export const assignmentAttentionKinds = ['travel-over-threshold', 'travel-clamped', 'john-deere-difference'] as const;
+export type AssignmentAttentionKind = (typeof assignmentAttentionKinds)[number];
+/** The one level a Machine Assignment's attention shows at: it is counted and filtered, and blocks nothing. */
+export const needsALookLevels = ['needs-a-look'] as const;
 export type NeedsALookLevel = (typeof needsALookLevels)[number];

@@ -1,5 +1,5 @@
 import { formatDate, getFirstName } from '@pkg/domain';
-import { readingProviderSuffix, serviceRecordStatusLabels } from '@pkg/domain/contracting';
+import { knownHoursSourceSuffix, serviceRecordStatusLabels } from '@pkg/domain/contracting';
 import { type ServiceRecordFilterOptions, serviceRecordStatuses } from '@pkg/schema/contracting';
 import { useMemo } from 'react';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
@@ -94,7 +94,7 @@ export function useServicesColumns({
             {original.reading.at ? (
               <span className="text-xs text-muted-foreground">
                 <DateDisplay date={original.reading.at} format="medium" />
-                {readingProviderSuffix(original.reading.provider)}
+                {knownHoursSourceSuffix(original.reading.source)}
               </span>
             ) : null}
           </span>

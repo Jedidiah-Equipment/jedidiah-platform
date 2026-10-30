@@ -1,8 +1,8 @@
 import { formatHours } from '@pkg/domain';
 import {
   hoursToServiceLabel,
+  knownHoursSourceSuffix,
   machineServiceBadge,
-  readingProviderSuffix,
   serviceDueStatusColorClassNames,
 } from '@pkg/domain/contracting';
 import type { FieldMachine } from '@pkg/schema/contracting';
@@ -20,9 +20,9 @@ export function DueMachineRow({ machine, onBook }: { machine: FieldMachine; onBo
   const tile = categoryTileProps(machine.categoryIcon, machine.categoryColour, resolved);
   const badge = machineServiceBadge(machine);
   const reading =
-    machine.latestReadingHours === null
-      ? 'No reading'
-      : `${formatHours(machine.latestReadingHours)}${readingProviderSuffix(machine.latestReadingProvider)}`;
+    machine.knownHours === null
+      ? 'No known hours'
+      : `${formatHours(machine.knownHours)}${knownHoursSourceSuffix(machine.knownHoursSource)}`;
   return (
     <CatalogListCard
       accessibilityHint="Opens the Machine"

@@ -1,15 +1,7 @@
 import { createGlobalSearchCondition, type Db, getSortOrder, onCalendarDays, paginateWithWindowTotal } from '@pkg/db';
 import { contractingCustomers, contractingFarms, contractingJobs, contractingWorkTypes } from '@pkg/db/contracting';
 import { JOHANNESBURG_TIME_ZONE } from '@pkg/domain';
-import {
-  countedAssignmentAttentionLevel,
-  formatJobNumber,
-  type JobActor,
-  jobAssignmentAttentionCounts,
-  jobQueueOf,
-  jobQueueStatus,
-  jobReadSeesMoney,
-} from '@pkg/domain/contracting';
+import { formatJobNumber, type JobActor, jobQueueOf, jobQueueStatus, jobReadSeesMoney } from '@pkg/domain/contracting';
 import {
   type JobListInput,
   type JobListResult,
@@ -24,7 +16,7 @@ import { foreman, invoicer, jobHeader } from './job-load.js';
 import { assertReadableStatus, readableBy, readerFor } from './job-readers.js';
 import * as jobSql from './job-sql.js';
 
-/** Each queue's Job count, and the loudest Machine Assignment attention needing a look across its Jobs. */
+/** Each queue's Job count, and whether any of its Jobs has a Machine Assignment that needs a look. */
 export async function summarizeJobQueues({ db, actor }: { db: Db; actor: JobActor }): Promise<JobQueueSummary> {
   const reader = readerFor(actor);
   const rows = await db
@@ -32,24 +24,24 @@ export async function summarizeJobQueues({ db, actor }: { db: Db; actor: JobActo
       status: contractingJobs.status,
       looksFinished: jobSql.looksFinished,
       count: sql<number>`count(*)::integer`,
-      openGapFlags: sql<number>`sum(${jobSql.openGapFlags})::integer`,
-      critical: sql<number>`sum(${jobSql.disputedReadings})::integer`,
+      attention: sql<number>`sum(${jobSql.assignmentAttention})::integer`,
     })
     .from(contractingJobs)
     .where(readableBy(reader))
     .groupBy(contractingJobs.status, jobSql.looksFinished);
-  const totals = new Map(jobQueues.map((queue) => [queue, { count: 0, critical: 0 }]));
-  for (const { openGapFlags, critical, count, ...row } of rows) {
+  const totals = new Map(jobQueues.map((queue) => [queue, { count: 0, attention: 0 }]));
+  for (const { attention, count, ...row } of rows) {
     const total = totals.get(jobQueueOf(row));
     if (!total) continue;
-    const attention = jobAssignmentAttentionCounts(openGapFlags, { critical });
     total.count += count;
-    total.critical += attention.critical;
+    total.attention += attention;
   }
   const queues = [...totals];
   return JobQueueSummary.parse({
     counts: Object.fromEntries(queues.map(([queue, { count }]) => [queue, count])),
-    attention: Object.fromEntries(queues.map(([queue, total]) => [queue, countedAssignmentAttentionLevel(total)])),
+    attention: Object.fromEntries(
+      queues.map(([queue, total]) => [queue, total.attention > 0 ? ('needs-a-look' as const) : null]),
+    ),
   });
 }
 
@@ -118,11 +110,8 @@ export async function listJobs({
         onSiteStints: jobSql.stintCount('on-site'),
         leftStints: jobSql.stintCount('left'),
         looksFinished: jobSql.looksFinished,
-        openGapFlags: jobSql.openGapFlags,
+        assignmentAttention: jobSql.assignmentAttention,
         total: sql<number>`count(*) over ()`.mapWith(Number),
-        readings: {
-          critical: jobSql.disputedReadings,
-        },
       })
       .from(contractingJobs)
       .innerJoin(contractingCustomers, eq(contractingCustomers.id, contractingJobs.customerId))
@@ -142,11 +131,10 @@ export async function listJobs({
   const { rows, total, nextCursor } = await paginateWithWindowTotal(matching, input);
   const seesMoney = jobReadSeesMoney(reader.mode);
   const open = await loadOpenBreakdowns({ db, actor, on: 'job', ids: rows.map(({ job }) => job.id) });
-  const items = rows.map(({ job, readings, total: _total, ...row }) =>
+  const items = rows.map(({ job, total: _total, ...row }) =>
     JobSummary.parse({
       ...job,
       ...row,
-      assignmentAttention: jobAssignmentAttentionCounts(row.openGapFlags, readings),
       openBreakdowns: open.get(job.id) ?? [],
       jobNumber: formatJobNumber(job.code),
       pricedTotal: seesMoney ? job.pricedTotal : null,

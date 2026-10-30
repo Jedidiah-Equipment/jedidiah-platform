@@ -1,11 +1,11 @@
-import { contractingMachines } from '@pkg/db/contracting';
+import { contractingJobs, contractingMachines } from '@pkg/db/contracting';
 import type { DateOnlyIso } from '@pkg/schema';
 import { eq } from 'drizzle-orm';
 import { expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
 import { createJob } from '../jobs/job-service.js';
 import { captureReading } from '../readings/reading-service.js';
-import { admin, foreman, foremanId, plannedStint, seedJobFixtures } from '../test/job-fixtures.js';
+import { admin, captureHours, foremanId, plannedStint, seedJobFixtures } from '../test/job-fixtures.js';
 import { getHoursHeatMap } from './hours-heat-map-service.js';
 
 const today = '2026-10-12' as DateOnlyIso;
@@ -26,42 +26,35 @@ const test = createTester(async ({ db }) => {
         foremanUserId: foremanId,
       },
     });
-  const capture = (
-    machineId: string,
-    role: 'arrival' | 'departure' | 'spot',
-    value: number,
-    capturedAt: string,
-    assignmentId?: string,
-  ) =>
-    captureReading({
-      db,
-      actor: role === 'spot' ? admin : foreman,
-      input: {
-        machineId,
-        ...(assignmentId ? { assignmentId } : {}),
-        role,
-        value,
-        capturedAt,
-        disputePrevious: false,
-      },
-    });
+  const capture = (machineId: string, value: number, capturedAt: string) =>
+    captureReading({ db, actor: admin, input: { machineId, value, capturedAt } });
+  /** A Job on the excavator whose stint arrived and left at these hours, dated as given. */
+  const workedJob = async (arrival: number, departure: number | null, startDate: string, endDate: string | null) => {
+    const job = await newJob();
+    const stint = await plannedStint(db, admin, { jobId: job.id, machineId: fixtures.excavator.id, implementId: null });
+    await captureHours(db, stint.id, 'arrival', arrival);
+    if (departure !== null) await captureHours(db, stint.id, 'departure', departure);
+    await db.update(contractingJobs).set({ startDate, endDate }).where(eq(contractingJobs.id, job.id));
+    return job.id;
+  };
   // The tipper: two spot readings six days apart, 12.5 h between them, then retired.
-  await capture(fixtures.tipper.id, 'spot', 900, '2026-06-02T08:00:00+02:00');
-  await capture(fixtures.tipper.id, 'spot', 912.5, '2026-06-08T08:00:00+02:00');
+  await capture(fixtures.tipper.id, 900, '2026-06-02T08:00:00+02:00');
+  await capture(fixtures.tipper.id, 912.5, '2026-06-08T08:00:00+02:00');
   await db
     .update(contractingMachines)
     .set({ retiredAt: new Date('2026-06-10T12:00:00+02:00'), retiredReason: 'Sold' })
     .where(eq(contractingMachines.id, fixtures.tipper.id));
-  // The excavator: Job A on site 28 Jun to 3 Jul with a spot read between, an 8.8 h gap, then Job B 6 to 7 Jul.
+  // The excavator's ledger: read 28 Jun, 30 Jun and 3 Jul, an 8.8 h gap, then 6 and 7 Jul.
   const excavator = fixtures.excavator.id;
-  const first = await plannedStint(db, admin, { jobId: (await newJob()).id, machineId: excavator, implementId: null });
-  await capture(excavator, 'arrival', 4002.6, '2026-06-28T09:00:00+02:00', first.id);
-  await capture(excavator, 'spot', 4030.0, '2026-06-30T18:00:00+02:00');
-  await capture(excavator, 'departure', 4051.2, '2026-07-03T12:00:00+02:00', first.id);
-  const second = await plannedStint(db, admin, { jobId: (await newJob()).id, machineId: excavator, implementId: null });
-  await capture(excavator, 'arrival', 4060.0, '2026-07-06T08:00:00+02:00', second.id);
-  await capture(excavator, 'departure', 4070.0, '2026-07-07T08:00:00+02:00', second.id);
-  return { ...fixtures, capture, newJob, jobA: first.jobId, jobB: second.jobId };
+  await capture(excavator, 4002.6, '2026-06-28T09:00:00+02:00');
+  await capture(excavator, 4030.0, '2026-06-30T18:00:00+02:00');
+  await capture(excavator, 4051.2, '2026-07-03T12:00:00+02:00');
+  await capture(excavator, 4060.0, '2026-07-06T08:00:00+02:00');
+  await capture(excavator, 4070.0, '2026-07-07T08:00:00+02:00');
+  // Job A worked 48.6 h dated 28 Jun to 3 Jul; Job B 10 h dated 6 to 7 Jul.
+  const jobA = await workedJob(4002.6, 4051.2, '2026-06-28', '2026-07-03');
+  const jobB = await workedJob(4060, 4070, '2026-07-06', '2026-07-07');
+  return { ...fixtures, capture, workedJob, jobA, jobB };
 });
 
 const hoursOn = (heatMap: Awaited<ReturnType<typeof getHoursHeatMap>>, day: string) =>
@@ -128,18 +121,17 @@ test('sums every Machine, retired ones included, when nothing is filtered, and t
   expect(await getHoursHeatMap({ db, input: { ...input, machineIds: [], jobIds: [] }, today })).toEqual(everything);
 });
 
-test('counts only the Work hours inside a Job’s stints under a Job filter', async ({ context }) => {
+test('spreads a Job’s Work hours evenly over its dates under a Job filter', async ({ context }) => {
   const { db, jobA, jobB } = context;
   const range = { start: date('2026-06-27'), end: date('2026-07-08') };
   const a = await getHoursHeatMap({ db, input: { ...range, jobIds: [jobA] }, today });
-  expect(Math.abs(total(a) - 48.6)).toBeLessThan(0.5);
+  expect(hoursOn(a, '2026-06-28')).toEqual({ date: '2026-06-28', hours: 8.1, estimated: true });
   expect(hoursOn(a, '2026-07-05')?.hours).toBe(0);
+  expect(total(a)).toBeCloseTo(48.6, 1);
   const b = await getHoursHeatMap({ db, input: { ...range, jobIds: [jobB] }, today });
-  expect(hoursOn(b, '2026-07-06')?.hours).toBe(6.7);
-  expect(hoursOn(b, '2026-07-07')?.hours).toBe(3.3);
-  expect(total(b)).toBeCloseTo(10, 0);
+  expect([hoursOn(b, '2026-07-06')?.hours, hoursOn(b, '2026-07-07')?.hours]).toEqual([5, 5]);
   const both = await getHoursHeatMap({ db, input: { ...range, jobIds: [jobA, jobB] }, today });
-  expect(Math.abs(total(both) - 58.6)).toBeLessThan(0.7);
+  expect(total(both)).toBeCloseTo(58.6, 1);
 });
 
 test('intersects Machines and Jobs, so a Machine that never worked the Job shows nothing', async ({ context }) => {
@@ -150,31 +142,25 @@ test('intersects Machines and Jobs, so a Machine that never worked the Job shows
   ).toBe(0);
   expect(
     total(await getHoursHeatMap({ db, input: { ...range, jobIds: [jobA], machineIds: [excavator.id] }, today })),
-  ).toBeGreaterThan(40);
+  ).toBeCloseTo(48.6, 1);
 });
 
-test('opens a stint that has not departed yet through to the latest reading', async ({ context }) => {
-  const { db, excavator, capture, newJob } = context;
-  const open = await plannedStint(db, admin, {
-    jobId: (await newJob()).id,
-    machineId: excavator.id,
-    implementId: null,
-  });
-  await capture(excavator.id, 'arrival', 4070, '2026-07-10T08:00:00+02:00', open.id);
-  await capture(excavator.id, 'spot', 4072, '2026-07-10T10:00:00+02:00');
+test('a stint still on site has no Work hours to spread yet', async ({ context }) => {
+  const { db, workedJob } = context;
+  const open = await workedJob(4070, null, '2026-07-10', null);
   const heatMap = await getHoursHeatMap({
     db,
-    input: { jobIds: [open.jobId], start: date('2026-07-09'), end: date('2026-07-11') },
+    input: { jobIds: [open], start: date('2026-07-09'), end: date('2026-07-11') },
     today,
   });
-  expect(heatMap.days.map((day) => day.hours)).toEqual([0, 2, 0]);
+  expect(heatMap.days.map((day) => day.hours)).toEqual([0, 0, 0]);
 });
 
 test('reads hourly readings on one day as exact', async ({ context }) => {
   const { db, excavator, capture } = context;
-  await capture(excavator.id, 'spot', 4070, '2026-07-12T08:00:00+02:00');
-  await capture(excavator.id, 'spot', 4071.5, '2026-07-12T09:00:00+02:00');
-  await capture(excavator.id, 'spot', 4073, '2026-07-12T10:30:00+02:00');
+  await capture(excavator.id, 4070, '2026-07-12T08:00:00+02:00');
+  await capture(excavator.id, 4071.5, '2026-07-12T09:00:00+02:00');
+  await capture(excavator.id, 4073, '2026-07-12T10:30:00+02:00');
   const heatMap = await getHoursHeatMap({
     db,
     input: { machineIds: [excavator.id], start: date('2026-07-12'), end: date('2026-07-12') },

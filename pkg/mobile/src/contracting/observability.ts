@@ -1,11 +1,10 @@
 import type { CaptureWhen } from '@pkg/domain/contracting';
-import type { BreakdownSubjectKind, BreakdownUrgency, ReadAtEstimate, ReadingRole } from '@pkg/schema/contracting';
+import type { BreakdownSubjectKind, BreakdownUrgency, ReadAtEstimate } from '@pkg/schema/contracting';
 import { addBreadcrumb, captureEvent } from '@/lib/observability';
 import { type MutationEventCatalog, type ObservabilityProperties, pickRecordIds } from '@/lib/observability-contract';
 
-/** Once per capture the server saves or refuses: `refused` is the refusal's app code, null when saved. */
+/** Once per spot capture the server saves or refuses: `refused` is the refusal's app code, null when saved. */
 export function recordReadingCaptured(properties: {
-  role: Exclude<ReadingRole, 'baseline'>;
   backdated: boolean;
   refused: string | null;
   when: CaptureWhen;
@@ -74,6 +73,14 @@ export const CONTRACTING_MUTATION_EVENTS = {
   'contractingJobs.assignments.add': {
     event: 'machine added to job',
     properties: (variables) => pickRecordIds(variables, ['jobId', 'machineId']),
+  },
+  'contractingJobs.assignments.captureHours': {
+    event: 'job hours captured',
+    properties: (variables) => pickRecordIds(variables, ['assignmentId']),
+  },
+  'contractingJobs.assignments.editHours': {
+    event: 'job hours edited',
+    properties: (variables) => pickRecordIds(variables, ['assignmentId']),
   },
   'contractingJobs.measures.set': {
     event: 'measure set',

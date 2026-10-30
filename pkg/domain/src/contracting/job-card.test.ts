@@ -1,28 +1,19 @@
-import { DateIso } from '@pkg/schema';
-import type { Assignment, JobDetail, JobReading } from '@pkg/schema/contracting';
+import type { Assignment, AssignmentAttentionKind, JobDetail, JobHoursValue } from '@pkg/schema/contracting';
 import { describe, expect, test } from 'vitest';
 import { buildJobCardModel } from './job-card.js';
 
 const now = new Date('2026-09-23T10:00:00.000Z');
 
-function reading(value: number, capturedAt: string, overrides: Partial<JobReading> = {}): JobReading {
+function reading(hours: number, at: string, overrides: Partial<JobHoursValue> = {}): JobHoursValue {
   return {
-    id: `reading-${value}`,
-    role: 'arrival',
-    value,
-    capturedAt,
-    capturedByUserId: 'sipho',
-    method: 'manual',
-    telematicsProvider: null,
+    hours,
+    at,
+    byUserId: 'sipho',
+    byName: 'Sipho',
     comment: null,
-    disputed: false,
-    disputeReason: null,
-    amendedAt: null,
-    amendmentReason: null,
-    capturedByName: 'Sipho',
-    attention: [],
+    telematics: null,
     ...overrides,
-  } as JobReading;
+  } as JobHoursValue;
 }
 
 function stint(overrides: Partial<Assignment>): Assignment {
@@ -42,15 +33,13 @@ function stint(overrides: Partial<Assignment>): Assignment {
     createdAt: '2026-09-01T06:00:00.000Z',
     arrival: null,
     departure: null,
-    travelIncluded: true,
-    workHours: null,
-    gapHours: null,
     travelHours: 0,
-    unaccountedHours: 0,
+    travelClamped: false,
+    travelSetByName: null,
+    workHours: null,
     billableHours: null,
-    gapFlag: false,
-    gapResolved: false,
-    gapReason: null,
+    attention: [],
+    amendment: null,
     measures: [],
     pricing: null,
     ...overrides,
@@ -62,7 +51,7 @@ const excavator = stint({
   machineId: 'cat',
   machineCode: 'CAT320-1',
   arrival: reading(4002.6, '2026-09-01T07:00:00.000Z'),
-  departure: reading(4051.2, '2026-09-06T16:00:00.000Z', { role: 'departure' }),
+  departure: reading(4051.2, '2026-09-06T16:00:00.000Z'),
   workHours: 48.6,
   billableHours: 48.6,
   pricing: {
@@ -86,9 +75,8 @@ const grader = stint({
   machineCode: 'GRAD140K-1',
   categoryName: 'Grader',
   arrival: reading(7110, '2026-09-01T09:00:00.000Z'),
-  departure: reading(7152.4, '2026-09-06T15:00:00.000Z', { role: 'departure' }),
+  departure: reading(7152.4, '2026-09-06T15:00:00.000Z'),
   workHours: 42.4,
-  gapHours: 2.1,
   travelHours: 2.1,
   billableHours: 44.5,
   pricing: {
@@ -113,9 +101,8 @@ const tractor = stint({
   categoryName: 'Tractor',
   implementCode: 'TIP-TRAIL-3',
   arrival: reading(7102.5, '2026-09-01T11:00:00.000Z'),
-  departure: reading(7141.3, '2026-09-06T14:00:00.000Z', { role: 'departure' }),
+  departure: reading(7141.3, '2026-09-06T14:00:00.000Z'),
   workHours: 38.8,
-  gapHours: 1.2,
   travelHours: 1.2,
   billableHours: 40,
   measures: [{ id: 'measure', measureTypeId: 'loads', measureTypeName: 'Loads', quantity: 18 }],
@@ -175,8 +162,7 @@ function rowleyDam(
     onSiteStints: 0,
     leftStints: 3,
     looksFinished: false,
-    openGapFlags: 0,
-    assignmentAttention: { critical: 0 },
+    assignmentAttention: 0,
     startDate: '2026-09-01',
     endDate: '2026-09-06',
     pricedAt: '2026-09-08T12:00:00.000Z',
@@ -226,13 +212,7 @@ describe('buildJobCardModel', () => {
         kind: 'stint',
         machineCode: 'CAT320-1',
         driverName: null,
-        arrival: {
-          value: 4002.6,
-          capturedAt: '2026-09-01T07:00:00.000Z',
-          marker: null,
-          comment: null,
-          capturedByName: null,
-        },
+        arrival: { hours: 4002.6, at: null, marker: null, comment: null, byName: null },
         hours: { variant: 'customer', total: 48.6 },
         rate: { name: 'Excavator, supervised', unitAmount: 600, per: 'h' },
         amount: 29_160,
@@ -248,26 +228,22 @@ describe('buildJobCardModel', () => {
     ]);
   });
 
-  test('the internal copy prints the work and travel split, the gap reason, reading markers and sign-off notes', () => {
-    const yardGrader = {
+  test('the internal copy prints the work and travel split, who captured what and when, and sign-off notes', () => {
+    const clampedGrader = {
       ...grader,
-      gapHours: 9.1,
-      travelHours: 2.1,
-      unaccountedHours: 7,
-      gapResolved: true,
-      gapReason: 'yard work at Stony Brook',
+      travelHours: 0,
+      travelClamped: true,
+      attention: ['travel-clamped', 'john-deere-difference'] as AssignmentAttentionKind[],
       arrival: reading(7110, '2026-09-01T09:00:00.000Z', { comment: 'Meter glass cracked' }),
-      departure: reading(7152.4, '2026-09-06T15:00:00.000Z', {
-        role: 'departure',
-        disputed: true,
-        disputeReason: 'The previous reading is wrong.',
-      }),
     };
     const amendedExcavator = {
       ...excavator,
-      departure: reading(4051.2, '2026-09-06T16:00:00.000Z', { role: 'departure', amendedAt: DateIso.parse(now) }),
-    };
-    const job = rowleyDam({ assignments: [amendedExcavator, yardGrader], repricingNote: 'Lowbed was double-counted' });
+      amendment: { at: '2026-09-08T09:00:00.000Z', byName: 'Dean', reason: 'Misread the dash' },
+    } as Assignment;
+    const job = rowleyDam({
+      assignments: [amendedExcavator, clampedGrader],
+      repricingNote: 'Lowbed was double-counted',
+    });
     const card = buildJobCardModel(job, 'internal', now);
 
     expect(card).toMatchObject({
@@ -278,32 +254,23 @@ describe('buildJobCardModel', () => {
       expect.objectContaining({
         machineCode: 'CAT320-1',
         driverName: 'Sipho',
-        arrival: expect.objectContaining({ marker: null }),
         departure: expect.objectContaining({ marker: 'amended' }),
-        hours: { variant: 'internal', work: 48.6, travel: 0, unaccounted: 0, gapReason: null },
+        hours: { variant: 'internal', work: 48.6, travel: 0, attention: [] },
       }),
       expect.objectContaining({
         machineCode: 'GRAD140K-1',
-        arrival: expect.objectContaining({
+        arrival: {
+          hours: 7110,
+          at: '2026-09-01T09:00:00.000Z',
           marker: null,
           comment: 'Meter glass cracked',
-          capturedByName: 'Sipho',
-        }),
-        departure: expect.objectContaining({ marker: 'disputed' }),
-        hours: { variant: 'internal', work: 42.4, travel: 2.1, unaccounted: 7, gapReason: 'yard work at Stony Brook' },
+          byName: 'Sipho',
+        },
+        hours: { variant: 'internal', work: 42.4, travel: 0, attention: ['travel-clamped', 'john-deere-difference'] },
       }),
     ]);
     const [customerGrader] = stintLines(job, 'customer').filter((line) => line.machineCode === 'GRAD140K-1');
     expect(customerGrader).toMatchObject({ hours: { variant: 'customer', total: 44.5 }, arrival: { comment: null } });
-  });
-
-  test('marks a disputed reading ahead of any other evidence', () => {
-    const disputed = {
-      ...excavator,
-      arrival: reading(4002.6, '2026-09-01T07:00:00.000Z', { disputed: true, amendedAt: DateIso.parse(now) }),
-    };
-    const [line] = stintLines(rowleyDam({ assignments: [disputed] }), 'internal');
-    expect(line?.arrival?.marker).toBe('disputed');
   });
 
   test('prints a No charge stint without a Rate and a percentage Discount as its own line', () => {

@@ -17,7 +17,6 @@ import { quotedList } from '../columns.js';
 import { decimal2, hours, money, timestamps } from './columns.js';
 import { contractingCustomers, contractingFarms, contractingWorkTypes } from './directory.js';
 import { contractingImplements, contractingMachines } from './fleet.js';
-import { contractingHourReadings } from './hour-reading.js';
 import { contractingSchema } from './pg-schema.js';
 import { contractingMeasureTypes, contractingRates } from './rate-card.js';
 
@@ -124,18 +123,29 @@ export const contractingMachineAssignments = contractingSchema.table(
       .references(() => contractingMachines.id, { onDelete: 'restrict' }),
     implementId: uuid('implement_id').references(() => contractingImplements.id, { onDelete: 'restrict' }),
     driverUserId: text('driver_user_id').references(() => user.id, { onDelete: 'restrict' }),
-    arrivalReadingId: uuid('arrival_reading_id').references(() => contractingHourReadings.id, {
-      onDelete: 'restrict',
-    }),
-    departureReadingId: uuid('departure_reading_id').references(() => contractingHourReadings.id, {
-      onDelete: 'restrict',
-    }),
-    travelIncluded: boolean('travel_included').notNull().default(true),
-    gapTravelHours: hours('gap_travel_hours'),
-    gapUnaccountedHours: hours('gap_unaccounted_hours'),
-    gapReason: text('gap_reason'),
-    gapResolvedAt: timestamp('gap_resolved_at', { withTimezone: true }),
-    gapResolvedByUserId: text('gap_resolved_by_user_id').references(() => user.id),
+    arrivalHours: hours('arrival_hours'),
+    /** When the server saved the arrival hours; nothing judges it. */
+    arrivalAt: timestamp('arrival_at', { withTimezone: true }),
+    arrivalByUserId: text('arrival_by_user_id').references(() => user.id),
+    arrivalComment: text('arrival_comment'),
+    /** What John Deere had last read when the arrival hours were saved; null for an unlinked Machine. */
+    arrivalTelematicsHours: hours('arrival_telematics_hours'),
+    arrivalTelematicsAt: timestamp('arrival_telematics_at', { withTimezone: true }),
+    departureHours: hours('departure_hours'),
+    departureAt: timestamp('departure_at', { withTimezone: true }),
+    departureByUserId: text('departure_by_user_id').references(() => user.id),
+    departureComment: text('departure_comment'),
+    departureTelematicsHours: hours('departure_telematics_hours'),
+    departureTelematicsAt: timestamp('departure_telematics_at', { withTimezone: true }),
+    /** Snapshot at arrival, hand-set after; null until the Machine arrives. */
+    travelHours: hours('travel_hours'),
+    travelClamped: boolean('travel_clamped').notNull().default(false),
+    travelSetAt: timestamp('travel_set_at', { withTimezone: true }),
+    travelSetByUserId: text('travel_set_by_user_id').references(() => user.id),
+    /** The latest management edit of either reading, for the Job Card's amended marker. */
+    hoursAmendedAt: timestamp('hours_amended_at', { withTimezone: true }),
+    hoursAmendedByUserId: text('hours_amended_by_user_id').references(() => user.id),
+    hoursAmendmentReason: text('hours_amendment_reason'),
     rateId: uuid('rate_id').references(() => contractingRates.id, { onDelete: 'restrict' }),
     rateName: text('rate_name'),
     rateBasis: text('rate_basis', { enum: rateBases }),
@@ -154,23 +164,40 @@ export const contractingMachineAssignments = contractingSchema.table(
   (table) => [
     index('machine_assignment_job_idx').on(table.jobId),
     index('machine_assignment_machine_idx').on(table.machineId),
-    uniqueIndex('machine_assignment_arrival_unique').on(table.arrivalReadingId),
-    uniqueIndex('machine_assignment_departure_unique').on(table.departureReadingId),
+    // The Activity feed's arrived and left branches order by (stamp, id).
+    index('machine_assignment_arrival_idx').on(table.arrivalAt, table.id),
+    index('machine_assignment_departure_idx').on(table.departureAt, table.id),
     uniqueIndex('machine_assignment_machine_on_site_unique')
       .on(table.machineId)
-      .where(sql`${table.arrivalReadingId} IS NOT NULL AND ${table.departureReadingId} IS NULL`),
+      .where(sql`${table.arrivalHours} IS NOT NULL AND ${table.departureHours} IS NULL`),
     uniqueIndex('machine_assignment_implement_on_site_unique')
       .on(table.implementId)
       .where(
-        sql`${table.implementId} IS NOT NULL AND ${table.arrivalReadingId} IS NOT NULL AND ${table.departureReadingId} IS NULL`,
+        sql`${table.implementId} IS NOT NULL AND ${table.arrivalHours} IS NOT NULL AND ${table.departureHours} IS NULL`,
       ),
     check(
-      'machine_assignment_departure_needs_arrival',
-      sql`${table.departureReadingId} IS NULL OR ${table.arrivalReadingId} IS NOT NULL`,
+      'machine_assignment_arrival_shape',
+      sql`((${table.arrivalHours} IS NULL) = (${table.arrivalAt} IS NULL) AND (${table.arrivalHours} IS NULL) = (${table.arrivalByUserId} IS NULL)) AND (${table.arrivalTelematicsHours} IS NULL) = (${table.arrivalTelematicsAt} IS NULL)`,
     ),
     check(
-      'machine_assignment_gap_shape',
-      sql`(${table.gapResolvedAt} IS NULL AND ${table.gapTravelHours} IS NULL AND ${table.gapUnaccountedHours} IS NULL AND ${table.gapReason} IS NULL AND ${table.gapResolvedByUserId} IS NULL) OR (${table.gapResolvedAt} IS NOT NULL AND ${table.gapTravelHours} >= 0 AND ${table.gapUnaccountedHours} >= 0 AND length(btrim(${table.gapReason})) > 0 AND ${table.gapResolvedByUserId} IS NOT NULL)`,
+      'machine_assignment_departure_shape',
+      sql`((${table.departureHours} IS NULL) = (${table.departureAt} IS NULL) AND (${table.departureHours} IS NULL) = (${table.departureByUserId} IS NULL)) AND (${table.departureTelematicsHours} IS NULL) = (${table.departureTelematicsAt} IS NULL)`,
+    ),
+    check(
+      'machine_assignment_departure_needs_arrival',
+      sql`${table.departureHours} IS NULL OR ${table.arrivalHours} IS NOT NULL`,
+    ),
+    check(
+      'machine_assignment_departure_after_arrival',
+      sql`${table.departureHours} IS NULL OR ${table.departureHours} >= ${table.arrivalHours}`,
+    ),
+    check(
+      'machine_assignment_travel_shape',
+      sql`(${table.travelHours} IS NULL) = (${table.arrivalHours} IS NULL) AND (${table.travelHours} IS NULL OR ${table.travelHours} >= 0) AND (${table.travelSetAt} IS NULL) = (${table.travelSetByUserId} IS NULL)`,
+    ),
+    check(
+      'machine_assignment_amendment_shape',
+      sql`(${table.hoursAmendedAt} IS NULL AND ${table.hoursAmendedByUserId} IS NULL AND ${table.hoursAmendmentReason} IS NULL) OR (${table.hoursAmendedAt} IS NOT NULL AND ${table.hoursAmendedByUserId} IS NOT NULL AND length(btrim(${table.hoursAmendmentReason})) > 0)`,
     ),
     check(
       'machine_assignment_pricing_shape',

@@ -1,14 +1,17 @@
-import { formatDate, formatHours, formatQuantity, getFirstName } from '@pkg/domain';
+import { formatHours, formatQuantity, getFirstName } from '@pkg/domain';
 import {
+  type AttentionThresholds,
+  assignmentAttentionSentence,
   assignmentStateColorClassNames,
   assignmentStateLabels,
   breakdownsByStint,
   type JobSheetStint,
   jobSheet,
   mostUrgentBreakdown,
+  needsALookColorClassNames,
 } from '@pkg/domain/contracting';
 import type { AssignmentDetail, BreakdownSummary, JobCardVariant } from '@pkg/schema/contracting';
-import { IconPlayerPlay, IconPlayerStop, IconPlus, IconRuler2 } from '@tabler/icons-react-native';
+import { IconPencil, IconPlayerPlay, IconPlayerStop, IconPlus, IconRuler2 } from '@tabler/icons-react-native';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
@@ -29,6 +32,7 @@ import { jobCardShareAction } from '@/contracting/lib/job-card';
 import { useJobBreakdowns } from '@/contracting/workshop/use-breakdowns';
 import { shareDocument } from '@/lib/document-actions';
 import { useBusyAction } from '@/lib/use-busy-action';
+import { useColorMode } from '@/theme/use-color-mode';
 import { JobStatusChip } from './JobStatusChip';
 import { MeasuresSheet } from './MeasuresSheet';
 import { useJob } from './use-jobs';
@@ -67,19 +71,10 @@ export default function JobScreen() {
     [job?.assignments, breakdowns.data],
   );
 
-  const openCapture = (stint: AssignmentDetail, role: 'arrival' | 'departure') =>
+  const openHours = (stint: AssignmentDetail, params: { role: 'arrival' | 'departure' } | { mode: 'edit' }) =>
     router.push({
       pathname: '/contracting/jobs/[jobId]/capture',
-      params: {
-        jobId,
-        machineId: stint.machineId,
-        role,
-        assignmentId: stint.id,
-        overrideImplementId: stint.implementId ?? '',
-        overrideDriverUserId: stint.driverUserId ?? '',
-        implementCode: stint.implementCode ?? '',
-        driverName: stint.driverName ?? '',
-      },
+      params: { jobId, assignmentId: stint.id, ...params },
     });
 
   return (
@@ -160,8 +155,10 @@ export default function JobScreen() {
               key={entry.stint.id}
               onMeasure={() => setMeasuringId(entry.stint.id)}
               onReport={() => reportProblem(entry.stint)}
-              onStart={() => openCapture(entry.stint, 'arrival')}
-              onStop={() => openCapture(entry.stint, 'departure')}
+              onStart={() => openHours(entry.stint, { role: 'arrival' })}
+              onStop={() => openHours(entry.stint, { role: 'departure' })}
+              onEdit={() => openHours(entry.stint, { mode: 'edit' })}
+              thresholds={job ?? undefined}
             />
           ))}
 
@@ -188,14 +185,23 @@ export default function JobScreen() {
 
 const MACHINE_ICON_SIZE = 20;
 
+/** "4 480.0 h → 4 512.0 h · 32.0 h work · 2.0 h travel", or "Arrived 4 480.0 h" while on site. */
+function stintHoursLine({ arrival, departure, workHours, travelHours }: AssignmentDetail) {
+  if (!arrival) return '';
+  if (!departure) return `Arrived ${formatHours(arrival.hours)}`;
+  return `${formatHours(arrival.hours)} → ${formatHours(departure.hours)} · ${formatHours(workHours ?? 0)} work · ${formatHours(travelHours ?? 0)} travel`;
+}
+
 function StintCard({
   entry: { stint, sheet: stintSheet },
   breakdown,
   canReport,
   onStart,
   onStop,
+  onEdit,
   onMeasure,
   onReport,
+  thresholds,
 }: {
   entry: JobSheetStint;
   /** The most urgent unsolved Breakdown on this Machine's stint, if any. */
@@ -203,9 +209,12 @@ function StintCard({
   canReport: boolean;
   onStart: () => void;
   onStop: () => void;
+  onEdit: () => void;
   onMeasure: () => void;
   onReport: () => void;
+  thresholds: AttentionThresholds | undefined;
 }) {
+  const { resolved } = useColorMode();
   return (
     <View className={`gap-2 rounded-xl border bg-surface p-4 ${breakdownBorder(breakdown) ?? 'border-border'}`}>
       <View className="flex-row items-center justify-between gap-2">
@@ -234,13 +243,7 @@ function StintCard({
             {stint.implementCode ? ` · ${stint.implementCode}` : ''}
             {stint.driverName ? ` · ${getFirstName(stint.driverName)}` : ''}
           </Text>
-          {stint.arrival ? (
-            <Text className="text-sm text-muted-foreground">
-              {stint.departure
-                ? `${formatHours(stint.arrival.value)} → ${formatHours(stint.departure.value)} · ${formatDate(stint.arrival.capturedAt, 'medium')} → ${formatDate(stint.departure.capturedAt, 'medium')}`
-                : `Arrived ${formatHours(stint.arrival.value)} · ${formatDate(stint.arrival.capturedAt, 'medium')}`}
-            </Text>
-          ) : null}
+          {stint.arrival ? <Text className="text-sm text-muted-foreground">{stintHoursLine(stint)}</Text> : null}
           {stint.measures.length ? (
             <Text className="text-sm text-foreground">
               {stint.measures
@@ -255,12 +258,22 @@ function StintCard({
           </Text>
         ) : null}
       </View>
+      {thresholds && stint.attention.length ? (
+        <View className={`gap-1 rounded-xl border px-3 py-2 ${needsALookColorClassNames.chip}`}>
+          {stint.attention.map((kind) => (
+            <Text className={`text-sm ${needsALookColorClassNames.textByScheme[resolved]}`} key={kind}>
+              {assignmentAttentionSentence(kind, stint, thresholds)}
+            </Text>
+          ))}
+        </View>
+      ) : null}
       {stintSheet.can('captureArrival') ? (
         <CaptureButton icon={IconPlayerPlay} label="Start — capture arrival" onPress={onStart} />
       ) : null}
       {stintSheet.can('captureDeparture') ? (
         <CaptureButton icon={IconPlayerStop} label="Stop — capture departure" onPress={onStop} />
       ) : null}
+      {stintSheet.can('editHours') ? <Button icon={IconPencil} title="Edit hours" onPress={onEdit} /> : null}
       {stintSheet.can('editMeasures') ? (
         <Button icon={IconRuler2} title={stint.measures.length ? 'Edit measures' : 'Add measure'} onPress={onMeasure} />
       ) : null}

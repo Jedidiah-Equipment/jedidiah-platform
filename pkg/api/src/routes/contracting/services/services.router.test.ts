@@ -44,13 +44,7 @@ const test = createTester(async ({ db }) => {
       await captureReading({
         db,
         actor: accessForRole('contracting-manager', 'cara'),
-        input: {
-          machineId: created.id,
-          role: 'spot',
-          value: latestReadingHours,
-          capturedAt: '2026-10-20T08:00:00Z',
-          disputePrevious: false,
-        },
+        input: { machineId: created.id, value: latestReadingHours, capturedAt: '2026-10-20T08:00:00Z' },
       });
     return created;
   };

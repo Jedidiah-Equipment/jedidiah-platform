@@ -1,5 +1,4 @@
 import { ESTIMATE_DEBOUNCE_MS, ESTIMATE_STALE_MS, estimateOnScreen } from '@pkg/domain/contracting';
-import type { ReadingRole } from '@pkg/schema/contracting';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { fieldQuery } from '@/contracting/lib/field-query';
 import { useSessionPermission } from '@/lib/auth-session';
@@ -27,19 +26,28 @@ export function useLatestReading(machineId: string) {
   );
 }
 
+/** John Deere's latest report for a linked Machine, which Job Hours are compared to; null when unlinked. */
+export function useLatestTelematics(machineId: string) {
+  const canRead = useSessionPermission(...FIELD_READ_PERMISSIONS);
+  const trpc = useTRPC();
+  return fieldQuery(
+    canRead,
+    useQuery(
+      trpc.contractingReadings.latestTelematics.queryOptions({ machineId }, { enabled: canRead && !!machineId }),
+    ),
+  );
+}
+
 /** When the ledger says the typed hours were on the meter, asked once typing stops; nothing for a role that cannot capture. */
-export function useReadAtEstimate(
-  target: { machineId: string; role: Exclude<ReadingRole, 'baseline'>; assignmentId: string | null },
-  value: number | null,
-) {
+export function useReadAtEstimate(machineId: string, value: number | null) {
   const canCapture = useSessionPermission('contracting_reading:capture');
   const trpc = useTRPC();
   const asked = useDebouncedValue(value, ESTIMATE_DEBOUNCE_MS);
   const query = useQuery(
     trpc.contractingReadings.estimateReadAt.queryOptions(
-      { ...target, value: asked ?? 0 },
+      { machineId, value: asked ?? 0 },
       // The ledger rarely moves while the form is open; a refusal invalidates it.
-      { enabled: canCapture && !!target.machineId && asked !== null, staleTime: ESTIMATE_STALE_MS },
+      { enabled: canCapture && !!machineId && asked !== null, staleTime: ESTIMATE_STALE_MS },
     ),
   );
   return estimateOnScreen(canCapture ? value : null, asked, {

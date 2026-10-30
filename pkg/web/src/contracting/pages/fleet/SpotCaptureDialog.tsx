@@ -6,7 +6,6 @@ import { CaptureWizard } from '@/contracting/components/readings/CaptureWizard.j
 import { useReadingCapture } from '@/contracting/components/readings/use-reading-capture.js';
 
 const SpotValues = z.object({ comment: z.union([z.string().trim().length(0), ReadingComment]) });
-type SpotValues = z.infer<typeof SpotValues>;
 
 /**
  * A spot Hour Reading on one Machine, captured in the office: no Assignment, no billing
@@ -20,7 +19,7 @@ export function SpotCaptureDialog({
   machine: Pick<Machine, 'id' | 'code' | 'categoryIcon' | 'categoryColour'>;
   onClose: () => void;
 }) {
-  const capture = useReadingCapture<SpotValues>({ role: 'spot', machineId: machine.id });
+  const capture = useReadingCapture(machine.id);
 
   return (
     <CreateEntityDialog

@@ -9,8 +9,6 @@ const Hours = z.number().nonnegative();
 export const HourKindTotals = z.object({
   workHours: Hours,
   travelHours: Hours,
-  unaccountedHours: Hours,
-  unresolvedHours: Hours,
 });
 export type HourKindTotals = z.infer<typeof HourKindTotals>;
 

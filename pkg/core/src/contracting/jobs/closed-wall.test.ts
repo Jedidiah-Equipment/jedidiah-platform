@@ -1,18 +1,16 @@
 import { DateOnlyIso } from '@pkg/schema';
 import { expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
-import { captureReading } from '../readings/reading-service.js';
 import {
   addedChargeLine,
   admin,
-  amendHours,
   completedJob,
   foreman,
   invoicing,
   type JobFixtures,
   seedJobFixtures,
 } from '../test/job-fixtures.js';
-import { createAssignment, patchAssignment, removeAssignment, resolveGap } from './assignment-service.js';
+import { createAssignment, patchAssignment, removeAssignment } from './assignment-service.js';
 import { createChargeLine, patchChargeLine, removeChargeLine } from './charge-line-service.js';
 import { stampInvoice } from './invoicing-service.js';
 import { getJob } from './job-read.js';
@@ -26,6 +24,7 @@ import {
   setStintAmount,
   setStintRate,
 } from './pricing-service.js';
+import { captureStintHours, editStintHours, setTravelHours } from './stint-hours-service.js';
 
 const test = createTester(async ({ db }) => ({ ...(await seedJobFixtures(db)), db }) satisfies JobFixtures);
 
@@ -69,12 +68,6 @@ test.for(['invoiced', 'cancelled'] as const)(
         patchJob({ db, actor: admin, input: { id: jobId, startDate: DateOnlyIso.parse('2026-09-02') } }),
       'patchJob diesel': () => patchJob({ db, actor: admin, input: { id: jobId, dieselLitres: 10 } }),
       'patchJob foreman': () => patchJob({ db, actor: admin, input: { id: jobId, foremanUserId: null } }),
-      'patchAssignment travel': () =>
-        patchAssignment({
-          db,
-          actor: admin,
-          input: { id: stint.id, travelIncluded: false },
-        }),
       'patchAssignment implement': () =>
         patchAssignment({ db, actor: admin, input: { id: stint.id, implementId: null } }),
       planAssignment: () =>
@@ -101,12 +94,15 @@ test.for(['invoiced', 'cancelled'] as const)(
       createChargeLine: () => createChargeLine({ db, actor: admin, input: { jobId, description: 'Extra' } }),
       patchChargeLine: () => patchChargeLine({ db, actor: admin, input: { id: line.id, amount: 1_000 } }),
       removeChargeLine: () => removeChargeLine({ db, actor: admin, id: line.id }),
-      resolveGap: () =>
-        resolveGap({
+      captureDeparture: () =>
+        captureStintHours({ db, actor: foreman, input: { assignmentId: stint.id, role: 'departure', hours: 150 } }),
+      editStintHours: () =>
+        editStintHours({
           db,
           actor: admin,
-          input: { id: stint.id, travelHours: 1, unaccountedHours: 1, reason: 'Refuelled' },
+          input: { assignmentId: stint.id, arrivalHours: 101, departureHours: 109, reason: 'Misread' },
         }),
+      setTravelHours: () => setTravelHours({ db, actor: admin, input: { assignmentId: stint.id, travelHours: 1 } }),
       setStintRate: () =>
         setStintRate({ db, actor: admin, input: { assignmentId: stint.id, rateId: context.dryHire.id } }),
       clearStintRate: () => clearStintRate({ db, actor: admin, input: { assignmentId: stint.id } }),
@@ -138,31 +134,12 @@ test.for(['invoiced', 'cancelled'] as const)(
     for (const [name, write] of Object.entries(jobWrites))
       await expect(write(), name).rejects.toMatchObject({ code: 'contracting_job.wrong_status' });
 
-    await expect(
-      captureReading({
-        db,
-        actor: foreman,
-        input: {
-          machineId: context.excavator.id,
-          assignmentId: stint.id,
-          role: 'departure',
-          value: 150,
-          capturedAt: '2026-09-20T08:00:00+02:00',
-          disputePrevious: false,
-        },
-      }),
-      'a capture on its stint',
-    ).rejects.toMatchObject({ code: 'reading.wrong_status' });
-
-    const readingAmendments = {
-      'its arrival': { id: stint.arrivalReadingId, value: 101 },
-      'its departure': { id: stint.departureReadingId, value: 109 },
-      'the departure its first stint’s Hour Gap starts at': { id: earlierStint.departureReadingId, value: 97 },
-    };
-    for (const [name, amendment] of Object.entries(readingAmendments))
-      await expect(amendHours(db, admin, amendment.id, amendment.value), name).rejects.toMatchObject({
-        code: closed === 'invoiced' ? 'reading.job_invoiced' : 'reading.wrong_status',
-      });
+    // The Machine's earlier Job stays editable, and Travel this stint snapshotted from it does not move.
+    await editStintHours({
+      db,
+      actor: admin,
+      input: { assignmentId: earlierStint.id, arrivalHours: 90, departureHours: 97, reason: 'Misread' },
+    });
 
     expect(await getJob({ db, id: jobId })).toEqual(frozen);
   },

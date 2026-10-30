@@ -18,6 +18,8 @@ export * from './jobs/job-enums.js';
 export * from './jobs/job-note.js';
 export * from './jobs/measure-form.js';
 export * from './jobs/pricing.js';
+export * from './jobs/stint-hours.js';
+export * from './jobs/stint-hours-form.js';
 export * from './notes/note.js';
 export * from './rate-card/rate-card.js';
 export * from './readings/reading.js';

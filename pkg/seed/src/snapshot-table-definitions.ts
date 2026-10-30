@@ -414,6 +414,9 @@ export const snapshotTableDefinitions = [
     optionalReadTable: true,
     // The migration seeds this row; a re-seed must put it back, or every threshold read breaks.
     emptySnapshotRows: [{ id: 'contracting', ...CONTRACTING_SETTINGS_DEFAULTS }],
+    // A source read before 0185 names the Travel Flag threshold the Gap Flag threshold.
+    seedRowTransform: ({ gapFlagThresholdHours, ...row }) =>
+      gapFlagThresholdHours === undefined ? row : { ...row, travelFlagThresholdHours: gapFlagThresholdHours },
   },
   {
     fileName: 'contracting_work_type.json',
@@ -449,7 +452,6 @@ export const snapshotTableDefinitions = [
     writableColumns: [
       'id',
       'machineId',
-      'role',
       'value',
       'capturedAt',
       'capturedByUserId',
@@ -457,9 +459,6 @@ export const snapshotTableDefinitions = [
       'telematicsProvider',
       'telematicsLinkId',
       'comment',
-      'disputed',
-      'disputeReason',
-      'disputedPreviousId',
       'amendedBy',
       'amendedAt',
       'amendmentReason',
@@ -508,7 +507,16 @@ export const snapshotTableDefinitions = [
   {
     fileName: 'contracting_machine_assignment.json',
     tableName: 'contracting_machine_assignment',
-    timestampColumns: ['createdAt', 'gapResolvedAt', 'updatedAt'],
+    timestampColumns: [
+      'arrivalAt',
+      'arrivalTelematicsAt',
+      'createdAt',
+      'departureAt',
+      'departureTelematicsAt',
+      'hoursAmendedAt',
+      'travelSetAt',
+      'updatedAt',
+    ],
     optionalReadColumns: ['amountOverride'],
     seedRowDefaults: () => ({ amountOverride: null }),
     seedRowTransform: legacyStintPricing,

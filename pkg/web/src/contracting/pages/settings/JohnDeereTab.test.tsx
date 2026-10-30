@@ -5,6 +5,7 @@ import type {
   JohnDeereLinkView,
   JohnDeerePollSummary,
   JohnDeereUnlinkedMachine,
+  LatestReading,
   Machine,
 } from '@pkg/schema/contracting';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -45,6 +46,7 @@ type Served = {
   unlinked?: JohnDeereUnlinkedMachine[];
   links?: JohnDeereLinkView[];
   machines?: Machine[];
+  latest?: LatestReading | null;
   poll?: JohnDeerePollSummary;
 };
 
@@ -69,6 +71,7 @@ async function renderTab(
             'contractingJohnDeere.equipment.list': served.unlinked ?? [],
             'contractingJohnDeere.links.list': served.links ?? [],
             'contractingFleet.machines.list': served.machines ?? [],
+            'contractingReadings.latest': served.latest ?? null,
             'contractingJohnDeere.links.create': null,
             'contractingJohnDeere.poll.now': served.poll,
           };
@@ -232,9 +235,13 @@ const ourMachine = buildMachine({
   code: 'T01',
   make: 'John Deere',
   model: '8R',
-  latestReadingHours: 810,
-  latestReadingAt: '2026-10-25T16:00:00.000Z',
 });
+const ourLatest = {
+  id: '55555555-5555-4555-8555-555555555555',
+  value: 810,
+  capturedAt: '2026-10-25T16:00:00.000Z',
+  telematicsProvider: null,
+} as LatestReading;
 
 const linkedDeere = {
   equipmentId: 'eq-9',
@@ -303,6 +310,7 @@ test('Connected lists the unlinked machines with their hours and the Links with 
 test('the Link dialog puts both meters side by side and links the picked Machine', async () => {
   const { container, press, bodies } = await renderTab(connected, undefined, {
     unlinked: [deereMachine],
+    latest: ourLatest,
     machines: [
       ourMachine,
       buildMachine({ id: '44444444-4444-4444-8444-444444444444', code: 'T09', johnDeere: { ...linkedDeere } }),
@@ -325,13 +333,14 @@ test('the Link dialog puts both meters side by side and links the picked Machine
   await act(async () => options[0]?.click());
 
   const john = document.querySelector('[aria-label="John Deere"]')?.textContent ?? '';
-  const ours = document.querySelector('[aria-label="Ours"]')?.textContent ?? '';
+  const ours = () => document.querySelector('[aria-label="Ours"]')?.textContent ?? '';
+  // Ours is the ledger's latest reading, the one the link is judged on, not Known Hours.
+  await vi.waitFor(() => expect(ours()).toContain('810.0 h'));
   expect(john).toContain('Big Green');
   expect(john).toContain('PIN 1RW8410RCNA012345');
   expect(john).toContain('812.3 h');
-  expect(ours).toContain('T01');
-  expect(ours).toContain('810.0 h');
-  expect(ours).toContain('Read At');
+  expect(ours()).toContain('T01');
+  expect(ours()).toContain('Read At');
 
   const submit = [...document.querySelectorAll<HTMLButtonElement>('button[type="submit"]')].find(
     (button) => button.textContent === 'Link',

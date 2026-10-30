@@ -1,10 +1,13 @@
+import type { StintHoursWrite } from '@pkg/core/contracting';
 import {
   cancelJob,
+  captureStintHours,
   clearStintRate,
   completeJob,
   createAssignment,
   createChargeLine,
   createJob,
+  editStintHours,
   findJobsByInvoiceNumber,
   getReadableJob,
   listFieldDrivers,
@@ -19,12 +22,12 @@ import {
   removeAssignment,
   removeChargeLine,
   removeMeasure,
-  resolveGap,
   setDieselPrice,
   setDiscount,
   setMeasure,
   setStintAmount,
   setStintRate,
+  setTravelHours,
   stampInvoice,
   summarizeJobQueues,
 } from '@pkg/core/contracting';
@@ -39,7 +42,6 @@ import {
   DiscountSetInput,
   FieldDriver,
   FieldImplement,
-  GapResolveInput,
   InvoiceNumberLookupInput,
   JobCancelInput,
   JobCompleteInput,
@@ -55,14 +57,22 @@ import {
   MeasureSetInput,
   MeasureType,
   StintAmountSetInput,
+  StintHoursCaptureInput,
+  StintHoursEditInput,
   StintRateClearInput,
   StintRateSetInput,
+  TravelHoursSetInput,
 } from '@pkg/schema/contracting';
 import { mapCoreErrors } from '../../../trpc/errors.js';
 import { authorizedProcedure, businessProcedure, router } from '../../../trpc/init.js';
 import { jobErrorFamily } from '../contracting-error-families.js';
 import type { ContractingPushScheduler } from '../contracting-push-scheduler.js';
 import { addThreadNote } from '../notes/notes.router.js';
+
+/** Answers at once; the workshop alert a Job Hours write crossed into follows in the background. */
+function scheduleServiceDueSoon(push: ContractingPushScheduler, { machineId, serviceDueSoonCrossed }: StintHoursWrite) {
+  if (serviceDueSoonCrossed) push.schedule({ kind: 'machine.service-due-soon', machineId });
+}
 
 const readPermissions = ['contracting_job:read', 'contracting_job:read-own', 'contracting_job:read-priced'] as const;
 
@@ -135,10 +145,26 @@ export const createContractingJobsRouter = (push: ContractingPushScheduler) =>
         .mutation(({ ctx, input }) =>
           mapCoreErrors(() => removeAssignment({ db: ctx.db, actor: ctx.access, id: input.id }), jobErrorFamily),
         ),
-      resolveGap: authorizedProcedure('contracting_gap:resolve')
-        .input(GapResolveInput)
+      captureHours: authorizedProcedure('contracting_reading:capture')
+        .input(StintHoursCaptureInput)
+        .mutation(async ({ ctx, input }) =>
+          scheduleServiceDueSoon(
+            push,
+            await mapCoreErrors(() => captureStintHours({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
+          ),
+        ),
+      editHours: authorizedProcedure(['contracting_reading:capture', 'contracting_reading:update'])
+        .input(StintHoursEditInput)
+        .mutation(async ({ ctx, input }) =>
+          scheduleServiceDueSoon(
+            push,
+            await mapCoreErrors(() => editStintHours({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
+          ),
+        ),
+      setTravel: authorizedProcedure('contracting_travel:set')
+        .input(TravelHoursSetInput)
         .mutation(({ ctx, input }) =>
-          mapCoreErrors(() => resolveGap({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
+          mapCoreErrors(() => setTravelHours({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
         ),
     }),
     measures: router({

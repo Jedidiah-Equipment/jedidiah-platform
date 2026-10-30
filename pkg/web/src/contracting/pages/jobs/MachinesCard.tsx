@@ -1,6 +1,5 @@
 import { formatNumber } from '@pkg/domain';
 import {
-  assignmentNeedsALookLevel,
   assignmentStateLabels,
   breakdownStatusColorClassNames,
   breakdownStatusLabels,
@@ -13,6 +12,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
+import { HelpLink } from '@/components/help/index.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
@@ -21,13 +21,11 @@ import { BreakdownUrgencyIcon } from '@/contracting/components/BreakdownSubjectL
 import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
-import { ArrivalCaptureDialog } from './ArrivalCaptureDialog.js';
-import { DepartureCaptureDialog } from './DepartureCaptureDialog.js';
-import { GapResolveDialog } from './GapResolveDialog.js';
 import { MachineStintCard } from './MachineStintCard.js';
 import { PlanMachineDialog } from './PlanMachineDialog.js';
-import { ReadingDialog } from './ReadingDialog.js';
 import { ReportBreakdownDialog } from './ReportBreakdownDialog.js';
+import { StintHoursDialog } from './StintHoursDialog.js';
+import { TravelHoursDialog } from './TravelHoursDialog.js';
 import type { MachineDialog } from './types.js';
 
 type MachineFilter = 'all' | 'planned' | 'on-site' | 'attention' | 'left' | 'repeat';
@@ -42,7 +40,7 @@ const filters: { value: MachineFilter; label: string }[] = [
 
 function matches(filter: MachineFilter, { stint, number }: JobSheetStint) {
   if (filter === 'all') return true;
-  if (filter === 'attention') return assignmentNeedsALookLevel(stint) !== null;
+  if (filter === 'attention') return stint.attention.length > 0;
   if (filter === 'repeat') return number > 1;
   return stint.state === filter;
 }
@@ -106,7 +104,6 @@ export function MachinesCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }
   const close = () => setDialog(null);
   const stint =
     dialog && dialog.kind !== 'plan' ? (job.assignments.find((entry) => entry.id === dialog.stintId) ?? null) : null;
-  const reading = dialog?.kind === 'reading' ? (stint?.[dialog.role] ?? null) : null;
   const { stints } = sheet;
   const offered = offeredFilters(stints);
   const active = offered.some(({ value }) => value === filter) ? filter : 'all';
@@ -116,13 +113,14 @@ export function MachinesCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }
       <Card>
         <CardHeader>
           <CardTitle>Machines</CardTitle>
-          {planAction ? (
-            <CardAction>
+          <CardAction className="flex items-center gap-2">
+            <HelpLink label="How to capture Job hours" topic="contractingJobHours" />
+            {planAction ? (
               <Button {...planAction} onClick={() => setDialog({ kind: 'plan' })}>
                 Plan machine
               </Button>
-            </CardAction>
-          ) : null}
+            ) : null}
+          </CardAction>
         </CardHeader>
         <CardContent className="space-y-4">
           <ErrorMessage error={breakdowns.error} fallbackMessage="Unable to load this Job's Breakdowns." />
@@ -150,7 +148,7 @@ export function MachinesCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }
                       key={entry.stint.id}
                       entry={entry}
                       sheet={sheet}
-                      gapFlagThresholdHours={job.gapFlagThresholdHours}
+                      thresholds={job}
                       onOpen={setDialog}
                     />
                   ))}
@@ -172,21 +170,15 @@ export function MachinesCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }
           if (!open) close();
         }}
       />
-      <ArrivalCaptureDialog stint={dialog?.kind === 'arrival' ? stint : null} onClose={close} />
-      <GapResolveDialog
-        stint={dialog?.kind === 'gap' ? stint : null}
-        gapFlagThresholdHours={job.gapFlagThresholdHours}
+      <StintHoursDialog
+        target={dialog?.kind === 'hours' && stint ? { mode: dialog.mode, stint } : null}
+        job={job}
         onClose={close}
       />
-      <DepartureCaptureDialog stint={dialog?.kind === 'departure' ? stint : null} onClose={close} />
+      <TravelHoursDialog stint={dialog?.kind === 'travel' ? stint : null} onClose={close} />
       <ReportBreakdownDialog
         report={dialog?.kind === 'breakdown' && stint ? { stint, urgency: dialog.urgency } : null}
         onClose={close}
-      />
-      <ReadingDialog
-        selected={stint && reading ? { machine: stint, reading } : null}
-        onClose={close}
-        amendReadings={sheet.can('amendReadings')}
       />
     </>
   );

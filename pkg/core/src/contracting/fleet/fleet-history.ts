@@ -30,11 +30,14 @@ import {
   type FleetHistoryKind,
   type FleetHistoryListInput,
   type FleetHistoryListResult,
+  type FleetHistoryReadingRole,
   FleetHistoryRow,
   fleetHistoryKinds,
+  type JobHoursRole,
+  jobHoursRoles,
 } from '@pkg/schema/contracting';
-import { and, eq, inArray, type SQL, type SQLWrapper, sql } from 'drizzle-orm';
-import { alias, type PgSelect, unionAll } from 'drizzle-orm/pg-core';
+import { and, eq, inArray, isNotNull, type SQL, type SQLWrapper, sql } from 'drizzle-orm';
+import { alias, unionAll } from 'drizzle-orm/pg-core';
 import { breakdownReporter } from '../breakdowns/breakdown-load.js';
 import { jobNumberSql } from '../jobs/job-sql.js';
 
@@ -63,21 +66,6 @@ export function listFleetHistoryFilterOptions({
   return { kinds: readableKinds(actor, subject) };
 }
 
-const arrivalStint = alias(contractingMachineAssignments, 'history_arrival');
-const arrivalJob = alias(contractingJobs, 'history_arrival_job');
-const departureStint = alias(contractingMachineAssignments, 'history_departure');
-const departureJob = alias(contractingJobs, 'history_departure_job');
-/** Each reading opens or closes at most one stint, so these joins never repeat a reading. */
-function joinStints<Query extends PgSelect>(query: Query) {
-  return query
-    .leftJoin(arrivalStint, eq(arrivalStint.arrivalReadingId, contractingHourReadings.id))
-    .leftJoin(arrivalJob, eq(arrivalJob.id, arrivalStint.jobId))
-    .leftJoin(departureStint, eq(departureStint.departureReadingId, contractingHourReadings.id))
-    .leftJoin(departureJob, eq(departureJob.id, departureStint.jobId));
-}
-/** A reading that closed one stint and opened the next is listed under the Job it opened. */
-const readingJobCode = sql<number | null>`coalesce(${arrivalJob.code}, ${departureJob.code})`;
-
 /** SQL twin of domain `formatHours`, so a search for `1 001.0 h` finds the reading the row shows. */
 const hoursSql = (value: SQLWrapper) => sql`replace(to_char(${value}, 'FM999,999,999,990.0'), ',', ' ') || ' h'`;
 const labelSql = (column: SQLWrapper, labels: Record<string, string>) =>
@@ -94,11 +82,20 @@ const searchLine = (...parts: SQL[]) =>
 
 const serviceMechanic = alias(user, 'history_mechanic');
 const readingCapturer = alias(user, 'history_capturer');
+const stintJob = alias(contractingJobs, 'history_stint_job');
+const stints = contractingMachineAssignments;
+
+/** Each stint's arrival or departure, as the columns of the role it is listed under. */
+const stintSide = {
+  arrival: { at: stints.arrivalAt, hours: stints.arrivalHours, by: stints.arrivalByUserId },
+  departure: { at: stints.departureAt, hours: stints.departureHours, by: stints.departureByUserId },
+} as const;
 const serviceDate = sql`coalesce(${contractingServiceRecords.endDate}, ${contractingServiceRecords.startDate})`;
 
 /**
  * One Machine's or Implement's History, newest first: every kind the caller may read, paged as one ordered stream.
- * Readings follow Read At with acceptance breaking a tie (ADR 0025); a service sorts at the start of its plant day.
+ * Ledger readings follow Read At with acceptance breaking a tie; a stint's Job Hours sort at the moment they were
+ * saved; a service sorts at the start of its plant day.
  */
 export async function listFleetHistory({
   db,
@@ -116,40 +113,73 @@ export async function listFleetHistory({
   const { subject, search } = input;
   const days = { from: input.from, to: input.to };
 
+  const stintLeaf = (role: JobHoursRole) => {
+    const side = stintSide[role];
+    return db
+      .select({
+        kind: sql<FleetHistoryKind>`'reading'::text`.as('kind'),
+        id: sql<string>`${stints.id}`.as('id'),
+        at: sql<Date>`${side.at}`.as('at'),
+        tie: sql<number>`0::bigint`.as('tie'),
+        role: sql<FleetHistoryReadingRole | null>`${role}::text`.as('role'),
+      })
+      .from(stints)
+      .innerJoin(stintJob, eq(stintJob.id, stints.jobId))
+      .where(
+        only(
+          'reading',
+          and(
+            eq(stints.machineId, subject.id),
+            isNotNull(side.at),
+            onCalendarDays(side.at, JOHANNESBURG_TIME_ZONE, days),
+            createGlobalSearchCondition(search, [
+              searchLine(
+                sql`${fleetHistoryKindLabels.reading}`,
+                hoursSql(side.hours),
+                sql`${readingRoleLabels[role]}`,
+                jobNumberSql(stintJob.code),
+              ),
+            ]),
+          ),
+        ),
+      );
+  };
+
   const keys = unionAll(
-    joinStints(
-      db
-        .select({
-          kind: sql<FleetHistoryKind>`'reading'::text`.as('kind'),
-          id: sql<string>`${contractingHourReadings.id}`.as('id'),
-          at: sql<Date>`${contractingHourReadings.capturedAt}`.as('at'),
-          tie: sql<number>`${contractingHourReadings.sequence}`.as('tie'),
-        })
-        .from(contractingHourReadings)
-        .$dynamic(),
-    ).where(
-      only(
-        'reading',
-        and(
-          eq(contractingHourReadings.machineId, subject.id),
-          onCalendarDays(contractingHourReadings.capturedAt, JOHANNESBURG_TIME_ZONE, days),
-          createGlobalSearchCondition(search, [
-            searchLine(
-              sql`${fleetHistoryKindLabels.reading}`,
-              hoursSql(contractingHourReadings.value),
-              labelSql(contractingHourReadings.role, readingRoleLabels),
-              jobNumberSql(readingJobCode),
-            ),
-          ]),
+    db
+      .select({
+        kind: sql<FleetHistoryKind>`'reading'::text`.as('kind'),
+        id: sql<string>`${contractingHourReadings.id}`.as('id'),
+        at: sql<Date>`${contractingHourReadings.capturedAt}`.as('at'),
+        tie: sql<number>`${contractingHourReadings.sequence}`.as('tie'),
+        role: sql<FleetHistoryReadingRole | null>`'spot'::text`.as('role'),
+      })
+      .from(contractingHourReadings)
+      .where(
+        only(
+          'reading',
+          and(
+            eq(contractingHourReadings.machineId, subject.id),
+            onCalendarDays(contractingHourReadings.capturedAt, JOHANNESBURG_TIME_ZONE, days),
+            createGlobalSearchCondition(search, [
+              searchLine(
+                sql`${fleetHistoryKindLabels.reading}`,
+                hoursSql(contractingHourReadings.value),
+                sql`${readingRoleLabels.spot}`,
+              ),
+            ]),
+          ),
         ),
       ),
-    ),
+    stintLeaf('arrival'),
+    stintLeaf('departure'),
     db
       .select({
         kind: sql<FleetHistoryKind>`'breakdown'::text`.as('kind'),
         id: sql<string>`${contractingBreakdowns.id}`.as('id'),
         at: sql<Date>`${contractingBreakdowns.reportedAt}`.as('at'),
         tie: sql<number>`0::bigint`.as('tie'),
+        role: sql<FleetHistoryReadingRole | null>`null::text`.as('role'),
       })
       .from(contractingBreakdowns)
       .where(
@@ -178,6 +208,7 @@ export async function listFleetHistory({
         id: sql<string>`${contractingServiceRecords.id}`.as('id'),
         at: sql<Date>`(${serviceDate}::timestamp at time zone ${JOHANNESBURG_TIME_ZONE})`.as('at'),
         tie: sql<number>`0::bigint`.as('tie'),
+        role: sql<FleetHistoryReadingRole | null>`null::text`.as('role'),
       })
       .from(contractingServiceRecords)
       .leftJoin(serviceMechanic, eq(serviceMechanic.id, contractingServiceRecords.primaryMechanicUserId))
@@ -211,42 +242,45 @@ export async function listFleetHistory({
   ];
   const matching = () =>
     db
-      .select({ kind: keys.kind, id: keys.id, total: sql<number>`count(*) over ()`.mapWith(Number) })
+      .select({ kind: keys.kind, id: keys.id, role: keys.role, total: sql<number>`count(*) over ()`.mapWith(Number) })
       .from(keys)
       .orderBy(...order)
       .$dynamic();
   const { rows, total, nextCursor } = await paginateWithWindowTotal(matching, input);
   const loaded = await loadHistoryRows(db, rows);
-  const items = rows.flatMap(({ kind, id }) => loaded.get(`${kind}:${id}`) ?? []);
+  const items = rows.flatMap((row) => loaded.get(historyKey(row)) ?? []);
   return { items, nextCursor, total };
 }
 
-const idsOf = (rows: readonly { kind: FleetHistoryKind; id: string }[], kind: FleetHistoryKind) =>
-  rows.filter((row) => row.kind === kind).map((row) => row.id);
+type HistoryKey = { kind: FleetHistoryKind; id: string; role: FleetHistoryReadingRole | null };
 
-/** What each listed row says, keyed by `kind:id`. */
-async function loadHistoryRows(db: Db, rows: readonly { kind: FleetHistoryKind; id: string }[]) {
-  const readingIds = idsOf(rows, 'reading');
+/** A stint is listed twice, once per Job Hours, so its role is part of the key. */
+const historyKey = ({ kind, id, role }: HistoryKey) => `${kind}:${role ?? ''}:${id}`;
+
+const idsOf = (rows: readonly HistoryKey[], kind: FleetHistoryKind, role?: FleetHistoryReadingRole) =>
+  rows.filter((row) => row.kind === kind && (role === undefined || row.role === role)).map((row) => row.id);
+
+/** What each listed row says, keyed by `historyKey`. */
+async function loadHistoryRows(db: Db, rows: readonly HistoryKey[]) {
+  const readingIds = idsOf(rows, 'reading', 'spot');
+  const stintIds = [...new Set([...idsOf(rows, 'reading', 'arrival'), ...idsOf(rows, 'reading', 'departure')])];
   const breakdownIds = idsOf(rows, 'breakdown');
   const serviceIds = idsOf(rows, 'service');
-  const [readings, breakdowns, services] = await Promise.all([
+  const [readings, stintRows, breakdowns, services] = await Promise.all([
     readingIds.length
-      ? joinStints(
-          db
-            .select({
-              id: contractingHourReadings.id,
-              role: contractingHourReadings.role,
-              value: contractingHourReadings.value,
-              capturedAt: contractingHourReadings.capturedAt,
-              telematicsProvider: contractingHourReadings.telematicsProvider,
-              capturedByName: readingCapturer.name,
-              jobCode: readingJobCode,
-            })
-            .from(contractingHourReadings)
-            .leftJoin(readingCapturer, eq(readingCapturer.id, contractingHourReadings.capturedByUserId))
-            .$dynamic(),
-        ).where(inArray(contractingHourReadings.id, readingIds))
+      ? db
+          .select({
+            id: contractingHourReadings.id,
+            value: contractingHourReadings.value,
+            capturedAt: contractingHourReadings.capturedAt,
+            telematicsProvider: contractingHourReadings.telematicsProvider,
+            capturedByName: readingCapturer.name,
+          })
+          .from(contractingHourReadings)
+          .leftJoin(readingCapturer, eq(readingCapturer.id, contractingHourReadings.capturedByUserId))
+          .where(inArray(contractingHourReadings.id, readingIds))
       : [],
+    stintIds.length ? loadStintSides(db, stintIds) : [],
     breakdownIds.length
       ? db
           .select({
@@ -279,27 +313,46 @@ async function loadHistoryRows(db: Db, rows: readonly { kind: FleetHistoryKind; 
       : [],
   ]);
   const loaded = new Map<string, FleetHistoryRow>();
-  for (const reading of readings) {
-    const jobNumber = reading.jobCode === null ? null : formatJobNumber(reading.jobCode);
+  for (const reading of readings)
     loaded.set(
-      `reading:${reading.id}`,
+      historyKey({ kind: 'reading', id: reading.id, role: 'spot' }),
       FleetHistoryRow.parse({
         id: reading.id,
         kind: 'reading',
         at: reading.capturedAt.toISOString(),
-        title: `${readingRoleLabels[reading.role]} · ${formatHours(reading.value)}`,
-        detail: jobNumber,
+        title: `${readingRoleLabels.spot} · ${formatHours(reading.value)}`,
+        detail: null,
         source: readingSourceLabel(reading),
-        readingRole: reading.role,
+        readingRole: 'spot',
         breakdown: null,
-        opens: jobNumber ? { to: 'job', jobNumber } : null,
+        opens: null,
       }),
     );
+  for (const stint of stintRows) {
+    const jobNumber = formatJobNumber(stint.jobCode);
+    for (const role of jobHoursRoles) {
+      const side = stint[role];
+      if (side.at === null || side.hours === null) continue;
+      loaded.set(
+        historyKey({ kind: 'reading', id: stint.id, role }),
+        FleetHistoryRow.parse({
+          id: stint.id,
+          kind: 'reading',
+          at: side.at.toISOString(),
+          title: `${readingRoleLabels[role]} · ${formatHours(side.hours)}`,
+          detail: jobNumber,
+          source: side.byName && getFirstName(side.byName),
+          readingRole: role,
+          breakdown: null,
+          opens: { to: 'job', jobNumber },
+        }),
+      );
+    }
   }
   for (const breakdown of breakdowns) {
     const reporter = getFirstName(breakdown.reporterName);
     loaded.set(
-      `breakdown:${breakdown.id}`,
+      historyKey({ kind: 'breakdown', id: breakdown.id, role: null }),
       FleetHistoryRow.parse({
         id: breakdown.id,
         kind: 'breakdown',
@@ -318,7 +371,7 @@ async function loadHistoryRows(db: Db, rows: readonly { kind: FleetHistoryKind; 
   }
   for (const service of services) {
     loaded.set(
-      `service:${service.id}`,
+      historyKey({ kind: 'service', id: service.id, role: null }),
       FleetHistoryRow.parse({
         id: service.id,
         kind: 'service',
@@ -342,4 +395,33 @@ async function loadHistoryRows(db: Db, rows: readonly { kind: FleetHistoryKind; 
     );
   }
   return loaded;
+}
+
+const arrivalCapturer = alias(user, 'history_arrival_capturer');
+const departureCapturer = alias(user, 'history_departure_capturer');
+
+/** The listed stints' Job Hours, each side with its moment and who saved it, and the Job it was on. */
+async function loadStintSides(db: Db, ids: string[]) {
+  const rows = await db
+    .select({
+      id: stints.id,
+      jobCode: stintJob.code,
+      arrivalHours: stints.arrivalHours,
+      arrivalAt: stints.arrivalAt,
+      arrivalByName: arrivalCapturer.name,
+      departureHours: stints.departureHours,
+      departureAt: stints.departureAt,
+      departureByName: departureCapturer.name,
+    })
+    .from(stints)
+    .innerJoin(stintJob, eq(stintJob.id, stints.jobId))
+    .leftJoin(arrivalCapturer, eq(arrivalCapturer.id, stints.arrivalByUserId))
+    .leftJoin(departureCapturer, eq(departureCapturer.id, stints.departureByUserId))
+    .where(inArray(stints.id, ids));
+  return rows.map((row) => ({
+    id: row.id,
+    jobCode: row.jobCode,
+    arrival: { hours: row.arrivalHours, at: row.arrivalAt, byName: row.arrivalByName },
+    departure: { hours: row.departureHours, at: row.departureAt, byName: row.departureByName },
+  }));
 }

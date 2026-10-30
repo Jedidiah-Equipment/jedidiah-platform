@@ -2,12 +2,12 @@ import type { BadgeColorClassNames } from '@pkg/domain';
 import { machineServiceBadge, serviceRecordBadge } from '@pkg/domain/contracting';
 import type { AuthId, DateOnlyIso } from '@pkg/schema';
 import {
+  type KnownHoursSource,
   type Machine,
   type ServiceRecord,
   type ServiceRecordListInput,
   type ServiceRecordStatus,
   serviceRecordStatuses,
-  type TelematicsProvider,
 } from '@pkg/schema/contracting';
 import type { ColumnFiltersState } from '@tanstack/react-table';
 import { readMultiSelectFilter } from '@/components/data-table/column-filter-values.js';
@@ -28,8 +28,8 @@ export type ServicesTableRow = ({ pinned: true; recordId: null } | { pinned: fal
   startDate: DateOnlyIso | null;
   status: ServiceRecordStatus | null;
   badge: { label: string; colours: BadgeColorClassNames };
-  /** `provider` is set when the reading is a Telematics Reading. */
-  reading: { hours: number | null; at: string | null; provider: TelematicsProvider | null };
+  /** Known Hours for a due Machine, with where they came from; a record's hours at its service carry neither. */
+  reading: { hours: number | null; at: string | null; source: KnownHoursSource | null };
   nextServiceDue: { hours: number | null; toGo: HoursToService | null };
   notes: string | null;
 };
@@ -42,7 +42,7 @@ export const dueRow = (machine: Machine): ServicesTableRow => ({
   startDate: null,
   status: null,
   badge: machineServiceBadge(machine),
-  reading: { hours: machine.latestReadingHours, at: machine.latestReadingAt, provider: machine.latestReadingProvider },
+  reading: { hours: machine.knownHours, at: machine.knownHoursAt, source: machine.knownHoursSource },
   nextServiceDue: { hours: machine.nextServiceDueHours, toGo: machineHoursToService(machine) },
   notes: null,
 });
@@ -64,7 +64,7 @@ export const recordRow = (record: ServiceRecord): ServicesTableRow => ({
   startDate: record.startDate,
   status: record.status,
   badge: serviceRecordBadge(record.status),
-  reading: { hours: record.readingAtServiceHours, at: null, provider: null },
+  reading: { hours: record.readingAtServiceHours, at: null, source: null },
   nextServiceDue: { hours: record.nextServiceDueHoursSet, toGo: null },
   notes: record.notes,
 });

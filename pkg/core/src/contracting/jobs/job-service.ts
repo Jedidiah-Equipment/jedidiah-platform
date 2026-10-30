@@ -98,7 +98,7 @@ export async function cancelJob({
     const onSite = (await lockAssignments(tx, before.id)).filter(
       (assignment) => assignmentState(assignment) === 'on-site',
     ).length;
-    if (onSite) throw onSiteRefusal(onSite, 'Capture their departure readings before cancelling.');
+    if (onSite) throw onSiteRefusal(onSite, 'Capture their departure hours before cancelling.');
     const now = new Date();
     const [cancelled] = await tx
       .update(contractingJobs)
@@ -127,11 +127,7 @@ export async function completeJob({
     const locked = await lockAssignments(tx, before.id);
     const detail = await getJob({ db: tx, id: before.id });
     const gate = canComplete(detail.assignments);
-    if (!gate.ok)
-      throw new JobError(
-        gate.onSite ? 'contracting_job.has_on_site_stints' : 'contracting_job.open_gap_flags',
-        completionGateReasons(gate).join(' '),
-      );
+    if (!gate.ok) throw new JobError('contracting_job.has_on_site_stints', completionGateReasons(gate).join(' '));
     // The pricer confirmed exactly these planned stints; anything else means the plan moved underneath them.
     const planned = locked.filter((stint) => assignmentState(stint) === 'planned');
     const requested = new Set(input.removePlannedAssignmentIds);

@@ -30,10 +30,6 @@ vi.mock('@/components/voice/use-voice-session', () => ({
 }));
 vi.mock('@/components/voice/VoiceTextArea', () => ({ VoiceTextArea: 'VoiceTextArea' }));
 vi.mock('@/contracting/components/ReadAtField', () => ({ ReadAtField: 'ReadAtField' }));
-vi.mock('@/contracting/components/StintOverrideCard', () => ({
-  StintOverrideCard: 'StintOverrideCard',
-  useStintOverrides: () => ({ value: undefined }),
-}));
 vi.mock('@/contracting/observability', () => ({ recordReadingCaptured: vi.fn() }));
 const upload = vi.hoisted(() => vi.fn(async (..._args: unknown[]) => undefined));
 vi.mock('@/contracting/readings/reading-upload', () => ({ CAPTURE_FAILED: 'failed', captureReading: upload }));
@@ -90,8 +86,6 @@ test('reveals when, hours, the date to vouch for, then the details, and saves th
   await pressButton(renderer, 'Date looks good');
   expect(renderer.root.findAllByType('VoiceTextArea' as never)).toHaveLength(1);
   await pressButton(renderer, 'Save reading');
-  expect(upload).toHaveBeenCalledWith(
-    expect.objectContaining({ machineId: 'm1', role: 'spot', value: 120, disputePrevious: false }),
-  );
+  expect(upload).toHaveBeenCalledWith(expect.objectContaining({ machineId: 'm1', value: 120 }));
   await act(async () => renderer.unmount());
 });

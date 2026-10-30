@@ -17,6 +17,7 @@ import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/componen
 import { CategoryLabel } from '@/contracting/components/CategoryIcon.js';
 import { MachinePickerField } from '@/contracting/components/MachinePickerField.js';
 import { hoursOrDash } from '@/contracting/components/MachineServiceDue.js';
+import { useLatestReading } from '@/contracting/components/readings/use-latest-reading.js';
 import { useContractingWrite } from '@/contracting/hooks/use-contracting-write.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
@@ -266,6 +267,7 @@ function LinkDialog({ deere, onClose }: { deere: JohnDeereUnlinkedMachine; onClo
 }
 
 function MeterComparison({ deere, machine }: { deere: JohnDeereUnlinkedMachine; machine: Machine | undefined }) {
+  const latest = useLatestReading(machine?.id ?? null);
   if (!machine) return null;
   return (
     <div className="grid grid-cols-2 gap-3 rounded-lg border bg-muted/40 p-3 text-sm">
@@ -281,8 +283,8 @@ function MeterComparison({ deere, machine }: { deere: JohnDeereUnlinkedMachine; 
         title="Ours"
         name={machine.code}
         detail={`${machine.make} ${machine.model}`}
-        hours={machine.latestReadingHours}
-        at={machine.latestReadingAt}
+        hours={latest.data?.value ?? null}
+        at={latest.data?.capturedAt ?? null}
         atLabel="Read At"
       />
     </div>

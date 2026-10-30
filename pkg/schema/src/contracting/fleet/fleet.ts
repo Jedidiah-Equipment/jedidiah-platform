@@ -4,7 +4,6 @@ import { DateIso } from '../../common/date.js';
 import { nullableTrimmedTextInput, nullableTrimmedTextInputOptional, requiredTrimmedText } from '../../common/text.js';
 import { UUID } from '../../common/uuid.js';
 import { OpenBreakdown } from '../breakdowns/open-breakdown.js';
-import { telematicsProviders } from '../readings/reading-enums.js';
 import { ReadingValue } from '../readings/reading-value.js';
 import { serviceDueStatuses } from '../services/service-enums.js';
 import { ServiceDueSoonThresholdHours } from '../settings/settings.js';
@@ -100,6 +99,8 @@ export const MachinePatchInput = z
   })
   .strict();
 export type MachinePatchInput = z.infer<typeof MachinePatchInput>;
+export const knownHoursSources = ['telematics', 'spot', 'job'] as const;
+export type KnownHoursSource = (typeof knownHoursSources)[number];
 const retirement = {
   retiredAt: DateIso.nullable(),
   retiredReason: z.string().nullable(),
@@ -111,12 +112,11 @@ export const Machine = MachineCreateInput.extend({
   ...retirement,
   ...categoryProjection,
   currentDriverName: z.string().nullable(),
-  /** The newest Hour Reading of any role, spot readings included. */
-  latestReadingHours: ReadingValue.nullable(),
-  /** When that newest Hour Reading was captured. */
-  latestReadingAt: DateIso.nullable(),
-  /** Who that reading came from when the Machine's telematics reported it; null for a captured reading. */
-  latestReadingProvider: z.enum(telematicsProviders).nullable(),
+  /** Known Hours: the higher of the ledger's latest reading and the Machine's latest Job Hours. */
+  knownHours: ReadingValue.nullable(),
+  knownHoursAt: DateIso.nullable(),
+  /** Where Known Hours came from: a Telematics Reading, a spot reading, or a Job's hours. */
+  knownHoursSource: z.enum(knownHoursSources).nullable(),
   hoursToService: z.number().nullable(),
   /** The threshold the status was judged with: the Machine's Service Alert Hours, else the one in Settings. */
   effectiveServiceAlertHours: ServiceDueSoonThresholdHours,
@@ -187,9 +187,9 @@ export const FieldMachine = MachineListItem.pick({
   currentDriverUserId: true,
   currentDriverName: true,
   serialNumber: true,
-  latestReadingHours: true,
-  latestReadingAt: true,
-  latestReadingProvider: true,
+  knownHours: true,
+  knownHoursAt: true,
+  knownHoursSource: true,
   serviceIntervalHours: true,
   nextServiceDueHours: true,
   hoursToService: true,

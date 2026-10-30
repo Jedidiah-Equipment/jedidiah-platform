@@ -5,6 +5,7 @@ import {
   fieldReaderSeesJob,
   formatJobNumber,
   hoursToService,
+  knownHoursCrossServiceDueSoon,
   serviceDueStatus,
 } from '@pkg/domain/contracting';
 import type { AuthId, ContractingRole, UserAccessSummary } from '@pkg/schema';
@@ -12,14 +13,14 @@ import {
   FieldMachine,
   FleetCode,
   type FleetRetireInput,
+  type KnownHoursSource,
   Machine,
   type MachineCreateInput,
   type MachineListInput,
   type MachineListItem,
   type MachinePatchInput,
-  type TelematicsProvider,
 } from '@pkg/schema/contracting';
-import { and, asc, eq, isNull, sql } from 'drizzle-orm';
+import { and, asc, eq, isNull, type SQLWrapper, sql } from 'drizzle-orm';
 import { defineAuditDescriptor, recordAuditCreate } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
 import { loadOpenBreakdowns } from '../breakdowns/open-breakdowns.js';
@@ -61,10 +62,7 @@ type BusyOnJobRow = {
  * The busy subquery's stint, named as its raw SQL joins it: a relational query re-roots Drizzle column references
  * in `extras` onto its own table, so the on-site predicate gets the alias's columns as plain SQL.
  */
-const busyStint = {
-  arrivalReadingId: sql`stint.arrival_reading_id`,
-  departureReadingId: sql`stint.departure_reading_id`,
-};
+const busyStint = { arrivalHours: sql`stint.arrival_hours`, departureHours: sql`stint.departure_hours` };
 type JohnDeereRow = {
   equipmentId: string;
   principalId: number;
@@ -73,35 +71,93 @@ type JohnDeereRow = {
   lastReportTime: string | null;
   lastValue: number | null;
 };
-/** One field of the Machine's newest Hour Reading, as a correlated subselect. */
-const latestReadingField = <T>(machine: typeof contractingMachines._.columns, expression: string, alias: string) =>
-  sql<T>`(
-    select ${sql.raw(expression)}
-    from contracting.hour_reading latest
-    where latest.machine_id = ${machine.id}
-    order by latest.captured_at desc, latest.sequence desc
-    limit 1
-  )`.as(alias);
-/** The Machine's latest Hour Reading, of any role, and its Read At; a John Deere Link names its Machine's too. */
-export const latestReadingColumns = (machine: typeof contractingMachines._.columns) => ({
-  latestReadingHours: latestReadingField<number | null>(machine, 'latest.value::float8', 'latest_reading_hours'),
-  latestReadingAt: latestReadingField<string | null>(
-    machine,
-    "to_json(latest.captured_at) #>> '{}'",
-    'latest_reading_at',
-  ),
-  latestReadingProvider: latestReadingField<TelematicsProvider | null>(
-    machine,
-    'latest.telematics_provider',
-    'latest_reading_provider',
-  ),
-});
+type MachineColumns = typeof contractingMachines._.columns;
+
+/** The Machine's newest ledger reading, as a row source for a correlated subselect. */
+const ledgerLatest = (machineId: SQLWrapper) => sql`(
+  select reading.value, reading.captured_at as at, reading.method
+  from contracting.hour_reading reading
+  where reading.machine_id = ${machineId}
+  order by reading.captured_at desc, reading.sequence desc
+  limit 1
+)`;
+
+const ledgerLatestField = <T>(machine: MachineColumns, expression: string, alias: string) =>
+  sql<T>`(select ${sql.raw(expression)} from ${ledgerLatest(machine.id)} latest)`.as(alias);
+
 /**
- * What every Machine read derives beside its row: the newest Hour Reading of any role (so a spot reading moves Service
- * Due Soon as much as a stint does), the Job it is on site on, whether it is Booked In, and its active John Deere Link.
+ * The Machine's latest ledger reading (spot or Telematics) and its Read At: the floor spot capture is held to, and
+ * what a John Deere Link compares against. Never Known Hours, which Job Hours also move.
  */
-const derivedMachineColumns = (machine: typeof contractingMachines._.columns) => ({
-  ...latestReadingColumns(machine),
+export const ledgerLatestColumns = (machine: MachineColumns) => ({
+  latestReadingHours: ledgerLatestField<number | null>(machine, 'latest.value::float8', 'latest_reading_hours'),
+  latestReadingAt: ledgerLatestField<string | null>(machine, "to_json(latest.at) #>> '{}'", 'latest_reading_at'),
+});
+
+/** The candidates for Known Hours: the ledger's latest reading, and the highest Job Hours on any stint. */
+const knownHoursCandidates = (machineId: SQLWrapper) => sql`(
+  (
+    select latest.value, latest.at, case when latest.method = 'telematics' then 'telematics' else 'spot' end as source
+    from ${ledgerLatest(machineId)} latest
+  )
+  union all
+  (
+    select coalesce(stint.departure_hours, stint.arrival_hours), coalesce(stint.departure_at, stint.arrival_at), 'job'
+    from contracting.machine_assignment stint
+    where stint.machine_id = ${machineId}
+      and stint.arrival_hours is not null
+    order by 1 desc, 2 desc
+    limit 1
+  )
+)`;
+
+type KnownHoursRow = { hours: number; at: string; source: KnownHoursSource };
+
+/**
+ * Known Hours: the higher of the ledger's latest reading and the Machine's highest Job Hours (a departure is never
+ * below its arrival), with when and its source, as one correlated subselect.
+ */
+const knownHoursSelect = (machineId: SQLWrapper) => sql<KnownHoursRow | null>`(
+  select json_build_object('hours', known.value::float8, 'at', known.at, 'source', known.source)
+  from ${knownHoursCandidates(machineId)} known
+  order by known.value desc, known.at desc
+  limit 1
+)`;
+
+async function knownHoursOf(db: Db | DatabaseTransaction, machineId: string): Promise<number | null> {
+  const [row] = await db
+    .select({ known: knownHoursSelect(contractingMachines.id) })
+    .from(contractingMachines)
+    .where(eq(contractingMachines.id, machineId));
+  return row?.known?.hours ?? null;
+}
+
+/**
+ * The Service Due Soon edge across one write under the Machine lock: Known Hours read before the write, and after it
+ * `crossed()` says whether the write took the Machine inside the threshold, so the caller pushes after commit.
+ */
+export async function serviceDueSoonEdge(
+  tx: DatabaseTransaction,
+  machine: { id: string; nextServiceDueHours: number | null; serviceAlertHours: number | null },
+) {
+  const before = await knownHoursOf(tx, machine.id);
+  return {
+    crossed: async () => {
+      const [{ serviceDueSoonThresholdHours }, after] = await Promise.all([
+        getContractingSettings({ db: tx }),
+        knownHoursOf(tx, machine.id),
+      ]);
+      return knownHoursCrossServiceDueSoon(before, after, machine, serviceDueSoonThresholdHours);
+    },
+  };
+}
+
+/**
+ * What every Machine read derives beside its row: its Known Hours (so a spot reading moves Service Due Soon as much as
+ * a Job's hours do), the Job it is on site on, whether it is Booked In, and its active John Deere Link.
+ */
+const derivedMachineColumns = (machine: MachineColumns) => ({
+  known: knownHoursSelect(machine.id).as('known_hours'),
   busyOnJob: sql<BusyOnJobRow | null>`(
     select json_build_object(
       'id', job.id,
@@ -110,17 +166,16 @@ const derivedMachineColumns = (machine: typeof contractingMachines._.columns) =>
       'farmName', farm.name,
       'workTypeName', work_type.name,
       'foremanUserId', job.foreman_user_id,
-      'arrivedAt', arrival.captured_at
+      'arrivedAt', stint.arrival_at
     )
     from contracting.machine_assignment stint
     join contracting.job job on job.id = stint.job_id
     join contracting.customer customer on customer.id = job.customer_id
     join contracting.farm farm on farm.id = job.farm_id
     join contracting.work_type work_type on work_type.id = job.work_type_id
-    join contracting.hour_reading arrival on arrival.id = stint.arrival_reading_id
     where stint.machine_id = ${machine.id}
       and ${stintOnSite(busyStint)}
-    order by arrival.captured_at desc
+    order by stint.arrival_at desc
     limit 1
   )`.as('busy_on_job'),
   // Nothing refuses a second open record, so the newest start is the one in the workshop.
@@ -150,17 +205,15 @@ function mapMachine(
   row: Row & {
     category: CategoryRelation;
     currentDriver: { name: string } | null;
-    latestReadingHours: number | null;
-    latestReadingAt: string | null;
-    latestReadingProvider: TelematicsProvider | null;
+    known: KnownHoursRow | null;
     busyOnJob: BusyOnJobRow | null;
     bookedInServiceId: string | null;
     johnDeere: JohnDeereRow | null;
   },
   settingsThresholdHours: number,
 ) {
-  const { category, currentDriver, busyOnJob, ...fields } = row;
-  const facts = { latestReadingHours: row.latestReadingHours, nextServiceDueHours: row.nextServiceDueHours };
+  const { category, currentDriver, busyOnJob, known, ...fields } = row;
+  const facts = { knownHours: known?.hours ?? null, nextServiceDueHours: row.nextServiceDueHours };
   const threshold = effectiveServiceAlertHours(row, settingsThresholdHours);
   const busy = (job: BusyOnJobRow) => {
     const { code, ...rest } = job;
@@ -171,6 +224,9 @@ function mapMachine(
     ...projectCategory(category),
     ...projectTimestamps(row),
     currentDriverName: currentDriver?.name ?? null,
+    knownHours: known?.hours ?? null,
+    knownHoursAt: known?.at ?? null,
+    knownHoursSource: known?.source ?? null,
     hoursToService: hoursToService(facts),
     effectiveServiceAlertHours: threshold,
     serviceDueStatus: serviceDueStatus(facts, threshold),

@@ -3,19 +3,16 @@ import { type DailyHoursDay, defaultHoursHeatMapMonths } from '@pkg/schema/contr
 import { JOHANNESBURG_TIME_ZONE, zonedDateStartToUtcInstant } from '../formatting/date.js';
 import { addDateOnlyDays, addDateOnlyMonths, diffDateOnlyDays } from '../formatting/date-only.js';
 import { round1 } from './hours.js';
-import { type LedgerReading, overlapShare } from './utilisation.js';
+import { jobDatesInstants, overlapShare } from './utilisation.js';
 
-/** One stretch of the meter between two consecutive readings, with the instants it ran between. */
-export type MeterSegment = { hours: number; from: string; to: string };
-
-/** A stint as the ids of its arrival and departure readings; the departure is open while the Machine is on site. */
-export type DailyHoursStint = { arrivalReadingId: string; departureReadingId: string | null };
+/** One stretch of hours with the instants it ran between; a Job's spread is estimated whatever its length. */
+export type MeterSegment = { hours: number; from: string; to: string; estimated?: true };
 
 /**
- * Every stretch the meter advanced between consecutive readings of one Machine's ledger (Read At order), whatever the
- * phase. A disputed pair may deliberately run backwards; it contributes nothing.
+ * Every stretch the meter advanced between consecutive readings of one Machine's ledger (Read At order). A reading
+ * lower than the one before contributes nothing.
  */
-export function meterSegments(readings: readonly Pick<LedgerReading, 'value' | 'capturedAt'>[]): MeterSegment[] {
+export function meterSegments(readings: readonly { value: number; capturedAt: string }[]): MeterSegment[] {
   return readings.flatMap((next, index) => {
     const previous = readings[index - 1];
     if (!previous) return [];
@@ -26,26 +23,17 @@ export function meterSegments(readings: readonly Pick<LedgerReading, 'value' | '
 }
 
 /**
- * A Job's Work hours: the stretches between consecutive readings from a stint's arrival reading to its departure
- * reading, or on to the latest reading while it is open. The stints are walked by reading id along the ledger, so two
- * readings sharing a Read At keep the order they were accepted in.
+ * A Job's Work hours as the heat map spreads them: each stint's Work hours over the Job's effective dates, from the
+ * Start date's plant midnight to the End date's next, so every day of a longer Job is an estimate.
  */
-export function stintWorkSegments(
-  readings: readonly Pick<LedgerReading, 'id' | 'value' | 'capturedAt'>[],
-  stints: readonly DailyHoursStint[],
+export function jobWorkSegments(
+  stints: readonly { workHours: number | null }[],
+  dates: { startDate: DateOnlyIso; endDate: DateOnlyIso },
 ): MeterSegment[] {
-  const position = new Map(readings.map((reading, index) => [reading.id, index]));
-  const inStint = new Set<number>();
-  for (const stint of stints) {
-    const first = position.get(stint.arrivalReadingId);
-    if (first === undefined) continue;
-    const last =
-      stint.departureReadingId === null
-        ? readings.length - 1
-        : (position.get(stint.departureReadingId) ?? readings.length - 1);
-    for (let index = first + 1; index <= last; index += 1) inStint.add(index);
-  }
-  return meterSegments(readings).filter((_, segment) => inStint.has(segment + 1));
+  const span = jobDatesInstants(dates);
+  return stints.flatMap((stint) =>
+    stint.workHours ? [{ hours: stint.workHours, ...span, estimated: true as const }] : [],
+  );
 }
 
 /** Index of the last boundary at or before `instant`, or -1 when it precedes them all. */
@@ -63,7 +51,7 @@ function lastBoundaryAtOrBefore(boundaries: readonly number[], instant: number):
 /**
  * The segments' hours attributed to each plant day from `start` through `end`, by elapsed time: a segment's hours are
  * shared out over the days it ran across in proportion to the time it spent in each. A day is estimated when hours
- * came from a segment that ran across more than one plant day. Every day in the range is returned, oldest first.
+ * came from a segment that ran across more than one plant day, or from a Job's spread. Every day in the range is returned, oldest first.
  */
 export function allocateDailyHours(
   segments: readonly MeterSegment[],
@@ -94,7 +82,7 @@ export function allocateDailyHours(
     const crossesEdge =
       (from < (boundaries[0] ?? 0) && to > (boundaries[0] ?? 0)) ||
       (to > (boundaries[count] ?? 0) && from < (boundaries[count] ?? 0));
-    if (touched.length > 1 || crossesEdge) for (const day of touched) estimated[day] = true;
+    if (segment.estimated || touched.length > 1 || crossesEdge) for (const day of touched) estimated[day] = true;
   }
   return dates.map((date, index) => ({ date, hours: round1(hours[index] ?? 0), estimated: estimated[index] ?? false }));
 }

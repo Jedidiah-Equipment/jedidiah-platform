@@ -4,7 +4,6 @@ import {
   contractingChargeLines,
   contractingCustomers,
   contractingFarms,
-  contractingHourReadings,
   contractingImplements,
   contractingJobs,
   contractingMachineAssignments,
@@ -15,20 +14,16 @@ import {
 } from '@pkg/db/contracting';
 import { and, asc, eq, getTableColumns, inArray } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
-import { type JobReader, readableBy } from './job-readers.js';
-import * as jobSql from './job-sql.js';
 
 export type DbOrTx = Db | DatabaseTransaction;
 
 export const foreman = alias(user, 'job_foreman');
 export const invoicer = alias(user, 'job_invoicer');
 const driver = alias(user, 'job_driver');
-const arrivalReading = alias(contractingHourReadings, 'job_arrival_reading');
-const departureReading = alias(contractingHourReadings, 'job_departure_reading');
 const arrivalCapturer = alias(user, 'job_arrival_capturer');
 const departureCapturer = alias(user, 'job_departure_capturer');
-const arrivalAmender = alias(user, 'job_arrival_amender');
-const departureAmender = alias(user, 'job_departure_amender');
+const travelSetter = alias(user, 'job_travel_setter');
+const hoursAmender = alias(user, 'job_hours_amender');
 
 /** A Job row with the names every read shows. A name added here needs its join in `selectJobs` and `listJobs`. */
 export const jobHeader = {
@@ -61,7 +56,7 @@ export function selectJobs(db: DbOrTx) {
     .leftJoin(invoicer, eq(invoicer.id, contractingJobs.invoicedByUserId));
 }
 
-/** Every stint on these Jobs with its Machine, Implement, Driver and readings, oldest plan first. */
+/** Every stint on these Jobs with its Machine, Implement, Driver and the names behind its Job Hours, oldest plan first. */
 export async function loadStints(db: DbOrTx, jobIds: readonly string[]) {
   if (!jobIds.length) return [];
   return db
@@ -74,12 +69,10 @@ export async function loadStints(db: DbOrTx, jobIds: readonly string[]) {
       implementCode: contractingImplements.code,
       driverName: driver.name,
       rateMeasureTypeName: contractingMeasureTypes.name,
-      arrival: getTableColumns(arrivalReading),
-      arrivalCapturedByName: arrivalCapturer.name,
-      arrivalAmendedByName: arrivalAmender.name,
-      departure: getTableColumns(departureReading),
-      departureCapturedByName: departureCapturer.name,
-      departureAmendedByName: departureAmender.name,
+      arrivalByName: arrivalCapturer.name,
+      departureByName: departureCapturer.name,
+      travelSetByName: travelSetter.name,
+      hoursAmendedByName: hoursAmender.name,
     })
     .from(contractingMachineAssignments)
     .innerJoin(contractingMachines, eq(contractingMachines.id, contractingMachineAssignments.machineId))
@@ -87,12 +80,10 @@ export async function loadStints(db: DbOrTx, jobIds: readonly string[]) {
     .leftJoin(contractingImplements, eq(contractingImplements.id, contractingMachineAssignments.implementId))
     .leftJoin(driver, eq(driver.id, contractingMachineAssignments.driverUserId))
     .leftJoin(contractingMeasureTypes, eq(contractingMeasureTypes.id, contractingMachineAssignments.rateMeasureTypeId))
-    .leftJoin(arrivalReading, eq(arrivalReading.id, contractingMachineAssignments.arrivalReadingId))
-    .leftJoin(arrivalCapturer, eq(arrivalCapturer.id, arrivalReading.capturedByUserId))
-    .leftJoin(arrivalAmender, eq(arrivalAmender.id, arrivalReading.amendedBy))
-    .leftJoin(departureReading, eq(departureReading.id, contractingMachineAssignments.departureReadingId))
-    .leftJoin(departureCapturer, eq(departureCapturer.id, departureReading.capturedByUserId))
-    .leftJoin(departureAmender, eq(departureAmender.id, departureReading.amendedBy))
+    .leftJoin(arrivalCapturer, eq(arrivalCapturer.id, contractingMachineAssignments.arrivalByUserId))
+    .leftJoin(departureCapturer, eq(departureCapturer.id, contractingMachineAssignments.departureByUserId))
+    .leftJoin(travelSetter, eq(travelSetter.id, contractingMachineAssignments.travelSetByUserId))
+    .leftJoin(hoursAmender, eq(hoursAmender.id, contractingMachineAssignments.hoursAmendedByUserId))
     .where(inArray(contractingMachineAssignments.jobId, [...jobIds]))
     .orderBy(asc(contractingMachineAssignments.createdAt));
 }
@@ -107,55 +98,6 @@ export const stintNames = ({
   implementCode,
   driverName,
 }: LoadedStint) => ({ machineCode, categoryName, categoryIcon, categoryColour, implementCode, driverName });
-
-const previousReading = alias(contractingHourReadings, 'job_previous_departure');
-const previousAssignment = alias(contractingMachineAssignments, 'job_previous_assignment');
-const previousDepartureOf = eq(
-  previousReading.id,
-  jobSql.previousDepartureId(contractingMachineAssignments.machineId, {
-    capturedAt: arrivalReading.capturedAt,
-    sequence: arrivalReading.sequence,
-  }),
-);
-
-/** Each arrived stint's previous departure: the Machine's last departure before its arrival, where its Hour Gap starts. */
-export async function loadPreviousDepartures(db: DbOrTx, jobId: string) {
-  const rows = await db
-    .select({
-      id: contractingMachineAssignments.id,
-      value: previousReading.value,
-      capturedAt: previousReading.capturedAt,
-    })
-    .from(contractingMachineAssignments)
-    .innerJoin(arrivalReading, eq(arrivalReading.id, contractingMachineAssignments.arrivalReadingId))
-    .innerJoin(previousReading, previousDepartureOf)
-    .where(eq(contractingMachineAssignments.jobId, jobId));
-  return new Map(rows.map(({ id, ...departure }) => [id, departure] as const));
-}
-
-/** The Job each arrived stint's Machine left before arriving, by stint id: only those the reader could open. */
-export async function loadPreviousJobs(db: DbOrTx, jobId: string, reader: JobReader) {
-  const rows = await db
-    .select({
-      id: contractingMachineAssignments.id,
-      code: contractingJobs.code,
-      status: contractingJobs.status,
-      customerName: contractingCustomers.name,
-      farmName: contractingFarms.name,
-    })
-    .from(contractingMachineAssignments)
-    .innerJoin(arrivalReading, eq(arrivalReading.id, contractingMachineAssignments.arrivalReadingId))
-    .innerJoin(previousReading, previousDepartureOf)
-    .innerJoin(previousAssignment, eq(previousAssignment.departureReadingId, previousReading.id))
-    .innerJoin(contractingJobs, and(eq(contractingJobs.id, previousAssignment.jobId), readableBy(reader)))
-    .innerJoin(contractingCustomers, eq(contractingCustomers.id, contractingJobs.customerId))
-    .innerJoin(
-      contractingFarms,
-      and(eq(contractingFarms.id, contractingJobs.farmId), eq(contractingFarms.customerId, contractingJobs.customerId)),
-    )
-    .where(eq(contractingMachineAssignments.jobId, jobId));
-  return new Map(rows.map(({ id, ...job }) => [id, job] as const));
-}
 
 export function loadMeasures(db: DbOrTx, jobId: string) {
   return db

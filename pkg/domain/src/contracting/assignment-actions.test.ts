@@ -17,7 +17,8 @@ const matrix: Record<AssignmentActionName, string> = {
   captureArrival: '✓··',
   captureDeparture: '·✓·',
   editMeasures: '·✓✓',
-  resolveGap: '··✓',
+  editHours: '·✓✓',
+  setTravel: '·✓✓',
   price: '··✓',
 };
 
@@ -38,7 +39,8 @@ describe('judgeAssignmentAction', () => {
       captureArrival: ['on-site', 'This Machine Assignment already arrived.'],
       captureDeparture: ['planned', 'This Machine Assignment is not on site.'],
       editMeasures: ['planned', 'Measures can only be recorded after the Machine has arrived.'],
-      resolveGap: ['on-site', 'The Machine Assignment must have left the Job.'],
+      editHours: ['planned', 'The Machine has not arrived yet.'],
+      setTravel: ['planned', 'Travel Hours exist once the Machine has arrived.'],
       price: ['on-site', 'Only a Machine Assignment that has left can be priced.'],
     };
     for (const action of assignmentActionNames) {

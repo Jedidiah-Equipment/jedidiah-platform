@@ -137,9 +137,11 @@ test('a Job’s machines, start, sign-off and cancellation each read once, scope
   await cancelJob({ db, actor: admin, input: { id: thabosJobId, reason: 'Rain stopped play' } });
   const priced = await pricedJob({ ...fixtures, db }, [{ machineId: tipper.id, arrival: 50, departure: 60 }]);
 
+  // The first arrival starts the Job at the same instant, so those two items may read in either order.
+  const arrivalAndStart = (feed: Awaited<ReturnType<typeof list>>) => [types(feed)[0], ...types(feed).slice(1).sort()];
   const onSipho = await list(db, admin, { jobId: siphosJobId });
-  expect(types(onSipho)).toEqual(['machine-left', 'machine-arrived', 'job-started']);
-  expect(onSipho.items.at(-1)).toMatchObject({
+  expect(arrivalAndStart(onSipho)).toEqual(['machine-left', 'job-started', 'machine-arrived']);
+  expect(onSipho.items.find((item) => item.type === 'job-started')).toMatchObject({
     type: 'job-started',
     actor: { name: 'Sipho' },
     machine: { code: 'CAT320-1' },
@@ -161,7 +163,11 @@ test('a Job’s machines, start, sign-off and cancellation each read once, scope
   expect(await list(db, admin, { search: 'rain stopped' })).toMatchObject({
     items: [{ type: 'job-cancelled', reason: 'Rain stopped play' }],
   });
-  expect(types(await list(db, admin, { search: 'TIP-7' }))).toEqual(['machine-left', 'machine-arrived', 'job-started']);
+  expect(arrivalAndStart(await list(db, admin, { search: 'TIP-7' }))).toEqual([
+    'machine-left',
+    'job-started',
+    'machine-arrived',
+  ]);
 });
 
 test('Add Note works on an Invoiced Job for management and is refused to a Foreman once his Job is Priced', async ({

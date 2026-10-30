@@ -28,6 +28,11 @@ export const assignmentDescriptor = (machineCode: string) =>
     entityId: (row) => row.id,
     toRecord: ({ id: _id, createdAt: _createdAt, updatedAt: _updatedAt, ...row }) => ({
       ...row,
-      gapResolvedAt: row.gapResolvedAt?.toISOString() ?? null,
+      arrivalAt: row.arrivalAt?.toISOString() ?? null,
+      arrivalTelematicsAt: row.arrivalTelematicsAt?.toISOString() ?? null,
+      departureAt: row.departureAt?.toISOString() ?? null,
+      departureTelematicsAt: row.departureTelematicsAt?.toISOString() ?? null,
+      travelSetAt: row.travelSetAt?.toISOString() ?? null,
+      hoursAmendedAt: row.hoursAmendedAt?.toISOString() ?? null,
     }),
   });

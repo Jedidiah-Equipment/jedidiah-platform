@@ -51,13 +51,6 @@ const rules: Record<JobActionName, Rule> = {
     anyJob: 'contracting_job:work-any',
     verb: 'change Machine Assignments',
   },
-  patchTravel: {
-    statuses: unpricedJobStatuses,
-    permissions: ['contracting_job:assign', 'contracting_assignment:update-own'],
-    anyJob: 'contracting_job:work-any',
-    ownStatuses: openJobStatuses,
-    verb: 'change travel',
-  },
   // The Foreman records the production figures on site, so only while his own Job is Active; management amends after.
   editMeasures: {
     statuses: workedJobStatuses,
@@ -76,7 +69,6 @@ const rules: Record<JobActionName, Rule> = {
     permissions: ['contracting_job:price'],
     verb: 'price Charge Lines',
   },
-  resolveGaps: { statuses: workedJobStatuses, permissions: ['contracting_gap:resolve'], verb: 'resolve Hour Gaps' },
   editSignOffDetails: {
     statuses: signedOffJobStatuses,
     permissions: ['contracting_job:update'],
@@ -99,17 +91,21 @@ const rules: Record<JobActionName, Rule> = {
     permissions: ['contracting_invoice:update'],
     verb: 'stamp an Invoice Number',
   },
-  amendReadings: {
-    statuses: unclosedJobStatuses,
-    permissions: ['contracting_reading:update'],
-    verb: 'amend readings',
-  },
   capture: {
     statuses: openJobStatuses,
     permissions: ['contracting_reading:capture'],
     anyJob: 'contracting_job:work-any',
-    verb: 'capture readings',
+    verb: 'capture Job hours',
   },
+  // The Foreman edits his own Job's hours while it is open; management until Invoiced, with a reason once signed off.
+  editHours: {
+    statuses: unclosedJobStatuses,
+    permissions: ['contracting_reading:capture', 'contracting_reading:update'],
+    anyJob: 'contracting_job:work-any',
+    ownStatuses: openJobStatuses,
+    verb: 'change hours',
+  },
+  setTravel: { statuses: unclosedJobStatuses, permissions: ['contracting_travel:set'], verb: 'set Travel Hours' },
   // The core report judges a report that names a Job by this same rule, so the Job sheet and the server agree.
   reportBreakdown: {
     statuses: openJobStatuses,

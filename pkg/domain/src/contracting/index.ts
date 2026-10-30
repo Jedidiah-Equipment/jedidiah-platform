@@ -28,5 +28,6 @@ export * from './readings.js';
 export * from './report-window.js';
 export * from './service-due.js';
 export * from './settings.js';
+export * from './stint-hours.js';
 export * from './stints.js';
 export * from './utilisation.js';

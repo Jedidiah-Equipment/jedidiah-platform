@@ -6,7 +6,6 @@ import {
   filterDashboardWidgets,
 } from '@/components/common/dashboard/dashboard-widget-types.js';
 import { DailyHoursWidget } from './widgets/DailyHoursWidget.js';
-import { DisputesTile } from './widgets/DisputesTile.js';
 import {
   ActiveJobsTile,
   AwaitingInvoiceTile,
@@ -41,13 +40,6 @@ export const contractingDashboardRows = [
       requires: 'contracting_job:read-priced',
       size: 'xs',
       title: jobQueueLabels['awaiting-invoice'],
-    },
-    {
-      Component: DisputesTile,
-      id: 'disputes',
-      requires: 'contracting_reading:update',
-      size: 'xs',
-      title: 'Disputes',
     },
   ],
   [

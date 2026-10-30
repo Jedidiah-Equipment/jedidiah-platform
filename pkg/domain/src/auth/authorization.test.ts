@@ -265,7 +265,6 @@ describe('getRolePermissions', () => {
       'contracting_breakdown:update',
       'contracting_directory:read',
       'contracting_directory:update',
-      'contracting_gap:resolve',
       'contracting_job:assign',
       'contracting_job:cancel',
       'contracting_job:complete',
@@ -281,6 +280,7 @@ describe('getRolePermissions', () => {
       'contracting_service:read',
       'contracting_service:update',
       'contracting_transcription:use',
+      'contracting_travel:set',
     ]);
     expect(getRolePermissions('workshop-manager')).toEqual([
       'contracting_breakdown:read',
@@ -308,12 +308,11 @@ describe('getRolePermissions', () => {
     expect(getRolePermissions('mechanic')).toEqual([]);
   });
 
-  it('reserves reaching every Job for management and baseline capture for administrators', () => {
+  it('reserves reaching every Job for management', () => {
     const holders = (permission: AppPermission) =>
       APP_ROLES.filter((role) => getRolePermissions(role).includes(permission)).sort();
 
     expect(holders('contracting_job:work-any')).toEqual(['contracting-admin', 'contracting-manager', 'super-admin']);
-    expect(holders('contracting_reading:capture-baseline')).toEqual(['contracting-admin', 'super-admin']);
     expect(holders('contracting_transcription:use')).toEqual([
       'contracting-admin',
       'contracting-manager',

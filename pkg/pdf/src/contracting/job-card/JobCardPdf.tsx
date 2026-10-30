@@ -1,5 +1,5 @@
 import { formatCurrency, formatDate, formatHours, formatQuantity } from '@pkg/domain';
-import { JEDIDIAH_CONTRACTING_BUSINESS_DETAILS } from '@pkg/domain/contracting';
+import { assignmentAttentionKindLabel, JEDIDIAH_CONTRACTING_BUSINESS_DETAILS } from '@pkg/domain/contracting';
 import type {
   JobCardModel,
   JobCardReading,
@@ -65,7 +65,6 @@ const styles = StyleSheet.create({
 const rowStyle = [documentFrameStyles.tableRow, styles.row];
 
 const markers: Record<JobCardReadingMarker, { glyph: string; meaning: string }> = {
-  disputed: { glyph: '!', meaning: 'disputed' },
   amended: { glyph: '~', meaning: 'amended' },
 };
 const markerLegend = `Readings: ${Object.values(markers)
@@ -140,7 +139,7 @@ export function JobCardPdf({ document }: { document: JobCardModel }) {
           line.kind === 'subtotal' ? (
             <SubtotalRow key={`subtotal-${line.machineCode}`} line={line} />
           ) : (
-            <StintRow key={`${line.machineCode}-${line.arrival?.capturedAt}`} line={line} />
+            <StintRow key={`${line.machineCode}-${line.arrival?.hours}`} line={line} />
           ),
         )}
         {document.chargeLines.map((line) => (
@@ -182,9 +181,9 @@ function ReadingCell({ reading }: { reading: JobCardReading | null }) {
   const marker = reading.marker ? ` ${markers[reading.marker].glyph}` : '';
   return (
     <View style={styles.reading}>
-      <Text>{`${formatHours(reading.value)}${marker}`}</Text>
-      <Text style={styles.muted}>{formatDate(reading.capturedAt, 'medium')}</Text>
-      {reading.capturedByName ? <Text style={styles.muted}>{`by ${reading.capturedByName}`}</Text> : null}
+      <Text>{`${formatHours(reading.hours)}${marker}`}</Text>
+      {reading.at ? <Text style={styles.muted}>{formatDate(reading.at, 'medium')}</Text> : null}
+      {reading.byName ? <Text style={styles.muted}>{`by ${reading.byName}`}</Text> : null}
     </View>
   );
 }
@@ -202,11 +201,11 @@ function HoursCell({ line }: { line: JobCardStintLine }) {
               hours.travel > 0 ? ` + ${formatHours(hours.travel)} travel` : ''
             }`}
           </Text>
-          {hours.unaccounted > 0 ? (
-            <Text style={styles.muted}>
-              {`+ ${formatHours(hours.unaccounted)} unaccounted${hours.gapReason ? ` — ${hours.gapReason}` : ''}`}
+          {hours.attention.map((kind) => (
+            <Text key={kind} style={styles.muted}>
+              {assignmentAttentionKindLabel(kind)}
             </Text>
-          ) : null}
+          ))}
         </>
       )}
       {line.measures.map((measure) => (

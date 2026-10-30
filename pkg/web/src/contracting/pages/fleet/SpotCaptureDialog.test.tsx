@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 
-import { formatDate, formatHours } from '@pkg/domain';
+import { formatDate } from '@pkg/domain';
 import { CAPTURE_VALUE_INVALID, captureRefusals } from '@pkg/domain/contracting';
 import type { Machine, ReadAtEstimate } from '@pkg/schema/contracting';
 import { act } from 'react';
@@ -10,14 +10,14 @@ import { SpotCaptureDialog } from './SpotCaptureDialog.js';
 
 const capture = vi.hoisted(() => vi.fn(async (..._args: unknown[]) => undefined));
 vi.mock('@/contracting/components/readings/capture-reading.js', () => ({ captureReading: capture }));
-const latestId = '00000000-0000-4000-8000-000000000009';
+
 vi.mock('@/contracting/components/readings/use-latest-reading.js', () => ({
   useLatestReading: () => ({
     refetch: async () => undefined,
     isSuccess: true,
     isPending: false,
     error: null,
-    data: { id: latestId, role: 'departure', value: 130, capturedAt: '2026-10-17T12:00:00.000Z' },
+    data: { id: '00000000-0000-4000-8000-000000000009', value: 130, capturedAt: '2026-10-17T12:00:00.000Z' },
   }),
 }));
 const estimates = vi.hoisted(() => ({ for: (_value: number | null): ReadAtEstimate | undefined => ({ kind: 'now' }) }));
@@ -121,14 +121,7 @@ it('opens on the question alone, then reveals hours, the date and the details in
   expect(document.querySelector('[name="comment"]')).not.toBeNull();
   await enter('comment', 'Gate open');
   await press('Save reading');
-  expect(capture.mock.calls[0]?.[0]).toMatchObject({
-    role: 'spot',
-    machineId: machine.id,
-    value: 140,
-    comment: 'Gate open',
-    disputePrevious: false,
-    expectedPreviousId: latestId,
-  });
+  expect(capture.mock.calls[0]?.[0]).toMatchObject({ machineId: machine.id, value: 140, comment: 'Gate open' });
 });
 
 it('stops at the hours with the sentence when the meter cannot have got there', async () => {
@@ -203,37 +196,6 @@ it('withdraws Date looks good when the picker is edited to a time it cannot read
   await enterReadAt('2026-10-20', '25:00');
   expect(button('Save reading')).toBeUndefined();
   expect(button('Date looks good')?.disabled).toBe(true);
-});
-
-it('offers the dispute below a human latest, which posts the handshake', async () => {
-  estimates.for = () => guess(new Date('2026-10-17T10:00:00.000Z'));
-  await mount();
-  await press('Today');
-  await enter('value', '126');
-  expect(document.body.textContent).toContain(
-    `This is below the latest reading of ${formatHours(130)} at ${formatDate(new Date('2026-10-17T12:00:00.000Z'), 'medium')}.`,
-  );
-  expect(button('Date looks good')?.disabled).toBe(true);
-  await press('The previous reading is wrong');
-  await press('Date looks good');
-  await press('Save reading');
-  expect(capture).toHaveBeenCalledWith(
-    expect.objectContaining({ role: 'spot', value: 126, disputePrevious: true, expectedPreviousId: latestId }),
-    'Unable to capture the reading.',
-  );
-});
-
-it('reads earlier at the guessed date from the dispute fork', async () => {
-  const readAt = new Date('2026-10-17T10:00:00.000Z');
-  estimates.for = () => guess(readAt);
-  await mount();
-  await press('Earlier');
-  await enter('value', '126');
-  await press('Read earlier');
-  expect(document.body.textContent).not.toContain('This is below the latest reading');
-  await press('Date looks good');
-  await press('Save reading');
-  expect(capture.mock.calls[0]?.[0]).toMatchObject({ disputePrevious: false, capturedAt: readAt.toISOString() });
 });
 
 it('refuses a Read At still to come', async () => {

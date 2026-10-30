@@ -4,7 +4,6 @@ import {
   contractingCategories,
   contractingCustomers,
   contractingFarms,
-  contractingHourReadings,
   contractingImplements,
   contractingJobs,
   contractingMachineAssignments,
@@ -142,9 +141,9 @@ const breakdownMatches = (breakdownId: SQLWrapper, search: string): SQL => sql`e
 const firstArrivalMachine = (jobId: SQLWrapper) => sql`(
   select first_stint.machine_id
   from contracting.machine_assignment first_stint
-  inner join contracting.hour_reading first_arrival on first_arrival.id = first_stint.arrival_reading_id
   where first_stint.job_id = ${jobId}
-  order by first_arrival.created_at, first_arrival.id
+    and first_stint.arrival_at is not null
+  order by first_stint.arrival_at, first_stint.id
   limit 1
 )`;
 
@@ -260,26 +259,20 @@ function branches(db: Db, actor: JobActor, input: ActivityListInput): Branch[] {
     },
   });
 
-  const readingBranch = (type: 'machine-arrived' | 'machine-left', stintColumn: PgColumn): Branch => ({
+  /** A stint's Job Hours captured: the item is the stint at the instant the server saved them. */
+  const stintBranch = (type: 'machine-arrived' | 'machine-left', stamp: PgColumn, by: PgColumn): Branch => ({
     type,
     select: (where) => {
-      const row = { id: contractingHourReadings.id, stamp: contractingHourReadings.createdAt };
-      return keySelect(db, type, row, {
-        jobId: contractingMachineAssignments.jobId,
-        machineId: contractingHourReadings.machineId,
-        actorId: contractingHourReadings.capturedByUserId,
-      })
-        .from(contractingHourReadings)
-        .innerJoin(contractingMachineAssignments, eq(stintColumn, contractingHourReadings.id))
+      const stints = contractingMachineAssignments;
+      const row = { id: stints.id, stamp };
+      return keySelect(db, type, row, { jobId: stints.jobId, machineId: stints.machineId, actorId: by })
+        .from(stints)
         .where(
           and(
-            through(job, contractingMachineAssignments.jobId),
+            isNotNull(stamp),
+            through(job, stints.jobId),
             search
-              ? or(
-                  jobMatches(contractingMachineAssignments.jobId, search),
-                  machineMatches(contractingHourReadings.machineId, search),
-                  userMatches(contractingHourReadings.capturedByUserId, search),
-                )
+              ? or(jobMatches(stints.jobId, search), machineMatches(stints.machineId, search), userMatches(by, search))
               : undefined,
             where(row),
           ),
@@ -317,8 +310,18 @@ function branches(db: Db, actor: JobActor, input: ActivityListInput): Branch[] {
       stampBranch(job, 'job-cancelled', jobs.cancelledAt, jobs.cancelledByUserId, {
         matches: (term) => textMatches(jobs.cancellationReason, term),
       }),
-    jobSide && readingBranch('machine-arrived', contractingMachineAssignments.arrivalReadingId),
-    jobSide && readingBranch('machine-left', contractingMachineAssignments.departureReadingId),
+    jobSide &&
+      stintBranch(
+        'machine-arrived',
+        contractingMachineAssignments.arrivalAt,
+        contractingMachineAssignments.arrivalByUserId,
+      ),
+    jobSide &&
+      stintBranch(
+        'machine-left',
+        contractingMachineAssignments.departureAt,
+        contractingMachineAssignments.departureByUserId,
+      ),
   ];
 
   return all.filter(
@@ -385,21 +388,21 @@ async function findActivityKeys(db: Db, actor: JobActor, input: ActivityListInpu
 async function hydrateActivityKeys(db: Db, keys: ActivityKey[]): Promise<ActivityItem[]> {
   const idsOf = (...types: ActivityItemType[]) => keys.filter((key) => types.includes(key.type)).map((key) => key.id);
   const named = (ref: 'jobId' | 'breakdownId' | 'machineId' | 'actorId') => keys.flatMap((key) => key[ref] ?? []);
-  const [jobRefs, machineRefs, actors, breakdowns, jobNotes, breakdownNotes, readings, jobRows] = await Promise.all([
+  const [jobRefs, machineRefs, actors, breakdowns, jobNotes, breakdownNotes, stints, jobRows] = await Promise.all([
     findJobRefs(db, named('jobId')),
     findMachineRefs(db, named('machineId')),
     findActors(db, named('actorId')),
     findBreakdowns(db, named('breakdownId')),
     findNotes(db, noteThreadStore.job.notes, idsOf('job-note')),
     findNotes(db, noteThreadStore.breakdown.notes, idsOf('breakdown-note')),
-    findReadings(db, idsOf('machine-arrived', 'machine-left')),
+    findStints(db, idsOf('machine-arrived', 'machine-left')),
     findJobRows(db, idsOf('job-started', 'job-completed', 'job-cancelled')),
   ]);
 
   const byId = <T extends { id: string }>(rows: readonly T[]) => new Map(rows.map((row) => [row.id, row]));
   const jobNoteById = byId(jobNotes);
   const breakdownNoteById = byId(breakdownNotes);
-  const readingById = byId(readings);
+  const stintById = byId(stints);
   const jobRowById = byId(jobRows);
   const breakdownById = new Map(breakdowns.map((row) => [row.breakdown.id, row]));
   const jobRefById = byId(jobRefs);
@@ -429,14 +432,10 @@ async function hydrateActivityKeys(db: Db, keys: ActivityKey[]): Promise<Activit
     };
     return { row, refs };
   };
-  const reading = (key: ActivityKey) => {
-    const row = found(readingById.get(key.id), `Hour Reading ${key.id}`);
-    return {
-      job: job(key.jobId),
-      machine: machine(key),
-      hours: row.value,
-      readAt: row.capturedAt.toISOString(),
-    };
+  const jobHours = (key: ActivityKey) => {
+    const row = found(stintById.get(key.id), `Machine Assignment ${key.id}`);
+    const hours = key.type === 'machine-arrived' ? row.arrivalHours : row.departureHours;
+    return { job: job(key.jobId), machine: machine(key), hours: found(hours ?? undefined, 'Job Hours') };
   };
 
   const toItem = (key: ActivityKey): ActivityItem => {
@@ -480,7 +479,7 @@ async function hydrateActivityKeys(db: Db, keys: ActivityKey[]): Promise<Activit
         });
       case 'machine-arrived':
       case 'machine-left':
-        return ActivityItem.parse({ ...base, ...reading(key) });
+        return ActivityItem.parse({ ...base, ...jobHours(key) });
     }
   };
   return keys.map(toItem);
@@ -494,17 +493,16 @@ function findNotes(db: Db, { table }: NoteThreadTable, ids: string[]) {
     : Promise.resolve([]);
 }
 
-function findReadings(db: Db, ids: string[]) {
+function findStints(db: Db, ids: string[]) {
   return ids.length
     ? db
         .select({
-          id: contractingHourReadings.id,
-          value: contractingHourReadings.value,
-          capturedAt: contractingHourReadings.capturedAt,
-          method: contractingHourReadings.method,
+          id: contractingMachineAssignments.id,
+          arrivalHours: contractingMachineAssignments.arrivalHours,
+          departureHours: contractingMachineAssignments.departureHours,
         })
-        .from(contractingHourReadings)
-        .where(inArray(contractingHourReadings.id, ids))
+        .from(contractingMachineAssignments)
+        .where(inArray(contractingMachineAssignments.id, unique(ids)))
     : Promise.resolve([]);
 }
 

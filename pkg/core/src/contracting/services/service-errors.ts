@@ -13,7 +13,7 @@ export class ServiceError extends Error {
 export const isServiceError = (error: unknown): error is ServiceError => error instanceof ServiceError;
 export const serviceRecordNotFound = () => new ServiceError('service.not_found', 'Service Record not found.');
 export const invalidServiceMechanic = () =>
-  new ServiceError('service.invalid_mechanic', 'Select a person with the Contracting mechanic role.');
+  new ServiceError('service.invalid_mechanic', 'Select a mechanic or a workshop manager.');
 
 export const withServiceConstraints = <T>(action: () => Promise<T>) =>
   translatingConstraintViolations(

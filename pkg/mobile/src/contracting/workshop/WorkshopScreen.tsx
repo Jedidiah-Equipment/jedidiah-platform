@@ -14,12 +14,13 @@ import { infiniteQueryPagination, TabRootList } from '@/components/TabRootList';
 import { MainToolbar } from '@/components/TopToolbar';
 import { Text } from '@/components/ui/text';
 import { contractingStorageKey } from '@/contracting/lib/contracting-storage';
+import { useMechanics } from '@/contracting/lib/use-mechanics';
 import { useSessionPermission } from '@/lib/auth-session';
 import { useDebouncedSearch } from '@/lib/use-debounced-search';
 import { usePersistedState } from '@/lib/use-persisted-state';
 import { BreakdownRow } from './BreakdownRow';
 import { isStatusFilter, type StatusFilter, statusesFor, statusOptions } from './breakdown-status-filter';
-import { useBreakdownList, useBreakdownScope, useBreakdownStatusCounts, useMechanics } from './use-breakdowns';
+import { useBreakdownList, useBreakdownScope, useBreakdownStatusCounts } from './use-breakdowns';
 
 const STATUS_KEY = contractingStorageKey('workshop', 'status');
 const EVERY_MECHANIC = 'all';
@@ -28,7 +29,7 @@ export default function WorkshopScreen() {
   const scope = useBreakdownScope();
   const canReport = useSessionPermission('contracting_breakdown:report');
   const counts = useBreakdownStatusCounts();
-  const mechanics = useMechanics();
+  const mechanics = useMechanics('breakdown');
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedSearch(search);
   const [status, setStatus] = usePersistedState<StatusFilter>(STATUS_KEY, 'unsolved', isStatusFilter);

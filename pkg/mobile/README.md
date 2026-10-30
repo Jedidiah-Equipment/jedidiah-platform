@@ -64,7 +64,8 @@ The named event catalog is:
   `hasJob`) once per Breakdown the server accepts; and from the mutation cache `breakdown updated` (`id`,
   `urgency` when changed), `mechanic assigned` (`id`, `mechanicUserId`), `breakdown started` (`id`), `breakdown
   solved` (`id`), `breakdown photo removed` (`id`, `photoId`) and `breakdown note added` (`breakdownId`). None
-  carries a description, a note, a close-out note or the coordinates.
+  carries a description, a note, a close-out note or the coordinates. `service booked` (`machineId`,
+  `primaryMechanicUserId` when chosen) comes from the mutation cache too, never with the service's notes.
 - Equipment mutations: `quote created`, `quote updated`, `quote cancelled`, `quote document generated`,
   `department timing started`, `department timing updated`, `department timing completed`, `part checked out`,
   `part returned to store`, `part received`, `part returned to supplier`, `stock count posted`,

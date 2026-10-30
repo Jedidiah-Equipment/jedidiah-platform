@@ -1,9 +1,8 @@
-import { requiredSelection, UUID } from '@pkg/schema';
+import { emptyStringOr, requiredSelection, UUID } from '@pkg/schema';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
-import { emptyStringOr } from '@/components/form/utils/form-schema.js';
 import { MachinePickerField } from '@/contracting/components/MachinePickerField.js';
 import { useResetOnOpen } from '@/contracting/hooks/use-contracting-write.js';
 import { useTRPC } from '@/lib/trpc.js';

@@ -1,5 +1,10 @@
 import { getFirstName } from '@pkg/domain';
-import { breakdownSubjectKindLabels, fieldReaderOpensJob, presentAction } from '@pkg/domain/contracting';
+import {
+  breakdownSubjectKindLabels,
+  breakdownUrgencyLabels,
+  fieldReaderOpensJob,
+  presentAction,
+} from '@pkg/domain/contracting';
 import { BreakdownDescription, type BreakdownDetail } from '@pkg/schema/contracting';
 import { IconMapPin, IconPencil } from '@tabler/icons-react-native';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
@@ -12,7 +17,10 @@ import { ScrollLockScrollView } from '@/components/scroll-lock';
 import { SecondaryToolbar } from '@/components/TopToolbar';
 import { Button } from '@/components/ui/button';
 import { Card, CardIconAction } from '@/components/ui/card';
+import { DialogCard } from '@/components/ui/dialog-card';
 import { Text } from '@/components/ui/text';
+import { ThemedModal } from '@/components/ui/themed-modal';
+import { useAppToast } from '@/components/ui/toast';
 import { useVoiceSession } from '@/components/voice/use-voice-session';
 import { VoiceTextArea } from '@/components/voice/VoiceTextArea';
 import { AddNoteButton } from '@/contracting/activity/AddNoteButton';
@@ -91,11 +99,19 @@ function BreakdownSections({ breakdown }: { breakdown: BreakdownDetail }) {
 function HeaderCard({ breakdown }: { breakdown: BreakdownDetail }) {
   // A Foreman opens only Jobs he is Foreman of; this Breakdown may be his report on someone else's.
   const canOpenJob = fieldReaderOpensJob(useSessionAccessSummary(), { foremanUserId: breakdown.jobForemanUserId });
+  const [changingUrgency, setChangingUrgency] = useState(false);
+  // The same gate as the description's pencil: urgency is part of the report.
+  const canChangeUrgency = presentAction(breakdown.actions.editReport)?.disabled === false;
   const { subject } = breakdown;
   return (
     <Card>
       <View className="flex-row items-center gap-3">
-        <BreakdownSubjectIcons urgency={breakdown.urgency} subject={subject} size={24} />
+        <BreakdownSubjectIcons
+          urgency={breakdown.urgency}
+          subject={subject}
+          size={24}
+          onPressUrgency={canChangeUrgency ? () => setChangingUrgency(true) : undefined}
+        />
         <View className="min-w-0 flex-1">
           <Text className="text-lg text-foreground" weight="bold">
             {subject.code}
@@ -126,7 +142,53 @@ function HeaderCard({ breakdown }: { breakdown: BreakdownDetail }) {
         Reported <DateText className="text-sm text-muted-foreground" date={breakdown.reportedAt} format="medium" /> by{' '}
         {getFirstName(breakdown.reporterName)}
       </Text>
+      <UrgencyModal breakdown={breakdown} open={changingUrgency} onClose={() => setChangingUrgency(false)} />
     </Card>
+  );
+}
+
+/** Offers the one other urgency and saves it the moment it is chosen. */
+function UrgencyModal({
+  breakdown,
+  open,
+  onClose,
+}: {
+  breakdown: BreakdownDetail;
+  open: boolean;
+  onClose: () => void;
+}) {
+  const patch = useBreakdownMutation((breakdowns) => breakdowns.patch);
+  const showToast = useAppToast();
+  const { busy, error, setError, run } = useBusyAction();
+  const next = breakdown.urgency === 'code-red' ? 'code-green' : 'code-red';
+  const close = () => {
+    setError(null);
+    onClose();
+  };
+  return (
+    <ThemedModal backdropLabel="Keep the urgency" open={open} onClose={close} dismissDisabled={busy}>
+      <DialogCard
+        title="Change urgency"
+        error={error}
+        actions={
+          <>
+            <Button
+              primary={!busy}
+              title={busy ? 'Saving…' : `Change to ${breakdownUrgencyLabels[next]}`}
+              disabled={busy}
+              onPress={() =>
+                void run(async () => {
+                  await patch.mutateAsync({ id: breakdown.id, urgency: next });
+                  showToast('success', `Now ${breakdownUrgencyLabels[next]}`);
+                  close();
+                }, BREAKDOWN_SAVE_FAILED)
+              }
+            />
+            <Button title="Cancel" disabled={busy} onPress={close} />
+          </>
+        }
+      />
+    </ThemedModal>
   );
 }
 

@@ -126,15 +126,6 @@ export function useReportContext(subject: BreakdownSubjectRef | null) {
   );
 }
 
-export function useMechanics() {
-  const canAssign = useSessionPermission('contracting_breakdown:update');
-  const trpc = useTRPC();
-  return fieldQuery(
-    canAssign,
-    useQuery(trpc.contractingBreakdowns.options.mechanics.queryOptions(undefined, { enabled: canAssign })),
-  );
-}
-
 /** A Machine's unsolved Breakdowns, newest first, for the workshop's view of the Machine. */
 export function useMachineBreakdowns(machineId: string) {
   const canRead = useSessionPermission('contracting_breakdown:read');

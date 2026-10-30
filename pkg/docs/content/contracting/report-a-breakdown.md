@@ -14,14 +14,21 @@ A Breakdown is one problem on one Machine or Implement. Reporting one needs a co
 5. Choose **Take photo** or **Choose from gallery** to add up to six photos. Photos you take here are also saved to the **Jedidiah** album in your gallery.
 6. Choose **Send report**. The phone attaches your location when it can.
 
-Once it is sent, you go back to where you started — the Job, the Machine or **Workshop** — and the workshop manager sees it in the Workshop queue. Follow it from **Workshop** or **Activity**: questions and answers go on the Breakdown's **Activity** — choose **Add Note**, typed or as a Voice Note, and **Send**. You can change the description and add photos until the Breakdown is Fixed.
+Once it is sent, you go back to where you started — the Job, the Machine or **Workshop** — and the workshop manager sees it in the Workshop queue. Follow it from **Workshop** or **Activity**: questions and answers go on the Breakdown's **Activity** — choose **Add Note**, typed or as a Voice Note, and **Send**. You can change the urgency, the description and add photos until the Breakdown is Fixed.
 
 Foremen see only the Breakdowns they reported and those on their own Jobs. The workshop manager sees them all.
+
+## Change the urgency
+
+1. Open the Breakdown.
+2. On the phone, tap its red or green flag and choose **Change to Code Green** or **Change to Code Red**. On the web, choose the other one under **Urgency**. It saves at once.
+
+A change to Code Red alerts the workshop manager and management as a new Code Red does; see [Who gets alerts](./who-gets-workshop-alerts).
 
 ## Run a Breakdown in the workshop
 
 1. Open the Breakdown from **Workshop**. **Also open on this Job** lists the other Breakdowns on the same Job that are not yet Fixed.
-2. Under **Mechanic**, choose the Mechanic who will fix it.
+2. Under **Mechanic**, choose the Mechanic who will fix it, or yourself.
 3. Choose **Start work** when the Mechanic starts. The Breakdown is Fixing, and **Started** shows when.
 4. Choose **Mark completed**, write the **Close-out note** — what was wrong and what was done — and choose **Confirm completed**. The Breakdown is then Fixed. A Breakdown can go straight to Fixed from Not fixed.
 

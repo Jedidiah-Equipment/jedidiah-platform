@@ -266,8 +266,9 @@ close-out note. The subject's Breakdown history is
 permanent. The dispatch cross-reference — other fleet on the same Job with open Breakdowns —
 is derived, never stored. A new Breakdown notifies by push notification: Code Green reaches
 the workshop-manager role; Code Red also reaches contracting-manager, contracting-admin and
-super-admin. The reporter never receives their own ping, and anyone may mute a Push Kind in App
-Settings (see [GLOSSARY-MAP.md](GLOSSARY-MAP.md)).
+super-admin. The reporter never receives their own ping. A Breakdown changed from Code Green to Code Red
+notifies as Code Red again ("Now Code Red"), excluding whoever changed it; a change back to Code Green is
+silent. Anyone may mute a Push Kind in App Settings (see [GLOSSARY-MAP.md](GLOSSARY-MAP.md)).
 
 **Breakdown Note** is one entry in a Breakdown's Note Thread. Whoever may update Breakdowns may add one to
 any Breakdown, and whoever may report them may add one to a Breakdown that is theirs — reported by them or
@@ -277,15 +278,15 @@ Equipment context's Feedback.
 _Avoid_: comment, message, chat message
 
 **Mechanic** is a non-login user record, like Driver: mechanics take instructions and never sign
-in. Exactly one primary Mechanic is assigned per Breakdown by the workshop manager, possibly
-himself; a second body on site is never recorded. Mechanic performance — report-to-Solved time —
-is derived, never stored.
+in. Exactly one primary Mechanic — a Mechanic record or a holder of the workshop-manager role — is
+assigned per Breakdown by the workshop manager, possibly himself; a second body on site is never
+recorded. Mechanic performance — report-to-Solved time — is derived, never stored.
 
 **Service Record** is the light digital counterpart of the paper service book, which stays the
 detailed record for now: one service on one Machine — start and end date, the hour reading at
-service, the primary Mechanic, and free-text notes. A Service is a recurring, expected event and
-deliberately not a Breakdown. **Closing a Service Record requires setting the Machine's Next
-Service Due** — the number the mechanic prints on the dash sticker at that moment; the Machine's
+service, the primary Mechanic (from the same set as a Breakdown's), and free-text notes. A Service
+is a recurring, expected event and deliberately not a Breakdown. **Closing a Service Record requires
+setting the Machine's Next Service Due** — the number the mechanic prints on the dash sticker at that moment; the Machine's
 optional **Service Interval** only pre-fills it from the reading at service. **Service Due Soon** is the derived flag raised when the Machine's latest
 known Hour Reading comes within the Machine's **Service Alert Hours** of Next Service Due — its own value, or the
 **Service Due Soon threshold** in Settings (100 h unless changed) when it has none — kept honest mid-job by spot
@@ -309,8 +310,8 @@ mechanism defined in [GLOSSARY-MAP.md](GLOSSARY-MAP.md). Contracting's part of i
 
 - Every multi-line text field of the Contracting mobile app takes a Voice Note.
 - Contracting's **Keyterms**, after its taught Transcription Hints, are Machine codes, makes and
-  models, Implement codes, Categories, the names of drivers, mechanics and foremen, and the Farms and
-  Customers on Jobs updated in the last 90 days.
+  models, Implement codes, Categories, the names of drivers, mechanics, workshop managers and
+  foremen, and the Farms and Customers on Jobs updated in the last 90 days.
 - Contracting's notes are tidied as voice notes "from a South African farm or workshop".
 - `contracting_transcription:use` is held by contracting-admin, contracting-manager, workshop-manager,
   foreman and super-admin; the Transcriptions page's `contracting_transcription:read` is described

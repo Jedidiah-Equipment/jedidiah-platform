@@ -26,7 +26,6 @@ import {
   fieldReaderSeesJob,
   formatJobNumber,
 } from '@pkg/domain/contracting';
-import type { AuthId, ContractingRole } from '@pkg/schema';
 import {
   BREAKDOWN_MAX_PHOTOS,
   type BreakdownActionName,
@@ -79,6 +78,7 @@ import {
   namedMechanics,
   selectBreakdowns,
   toBreakdownSummary,
+  unsolvedBreakdown,
 } from './breakdown-load.js';
 
 type Row = typeof contractingBreakdowns.$inferSelect;
@@ -87,7 +87,6 @@ type BreakdownPhoto = Row['photos'][number];
 /** Photos a Breakdown write stores: the bytes and where they are kept. */
 export type BreakdownEvidence = { storage: StorageAdapter; photos: Uint8Array[] };
 
-const unsolved = inArray(contractingBreakdowns.status, [...unsolvedBreakdownStatuses]);
 const photoNotFound = () => new BreakdownError('breakdown.not_found', 'Photo not found.');
 const CANNOT_REPORT = 'You cannot report Breakdowns.';
 
@@ -267,7 +266,11 @@ async function toDetail(db: DbOrTx, actor: BreakdownActor, row: LoadedBreakdown)
   const hints = breakdown.jobId
     ? await selectBreakdowns(db)
         .where(
-          and(eq(contractingBreakdowns.jobId, breakdown.jobId), ne(contractingBreakdowns.id, breakdown.id), unsolved),
+          and(
+            eq(contractingBreakdowns.jobId, breakdown.jobId),
+            ne(contractingBreakdowns.id, breakdown.id),
+            unsolvedBreakdown,
+          ),
         )
         .orderBy(desc(contractingBreakdowns.reportedAt))
     : [];
@@ -465,16 +468,18 @@ export async function lockBreakdownFor(
 }
 
 /**
- * An audited write to one Breakdown, gated by a Breakdown Action under the row lock; answers the fresh detail.
- * What `assert` resolves under the lock reaches `set`, as `mutateEntity` hands it on.
+ * An audited write to one Breakdown, gated by a Breakdown Action under the row lock; answers the fresh detail, or what
+ * `result` makes of it beside the row as it was. What `assert` resolves under the lock reaches `set`, as `mutateEntity`
+ * hands it on.
  */
-function writeBreakdown<TPrepared = void>({
+function writeBreakdown<TPrepared = void, TResult = BreakdownDetail>({
   db,
   actor,
   id,
   action,
   assert,
   set,
+  result = (breakdown) => breakdown as TResult,
 }: {
   db: Db | DatabaseTransaction;
   actor: BreakdownActor;
@@ -482,9 +487,10 @@ function writeBreakdown<TPrepared = void>({
   action: BreakdownActionName;
   assert?: (tx: DatabaseTransaction, before: Row) => Promise<TPrepared>;
   set: (before: Row, prepared: TPrepared) => Partial<typeof contractingBreakdowns.$inferInsert>;
-}) {
+  result?: (breakdown: BreakdownDetail, before: Row) => TResult;
+}): Promise<TResult> {
   return withBreakdownConstraints(() =>
-    mutateEntity<typeof contractingBreakdowns, BreakdownDetail, TPrepared>({
+    mutateEntity<typeof contractingBreakdowns, TResult, TPrepared>({
       db,
       actorUserId: actor.userId,
       descriptor: breakdownDescriptor,
@@ -496,11 +502,12 @@ function writeBreakdown<TPrepared = void>({
         return (await assert?.(tx, before)) as TPrepared;
       },
       set: (before, prepared) => ({ ...set(before, prepared), updatedAt: new Date() }),
-      project: (tx, row) => getBreakdown({ db: tx, actor, id: row.id }),
+      project: async (tx, row, before) => result(await getBreakdown({ db: tx, actor, id: row.id }), before),
     }),
   );
 }
 
+/** Answers whether the write escalated the Breakdown from Code Green to Code Red, which alerts as Code Red again. */
 export async function patchBreakdown({
   db,
   actor,
@@ -509,7 +516,7 @@ export async function patchBreakdown({
   db: Db;
   actor: BreakdownActor;
   input: BreakdownPatchInput;
-}): Promise<BreakdownDetail> {
+}): Promise<{ breakdown: BreakdownDetail; escalated: boolean }> {
   const input = BreakdownPatchInput.parse(raw);
   return writeBreakdown({
     db,
@@ -524,6 +531,10 @@ export async function patchBreakdown({
       description: input.description ?? before.description,
       urgency: input.urgency ?? before.urgency,
       jobId,
+    }),
+    result: (breakdown, before) => ({
+      breakdown,
+      escalated: before.urgency === 'code-green' && breakdown.urgency === 'code-red',
     }),
   });
 }
@@ -727,7 +738,7 @@ export async function getBreakdownReportContext({
   const [onSite, open] = await Promise.all([
     onSiteAssignment({ db, subject }),
     selectBreakdowns(db)
-      .where(and(eq(breakdownSubjectColumn(subject.kind), subject.id), unsolved))
+      .where(and(eq(breakdownSubjectColumn(subject.kind), subject.id), unsolvedBreakdown))
       .orderBy(desc(contractingBreakdowns.reportedAt)),
   ]);
   /**
@@ -753,29 +764,4 @@ export async function getBreakdownReportContext({
       : null,
     open: open.map(toBreakdownSummary),
   });
-}
-
-/** Refuses a role or device change that would strand a Mechanic's unsolved Breakdowns. */
-export async function assertMechanicAccountChangeAllowed({
-  db,
-  userId,
-  contractingRole,
-  isDevice,
-}: {
-  db: Db;
-  userId: AuthId;
-  contractingRole?: ContractingRole | null | undefined;
-  isDevice?: boolean | undefined;
-}) {
-  if ((contractingRole === undefined || contractingRole === 'mechanic') && isDevice !== true) return;
-  const [assigned] = await db
-    .select({ id: contractingBreakdowns.id })
-    .from(contractingBreakdowns)
-    .where(and(eq(contractingBreakdowns.primaryMechanicUserId, userId), unsolved))
-    .limit(1);
-  if (assigned)
-    throw new BreakdownError(
-      'breakdown.invalid_mechanic',
-      "Reassign this mechanic's Breakdowns that are not yet Fixed before changing their role.",
-    );
 }

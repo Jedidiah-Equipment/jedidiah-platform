@@ -8,12 +8,15 @@ import {
   contractingMachines,
 } from '@pkg/db/contracting';
 import { type BreakdownActor, breakdownFirstLine, breakdownReadScope, formatJobNumber } from '@pkg/domain/contracting';
-import { type BreakdownSubjectRef, BreakdownSummary } from '@pkg/schema/contracting';
-import { and, asc, eq, getTableColumns, or, type SQL, sql } from 'drizzle-orm';
+import { type BreakdownSubjectRef, BreakdownSummary, unsolvedBreakdownStatuses } from '@pkg/schema/contracting';
+import { and, asc, eq, getTableColumns, inArray, or, type SQL, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { DbOrTx } from '../jobs/job-load.js';
 import { jobNumberText } from '../jobs/job-sql.js';
 import { BreakdownError } from './breakdown-errors.js';
+
+/** Not yet Fixed: the Breakdowns still on the queue, still a Mechanic's and still a Job's open work. */
+export const unsolvedBreakdown = inArray(contractingBreakdowns.status, [...unsolvedBreakdownStatuses]);
 
 export const breakdownReporter = alias(user, 'breakdown_reporter');
 const breakdownMechanic = alias(user, 'breakdown_mechanic');

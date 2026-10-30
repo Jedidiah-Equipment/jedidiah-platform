@@ -1,6 +1,6 @@
 import { formatDate } from '@pkg/domain';
 import { machineServiceBadge } from '@pkg/domain/contracting';
-import type { Machine, ServiceRecord } from '@pkg/schema/contracting';
+import { type Machine, OpenServiceValues, openServiceFields, type ServiceRecord } from '@pkg/schema/contracting';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { type ReactNode, useState } from 'react';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
@@ -20,7 +20,6 @@ import { useTRPC } from '@/lib/trpc.js';
 import { BookServiceDialog } from './BookServiceDialog.js';
 import { CloseServiceRecordDialog } from './CloseServiceRecordDialog.js';
 import { SpotCaptureDialog } from './SpotCaptureDialog.js';
-import { OpenServiceValues, openServiceFields } from './types.js';
 import { useServiceMechanicOptions } from './use-service-mechanic-options.js';
 
 /**

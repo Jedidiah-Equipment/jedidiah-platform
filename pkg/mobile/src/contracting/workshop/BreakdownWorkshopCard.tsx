@@ -9,13 +9,15 @@ import { FieldShell } from '@/components/form/fields/FieldShell';
 import { SearchSelect } from '@/components/form/fields/SearchSelectField';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { DialogCard } from '@/components/ui/dialog-card';
 import { Text } from '@/components/ui/text';
 import { ThemedModal } from '@/components/ui/themed-modal';
 import { useVoiceSession } from '@/components/voice/use-voice-session';
 import { VoiceTextArea } from '@/components/voice/VoiceTextArea';
 import { DetailRow } from '@/contracting/components/DetailRow';
+import { useMechanics } from '@/contracting/lib/use-mechanics';
 import { useBusyAction } from '@/lib/use-busy-action';
-import { BREAKDOWN_SAVE_FAILED, useBreakdownMutation, useMechanics } from './use-breakdowns';
+import { BREAKDOWN_SAVE_FAILED, useBreakdownMutation } from './use-breakdowns';
 import { VerdictButton, VerdictGroup } from './VerdictButton';
 
 /** A Fixed Breakdown is settled: who fixed it, when work ran, and the close-out note, with nothing left to press. */
@@ -61,7 +63,7 @@ function FixedSummary({ breakdown }: { breakdown: BreakdownDetail }) {
 export function BreakdownWorkshopCard({ breakdown }: { breakdown: BreakdownDetail }) {
   const assign = useBreakdownMutation((breakdowns) => breakdowns.assignMechanic);
   const start = useBreakdownMutation((breakdowns) => breakdowns.start);
-  const mechanics = useMechanics();
+  const mechanics = useMechanics('breakdown');
   const { busy, error, run } = useBusyAction();
   const [solving, setSolving] = useState(false);
   const { actions } = breakdown;
@@ -151,10 +153,28 @@ function CompleteModal({
   };
   return (
     <ThemedModal backdropLabel="Cancel marking completed" open={visible} onClose={close} dismissDisabled={busy}>
-      <View className="w-full gap-3 rounded-2xl border border-border bg-background p-4">
-        <Text className="text-lg text-foreground" weight="bold">
-          Mark completed
-        </Text>
+      <DialogCard
+        title="Mark completed"
+        error={error}
+        actions={
+          <>
+            <Button
+              primary={!busy && !voice.busy && valid}
+              title={busy ? 'Saving…' : 'Confirm completed'}
+              disabled={busy || voice.busy || !valid}
+              onPress={() =>
+                void run(async () => {
+                  await solve.mutateAsync({ id: breakdownId, closeOutNote: note });
+                  voice.reportSaved();
+                  setNote('');
+                  onClose();
+                }, BREAKDOWN_SAVE_FAILED)
+              }
+            />
+            <Button title="Cancel" disabled={busy} onPress={close} />
+          </>
+        }
+      >
         <FieldShell label="Close-out note">
           <VoiceTextArea
             accessibilityLabel="Close-out note"
@@ -167,22 +187,7 @@ function CompleteModal({
             voice={voice}
           />
         </FieldShell>
-        {error ? <Text className="text-danger">{error}</Text> : null}
-        <Button
-          primary={!busy && !voice.busy && valid}
-          title={busy ? 'Saving…' : 'Confirm completed'}
-          disabled={busy || voice.busy || !valid}
-          onPress={() =>
-            void run(async () => {
-              await solve.mutateAsync({ id: breakdownId, closeOutNote: note });
-              voice.reportSaved();
-              setNote('');
-              onClose();
-            }, BREAKDOWN_SAVE_FAILED)
-          }
-        />
-        <Button title="Cancel" disabled={busy} onPress={close} />
-      </View>
+      </DialogCard>
     </ThemedModal>
   );
 }

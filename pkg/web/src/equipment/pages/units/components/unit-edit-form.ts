@@ -1,8 +1,7 @@
 import type { UUID } from '@pkg/schema';
+import { emptyStringOr } from '@pkg/schema';
 import { type ProductUnitDetail, ProductUnitUpdateInput, ProductUnitVinNumber } from '@pkg/schema/equipment';
 import { z } from 'zod';
-
-import { emptyStringOr } from '@/components/form/utils/form-schema.js';
 
 export type UnitEditFormValues = z.infer<typeof UnitEditFormValues>;
 export const UnitEditFormValues = z.object({

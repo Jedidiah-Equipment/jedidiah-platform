@@ -1,18 +1,22 @@
 import { auditEvents, user } from '@pkg/db';
 import { accessForRole } from '@pkg/domain/testing';
-import { ActivityListInput, BreakdownListInput, JobListInput } from '@pkg/schema/contracting';
+import { DateOnlyIso } from '@pkg/schema';
+import { ActivityListInput, BreakdownListInput, type BreakdownPatchInput, JobListInput } from '@pkg/schema/contracting';
 import { and, asc, eq } from 'drizzle-orm';
 import { expect } from 'vitest';
 import { InMemoryStorageAdapter } from '../../storage/in-memory-storage-adapter.js';
 import { createTester } from '../../test/create-tester.js';
+import { assertContractingAccountChangeAllowed } from '../account-change.js';
 import { listActivity } from '../activity/activity-service.js';
 import { listMachinesWithOpenBreakdowns } from '../fleet/machine-service.js';
 import { onSiteAssignment } from '../fleet/on-site-assignment.js';
 import { listJobs } from '../jobs/job-queues.js';
 import { createJob } from '../jobs/job-service.js';
+import { listMechanics } from '../mechanics.js';
 import { addNote } from '../notes/note-service.js';
 import { captureReading } from '../readings/reading-service.js';
-import { admin, foreman, foremanId, invoicing, plannedStint, seedJobFixtures } from '../test/job-fixtures.js';
+import { openServiceRecord } from '../services/service-record-service.js';
+import { admin, adminId, foreman, foremanId, invoicing, plannedStint, seedJobFixtures } from '../test/job-fixtures.js';
 import {
   addBreakdownPhotos,
   assignMechanic,
@@ -20,6 +24,7 @@ import {
   listBreakdownFilterOptions,
   listBreakdownJobOptions,
   listBreakdowns,
+  patchBreakdown,
   reportBreakdown,
   solveBreakdown,
   startBreakdown,
@@ -166,19 +171,88 @@ test('solving straight from Open stamps both dates and needs a close-out note', 
   });
 });
 
-test('only a Mechanic can be the primary Mechanic', async ({ context }) => {
+test('a patch escalates only when it moves a Breakdown from Code Green to Code Red', async ({ context }) => {
   const { db, excavator } = context;
+  const { id } = await reportNew({
+    db,
+    actor: foreman,
+    input: report({ kind: 'machine', id: excavator.id }, { urgency: 'code-green' }),
+  });
+  const patch = async (input: Omit<BreakdownPatchInput, 'id'>) => {
+    const { breakdown, escalated } = await patchBreakdown({ db, actor: workshop, input: { id, ...input } });
+    return [breakdown.urgency, escalated];
+  };
+  expect(await patch({ description: 'Rattle' })).toEqual(['code-green', false]);
+  expect(await patch({ urgency: 'code-red' })).toEqual(['code-red', true]);
+  expect(await patch({ urgency: 'code-red' })).toEqual(['code-red', false]);
+  expect(await patch({ urgency: 'code-green' })).toEqual(['code-green', false]);
+});
+
+test('a Mechanic or the workshop manager can be the primary Mechanic, listed by name', async ({ context }) => {
+  const { db, excavator } = context;
+  await db.insert(user).values({
+    id: 'bay-tablet',
+    name: 'Bay tablet',
+    email: 'bay-tablet@example.com',
+    emailVerified: true,
+    contractingRole: 'workshop-manager',
+    isDevice: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+  expect(await listMechanics({ db })).toEqual([
+    { id: 'connor', name: 'Connor' },
+    { id: 'danie', name: 'Danie' },
+  ]);
   const breakdown = await reportNew({ db, actor: foreman, input: report({ kind: 'machine', id: excavator.id }) });
-  await expect(
-    assignMechanic({ db, actor: workshop, input: { id: breakdown.id, mechanicUserId: 'thabo' } }),
-  ).rejects.toMatchObject({ code: 'breakdown.invalid_mechanic' });
+  for (const mechanicUserId of ['thabo', 'bay-tablet'])
+    await expect(
+      assignMechanic({ db, actor: workshop, input: { id: breakdown.id, mechanicUserId } }),
+    ).rejects.toMatchObject({ code: 'breakdown.invalid_mechanic' });
+  expect(
+    await assignMechanic({ db, actor: workshop, input: { id: breakdown.id, mechanicUserId: 'connor' } }),
+  ).toMatchObject({ primaryMechanicUserId: 'connor', mechanicName: 'Connor' });
   const assigned = await assignMechanic({ db, actor: workshop, input: { id: breakdown.id, mechanicUserId: 'danie' } });
   expect(assigned).toMatchObject({ primaryMechanicUserId: 'danie', mechanicName: 'Danie' });
-  // Moved off the mechanic role, Danie still names the Workshop's Mechanic filter for the work he was given.
-  await db.update(user).set({ contractingRole: 'workshop-manager' }).where(eq(user.id, 'danie'));
+  // Moved out of the set, Danie still names the Workshop's Mechanic filter for the work he was given.
+  await db.update(user).set({ contractingRole: 'contracting-manager' }).where(eq(user.id, 'danie'));
   expect((await listBreakdownFilterOptions({ db, actor: workshop })).mechanics).toEqual([
     { id: 'danie', name: 'Danie' },
   ]);
+});
+
+test('a role change leaving the set waits until unfixed Breakdowns and open Service Records move', async ({
+  context,
+}) => {
+  const { db, excavator } = context;
+  const change = (
+    userId: string,
+    data: { contractingRole?: 'workshop-manager' | 'contracting-manager'; isDevice?: true },
+  ) => assertContractingAccountChangeAllowed({ db, userId, ...data });
+  const refusal = {
+    code: 'breakdown.invalid_mechanic',
+    message:
+      "Reassign this mechanic's Breakdowns that are not yet Fixed and open Service Records before changing their role.",
+  };
+  const breakdown = await reportNew({ db, actor: foreman, input: report({ kind: 'machine', id: excavator.id }) });
+  await assignMechanic({ db, actor: workshop, input: { id: breakdown.id, mechanicUserId: 'connor' } });
+  await expect(change('connor', { contractingRole: 'contracting-manager' })).rejects.toMatchObject(refusal);
+  await expect(change('connor', { isDevice: true })).rejects.toMatchObject(refusal);
+  await solveBreakdown({ db, actor: workshop, input: { id: breakdown.id, closeOutNote: 'Replaced the hose' } });
+  await expect(change('connor', { contractingRole: 'contracting-manager' })).resolves.toBeUndefined();
+
+  await openServiceRecord({
+    db,
+    actorUserId: adminId,
+    input: {
+      machineId: excavator.id,
+      startDate: DateOnlyIso.parse('2026-10-01'),
+      primaryMechanicUserId: 'danie',
+      notes: null,
+    },
+  });
+  await expect(change('danie', { contractingRole: 'workshop-manager' })).resolves.toBeUndefined();
+  await expect(change('danie', { contractingRole: 'contracting-manager' })).rejects.toMatchObject(refusal);
 });
 
 test('a replayed report returns the delivered Breakdown and drops the duplicate photos', async ({ context }) => {

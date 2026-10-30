@@ -50,9 +50,9 @@ const test = createTester(async ({ db }) => {
   await solve(await breakdown('2026-06-10T08:00:00+02:00', 'anele'), '2026-06-11T03:12:00+02:00');
   await solve(await breakdown('2026-05-20T08:00:00+02:00', 'anele'), '2026-05-25T08:00:00+02:00');
   await startBreakdown({ db, actor: workshop, id: await breakdown('2026-10-01T08:00:00+02:00', 'anele') });
-  // Pieter solved one in June and was later moved off the mechanic role: his history keeps his row.
+  // Pieter solved one in June and was later moved out of the Mechanic set: his history keeps his row.
   await solve(await breakdown('2026-06-01T08:00:00+02:00', 'pieter'), '2026-06-03T08:00:00+02:00');
-  await db.update(user).set({ contractingRole: 'workshop-manager' }).where(eq(user.id, 'pieter'));
+  await db.update(user).set({ contractingRole: 'contracting-manager' }).where(eq(user.id, 'pieter'));
   // Nobody has picked this one up.
   await breakdown('2026-10-02T08:00:00+02:00', null);
   return { db };
@@ -67,6 +67,7 @@ test('one row per Mechanic and an Unassigned row, Solved over the window and Not
     { mechanicUserId: 'anele', name: 'Anele', solvedCount: 1, averageReportToSolvedDays: 0.8, notSolvedCount: 1 },
     { mechanicUserId: 'pieter', name: 'Pieter', solvedCount: 1, averageReportToSolvedDays: 2, notSolvedCount: 0 },
     { mechanicUserId: 'bongani', name: 'Bongani', solvedCount: 0, averageReportToSolvedDays: null, notSolvedCount: 0 },
+    { mechanicUserId: 'connor', name: 'Connor', solvedCount: 0, averageReportToSolvedDays: null, notSolvedCount: 0 },
     { mechanicUserId: null, name: 'Unassigned', solvedCount: 0, averageReportToSolvedDays: null, notSolvedCount: 1 },
   ]);
 

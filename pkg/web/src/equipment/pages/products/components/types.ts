@@ -1,4 +1,5 @@
 import {
+  emptyStringOr,
   NullableThumbnailDataUrl,
   Price,
   PriceDelta,
@@ -39,7 +40,6 @@ import {
 import { z } from 'zod';
 
 import type { SearchableComboboxOption } from '@/components/common/SearchableCombobox.js';
-import { emptyStringOr } from '@/components/form/utils/form-schema.js';
 
 // Form representation of an assembly: like the API `AssemblyInput` but without its coercion
 // and defaults, so the controlled value shape matches what the editor holds. Field rules still

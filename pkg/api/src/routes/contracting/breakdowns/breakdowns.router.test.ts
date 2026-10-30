@@ -11,6 +11,7 @@ import {
   reportBreakdown,
 } from '@pkg/core/contracting';
 import { user } from '@pkg/db';
+import type { ContractingPushEvent } from '@pkg/domain/contracting';
 import { accessForRole } from '@pkg/domain/testing';
 import type { ContractingRole } from '@pkg/schema';
 import { MachineCreateInput } from '@pkg/schema/contracting';
@@ -79,14 +80,30 @@ test('a Foreman lists only his own Breakdowns; the workshop manager lists and so
   });
 });
 
+test('changing a Breakdown to Code Red schedules its escalation; changing it to Code Green does not', async ({
+  context,
+}) => {
+  const events: ContractingPushEvent[] = [];
+  const contracting = { push: { schedule: (event: ContractingPushEvent) => events.push(event) } };
+  const connor = context.createCaller(sessionAs('connor', 'workshop-manager'), { contracting }).contractingBreakdowns;
+  const { id } = context.siphos;
+  expect(await connor.patch({ id, urgency: 'code-green' })).toMatchObject({ id, urgency: 'code-green' });
+  expect(events).toEqual([]);
+  await connor.patch({ id, urgency: 'code-red' });
+  expect(events).toEqual([{ kind: 'breakdown.escalated', breakdownId: id, byUserId: 'connor' }]);
+});
+
 test('Contracting invoicing cannot see Breakdowns', async ({ context }) => {
   const karen = context.createCaller(sessionAs('karen', 'contracting-invoicing')).contractingBreakdowns;
   await expect(karen.list({})).rejects.toMatchObject({ code: 'FORBIDDEN' });
 });
 
-test('the mechanic picker leaves out Device Accounts', async ({ context }) => {
+test('the mechanic picker offers the workshop manager and leaves out Device Accounts', async ({ context }) => {
   const connor = context.createCaller(sessionAs('connor', 'workshop-manager')).contractingBreakdowns;
-  expect(await connor.options.mechanics()).toEqual([{ id: 'danie', name: 'danie' }]);
+  expect(await connor.options.mechanics()).toEqual([
+    { id: 'connor', name: 'connor' },
+    { id: 'danie', name: 'danie' },
+  ]);
 });
 
 test('serves where a report files and what is open, naming the Job only for a reader who may open it', async ({

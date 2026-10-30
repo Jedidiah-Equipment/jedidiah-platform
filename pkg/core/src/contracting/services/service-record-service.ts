@@ -17,9 +17,8 @@ import {
   type ServiceRecordListResult,
   type ServiceRecordOpenInput,
   type ServiceRecordPatchInput,
-  type ServiceRecordStatus,
 } from '@pkg/schema/contracting';
-import { and, asc, desc, eq, inArray, isNotNull, isNull, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { defineAuditDescriptor, recordAuditCreate } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
@@ -32,6 +31,7 @@ import {
   serviceRecordNotFound,
   withServiceConstraints,
 } from './service-errors.js';
+import { serviceRecordStatusCondition } from './service-record-status.js';
 
 type Row = typeof contractingServiceRecords.$inferSelect;
 const descriptor = defineAuditDescriptor<Row>({
@@ -91,10 +91,6 @@ export async function getServiceRecord({ db, id }: { db: Db | DatabaseTransactio
   return mapServiceRecord(row);
 }
 
-/** Open is Booked In: no close-out yet. Every Service Record read filters, orders and counts by this one test. */
-const statusCondition = (status: ServiceRecordStatus) =>
-  status === 'open' ? isNull(contractingServiceRecords.closedAt) : isNotNull(contractingServiceRecords.closedAt);
-
 /** Service Records across the fleet, Booked In first, then by start date: the Services table and each Machine's. */
 export async function listServiceRecords({
   db,
@@ -104,7 +100,7 @@ export async function listServiceRecords({
   input: ServiceRecordListInput;
 }): Promise<ServiceRecordListResult> {
   const where = and(
-    input.statuses.length ? or(...input.statuses.map(statusCondition)) : undefined,
+    input.statuses.length ? or(...input.statuses.map(serviceRecordStatusCondition)) : undefined,
     input.machineIds.length ? inArray(contractingServiceRecords.machineId, input.machineIds) : undefined,
     input.mechanicUserIds.length
       ? inArray(contractingServiceRecords.primaryMechanicUserId, input.mechanicUserIds)
@@ -115,7 +111,7 @@ export async function listServiceRecords({
     selectServiceRecords(db)
       .where(where)
       .orderBy(
-        asc(statusCondition('closed')),
+        asc(serviceRecordStatusCondition('closed')),
         getSortOrder(contractingServiceRecords.startDate, input.sortDirection),
         desc(contractingServiceRecords.createdAt),
         asc(contractingServiceRecords.id),

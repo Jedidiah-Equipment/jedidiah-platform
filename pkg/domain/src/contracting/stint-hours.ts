@@ -3,20 +3,24 @@ import type { JobStatus } from '@pkg/schema/contracting';
 import { formatDate, toPlantDateOnly } from '../formatting/date.js';
 import { formatHours } from '../formatting/number.js';
 import { getFirstName } from '../formatting/text.js';
-import { round1, suggestJobDates } from './hours.js';
+import { round1, type StintCaptureMoments, suggestJobDates } from './hours.js';
 import { hasJobCard } from './job-card.js';
 
-export type StintHoursRefusal = { code: 'contracting_job.departure_before_arrival'; message: string };
+export type StintHoursRefusal = {
+  code:
+    | 'contracting_job.departure_before_arrival'
+    | 'contracting_job.departure_not_editable'
+    | 'contracting_job.reason_required';
+  message: string;
+};
+export type StintHoursVerdict = { ok: true } | { ok: false; refusal: StintHoursRefusal };
 
 /** "Departure hours must be at or above the arrival hours of 4 480.0 h." */
 export const departureBeforeArrivalSentence = (arrival: number) =>
   `Departure hours must be at or above the arrival hours of ${formatHours(arrival)}.`;
 
 /** The one rule on Job Hours. Equal is accepted: a Machine delivered and collected unused bills no Work hours. */
-export function judgeStintHours(hours: {
-  arrival: number;
-  departure: number | null;
-}): { ok: true } | { ok: false; refusal: StintHoursRefusal } {
+export function judgeStintHours(hours: { arrival: number; departure: number | null }): StintHoursVerdict {
   return hours.departure !== null && hours.departure < hours.arrival
     ? {
         ok: false,
@@ -32,6 +36,29 @@ export const HOURS_EDIT_REASON_REQUIRED = 'A reason is required once the Job is 
 
 /** A reason is mandatory once the Job has a Job Card. */
 export const hoursEditNeedsReason = (status: JobStatus) => hasJobCard(status);
+
+const refuseEdit = (code: StintHoursRefusal['code'], message: string): StintHoursVerdict => ({
+  ok: false,
+  refusal: { code, message },
+});
+
+/**
+ * Whether an edit of a stint's Job Hours may land, for the server and both edit forms alike: a reason once the Job has
+ * a Job Card, the departure kept exactly where the stint has one (an edit neither clears nor adds it), and the one
+ * rule on the hours.
+ */
+export function judgeStintHoursEdit(
+  stint: { status: JobStatus; left: boolean },
+  edit: { arrivalHours: number; departureHours: number | null; reason?: string | null | undefined },
+): StintHoursVerdict {
+  if (hoursEditNeedsReason(stint.status) && !edit.reason?.trim())
+    return refuseEdit('contracting_job.reason_required', HOURS_EDIT_REASON_REQUIRED);
+  if (stint.left && edit.departureHours === null)
+    return refuseEdit('contracting_job.departure_not_editable', 'A captured departure cannot be cleared.');
+  if (!stint.left && edit.departureHours !== null)
+    return refuseEdit('contracting_job.departure_not_editable', 'Capture the departure to record it.');
+  return judgeStintHours({ arrival: edit.arrivalHours, departure: edit.departureHours });
+}
 
 /** Travel as the arrival snapshots it: the arrival less the Machine's last departure, clamped at zero. */
 export function snapshotTravelHours(
@@ -85,7 +112,7 @@ export const TRAVEL_HOURS_EXPLANATION =
  */
 export function effectiveJobDates(
   job: { startDate: DateOnlyIso | null; endDate: DateOnlyIso | null },
-  stints: Parameters<typeof suggestJobDates>[0],
+  stints: StintCaptureMoments,
   today: DateOnlyIso,
 ): { startDate: DateOnlyIso; endDate: DateOnlyIso } | null {
   const suggested = suggestJobDates(stints);

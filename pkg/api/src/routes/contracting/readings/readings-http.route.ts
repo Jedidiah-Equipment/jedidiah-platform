@@ -5,7 +5,7 @@ import { ReadingCaptureInput } from '@pkg/schema/contracting';
 import type { FastifyInstance } from 'fastify';
 import { mapCoreErrorToRoute, requirePermission, requireRouteAuth, sendHttpError } from '../../http-route-helpers.js';
 import { readingErrorFamily } from '../contracting-error-families.js';
-import type { ContractingPushScheduler } from '../contracting-push-scheduler.js';
+import { type ContractingPushScheduler, scheduleServiceDueSoon } from '../contracting-push-scheduler.js';
 
 export async function registerReadingHttpRoutes(
   app: FastifyInstance,
@@ -18,8 +18,7 @@ export async function registerReadingHttpRoutes(
       requirePermission(auth, 'contracting_reading:capture', 'You cannot capture Hour Readings.', 'reading.forbidden');
       const input = ReadingCaptureInput.parse(request.body);
       const { reading, serviceDueSoonCrossed } = await captureReading({ db, actor: auth.access, input });
-      // Answer at once; any workshop alert follows in the background.
-      if (serviceDueSoonCrossed) push.schedule({ kind: 'machine.service-due-soon', machineId: input.machineId });
+      scheduleServiceDueSoon(push, { machineId: input.machineId, serviceDueSoonCrossed });
       return reply.status(201).send(reading);
     } catch (error) {
       return sendHttpError(reply, mapCoreErrorToRoute(error, readingErrorFamily), {

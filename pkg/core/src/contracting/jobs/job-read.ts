@@ -32,46 +32,29 @@ import {
 import { assertReadableStatus, readerFor } from './job-readers.js';
 
 export type JobLookup = { id: string } | { code: string };
-type StintRow = LoadedStint['stint'];
-
 /** One of a stint's Job Hours as the wire carries it, or null before it was captured. */
-function jobHoursValue(
-  captured: { hours: number | null; at: Date | null; byUserId: string | null; comment: string | null },
-  telematics: { hours: number | null; at: Date | null },
-  byName: string | null,
-) {
-  if (captured.hours === null || captured.at === null || captured.byUserId === null) return null;
+function jobHoursValue({
+  hours,
+  at,
+  byUserId,
+  byName,
+  comment,
+  telematicsHours,
+  telematicsAt,
+}: LoadedStint['arrival']) {
+  if (hours === null || at === null || byUserId === null) return null;
   return {
-    hours: captured.hours,
-    at: captured.at.toISOString(),
-    byUserId: captured.byUserId,
+    hours,
+    at: at.toISOString(),
+    byUserId,
     byName: byName ?? '',
-    comment: captured.comment,
+    comment,
     telematics:
-      telematics.hours !== null && telematics.at !== null
-        ? { hours: telematics.hours, at: telematics.at.toISOString() }
+      telematicsHours !== null && telematicsAt !== null
+        ? { hours: telematicsHours, at: telematicsAt.toISOString() }
         : null,
   };
 }
-
-const arrivalOf = (stint: StintRow, byName: string | null) =>
-  jobHoursValue(
-    { hours: stint.arrivalHours, at: stint.arrivalAt, byUserId: stint.arrivalByUserId, comment: stint.arrivalComment },
-    { hours: stint.arrivalTelematicsHours, at: stint.arrivalTelematicsAt },
-    byName,
-  );
-
-const departureOf = (stint: StintRow, byName: string | null) =>
-  jobHoursValue(
-    {
-      hours: stint.departureHours,
-      at: stint.departureAt,
-      byUserId: stint.departureByUserId,
-      comment: stint.departureComment,
-    },
-    { hours: stint.departureTelematicsHours, at: stint.departureTelematicsAt },
-    byName,
-  );
 
 /** The stored Rate snapshot: no Rate amount is un-priced, no Rate id is No charge. */
 function storedPricing(row: LoadedStint): StoredStintPricing | null {
@@ -94,8 +77,8 @@ function storedPricing(row: LoadedStint): StoredStintPricing | null {
 
 function mapAssignment(row: LoadedStint, measures: readonly LoadedMeasure[], thresholds: AttentionThresholds) {
   const { stint } = row;
-  const arrival = arrivalOf(stint, row.arrivalByName);
-  const departure = departureOf(stint, row.departureByName);
+  const arrival = jobHoursValue(row.arrival);
+  const departure = jobHoursValue(row.departure);
   const { arrivalHours, departureHours, travelHours, travelClamped } = stint;
   return {
     ...stint,

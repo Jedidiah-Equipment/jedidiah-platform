@@ -438,12 +438,11 @@ describe('deriveCaptureForm', () => {
 
   test('reopens the date on a refusal that proposes a Read At', () => {
     const done = confirmed(draft());
-    expect(
-      captureStepsReducer(done, { type: 'refused', code: 'reading.below_latest', proposal: guess(aDayAgo) }),
-    ).toMatchObject({ pickedReadAt: aDayAgo, dateConfirmed: null });
-    expect(captureStepsReducer(done, { type: 'refused', code: 'reading.forbidden', proposal: undefined })).toEqual(
-      done,
-    );
+    expect(captureStepsReducer(done, { type: 'refused', proposal: guess(aDayAgo) })).toMatchObject({
+      pickedReadAt: aDayAgo,
+      dateConfirmed: null,
+    });
+    expect(captureStepsReducer(done, { type: 'refused', proposal: undefined })).toEqual(done);
   });
 
   test('withdraws Date looks good while the picker names no date, and takes it again from the verdict', () => {

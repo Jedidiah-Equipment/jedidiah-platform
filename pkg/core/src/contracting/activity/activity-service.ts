@@ -27,6 +27,7 @@ import {
   ActivityListInput,
   type ActivityListResult,
   type ActivityMachineRef,
+  type JobHoursRole,
 } from '@pkg/schema/contracting';
 import { and, eq, inArray, isNotNull, ne, or, type SQL, type SQLWrapper, sql } from 'drizzle-orm';
 import { alias, type PgColumn, type PgTable } from 'drizzle-orm/pg-core';
@@ -38,7 +39,7 @@ import {
   selectBreakdowns,
 } from '../breakdowns/breakdown-load.js';
 import { readableBy, readerFor } from '../jobs/job-readers.js';
-import { jobNumberSql } from '../jobs/job-sql.js';
+import { jobHoursColumns, jobNumberSql } from '../jobs/job-sql.js';
 import { type NoteThreadTable, noteThreadStore } from '../notes/note-thread.js';
 import { ActivityError } from './activity-errors.js';
 
@@ -260,7 +261,10 @@ function branches(db: Db, actor: JobActor, input: ActivityListInput): Branch[] {
   });
 
   /** A stint's Job Hours captured: the item is the stint at the instant the server saved them. */
-  const stintBranch = (type: 'machine-arrived' | 'machine-left', stamp: PgColumn, by: PgColumn): Branch => ({
+  const stintBranch = (
+    type: 'machine-arrived' | 'machine-left',
+    { at: stamp, byUserId: by }: (typeof jobHoursColumns)[JobHoursRole],
+  ): Branch => ({
     type,
     select: (where) => {
       const stints = contractingMachineAssignments;
@@ -310,18 +314,8 @@ function branches(db: Db, actor: JobActor, input: ActivityListInput): Branch[] {
       stampBranch(job, 'job-cancelled', jobs.cancelledAt, jobs.cancelledByUserId, {
         matches: (term) => textMatches(jobs.cancellationReason, term),
       }),
-    jobSide &&
-      stintBranch(
-        'machine-arrived',
-        contractingMachineAssignments.arrivalAt,
-        contractingMachineAssignments.arrivalByUserId,
-      ),
-    jobSide &&
-      stintBranch(
-        'machine-left',
-        contractingMachineAssignments.departureAt,
-        contractingMachineAssignments.departureByUserId,
-      ),
+    jobSide && stintBranch('machine-arrived', jobHoursColumns.arrival),
+    jobSide && stintBranch('machine-left', jobHoursColumns.departure),
   ];
 
   return all.filter(

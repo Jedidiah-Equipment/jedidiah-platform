@@ -1,4 +1,3 @@
-import type { StintHoursWrite } from '@pkg/core/contracting';
 import {
   cancelJob,
   captureStintHours,
@@ -66,13 +65,8 @@ import {
 import { mapCoreErrors } from '../../../trpc/errors.js';
 import { authorizedProcedure, businessProcedure, router } from '../../../trpc/init.js';
 import { jobErrorFamily } from '../contracting-error-families.js';
-import type { ContractingPushScheduler } from '../contracting-push-scheduler.js';
+import { type ContractingPushScheduler, scheduleServiceDueSoon } from '../contracting-push-scheduler.js';
 import { addThreadNote } from '../notes/notes.router.js';
-
-/** Answers at once; the workshop alert a Job Hours write crossed into follows in the background. */
-function scheduleServiceDueSoon(push: ContractingPushScheduler, { machineId, serviceDueSoonCrossed }: StintHoursWrite) {
-  if (serviceDueSoonCrossed) push.schedule({ kind: 'machine.service-due-soon', machineId });
-}
 
 const readPermissions = ['contracting_job:read', 'contracting_job:read-own', 'contracting_job:read-priced'] as const;
 

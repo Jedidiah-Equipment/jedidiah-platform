@@ -9,7 +9,6 @@ import { useReducer, useState } from 'react';
 import { toast } from 'sonner';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { readingRefusal } from '@/contracting/lib/reading-refusal.js';
-import { getApiErrorAppCode } from '@/lib/api-errors.js';
 import { captureReading } from './capture-reading.js';
 import { useLatestReading } from './use-latest-reading.js';
 import { useReadAtEstimate } from './use-read-at-estimate.js';
@@ -55,7 +54,7 @@ export function useReadingCapture(machineId: string) {
       await invalidateReadings();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : FAILED);
-      dispatch({ type: 'refused', code: getApiErrorAppCode(cause), proposal: readingRefusal(cause).suggestedReadAt });
+      dispatch({ type: 'refused', proposal: readingRefusal(cause).suggestedReadAt });
       // The ledger may have moved under the dialog: a newer latest re-judges the value.
       void latestQuery.refetch();
       void estimateQuery.refetch();

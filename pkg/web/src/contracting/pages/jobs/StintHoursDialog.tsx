@@ -4,6 +4,7 @@ import {
   johnDeereDifferenceWarning,
   johnDeereLine,
   judgeStintHours,
+  judgeStintHoursEdit,
   needsALookColorClassNames,
 } from '@pkg/domain/contracting';
 import { AuthId, emptyStringOr, UUID } from '@pkg/schema';
@@ -77,7 +78,7 @@ const CaptureValues = StintHoursCaptureValues.extend({
 type CaptureValues = z.infer<typeof CaptureValues>;
 
 function CaptureHoursDialog({
-  side: role,
+  side,
   stint,
   job,
   onClose,
@@ -91,7 +92,7 @@ function CaptureHoursDialog({
   const write = useStintHoursWrite();
   const capture = useMutation(trpc.contractingJobs.assignments.captureHours.mutationOptions(write.dialog));
   useResetOnOpen(capture, !!stint);
-  const arrival = role === 'arrival';
+  const arrival = side === 'arrival';
   const options = useAssignmentOptions({
     enabled: !!stint && arrival,
     stint,
@@ -130,7 +131,7 @@ function CaptureHoursDialog({
         stint
           ? capture.mutateAsync(
               toStintHoursCaptureInput(
-                { assignmentId: stint.id, role },
+                { assignmentId: stint.id, role: side },
                 values,
                 arrival && changesAssignment(stint, values)
                   ? { implementId: values.implementId || null, driverUserId: values.driverUserId || null }
@@ -223,12 +224,11 @@ function EditHoursDialog({ stint, job, onClose }: { stint: Assignment | null; jo
   const edit = useMutation(trpc.contractingJobs.assignments.editHours.mutationOptions(write.dialog));
   useResetOnOpen(edit, !!stint);
   const needsReason = hoursEditNeedsReason(job.status);
-  const left = stint?.departure !== null && stint?.departure !== undefined;
+  const left = !!stint?.departure;
   const canSave = (values: StintHoursEditValues) =>
     Number.isFinite(values.arrivalHours) &&
-    (!left || (values.departureHours !== null && Number.isFinite(values.departureHours))) &&
-    judgeStintHours({ arrival: values.arrivalHours, departure: values.departureHours }).ok &&
-    (!needsReason || values.reason.trim() !== '');
+    (values.departureHours === null || Number.isFinite(values.departureHours)) &&
+    judgeStintHoursEdit({ status: job.status, left }, values).ok;
   return (
     <CreateEntityDialog
       key={stint?.id ?? 'closed'}

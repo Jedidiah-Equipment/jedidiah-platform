@@ -347,7 +347,7 @@ export type CaptureStepAction =
   /** Date looks good, over the verdict on screen. */
   | { type: 'date-confirmed'; verdict: CaptureFormVerdict }
   /** The server refused: a proposed Read At reopens the date step on it. */
-  | { type: 'refused'; code: string | undefined; proposal: WireReadAtEstimate | null | undefined }
+  | { type: 'refused'; proposal: WireReadAtEstimate | null | undefined }
   /** The form closed or saved: every step is asked again. */
   | { type: 'reset' };
 

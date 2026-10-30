@@ -69,10 +69,10 @@ function ReadingDetail({ reading }: { reading: JobHoursValue }) {
 /** A captured reading's edit, or the capture it is still waiting on. */
 function HoursAction({
   entry: { stint, sheet },
-  side: role,
+  side,
   onOpen,
 }: { entry: JobSheetStint; side: 'arrival' | 'departure' } & Opens) {
-  if (stint[role])
+  if (stint[side])
     return sheet.can('editHours') ? (
       <IconAction
         icon={IconPencil}
@@ -80,13 +80,13 @@ function HoursAction({
         onClick={() => onOpen({ kind: 'hours', mode: 'edit', stintId: stint.id })}
       />
     ) : null;
-  const capture = role === 'arrival' ? 'captureArrival' : 'captureDeparture';
+  const capture = side === 'arrival' ? 'captureArrival' : 'captureDeparture';
   if (!sheet.can(capture)) return null;
   return (
     <IconAction
-      icon={role === 'arrival' ? IconPlayerPlay : IconPlayerStop}
-      label={role === 'arrival' ? 'Start — capture arrival' : 'Stop — capture departure'}
-      onClick={() => onOpen({ kind: 'hours', mode: role, stintId: stint.id })}
+      icon={side === 'arrival' ? IconPlayerPlay : IconPlayerStop}
+      label={side === 'arrival' ? 'Start — capture arrival' : 'Stop — capture departure'}
+      onClick={() => onOpen({ kind: 'hours', mode: side, stintId: stint.id })}
     />
   );
 }

@@ -7,6 +7,7 @@ import {
   johnDeereDifferenceWarning,
   johnDeereLine,
   judgeStintHours,
+  judgeStintHoursEdit,
   snapshotTravelHours,
 } from './stint-hours.js';
 
@@ -29,6 +30,37 @@ describe('hoursEditNeedsReason', () => {
     expect(hoursEditNeedsReason('active')).toBe(false);
     expect(hoursEditNeedsReason('completed')).toBe(true);
     expect(hoursEditNeedsReason('priced')).toBe(true);
+  });
+});
+
+describe('judgeStintHoursEdit', () => {
+  const refusal = (verdict: ReturnType<typeof judgeStintHoursEdit>) => (verdict.ok ? null : verdict.refusal.code);
+  const left = { status: 'completed', left: true } as const;
+
+  it('asks for a reason once the Job has a Job Card, before anything else', () => {
+    expect(refusal(judgeStintHoursEdit(left, { arrivalHours: 10, departureHours: 5, reason: '  ' }))).toBe(
+      'contracting_job.reason_required',
+    );
+    expect(refusal(judgeStintHoursEdit(left, { arrivalHours: 10, departureHours: 12, reason: 'Misread' }))).toBeNull();
+    expect(
+      refusal(
+        judgeStintHoursEdit(
+          { status: 'active', left: true },
+          { arrivalHours: 10, departureHours: 12, reason: undefined },
+        ),
+      ),
+    ).toBeNull();
+  });
+
+  it('keeps the departure where the stint has one, then holds the one rule', () => {
+    const edit = (departureHours: number | null, stintLeft: boolean) =>
+      refusal(
+        judgeStintHoursEdit({ status: 'active', left: stintLeft }, { arrivalHours: 10, departureHours, reason: null }),
+      );
+    expect(edit(null, true)).toBe('contracting_job.departure_not_editable');
+    expect(edit(12, false)).toBe('contracting_job.departure_not_editable');
+    expect(edit(9, true)).toBe('contracting_job.departure_before_arrival');
+    expect(edit(null, false)).toBeNull();
   });
 });
 

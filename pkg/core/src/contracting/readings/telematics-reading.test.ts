@@ -9,7 +9,7 @@ import { createCategory } from '../fleet/category-service.js';
 import { createMachine, patchMachine, retireMachine } from '../fleet/machine-service.js';
 import { amendHours } from '../test/job-fixtures.js';
 import { captureReading, estimateReadAtFor, latestReading, listReadingsByMachine } from './reading-service.js';
-import { recordTelematicsReading, type TelematicsReadingResult } from './telematics-reading.js';
+import { latestTelematics, recordTelematicsReading, type TelematicsReadingResult } from './telematics-reading.js';
 
 const test = createTester(async ({ db }) => {
   const actorUserId = 'telematics-actor';
@@ -285,4 +285,15 @@ test('ignores a report for a Link that was unlinked while it was in flight', asy
     reason: 'link-not-active',
   });
   expect(await listReadingsByMachine({ db, machineId })).toEqual([]);
+});
+
+test('compares Job Hours only to a report through the active Link', async ({ context }) => {
+  const { db, actorUserId, machineId, linkId } = context;
+  await reportFor(context)(1000, '2026-09-07T09:00:00Z');
+  expect(await latestTelematics({ db, machineId })).toEqual({ hours: 1000, at: '2026-09-07T09:00:00.000Z' });
+  await db
+    .update(contractingJohnDeereLinks)
+    .set({ unlinkedAt: new Date('2026-09-07T10:00:00Z'), unlinkedByUserId: actorUserId })
+    .where(eq(contractingJohnDeereLinks.id, linkId));
+  expect(await latestTelematics({ db, machineId })).toBeNull();
 });

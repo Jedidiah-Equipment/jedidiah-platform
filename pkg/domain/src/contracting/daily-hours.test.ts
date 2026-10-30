@@ -116,7 +116,7 @@ describe('allocateDailyHours', () => {
 });
 
 describe('jobWorkSegments', () => {
-  test('spreads each stint’s Work hours over the Job’s dates, so a multi-day Job is estimated', () => {
+  test('spreads each stint’s Work hours over the Job’s dates, every day estimated', () => {
     const dates = { startDate: date('2026-06-01'), endDate: date('2026-06-02') };
     const segments = jobWorkSegments([{ workHours: 10 }, { workHours: null }, { workHours: 6 }], dates);
     expect(segments.map((s) => s.hours)).toEqual([10, 6]);
@@ -124,6 +124,10 @@ describe('jobWorkSegments', () => {
     expect(days).toEqual([
       { date: '2026-06-01', hours: 8, estimated: true },
       { date: '2026-06-02', hours: 8, estimated: true },
+    ]);
+    const oneDay = { startDate: date('2026-06-03'), endDate: date('2026-06-03') };
+    expect(allocateDailyHours(jobWorkSegments([{ workHours: 5 }], oneDay), oneDay.startDate, oneDay.endDate)).toEqual([
+      { date: '2026-06-03', hours: 5, estimated: true },
     ]);
   });
 });

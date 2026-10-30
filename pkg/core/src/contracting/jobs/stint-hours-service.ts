@@ -122,6 +122,7 @@ export async function captureStintHours({
     const edge = await serviceDueSoonEdge(tx, machine);
     const comment = input.comment ?? null;
     if (arrival) {
+      if (machine.retiredAt) throw new JobError('contracting_job.invalid_reference', 'This Machine is retired.');
       const resources = arrivalResources(stint, input.stintOverrides);
       await assertArrivalResources(tx, resources);
       const [telematics, travel] = await Promise.all([

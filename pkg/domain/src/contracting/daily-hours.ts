@@ -5,8 +5,8 @@ import { addDateOnlyDays, addDateOnlyMonths, diffDateOnlyDays } from '../formatt
 import { round1 } from './hours.js';
 import { jobDatesInstants, overlapShare } from './utilisation.js';
 
-/** One stretch of the meter between two consecutive readings, with the instants it ran between. */
-export type MeterSegment = { hours: number; from: string; to: string };
+/** One stretch of hours with the instants it ran between; a Job's spread is estimated whatever its length. */
+export type MeterSegment = { hours: number; from: string; to: string; estimated?: true };
 
 /**
  * Every stretch the meter advanced between consecutive readings of one Machine's ledger (Read At order). A reading
@@ -31,7 +31,9 @@ export function jobWorkSegments(
   dates: { startDate: DateOnlyIso; endDate: DateOnlyIso },
 ): MeterSegment[] {
   const span = jobDatesInstants(dates);
-  return stints.flatMap((stint) => (stint.workHours ? [{ hours: stint.workHours, ...span }] : []));
+  return stints.flatMap((stint) =>
+    stint.workHours ? [{ hours: stint.workHours, ...span, estimated: true as const }] : [],
+  );
 }
 
 /** Index of the last boundary at or before `instant`, or -1 when it precedes them all. */
@@ -49,7 +51,7 @@ function lastBoundaryAtOrBefore(boundaries: readonly number[], instant: number):
 /**
  * The segments' hours attributed to each plant day from `start` through `end`, by elapsed time: a segment's hours are
  * shared out over the days it ran across in proportion to the time it spent in each. A day is estimated when hours
- * came from a segment that ran across more than one plant day. Every day in the range is returned, oldest first.
+ * came from a segment that ran across more than one plant day, or from a Job's spread. Every day in the range is returned, oldest first.
  */
 export function allocateDailyHours(
   segments: readonly MeterSegment[],
@@ -80,7 +82,7 @@ export function allocateDailyHours(
     const crossesEdge =
       (from < (boundaries[0] ?? 0) && to > (boundaries[0] ?? 0)) ||
       (to > (boundaries[count] ?? 0) && from < (boundaries[count] ?? 0));
-    if (touched.length > 1 || crossesEdge) for (const day of touched) estimated[day] = true;
+    if (segment.estimated || touched.length > 1 || crossesEdge) for (const day of touched) estimated[day] = true;
   }
   return dates.map((date, index) => ({ date, hours: round1(hours[index] ?? 0), estimated: estimated[index] ?? false }));
 }

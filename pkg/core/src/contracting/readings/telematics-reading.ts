@@ -8,12 +8,19 @@ import { serviceDueSoonEdge } from '../fleet/machine-service.js';
 import { type ReadingRow, readingDescriptor, updateAudited } from './reading-audit.js';
 import { newestFirst, oldestFirst } from './reading-sql.js';
 
-/** John Deere's latest report for a Machine; null for an unlinked Machine. */
+/** The latest report through the Machine's active John Deere Link; null for an unlinked Machine. */
 export async function latestTelematicsReading(db: Db | DatabaseTransaction, machineId: string) {
   const [latest] = await db
     .select({ hours: contractingHourReadings.value, at: contractingHourReadings.capturedAt })
     .from(contractingHourReadings)
-    .where(and(eq(contractingHourReadings.machineId, machineId), eq(contractingHourReadings.method, 'telematics')))
+    .innerJoin(
+      contractingJohnDeereLinks,
+      and(
+        eq(contractingJohnDeereLinks.id, contractingHourReadings.telematicsLinkId),
+        isNull(contractingJohnDeereLinks.unlinkedAt),
+      ),
+    )
+    .where(eq(contractingHourReadings.machineId, machineId))
     .orderBy(...newestFirst)
     .limit(1);
   return latest ?? null;

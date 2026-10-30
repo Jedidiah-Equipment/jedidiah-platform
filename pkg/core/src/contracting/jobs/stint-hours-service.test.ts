@@ -4,7 +4,7 @@ import { describe, expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
 import { createCategory } from '../fleet/category-service.js';
 import { createImplement, retireImplement } from '../fleet/implement-service.js';
-import { getMachine, patchMachine } from '../fleet/machine-service.js';
+import { getMachine, patchMachine, retireMachine } from '../fleet/machine-service.js';
 import { captureReading } from '../readings/reading-service.js';
 import {
   admin,
@@ -113,7 +113,7 @@ describe('capturing Job Hours', () => {
     expect((await getJob({ db, id: first.id })).assignments[0]).toMatchObject({ travelHours: 0, travelClamped: false });
   });
 
-  test('refuses a busy Machine, a retired Implement, a device Driver, a foreign Job and a departure below arrival', async ({
+  test('refuses a busy or retired Machine, a retired Implement, a device Driver, a foreign Job and a departure below arrival', async ({
     context,
   }) => {
     const { db, excavator, tipper, implement } = context;
@@ -157,12 +157,19 @@ describe('capturing Job Hours', () => {
       code: 'contracting_job.not_owner',
     });
 
+    // Retired while on site: it can still leave, so the Job can finish, but it arrives nowhere new.
+    const later = await plannedStint(db, admin, { jobId: job.id, machineId: excavator.id, implementId: null });
+    await retireMachine({ db, actorUserId: adminId, input: { id: excavator.id, reason: 'Sold' } });
     await expect(captureHours(db, onSite.id, 'departure', 99.9)).rejects.toMatchObject({
       code: 'contracting_job.departure_before_arrival',
       message: 'Departure hours must be at or above the arrival hours of 100.0 h.',
     });
     await captureHours(db, onSite.id, 'departure', 100);
     expect((await getJob({ db, id: job.id })).assignments[0]).toMatchObject({ state: 'left', workHours: 0 });
+    await expect(captureHours(db, later.id, 'arrival', 120)).rejects.toMatchObject({
+      code: 'contracting_job.invalid_reference',
+      message: 'This Machine is retired.',
+    });
   });
 
   test('Known Hours take the higher of the ledger and the Job Hours, and a capture crosses Service Due Soon', async ({

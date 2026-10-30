@@ -44,7 +44,7 @@ export function ModalSheet({
                 <Text className="text-lg text-foreground" weight="bold">
                   {title}
                 </Text>
-                <Text className="text-xs text-muted-foreground" numberOfLines={1}>
+                <Text className="text-xs text-muted-foreground" numberOfLines={2}>
                   {subtitle}
                 </Text>
               </View>

@@ -1,22 +1,13 @@
-import {
-  type AiFlaggedVerification,
-  aiFlaggedVerifications,
-  type JobReadingAttentionKind,
-  type NeedsALookLevel,
-  type ReadingExceptionType,
-  type ReadingRole,
-  type ReadingVerification,
-  type TelematicsProvider,
+import type {
+  JobReadingAttentionKind,
+  NeedsALookLevel,
+  ReadingRole,
+  TelematicsProvider,
 } from '@pkg/schema/contracting';
 import { groupBy } from '../collections/group-by.js';
 import { formatDate } from '../formatting/date.js';
 import { formatHours } from '../formatting/number.js';
-import {
-  aiVerificationLevel,
-  assignmentAttentionKindLevels,
-  loudestNeedingALook,
-  needsALook,
-} from './assignment-attention.js';
+import { getFirstName } from '../formatting/text.js';
 
 export const readingRoleLabels: Record<ReadingRole, string> = {
   baseline: 'Baseline',
@@ -25,172 +16,33 @@ export const readingRoleLabels: Record<ReadingRole, string> = {
   departure: 'Departure',
 };
 
-/** How often a screen showing a reading whose AI check is still running asks again. */
-export const AI_VERDICT_POLL_MS = 5_000;
-/** A check takes seconds; past this a pending reading is a failed check waiting on Re-verify, so screens stop asking. */
-export const AI_VERDICT_POLL_LIMIT_MS = 120_000;
-
-/** The stamp on a reading captured without a photo. */
-export const MISSING_PHOTO_EVIDENCE = 'Missing Photo Evidence';
-
 export const telematicsProviderLabels: Record<TelematicsProvider, string> = { 'john-deere': 'John Deere' };
 
 /** What follows a reading on a line when its source is a machine's telematics: `' · John Deere'`, else nothing. */
 export const readingProviderSuffix = (provider: TelematicsProvider | null): string =>
   provider ? ` · ${telematicsProviderLabels[provider]}` : '';
 
-/** What a ledger row says about its evidence: the provider for a Telematics Reading, which has no photo to miss. */
-export const readingEvidenceCaption = (reading: {
+/** Where a reading's hours came from: who reported a Telematics Reading, else the capturer's first name. */
+export const readingSourceLabel = (reading: {
   telematicsProvider: TelematicsProvider | null;
-  photoBacked: boolean;
-}): string =>
+  capturedByName: string | null;
+}): string | null =>
   reading.telematicsProvider
     ? telematicsProviderLabels[reading.telematicsProvider]
-    : reading.photoBacked
-      ? 'Photo-backed'
-      : MISSING_PHOTO_EVIDENCE;
-
-export type ReadingEvidenceState =
-  | { state: 'no-photo' | 'pending' | 'unreadable' }
-  | { state: 'low-confidence' | 'disagrees' | 'agrees'; aiValue: number };
-
-/** What the AI made of the meter photo, as `readingVerification` can store it. */
-export function readingEvidenceState(reading: {
-  photoBacked: boolean;
-  aiValue: number | null;
-  aiVerification: ReadingVerification;
-}): ReadingEvidenceState {
-  if (!reading.photoBacked) return { state: 'no-photo' };
-  if (reading.aiVerification === 'pending') return { state: 'pending' };
-  if (reading.aiValue === null) return { state: 'unreadable' };
-  if (reading.aiVerification === 'low-confidence') return { state: 'low-confidence', aiValue: reading.aiValue };
-  if (reading.aiVerification === 'disagrees') return { state: 'disagrees', aiValue: reading.aiValue };
-  return { state: 'agrees', aiValue: reading.aiValue };
-}
-
-/** How a list of readings labels each evidence state: the stint card, the Reading Exceptions list and History. */
-export const readingEvidenceLabels: Record<ReadingEvidenceState['state'], string> = {
-  'no-photo': MISSING_PHOTO_EVIDENCE,
-  pending: 'Photo-backed · Verification pending',
-  unreadable: 'Photo-backed',
-  'low-confidence': 'Photo-backed · Low extraction confidence',
-  disagrees: 'Photo-backed · Extracted value differs',
-  agrees: 'Photo-backed · AI-verified',
-};
-
-/** A ledger row's evidence: who reported a Telematics Reading, else what the AI made of the photo. */
-export const readingEvidenceLabel = (
-  reading: Parameters<typeof readingEvidenceState>[0] & { telematicsProvider: TelematicsProvider | null },
-): string =>
-  reading.telematicsProvider
-    ? telematicsProviderLabels[reading.telematicsProvider]
-    : readingEvidenceLabels[readingEvidenceState(reading).state];
-
-export const readingExceptionTypeLabels = {
-  'ai-flagged': 'AI flagged',
-  disputed: 'Disputed',
-} as const;
+    : reading.capturedByName && getFirstName(reading.capturedByName);
 
 /** The API route that captures an Hour Reading, relative to the API origin. */
 export const READING_CAPTURE_PATH = '/api/contracting/readings';
 
-/** The API route that serves an Hour Reading's meter photo, relative to the API origin. */
-export const readingPhotoPath = (readingId: string) => `${READING_CAPTURE_PATH}/${encodeURIComponent(readingId)}/photo`;
+export type ReadingAttentionFacts = { disputed: boolean };
 
-export const isAiFlaggedVerification = (verification: ReadingVerification): verification is AiFlaggedVerification =>
-  (aiFlaggedVerifications as readonly ReadingVerification[]).includes(verification);
+/** Each attention kind on a reading: a Disputed one needs a look. */
+export const readingAttentionKinds = (reading: ReadingAttentionFacts): JobReadingAttentionKind[] =>
+  reading.disputed ? ['disputed'] : [];
 
-// Below 80% remains a management exception even when the digits happen to agree.
-export const METER_CONFIDENCE_THRESHOLD = 0.8;
-
-export function readingVerification(
-  value: number,
-  aiValue: number | null,
-  aiConfidence: number | null,
-): 'pending' | 'low-confidence' | 'agrees' | 'disagrees' {
-  if (aiConfidence === null) return 'pending';
-  if (aiValue === null || aiConfidence < METER_CONFIDENCE_THRESHOLD) return 'low-confidence';
-  return Math.round(value * 10) === Math.round(aiValue * 10) ? 'agrees' : 'disagrees';
-}
-
-export type ReadingAttentionFacts = {
-  disputed: boolean;
-  aiVerification: ReadingVerification;
-  /** Null until the evidence has been reviewed: a Date in core, an ISO string on the wire. */
-  evidenceReviewedAt: Date | string | null;
-};
-
-/** Why an Hour Reading needs a look: it is disputed, or the AI could not confirm it and nobody has reviewed it. */
-export function readingAttention(reading: ReadingAttentionFacts): {
-  disputed: boolean;
-  aiFlagged: AiFlaggedVerification | null;
-} {
-  return {
-    disputed: reading.disputed,
-    aiFlagged:
-      reading.evidenceReviewedAt === null && isAiFlaggedVerification(reading.aiVerification)
-        ? reading.aiVerification
-        : null,
-  };
-}
-
-/** Each attention kind on a reading, notices included; a reading without a photo carries `missing-photo`. */
-export function readingAttentionKinds(
-  reading: ReadingAttentionFacts & { photoBacked: boolean },
-): JobReadingAttentionKind[] {
-  const { disputed, aiFlagged } = readingAttention(reading);
-  return [
-    ...(disputed ? (['disputed'] as const) : []),
-    ...(aiFlagged ? ([`ai-${aiFlagged}`] as const) : []),
-    ...(reading.photoBacked ? [] : (['missing-photo'] as const)),
-  ];
-}
-
-/** The loudest level on a reading that needs a look, or null when nothing does. Core's SQL twins this. */
+/** The level a reading needs a look at, or null when it does not. */
 export const readingNeedsALookLevel = (reading: ReadingAttentionFacts): NeedsALookLevel | null =>
-  loudestNeedingALook(
-    readingAttentionKinds({ ...reading, photoBacked: true }).map((kind) => assignmentAttentionKindLevels[kind]),
-  );
-
-export const readingNeedsALook = (reading: ReadingAttentionFacts): boolean => readingNeedsALookLevel(reading) !== null;
-
-/** Why a reading is on the Reading Exceptions list: only the kinds that need a look. */
-export function readingExceptionTypes(reading: ReadingAttentionFacts): ReadingExceptionType[] {
-  const { disputed, aiFlagged } = readingAttention(reading);
-  return [
-    ...(disputed ? (['disputed'] as const) : []),
-    ...(aiFlagged && needsALook(aiVerificationLevel(aiFlagged)) ? (['ai-flagged'] as const) : []),
-  ];
-}
-
-/** The attention a reading's row shows: an amendment settles its notices, so only what still needs a look stays. */
-export const shownReadingAttention = (reading: {
-  amendedAt: string | null;
-  attention: readonly JobReadingAttentionKind[];
-}): readonly JobReadingAttentionKind[] =>
-  reading.amendedAt === null
-    ? reading.attention
-    : reading.attention.filter((kind) => needsALook(assignmentAttentionKindLevels[kind]));
-
-/** An amendment that acknowledged the current AI finding is the latest word on a reading; a re-verify reopens it. */
-export const amendmentSettledFinding = (reading: { amendedAt: string | null; evidenceReviewedAt: string | null }) =>
-  reading.amendedAt !== null && reading.evidenceReviewedAt !== null;
-
-export function meterDisagreementHint({
-  value,
-  aiValue,
-  aiVerification,
-}: {
-  value: number;
-  aiValue: number | null;
-  aiVerification: string;
-}): string | null {
-  if (aiVerification !== 'disagrees' || !aiValue || !value) return null;
-  const ratio = aiValue / value;
-  return (ratio >= 9 && ratio <= 11) || (ratio >= 0.09 && ratio <= 0.11)
-    ? 'Possible tenths-drum misread (≈10× / 0.1×).'
-    : null;
-}
+  reading.disputed ? 'critical' : null;
 
 /** Why a captured reading is Disputed against a Telematics Reading. */
 export const telematicsDisputeReason = (reported: {

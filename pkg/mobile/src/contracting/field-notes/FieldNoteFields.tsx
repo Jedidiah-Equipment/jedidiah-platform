@@ -10,7 +10,6 @@ export function FieldNoteFields(props: {
   /** `uri` is already displayable. */
   photos: readonly { id: string; uri: string }[];
   busy: boolean;
-  galleryHint: boolean;
   onTake: () => void;
   onChoose: () => void;
   onRemovePhoto: (photoId: string) => void;
@@ -29,7 +28,6 @@ export function FieldNoteFields(props: {
         photos={props.photos}
         limit={fieldNoteFiles.photoLimit}
         busy={props.busy}
-        galleryHint={props.galleryHint}
         onTake={props.onTake}
         onChoose={props.onChoose}
         onRemove={props.onRemovePhoto}

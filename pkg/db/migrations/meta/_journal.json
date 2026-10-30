@@ -1289,6 +1289,13 @@
       "when": 1793007958246,
       "tag": "0183_telematics_reading",
       "breakpoints": true
+    },
+    {
+      "idx": 184,
+      "version": "7",
+      "when": 1793346833990,
+      "tag": "0184_hour_reading_no_photo_evidence",
+      "breakpoints": true
     }
   ]
 }

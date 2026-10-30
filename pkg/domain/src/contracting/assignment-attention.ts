@@ -1,20 +1,10 @@
-import type {
-  AiFlaggedVerification,
-  AssignmentAttentionLevel,
-  JobReadingAttentionKind,
-  NeedsALookLevel,
-  ReadingExceptionType,
-} from '@pkg/schema/contracting';
+import type { AssignmentAttentionLevel, JobReadingAttentionKind, NeedsALookLevel } from '@pkg/schema/contracting';
 import { type BadgeColorClassNames, statusBadgeColorClassNames } from '../theme/status-badge.js';
 
 /*
- * Assignment attention levels, quietest first:
- * - notice: worth knowing, nothing to do.
- * - warning: the evidence does not confirm the value; someone should review it.
- * - critical: the hours are wrong or contradictory, or it stops the Job moving on.
- * Warning and critical need a look: they are counted, filtered for, and border the card. Notices never do.
+ * Assignment Attention has one level, critical: the hours are wrong or contradictory, or it stops the Job moving on.
+ * Critical needs a look: it is counted, filtered for, and borders the card.
  */
-export const needsALook = (level: AssignmentAttentionLevel): level is NeedsALookLevel => level !== 'notice';
 
 /** Everything that can flag a Machine Assignment: its Gap Flag and each reading's attention kinds. */
 export type AssignmentAttentionKind = 'gap-flag' | JobReadingAttentionKind;
@@ -22,50 +12,31 @@ export type AssignmentAttentionKind = 'gap-flag' | JobReadingAttentionKind;
 export const assignmentAttentionKindLevels = {
   'gap-flag': 'critical',
   disputed: 'critical',
-  'ai-disagrees': 'warning',
-  'ai-low-confidence': 'warning',
-  'ai-pending': 'notice',
-  'missing-photo': 'notice',
 } as const satisfies Record<AssignmentAttentionKind, AssignmentAttentionLevel>;
 
 export const assignmentAttentionKindLabels: Record<AssignmentAttentionKind, string> = {
   'gap-flag': 'Gap flag',
   disputed: 'Disputed',
-  'ai-disagrees': 'AI value differs',
-  'ai-low-confidence': 'AI confidence low',
-  'ai-pending': 'AI verification pending',
-  'missing-photo': 'Missing photo',
 };
-
-/** The level of an AI verdict an unreviewed reading carries. */
-export const aiVerificationLevel = (verification: AiFlaggedVerification): AssignmentAttentionLevel =>
-  assignmentAttentionKindLevels[`ai-${verification}`];
-
-/** Each Reading Exceptions type at its kind's level; every AI verdict that needs a look is a warning. */
-export const readingExceptionTypeLevels = {
-  disputed: assignmentAttentionKindLevels.disputed,
-  'ai-flagged': 'warning',
-} as const satisfies Record<ReadingExceptionType, NeedsALookLevel>;
 
 export type AssignmentAttentionCounts = Record<NeedsALookLevel, number>;
 
-/** The loudest of these levels when it needs a look, or null when none does. */
+/** The loudest of these levels, or null when there are none. */
 export function loudestNeedingALook(levels: Iterable<AssignmentAttentionLevel>): NeedsALookLevel | null {
-  const present = new Set(levels);
-  return present.has('critical') ? 'critical' : present.has('warning') ? 'warning' : null;
+  return new Set(levels).has('critical') ? 'critical' : null;
 }
 
 /** The level a count of items needing a look shows at, or null when nothing needs a look. */
 export const countedAssignmentAttentionLevel = (counts: AssignmentAttentionCounts): NeedsALookLevel | null =>
-  counts.critical > 0 ? 'critical' : counts.warning > 0 ? 'warning' : null;
+  counts.critical > 0 ? 'critical' : null;
 
 export const tallyAssignmentAttention = (levels: Iterable<NeedsALookLevel>): AssignmentAttentionCounts => {
-  const counts = { critical: 0, warning: 0 };
+  const counts = { critical: 0 };
   for (const level of levels) counts[level] += 1;
   return counts;
 };
 
-/** A Job's items needing a look: each open Gap Flag, and each flagged reading once at its loudest level. */
+/** A Job's items needing a look: each open Gap Flag, and each flagged reading once. */
 export function jobAssignmentAttentionCounts(
   openGapFlags: number,
   readings: AssignmentAttentionCounts,
@@ -109,20 +80,6 @@ export const assignmentAttentionLevelColorClassNames: Record<
   AssignmentAttentionLevel,
   AssignmentAttentionColorClassNames
 > = {
-  notice: {
-    ...statusBadgeColorClassNames.purple,
-    icon: 'text-purple-500',
-    border: 'border-purple-500/60',
-    button:
-      'border-purple-500/50 bg-purple-500/15 text-purple-700 hover:bg-purple-500/25 dark:border-purple-500/50 dark:bg-purple-500/15 dark:text-purple-300 dark:hover:bg-purple-500/25',
-  },
-  warning: {
-    ...statusBadgeColorClassNames.orange,
-    icon: 'text-orange-500',
-    border: 'border-orange-500/60',
-    button:
-      'border-orange-500/50 bg-orange-500/15 text-orange-700 hover:bg-orange-500/25 dark:border-orange-500/50 dark:bg-orange-500/15 dark:text-orange-300 dark:hover:bg-orange-500/25',
-  },
   critical: {
     ...statusBadgeColorClassNames.red,
     icon: 'text-red-500',

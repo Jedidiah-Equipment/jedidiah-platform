@@ -1,8 +1,7 @@
-import { type Assignment, ReadingReason, ReadingValue } from '@pkg/schema/contracting';
+import { type Assignment, ReadingComment, ReadingValue } from '@pkg/schema/contracting';
 import { z } from 'zod';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
-import { Separator } from '@/components/ui/separator.js';
 import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
 import {
   ReadingCaptureDetails,
@@ -13,7 +12,7 @@ import { ConfirmedDispute, useReadingCapture } from '@/contracting/components/re
 
 const DepartureValues = z.object({
   value: ReadingValue,
-  reason: z.union([z.string().trim().length(0), ReadingReason]),
+  comment: z.union([z.string().trim().length(0), ReadingComment]),
   confirmedDispute: ConfirmedDispute,
 });
 type DepartureValues = z.infer<typeof DepartureValues>;
@@ -21,7 +20,6 @@ type DepartureValues = z.infer<typeof DepartureValues>;
 export function DepartureCaptureDialog({ stint, onClose }: { stint: Assignment | null; onClose: () => void }) {
   const capture = useReadingCapture({ role: 'departure', stint }, (values: DepartureValues) => ({
     ...values,
-    comment: values.reason,
     stintOverrides: undefined,
   }));
   const { latestQuery } = capture;
@@ -39,10 +37,9 @@ export function DepartureCaptureDialog({ stint, onClose }: { stint: Assignment |
       }}
       title={<MachineDialogTitle machine={stint}>Capture departure</MachineDialogTitle>}
       contentClassName="sm:max-w-md"
-      defaultValues={{ value: Number.NaN, reason: '', confirmedDispute: null }}
+      defaultValues={{ value: Number.NaN, comment: '', confirmedDispute: null }}
       validator={DepartureValues}
-      // Judged once the latest has loaded, and held only while it awaits the person; a missing reason or a bad value
-      // say so on submit.
+      // Judged once the latest has loaded, and held only while it awaits the person; a bad value says so on submit.
       canSubmit={(values) => latestQuery.isSuccess && !judge(values).awaitingPerson}
       onBeforeCreate={(values) => judge(values).request !== null}
       onCreate={async (values) => {
@@ -60,36 +57,10 @@ export function DepartureCaptureDialog({ stint, onClose }: { stint: Assignment |
             fields={{ value: 'value', confirmedDispute: 'confirmedDispute' }}
             capture={capture}
           />
-          <ReadingCaptureDetails id={`departure-photo-${stint?.id ?? 'closed'}`} {...capture.details}>
-            <div className="flex items-center gap-3" aria-hidden="true">
-              <Separator className="flex-1" />
-              <span className="text-xs text-muted-foreground">or</span>
-              <Separator className="flex-1" />
-            </div>
-            <form.Subscribe selector={(state) => ({ submitted: state.submissionAttempts > 0, values: state.values })}>
-              {({ submitted, values }) => {
-                const needsReason = judge(values).commentRequired;
-                const missingEvidence = submitted && needsReason && !values.reason.trim();
-                const errorId = `departure-evidence-error-${stint?.id ?? 'closed'}`;
-                return (
-                  <>
-                    <form.AppField name="reason">
-                      {(field) => (
-                        <field.TextareaField
-                          label={needsReason ? 'Reason' : 'Reason (optional)'}
-                          aria-describedby={missingEvidence ? errorId : undefined}
-                        />
-                      )}
-                    </form.AppField>
-                    {missingEvidence ? (
-                      <p id={errorId} role="alert" className="text-xs text-destructive">
-                        A photo or a reason is required to capture departure.
-                      </p>
-                    ) : null}
-                  </>
-                );
-              }}
-            </form.Subscribe>
+          <ReadingCaptureDetails {...capture.details}>
+            <form.AppField name="comment">
+              {(field) => <field.TextareaField label="Comment (optional)" />}
+            </form.AppField>
           </ReadingCaptureDetails>
         </>
       )}

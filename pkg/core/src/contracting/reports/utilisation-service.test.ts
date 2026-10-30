@@ -48,7 +48,6 @@ const test = createTester(async ({ db }) => {
         value,
         capturedAt,
         disputePrevious: false,
-        ...(role === 'departure' ? { comment: 'Photo unavailable' } : {}),
       },
     });
   // The tipper has readings but never a stint, then retired on 10 June.

@@ -38,30 +38,35 @@ beforeEach(() => {
   gallery.albums.clear();
 });
 
+const toGallery = { saveToGallery: true };
+
 test('a camera photo goes to the Jedidiah album, created the first time and appended to after', async () => {
-  await expect(takePhoto()).resolves.toEqual([
-    { uri: 'file:///camera/a.jpg', source: 'camera', exif: null, inGallery: true },
-  ]);
+  await expect(takePhoto(toGallery)).resolves.toEqual([{ uri: 'file:///camera/a.jpg', inGallery: true }]);
   expect(gallery.requestPermissionsAsync).toHaveBeenCalledWith(true, ['photo']);
   expect(gallery.Album.create).toHaveBeenCalledWith('Jedidiah', [{ uri: 'file:///camera/a.jpg' }], true);
 
   picker.launchCameraAsync.mockResolvedValueOnce({ canceled: false, assets: [{ uri: 'file:///camera/b.jpg' }] });
-  await takePhoto();
+  await takePhoto(toGallery);
   expect(gallery.Album.create).toHaveBeenCalledOnce();
   expect(gallery.Asset.create).toHaveBeenLastCalledWith('file:///camera/b.jpg', { title: 'Jedidiah' });
 });
 
 test('iOS asks for read-write access, since add-only access cannot find or create the album', async () => {
   platform.OS = 'ios';
-  await takePhoto();
+  await takePhoto(toGallery);
   expect(gallery.requestPermissionsAsync).toHaveBeenCalledWith(false, ['photo']);
 });
 
 test('a refused gallery still hands back the photo, marked as not in the gallery', async () => {
   gallery.requestPermissionsAsync.mockResolvedValueOnce({ granted: false });
 
-  await expect(takePhoto()).resolves.toMatchObject([{ uri: 'file:///camera/a.jpg', inGallery: false }]);
+  await expect(takePhoto(toGallery)).resolves.toMatchObject([{ uri: 'file:///camera/a.jpg', inGallery: false }]);
   expect(gallery.Asset.create).not.toHaveBeenCalled();
+});
+
+test('a camera photo stays out of the gallery unless asked', async () => {
+  await expect(takePhoto()).resolves.toEqual([{ uri: 'file:///camera/a.jpg', inGallery: false }]);
+  expect(gallery.requestPermissionsAsync).not.toHaveBeenCalled();
 });
 
 test('a cancelled camera is no photo, and a refused camera is the person’s own sentence', async () => {
@@ -69,7 +74,7 @@ test('a cancelled camera is no photo, and a refused camera is the person’s own
   await expect(takePhoto()).resolves.toEqual([]);
 
   picker.requestCameraPermissionsAsync.mockResolvedValueOnce({ granted: false });
-  await expect(takePhoto()).rejects.toBeInstanceOf(PhotoAccessError);
+  await expect(takePhoto(toGallery)).rejects.toBeInstanceOf(PhotoAccessError);
   expect(gallery.requestPermissionsAsync).not.toHaveBeenCalled();
 });
 
@@ -79,8 +84,8 @@ test('gallery photos are already in the gallery and never saved again', async ()
     assets: [{ uri: 'file:///gallery/1.jpg' }, { uri: 'file:///gallery/2.jpg' }, { uri: 'file:///gallery/3.jpg' }],
   });
   await expect(choosePhotos(2)).resolves.toEqual([
-    { uri: 'file:///gallery/1.jpg', source: 'gallery', exif: null, inGallery: true },
-    { uri: 'file:///gallery/2.jpg', source: 'gallery', exif: null, inGallery: true },
+    { uri: 'file:///gallery/1.jpg', inGallery: true },
+    { uri: 'file:///gallery/2.jpg', inGallery: true },
   ]);
   expect(gallery.requestPermissionsAsync).not.toHaveBeenCalled();
 

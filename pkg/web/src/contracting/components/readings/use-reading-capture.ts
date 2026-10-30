@@ -20,7 +20,6 @@ import { z } from 'zod';
 import { localDateTimeValue } from '@/components/form/utils/form-schema.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { readingRefusal } from '@/contracting/lib/reading-refusal.js';
-import { useCan } from '@/hooks/use-access.js';
 import { captureReading } from './capture-reading.js';
 import { useLatestReading } from './use-latest-reading.js';
 
@@ -53,7 +52,7 @@ const disputedReadingId = ({ value, confirmedDispute }: CaptureValue) =>
   confirmedDispute?.value === value ? confirmedDispute.previousId : null;
 
 /**
- * A capture dialog's served latest reading, its meter photo and refusal, the domain's judgement of its values, and the
+ * A capture dialog's served latest reading and refusal, the domain's judgement of its values, and the
  * submit that posts what that judgement built. `toDraft` is the dialog's one mapping of its form onto a capture.
  */
 export type ReadingCapture<TValues> = ReturnType<typeof useReadingCapture<TValues>>;
@@ -66,8 +65,6 @@ export function useReadingCapture<TValues>(target: CaptureTarget, toDraft: (valu
       ? { stint: null, machineId: target.machineId }
       : { stint: target.stint, machineId: target.stint?.machineId ?? null };
   const latestQuery = useLatestReading(machineId);
-  const management = useCan('contracting_job:work-any').can;
-  const [photo, setPhoto] = useState<File | null>(null);
   const [error, setError] = useState('');
   const [readAt, setReadAt] = useState<ReadAtChoice>(READ_AT_NOW);
   const readAtPicker = useRef<HTMLDivElement>(null);
@@ -75,7 +72,7 @@ export function useReadingCapture<TValues>(target: CaptureTarget, toDraft: (valu
   const judge = (values: TValues) => {
     const draft = toDraft(values);
     return deriveCaptureForm(
-      { latest, management, hasPhoto: photo !== null, now: new Date() },
+      { latest, now: new Date() },
       {
         role,
         value: Number.isFinite(draft.value) ? String(draft.value) : '',
@@ -90,13 +87,12 @@ export function useReadingCapture<TValues>(target: CaptureTarget, toDraft: (valu
     latestQuery,
     /** The latest once loaded: null when the ledger is empty, undefined while loading or failed. */
     latest,
-    photo,
     judge,
     /** Whether the value is below the latest and its dispute confirmed: all the reading card needs. */
     judgeValue: (value: CaptureValue) =>
       captureValueVerdict(latest, parseFormValue(value.value), disputedReadingId(value), readAtOf(readAt)),
     /** Spread onto `ReadingCaptureDetails`. */
-    details: { photo, onPhotoChange: setPhoto, error, onError: setError },
+    details: { error },
     /** When the meter was read; `readAtPicker` holds the picker Earlier… reveals. */
     readAt,
     readAtPicker,
@@ -112,7 +108,6 @@ export function useReadingCapture<TValues>(target: CaptureTarget, toDraft: (valu
     /** A new value: the Read At proposed for the refused one stays as the person's own time. */
     editValue: () => setReadAt(readAtAfterValueEdit),
     reset: () => {
-      setPhoto(null);
       setError('');
       setReadAt(READ_AT_NOW);
     },
@@ -129,7 +124,6 @@ export function useReadingCapture<TValues>(target: CaptureTarget, toDraft: (valu
             ...(stint ? { assignmentId: stint.id } : {}),
             capturedAt: capturedAtFor(readAtOf(readAt), new Date()),
           },
-          photo,
           copy[role].failed,
         );
         // Any capture can dispute a stint's reading, which moves that Job's warnings.

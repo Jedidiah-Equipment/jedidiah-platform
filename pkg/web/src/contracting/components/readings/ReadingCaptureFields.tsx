@@ -3,7 +3,6 @@ import {
   belowLatestSentence,
   captureRefusals,
   isFutureReadAt,
-  READING_PHOTO_POLICY,
   readAtInputValue,
   readAtOf,
   readAtProposal,
@@ -21,7 +20,6 @@ import { Card, CardContent } from '@/components/ui/card.js';
 import { Checkbox } from '@/components/ui/checkbox.js';
 import { Field, FieldContent, FieldDescription, FieldLabel } from '@/components/ui/field.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
-import { PhotoPicker } from '@/contracting/components/PhotoPicker.js';
 import type { ConfirmedDispute, ReadingCapture } from './use-reading-capture.js';
 
 /** One recorded → corrected line: what stands on the left, the field that replaces it on the right. */
@@ -324,31 +322,9 @@ export const ReadingCorrectionFields = withFieldGroup({
   },
 });
 
-export function ReadingCaptureDetails({
-  id,
-  photo,
-  onPhotoChange,
-  error,
-  onError,
-  children,
-}: {
-  id: string;
-  photo: File | null;
-  onPhotoChange: (photo: File | null) => void;
-  error: string;
-  onError: (message: string) => void;
-  children: React.ReactNode;
-}) {
+export function ReadingCaptureDetails({ error, children }: { error: string; children: React.ReactNode }) {
   return (
     <div className="min-w-0 space-y-4 border-t pt-4">
-      <PhotoPicker
-        id={id}
-        label="Meter photo"
-        policy={READING_PHOTO_POLICY}
-        photo={photo}
-        onChange={onPhotoChange}
-        onError={onError}
-      />
       {error ? (
         <p role="alert" className="text-destructive">
           {error}

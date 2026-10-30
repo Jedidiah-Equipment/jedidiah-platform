@@ -29,7 +29,6 @@ export * from './rate-card/measure-type-service.js';
 export * from './rate-card/rate-card-errors.js';
 export * from './rate-card/rate-service.js';
 export * from './readings/reading-errors.js';
-export * from './readings/reading-evidence.js';
 export * from './readings/reading-service.js';
 export * from './readings/telematics-reading.js';
 export * from './reports/hours-heat-map-service.js';

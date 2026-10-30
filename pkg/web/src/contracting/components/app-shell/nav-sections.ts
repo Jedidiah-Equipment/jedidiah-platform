@@ -22,7 +22,7 @@ import { linkOptions } from '@tanstack/react-router';
 import type { NavSection } from '@/components/app-shell/NavSections.js';
 import {
   ActivityUnreadNavIndicator,
-  ReadingExceptionsNavIndicator,
+  DisputesNavIndicator,
   ServicesNavIndicator,
   WorkshopNavIndicator,
 } from './AppNavIndicators.js';
@@ -103,11 +103,11 @@ export const contractingNavSections = [
         indicator: ServicesNavIndicator,
       },
       {
-        title: 'Reading exceptions',
+        title: 'Disputes',
         permission: 'contracting_reading:update',
-        link: linkOptions({ to: '/contracting/readings/exceptions' }),
+        link: linkOptions({ to: '/contracting/disputes' }),
         icon: IconGauge,
-        indicator: ReadingExceptionsNavIndicator,
+        indicator: DisputesNavIndicator,
       },
       {
         title: 'Customers',

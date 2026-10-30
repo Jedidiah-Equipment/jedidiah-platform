@@ -139,7 +139,7 @@ export function ArrivalCaptureDialog({ stint, onClose }: { stint: Assignment | n
               );
             }}
           </form.Subscribe>
-          <ReadingCaptureDetails id={`arrival-photo-${stint?.id ?? 'closed'}`} {...capture.details}>
+          <ReadingCaptureDetails {...capture.details}>
             <form.AppField name="comment">
               {(field) => <field.TextareaField label="Comment (optional)" />}
             </form.AppField>

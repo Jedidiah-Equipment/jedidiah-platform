@@ -98,7 +98,6 @@ const stintOn = async (
         value,
         capturedAt,
         disputePrevious: false,
-        comment: 'Photo unavailable',
       },
     });
     readingIds.push(reading.id);
@@ -170,9 +169,7 @@ test('starts an Hour Gap at the departure before the arrival’s Read At, whatev
   expect(await openGapFlags(late.id)).toBe(1);
 });
 
-test('lists only the Jobs needing a look when asked: an open Gap Flag or a reading the evidence does not confirm', async ({
-  context,
-}) => {
+test('lists only the Jobs needing a look when asked: an open Gap Flag or a Disputed reading', async ({ context }) => {
   const { db, excavator, tipper } = context;
   const job = async () =>
     createJob({
@@ -195,7 +192,7 @@ test('lists only the Jobs needing a look when asked: an open Gap Flag or a readi
   const stint = await leftStint(db, unconfirmed.id, tipper.id, 50, 60);
   await db
     .update(contractingHourReadings)
-    .set({ aiVerification: 'disagrees' })
+    .set({ disputed: true, disputeReason: 'The previous reading is wrong.' })
     .where(eq(contractingHourReadings.id, stint.departureReadingId));
   await db.update(contractingJobs).set({ foremanUserId: null }).where(eq(contractingJobs.id, unconfirmed.id));
 

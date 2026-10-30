@@ -12,7 +12,7 @@ import { createContractingJobsRouter } from '../routes/contracting/jobs/jobs.rou
 import { createContractingJohnDeereRouter } from '../routes/contracting/john-deere/john-deere.router.js';
 import { createContractingNotesRouter } from '../routes/contracting/notes/notes.router.js';
 import { contractingRateCardRouter } from '../routes/contracting/rate-card/rate-card.router.js';
-import { createContractingReadingsRouter } from '../routes/contracting/readings/readings.router.js';
+import { contractingReadingsRouter } from '../routes/contracting/readings/readings.router.js';
 import { contractingReportsRouter } from '../routes/contracting/reports/reports.router.js';
 import { contractingServicesRouter } from '../routes/contracting/services/services.router.js';
 import { contractingSettingsRouter } from '../routes/contracting/settings/settings.router.js';
@@ -55,7 +55,7 @@ type AppRouterRecord = {
   contractingActivity: (typeof contractingActivityRouter)['_def']['record'];
   contractingBreakdowns: ReturnType<typeof createContractingBreakdownsRouter>['_def']['record'];
   contractingDirectory: (typeof contractingDirectoryRouter)['_def']['record'];
-  contractingReadings: ReturnType<typeof createContractingReadingsRouter>['_def']['record'];
+  contractingReadings: (typeof contractingReadingsRouter)['_def']['record'];
   contractingReports: (typeof contractingReportsRouter)['_def']['record'];
   contractingFleet: (typeof contractingFleetRouter)['_def']['record'];
   contractingJobs: ReturnType<typeof createContractingJobsRouter>['_def']['record'];
@@ -97,7 +97,7 @@ export function createAppRouter({ contracting, equipment, transcriptions }: AppR
   return router({
     contractingActivity: contractingActivityRouter,
     contractingBreakdowns: createContractingBreakdownsRouter(contracting.push),
-    contractingReadings: createContractingReadingsRouter(contracting.readMeterPhoto),
+    contractingReadings: contractingReadingsRouter,
     contractingReports: contractingReportsRouter,
     contractingFleet: contractingFleetRouter,
     contractingJobs: createContractingJobsRouter(contracting.push),

@@ -44,6 +44,7 @@ const amendmentRefusalCodes: Record<Exclude<ReadingAmendmentRefusal, 'not_found'
   out_of_order: 'reading.invalid_amendment',
   outruns_clock: 'reading.outruns_clock',
   future_read_at: 'reading.future_read_at',
+  nothing_to_amend: 'reading.invalid_amendment',
 };
 
 /** An amendment the ledger refused, in Reading terms. */

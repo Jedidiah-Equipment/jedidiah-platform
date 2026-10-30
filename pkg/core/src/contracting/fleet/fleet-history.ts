@@ -20,8 +20,8 @@ import {
   breakdownUrgencyLabels,
   fleetHistoryKindLabels,
   formatJobNumber,
-  readingEvidenceLabel,
   readingRoleLabels,
+  readingSourceLabel,
 } from '@pkg/domain/contracting';
 import type { UserAccessSummary } from '@pkg/schema';
 import {
@@ -93,6 +93,7 @@ const searchLine = (...parts: SQL[]) =>
   )})`;
 
 const serviceMechanic = alias(user, 'history_mechanic');
+const readingCapturer = alias(user, 'history_capturer');
 const serviceDate = sql`coalesce(${contractingServiceRecords.endDate}, ${contractingServiceRecords.startDate})`;
 
 /**
@@ -238,12 +239,11 @@ async function loadHistoryRows(db: Db, rows: readonly { kind: FleetHistoryKind; 
               value: contractingHourReadings.value,
               capturedAt: contractingHourReadings.capturedAt,
               telematicsProvider: contractingHourReadings.telematicsProvider,
-              photoBacked: sql<boolean>`${contractingHourReadings.photo} is not null`,
-              aiValue: contractingHourReadings.aiValue,
-              aiVerification: contractingHourReadings.aiVerification,
+              capturedByName: readingCapturer.name,
               jobCode: readingJobCode,
             })
             .from(contractingHourReadings)
+            .leftJoin(readingCapturer, eq(readingCapturer.id, contractingHourReadings.capturedByUserId))
             .$dynamic(),
         ).where(inArray(contractingHourReadings.id, readingIds))
       : [],
@@ -289,7 +289,7 @@ async function loadHistoryRows(db: Db, rows: readonly { kind: FleetHistoryKind; 
         at: reading.capturedAt.toISOString(),
         title: `${readingRoleLabels[reading.role]} · ${formatHours(reading.value)}`,
         detail: jobNumber,
-        evidence: readingEvidenceLabel(reading),
+        source: readingSourceLabel(reading),
         readingRole: reading.role,
         breakdown: null,
         opens: jobNumber ? { to: 'job', jobNumber } : null,
@@ -309,7 +309,7 @@ async function loadHistoryRows(db: Db, rows: readonly { kind: FleetHistoryKind; 
           breakdown.jobCode === null
             ? `Reported by ${reporter}`
             : `${formatJobNumber(breakdown.jobCode)} · reported by ${reporter}`,
-        evidence: null,
+        source: null,
         readingRole: null,
         breakdown: { urgency: breakdown.urgency, status: breakdown.status },
         opens: { to: 'breakdown', id: breakdown.id },
@@ -334,7 +334,7 @@ async function loadHistoryRows(db: Db, rows: readonly { kind: FleetHistoryKind; 
           service.nextServiceDueHoursSet === null
             ? null
             : `Next service due set to ${formatHours(service.nextServiceDueHoursSet)}`,
-        evidence: null,
+        source: null,
         readingRole: null,
         breakdown: null,
         opens: { to: 'service' },

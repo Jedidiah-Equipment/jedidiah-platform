@@ -31,8 +31,8 @@ export const FleetHistoryRow = z.object({
   at: z.union([DateIso, DateOnlyIso]),
   title: z.string(),
   detail: z.string().nullable(),
-  /** The reading's photo and AI evidence, as the stint card labels it, or who reported a Telematics Reading. */
-  evidence: z.string().nullable(),
+  /** Where a reading's hours came from: the telematics provider, or the capturer's first name. */
+  source: z.string().nullable(),
   readingRole: z.enum(readingRoles).nullable(),
   breakdown: z.object({ urgency: z.enum(breakdownUrgencies), status: z.enum(breakdownStatuses) }).nullable(),
   opens: z

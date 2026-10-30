@@ -3,9 +3,9 @@ import {
   hoursToServiceLabel,
   machineBusyWith,
   machineServiceBadge,
-  readingEvidenceCaption,
   readingProviderSuffix,
   readingRoleLabels,
+  readingSourceLabel,
   serviceDueNeedsAttention,
   serviceDueStatusColorClassNames,
 } from '@pkg/domain/contracting';
@@ -85,16 +85,15 @@ function ServiceCard({ machine }: { machine: FieldMachine }) {
 }
 
 function ReadingCard({ reading }: { reading: FieldReading }) {
+  const source = readingSourceLabel(reading);
+  const caption = [source, reading.disputed ? 'Disputed' : null].filter(Boolean).join(' · ');
   return (
     <View className="gap-1 rounded-xl border border-border bg-surface p-4">
       <Text className="text-foreground" weight="semibold">
         {formatHours(reading.value)} · {readingRoleLabels[reading.role]}
       </Text>
       <DateText className="text-sm text-muted-foreground" date={reading.capturedAt} format="medium" />
-      <Text className="text-sm text-muted-foreground">
-        {readingEvidenceCaption(reading)}
-        {reading.disputed ? ' · Disputed' : ''}
-      </Text>
+      {caption ? <Text className="text-sm text-muted-foreground">{caption}</Text> : null}
     </View>
   );
 }

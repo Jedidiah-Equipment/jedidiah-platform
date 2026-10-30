@@ -12,7 +12,7 @@ import type { TelematicsProvider } from '@pkg/schema/contracting';
 import { and, eq, isNull } from 'drizzle-orm';
 import { recordAuditCreate } from '../../audit/audit-writer.js';
 import { getContractingSettings } from '../settings/settings-service.js';
-import { type ReadingRow, readingDescriptor, updateAudited, withHint } from './reading-audit.js';
+import { type ReadingRow, readingDescriptor, updateAudited } from './reading-audit.js';
 import { oldestFirst } from './reading-sql.js';
 
 export type TelematicsReadingResult =
@@ -22,7 +22,7 @@ export type TelematicsReadingResult =
     }
   | {
       outcome: 'stored' | 'moved';
-      reading: ReturnType<typeof withHint>;
+      reading: ReadingRow;
       /** True when this write took the Machine into Service Due Soon; the caller schedules the push after commit. */
       serviceDueSoonCrossed: boolean;
       /** Captured readings the Telematics Reading contradicts, now Disputed for management. */
@@ -143,10 +143,9 @@ async function insertTelematicsReading(
       method: 'telematics',
       telematicsProvider: provider,
       telematicsLinkId: linkId,
-      aiVerification: 'not-applicable',
     })
     .returning();
   if (!row) throw new Error('Telematics reading insert returned no row');
   await recordAuditCreate({ db: tx, actorUserId: null, descriptor: readingDescriptor, input: row });
-  return withHint(row);
+  return row;
 }

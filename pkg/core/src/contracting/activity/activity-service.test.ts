@@ -145,7 +145,7 @@ test('a Job’s machines, start, sign-off and cancellation each read once, scope
     machine: { code: 'CAT320-1' },
     job: { farmName: 'Rooikraal', customerName: 'Rowley' },
   });
-  expect(onSipho.items[0]).toMatchObject({ hours: 110, photoBacked: false });
+  expect(onSipho.items[0]).toMatchObject({ hours: 110 });
 
   expect(types(await list(db, admin, { filter: 'jobs' }))).toEqual([
     'job-completed',

@@ -55,13 +55,20 @@ type PostOptions<T> = {
  * (try again later), or a 503 (a dependency it named) — whose body carries an app code; that throws
  * {@link UploadRefusedError} with the server's sentence. Everything else throws {@link UploadFailedError}.
  */
-export async function postMultipart<T = unknown>(path: string, body: FormData, options: PostOptions<T>): Promise<T> {
+export const postMultipart = <T = unknown>(path: string, body: FormData, options: PostOptions<T>): Promise<T> =>
+  post(path, { body }, options);
+
+/** Posts one JSON body over an authed plain-HTTP route, answering and failing as {@link postMultipart} does. */
+export const postJson = <T = unknown>(path: string, value: unknown, options: PostOptions<T>): Promise<T> =>
+  post(path, { body: JSON.stringify(value), headers: { 'Content-Type': 'application/json' } }, options);
+
+async function post<T>(path: string, init: RequestInit, options: PostOptions<T>): Promise<T> {
   const { timeoutMs, failedMessage, output = z.unknown() as z.ZodType<T> } = options;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   let status: number | null = null;
   try {
-    const response = await authedFetch(path, { method: 'POST', body, signal: controller.signal });
+    const response = await authedFetch(path, { ...init, method: 'POST', signal: controller.signal });
     status = response.status;
     if (response.ok) return output.parse(await response.json().catch(() => undefined));
     if (isRefusalStatus(status)) {

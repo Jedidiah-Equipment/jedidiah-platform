@@ -321,7 +321,6 @@ describe('Machine Assignment lifecycle', () => {
       value: 100,
       capturedAt: '2026-09-01T06:00:00.000Z',
       disputed: false,
-      photoBacked: false,
     });
   });
 
@@ -406,7 +405,6 @@ describe('Machine Assignment lifecycle', () => {
         value: 110,
         capturedAt: '2026-09-01T17:00:00+02:00',
         disputePrevious: false,
-        comment: 'Photo unavailable',
       },
     });
     await captureReading({
@@ -499,7 +497,6 @@ describe('Completion and billable facts', () => {
         value: 210,
         capturedAt: '2026-09-03T17:00:00+02:00',
         disputePrevious: false,
-        comment: 'Photo unavailable',
       },
     });
     const measureType = await createMeasureType({ db: context.db, actorUserId: managerId, input: { name: 'Loads' } });
@@ -622,7 +619,6 @@ describe('Completion and billable facts', () => {
         value: 310,
         capturedAt: '2026-09-04T17:00:00+02:00',
         disputePrevious: false,
-        comment: 'Photo unavailable',
       },
     });
     const secondJob = await createJob({ db: context.db, actor: manager, input: jobInput(context) });
@@ -653,7 +649,6 @@ describe('Completion and billable facts', () => {
         value: 325,
         capturedAt: '2026-09-05T17:00:00+02:00',
         disputePrevious: false,
-        comment: 'Photo unavailable',
       },
     });
     const [gapped] = (await getJob({ db: context.db, id: secondJob.id })).assignments;

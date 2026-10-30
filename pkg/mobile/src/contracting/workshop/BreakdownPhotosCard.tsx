@@ -73,7 +73,7 @@ export function BreakdownPhotosCard({ breakdown }: { breakdown: BreakdownDetail 
                 title="Take photo"
                 icon={IconCamera}
                 disabled={busy || disabled}
-                onPress={() => void upload(takePhoto)}
+                onPress={() => void upload(() => takePhoto({ saveToGallery: true }))}
               />
               <Button
                 title="Choose from gallery"

@@ -2,7 +2,6 @@ import { UUID } from '@pkg/schema';
 import { z } from 'zod';
 import { contractingStorageKey } from '@/contracting/lib/contracting-storage';
 import { newLocalId } from '@/contracting/lib/local-id';
-import type { PickedPhoto } from '@/lib/photo-picker';
 
 export const FIELD_NOTE_DESCRIPTION_MAX = 2000;
 const NEEDS_CONTENT = 'A Field Note needs a description or a photo.';
@@ -26,8 +25,8 @@ export const FieldNote = z
   .strict();
 export type FieldNote = z.infer<typeof FieldNote>;
 
-/** What the store needs of a picked photo: where it is now, and whether the gallery already has it. */
-export type PhotoToKeep = Pick<PickedPhoto, 'uri' | 'inGallery'>;
+/** What the store needs of a picked photo: where it is now. */
+export type PhotoToKeep = { uri: string };
 
 export type FieldNoteFiles = {
   photoLimit: number;
@@ -124,7 +123,7 @@ export function createFieldNoteStore({ storage, key, files, now = () => new Date
       const description = draft.description.trim().slice(0, FIELD_NOTE_DESCRIPTION_MAX);
       if (!description && draft.photos.length === 0) throw new FieldNoteError(NEEDS_CONTENT);
       const id = newLocalId();
-      const { photos, galleryFailed } = await keepPhotos(id, draft.photos.slice(0, files.photoLimit));
+      const photos = await keepPhotos(id, draft.photos.slice(0, files.photoLimit));
       const note: FieldNote = { id, createdAt: now().toISOString(), description, status: 'open', photos };
       try {
         await mutate((notes) => ({ notes: [...notes, note], result: undefined }));
@@ -132,7 +131,7 @@ export function createFieldNoteStore({ storage, key, files, now = () => new Date
         await files.removeNote(id).catch((cleanup) => onError?.(cleanup, 'cleanup_photo'));
         throw error;
       }
-      return { note, galleryFailed };
+      return note;
     },
     setDescription(noteId: string, text: string) {
       const description = text.trim().slice(0, FIELD_NOTE_DESCRIPTION_MAX);
@@ -145,7 +144,7 @@ export function createFieldNoteStore({ storage, key, files, now = () => new Date
       const current = (await list()).find((note) => note.id === noteId);
       if (!current) throw new FieldNoteError(GONE);
       const room = Math.max(0, files.photoLimit - current.photos.length);
-      const { photos, galleryFailed } = await keepPhotos(noteId, picked.slice(0, room));
+      const photos = await keepPhotos(noteId, picked.slice(0, room));
       let dropped: FieldNotePhoto[] = photos;
       try {
         await edit(noteId, (note) => {
@@ -156,7 +155,6 @@ export function createFieldNoteStore({ storage, key, files, now = () => new Date
       } finally {
         await Promise.all(dropped.map((photo) => cleanup(photo.uri)));
       }
-      return { galleryFailed };
     },
     async removePhoto(noteId: string, photoId: string) {
       let removed: FieldNotePhoto | undefined;
@@ -170,14 +168,13 @@ export function createFieldNoteStore({ storage, key, files, now = () => new Date
     },
     close: (noteId: string) => edit(noteId, (note) => ({ ...note, status: 'closed' })),
     reopen: (noteId: string) => edit(noteId, (note) => ({ ...note, status: 'open' })),
-    /** Drops the note and its own copies; the gallery keeps every photo it was given. */
+    /** Drops the note and its own copies of its photos. */
     async remove(noteId: string) {
       await mutate((notes) => ({ notes: notes.filter((note) => note.id !== noteId), result: undefined }));
       await files.removeNote(noteId).catch((error) => onError?.(error, 'cleanup_photo'));
     },
   };
 
-  /** `galleryFailed` when a camera photo among them missed the Jedidiah album; the note keeps its own copy anyway. */
   async function keepPhotos(noteId: string, picked: readonly PhotoToKeep[]) {
     const photos: FieldNotePhoto[] = [];
     try {
@@ -189,7 +186,7 @@ export function createFieldNoteStore({ storage, key, files, now = () => new Date
       await Promise.all(photos.map((photo) => cleanup(photo.uri)));
       throw error;
     }
-    return { photos, galleryFailed: picked.some(({ inGallery }) => !inGallery) };
+    return photos;
   }
   function cleanup(uri: string) {
     return files.removePhoto(uri).catch((error) => onError?.(error, 'cleanup_photo'));

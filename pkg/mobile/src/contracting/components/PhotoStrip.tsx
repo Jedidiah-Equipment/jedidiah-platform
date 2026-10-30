@@ -6,7 +6,7 @@ import { FadingScrollRow } from '@/components/ui/fading-scroll-row';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 
-export const GALLERY_HINT = 'Photo kept in the app; allow photo library access to see it in your gallery.';
+const GALLERY_HINT = 'Photo kept in the app; allow photo library access to see it in your gallery.';
 
 /** A form's photos with Take photo and Choose from gallery; `uri` here is already displayable. */
 export function PhotoStrip({
@@ -24,7 +24,7 @@ export function PhotoStrip({
   photos: readonly { id: string; uri: string }[];
   limit: number;
   busy: boolean;
-  galleryHint: boolean;
+  galleryHint?: boolean;
   onTake: () => void;
   onChoose: () => void;
   onRemove: (photoId: string) => void;

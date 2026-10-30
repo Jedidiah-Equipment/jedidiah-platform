@@ -4,7 +4,7 @@ import { JobCardPdf } from './JobCardPdf.js';
 import { jobCardFixture } from './job-card-fixture.js';
 import { renderJobCardPdf } from './job-card-pdf-renderer.js';
 
-const evidence = /travel|unaccounted|Foreman's|yard work|Thabo|by Sipho|northern gate|●|▲/;
+const evidence = /travel|unaccounted|Foreman's|yard work|Thabo|by Sipho|northern gate| h [~!]/;
 
 describe('Job Card PDF', () => {
   test('the customer copy prints one hours figure per line, amounts and the ex-VAT total', () => {
@@ -34,7 +34,7 @@ describe('Job Card PDF', () => {
     expect(text).not.toMatch(evidence);
   });
 
-  test('the internal copy adds the travel split, gap reasons, evidence markers, comments and sign-off notes', () => {
+  test('the internal copy adds the travel split, gap reasons, reading markers, comments and sign-off notes', () => {
     const text = collectText(JobCardPdf({ document: jobCardFixture('internal') })).join('\n');
 
     for (const expected of [
@@ -43,8 +43,8 @@ describe('Job Card PDF', () => {
       "Foreman's note: meter glass cracked",
       'Driver: Thabo',
       'by Sipho',
-      '4 002.6 h ●',
-      '7 152.4 h ▲',
+      '4 051.2 h ~',
+      '7 152.4 h !',
       'Access through the northern gate.',
     ])
       expect(text).toContain(expected);

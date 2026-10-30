@@ -16,7 +16,7 @@ import { completeJob, createJob } from '../jobs/job-service.js';
 import { markPriced, setStintRate } from '../jobs/pricing-service.js';
 import { createMeasureType } from '../rate-card/measure-type-service.js';
 import { createRate } from '../rate-card/rate-service.js';
-import { amendReadings, captureReading, getReading, listReadingExceptions } from '../readings/reading-service.js';
+import { amendReadings, captureReading, getReading, listDisputes } from '../readings/reading-service.js';
 import { createWorkType } from '../work-types/work-type-service.js';
 
 export const adminId = 'fixture-admin';
@@ -123,7 +123,6 @@ export async function leftStint(db: Db, jobId: string, machineId: string, arriva
           ),
         ),
         disputePrevious: false,
-        ...(role === 'departure' ? { comment: 'Photo unavailable' } : {}),
       },
     });
   const { reading: arrived } = await capture('arrival', arrival);
@@ -191,9 +190,7 @@ export async function amendHours(db: Db, actor: JobActor, id: string, value: num
   return amended;
 }
 
-/** The readings Reading Exceptions lists, row by row: each Dispute's readings in ledger order, then the next row. */
-export async function exceptionReadings(db: Db) {
-  return (await listReadingExceptions({ db })).flatMap((row) =>
-    row.kind === 'dispute' ? row.dispute.readings : [row.reading],
-  );
+/** The readings Disputes lists: each Dispute's readings in ledger order, then the next Dispute's. */
+export async function disputedReadings(db: Db) {
+  return (await listDisputes({ db })).flatMap((dispute) => dispute.readings);
 }

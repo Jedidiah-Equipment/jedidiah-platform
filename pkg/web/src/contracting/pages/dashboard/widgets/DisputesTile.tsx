@@ -5,20 +5,20 @@ import { DashboardTile, dashboardTileLinkClassName } from '@/components/common/d
 import { DASHBOARD_REFETCH_INTERVAL_MS } from '@/contracting/lib/dashboard-refresh.js';
 import { useTRPC } from '@/lib/trpc.js';
 
-export function ReadingExceptionsTile() {
+export function DisputesTile() {
   const trpc = useTRPC();
   const query = useQuery({
-    ...trpc.contractingReadings.listExceptions.queryOptions(),
+    ...trpc.contractingReadings.listDisputes.queryOptions(),
     refetchInterval: DASHBOARD_REFETCH_INTERVAL_MS,
   });
   return (
     <DashboardTile
       value={query.data ? formatNumber(query.data.length) : undefined}
       error={query.error}
-      errorMessage="Unable to load reading exceptions."
-      sublabel="Need review"
+      errorMessage="Unable to load Disputes."
+      sublabel="To resolve"
       link={(body) => (
-        <Link className={dashboardTileLinkClassName} to="/contracting/readings/exceptions">
+        <Link className={dashboardTileLinkClassName} to="/contracting/disputes">
           {body}
         </Link>
       )}

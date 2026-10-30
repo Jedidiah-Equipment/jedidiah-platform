@@ -1,11 +1,11 @@
 /** @vitest-environment jsdom */
 
-import { createUserAccessSummary, formatDate, formatHours } from '@pkg/domain';
+import { formatDate, formatHours } from '@pkg/domain';
 import type { Assignment } from '@pkg/schema/contracting';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { MultipartRefusedError } from '@/contracting/lib/post-multipart.js';
+import { afterEach, expect, it, vi } from 'vitest';
+import { RouteRefusedError } from '@/contracting/lib/post-route.js';
 import { DepartureCaptureDialog } from './DepartureCaptureDialog.js';
 
 const capture = vi.hoisted(() => vi.fn(async (..._args: unknown[]) => undefined));
@@ -31,20 +31,6 @@ vi.mock('@/contracting/components/readings/use-latest-reading.js', () => ({
 vi.mock('@/contracting/hooks/use-query-invalidation.js', () => ({
   useQueryInvalidation: () => ({ invalidateJobs: async () => undefined, invalidateReadings: async () => undefined }),
 }));
-const manager = createUserAccessSummary({
-  userId: 'manager',
-  equipmentRole: null,
-  contractingRole: 'contracting-manager',
-});
-const access = vi.hoisted(() => ({ current: null as unknown }));
-vi.mock('@/hooks/use-access.js', async () => {
-  const { hasPermission } = await import('@pkg/domain');
-  return {
-    useCan: (permission: Parameters<typeof hasPermission>[1]) => ({
-      can: hasPermission(access.current as Parameters<typeof hasPermission>[0], permission),
-    }),
-  };
-});
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 const roots: Root[] = [];
@@ -56,12 +42,6 @@ const stint = {
   categoryColour: 'lime',
   arrival: { value: 120 },
 } as Assignment;
-
-beforeEach(() => {
-  access.current = manager;
-  vi.spyOn(URL, 'createObjectURL').mockImplementation((blob) => `blob:http://localhost/${(blob as File).name}`);
-  vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
-});
 
 afterEach(async () => {
   await act(async () => {
@@ -110,43 +90,21 @@ async function enterReadAt(date: string, time: string) {
   }
 }
 
-function button(label: string) {
-  const result = [...document.querySelectorAll('button')].find((item) => item.getAttribute('aria-label') === label);
-  if (!result) throw new Error(`Button missing: ${label}`);
-  return result;
-}
-
-async function selectPhoto(photo: File) {
-  const input = document.querySelector<HTMLInputElement>('input[type="file"]');
-  if (!input) throw new Error('Meter photo picker missing');
-  await act(async () => {
-    Object.defineProperty(input, 'files', { configurable: true, value: [photo] });
-    input.dispatchEvent(new Event('change', { bubbles: true }));
-  });
-}
-
-it('updates the preview on replacement and restores the evidence error on removal', async () => {
-  const { save } = await mount();
+it('saves a departure without a comment', async () => {
+  const { save, onClose } = await mount();
   await enter('value', '131');
   await act(async () => save.click());
-  expect(document.querySelector('[role="alert"]')).not.toBeNull();
-  await selectPhoto(new File(['meter'], 'first.jpg', { type: 'image/jpeg' }));
-  expect(document.querySelector('[role="alert"]')).toBeNull();
-  await selectPhoto(new File(['replacement'], 'second.png', { type: 'image/png' }));
-  expect(document.querySelector('img')?.getAttribute('src')).toBe('blob:http://localhost/second.png');
-  expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:http://localhost/first.jpg');
-  await act(async () => button('Remove meter photo').click());
-  expect(document.querySelector('img')).toBeNull();
-  expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:http://localhost/second.png');
-  expect(document.querySelector('[role="alert"]')?.textContent).toContain('A photo or a reason is required');
-  expect(save.disabled).toBe(false);
-  expect(capture).not.toHaveBeenCalled();
+  expect(capture).toHaveBeenCalledWith(
+    expect.objectContaining({ role: 'departure', value: 131, comment: null }),
+    'Unable to capture departure reading.',
+  );
+  expect(onClose).toHaveBeenCalled();
 });
 
 it('keeps Save enabled for invalid readings and presents field validation on submit', async () => {
   const { save } = await mount();
   await enter('value', '');
-  await enter('reason', 'Camera unavailable');
+  await enter('comment', 'Camera unavailable');
   expect(save.disabled).toBe(false);
   await act(async () => save.click());
   expect(capture).not.toHaveBeenCalled();
@@ -158,7 +116,7 @@ it('shows a refused capture inside the dialog and stays open', async () => {
   capture.mockRejectedValueOnce(new Error('This Machine Assignment is not on site.'));
   const { save, onClose } = await mount();
   await enter('value', '131');
-  await enter('reason', 'Camera unavailable');
+  await enter('comment', 'Camera unavailable');
   await act(async () => save.click());
   const alert = [...document.querySelectorAll('[role="alert"]')].find((item) =>
     item.textContent?.includes('This Machine Assignment is not on site.'),
@@ -172,9 +130,9 @@ it('shows a refused capture inside the dialog and stays open', async () => {
 it('offers the dispute for a departure below the latest reading and posts the handshake', async () => {
   const { save } = await mount();
   await enter('value', '126');
-  // The warning waits for the reading to lose focus, as it does when the person moves on to the reason.
-  await act(async () => document.querySelector<HTMLTextAreaElement>('[name="reason"]')?.focus());
-  await enter('reason', 'Camera unavailable');
+  // The warning waits for the reading to lose focus, as it does when the person moves on to the comment.
+  await act(async () => document.querySelector<HTMLTextAreaElement>('[name="comment"]')?.focus());
+  await enter('comment', 'Camera unavailable');
   expect(document.body.textContent).toContain(
     `Record ${formatHours(126)} and dispute the ${formatHours(130)} reading.`,
   );
@@ -192,7 +150,6 @@ it('offers the dispute for a departure below the latest reading and posts the ha
       disputePrevious: true,
       expectedPreviousId: latestId,
     }),
-    null,
     'Unable to capture departure reading.',
   );
 });
@@ -201,8 +158,8 @@ it('posts a departure read before the latest reading, leaving its neighbours to 
   const { save } = await mount();
   await enter('value', '126');
   await enterReadAt('2026-09-16', '16:00');
-  await act(async () => document.querySelector<HTMLTextAreaElement>('[name="reason"]')?.focus());
-  await enter('reason', 'Entered a day late');
+  await act(async () => document.querySelector<HTMLTextAreaElement>('[name="comment"]')?.focus());
+  await enter('comment', 'Entered a day late');
   expect(document.querySelector('#confirmedDispute')).toBeNull();
   await act(async () => save.click());
   expect(capture).toHaveBeenCalledWith(
@@ -212,7 +169,6 @@ it('posts a departure read before the latest reading, leaving its neighbours to 
       disputePrevious: false,
       capturedAt: new Date(2026, 8, 16, 16, 0).toISOString(),
     }),
-    null,
     'Unable to capture departure reading.',
   );
 });
@@ -221,8 +177,8 @@ it('offers only Read earlier… below a John Deere latest, and lets the server a
   latestProvider.current = 'john-deere';
   const { save } = await mount();
   await enter('value', '126');
-  await act(async () => document.querySelector<HTMLTextAreaElement>('[name="reason"]')?.focus());
-  await enter('reason', 'Entered a day late');
+  await act(async () => document.querySelector<HTMLTextAreaElement>('[name="comment"]')?.focus());
+  await enter('comment', 'Entered a day late');
   expect(document.body.textContent).toContain(
     `Below John Deere's ${formatHours(130)} at ${formatDate(new Date('2026-09-17T12:00:00.000Z'), 'medium')}.`,
   );
@@ -245,14 +201,14 @@ it('proposes the Read At John Deere puts a refused value at, and posts it on the
     telematicsProvider: 'john-deere',
   };
   capture.mockRejectedValueOnce(
-    new MultipartRefusedError(`John Deere reported ${formatHours(127)}. Check the time or the value.`, {
+    new RouteRefusedError(`John Deere reported ${formatHours(127)}. Check the time or the value.`, {
       appCode: 'reading.below_latest',
       suggestedReadAt: { readAt: readAt.toISOString(), floor, ceiling },
     }),
   );
   const { save, onClose } = await mount();
   await enter('value', '131');
-  await enter('reason', 'Entered a day late');
+  await enter('comment', 'Entered a day late');
   await act(async () => save.click());
   expect(onClose).not.toHaveBeenCalled();
   expect(document.querySelector<HTMLInputElement>('[name="readAt-time"]')?.value).toBe('09:30');
@@ -262,7 +218,6 @@ it('proposes the Read At John Deere puts a refused value at, and posts it on the
   await act(async () => save.click());
   expect(capture).toHaveBeenLastCalledWith(
     expect.objectContaining({ value: 131, capturedAt: readAt.toISOString() }),
-    null,
     'Unable to capture departure reading.',
   );
 });

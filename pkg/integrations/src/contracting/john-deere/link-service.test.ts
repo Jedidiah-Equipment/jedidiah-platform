@@ -165,7 +165,6 @@ describe('JohnDeereLinkService', () => {
       capturedAt: new Date('2026-10-25T10:00:00.000Z'),
       capturedByUserId: adminId,
       method: 'manual',
-      aiVerification: 'not-applicable',
     });
 
     await service.linkMachine({ actorUserId: adminId, machineId: t01.id, equipmentId: 'eq-1' });

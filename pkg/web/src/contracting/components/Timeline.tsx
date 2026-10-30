@@ -18,7 +18,6 @@ const dotClassNames: Record<DotTone, string> = {
   done: 'border-emerald-500 bg-emerald-500',
   current: 'border-primary bg-primary',
   empty: 'border-muted-foreground bg-card',
-  warning: `border-transparent ${assignmentAttentionLevelColorClassNames.warning.dot}`,
   critical: `border-transparent ${assignmentAttentionLevelColorClassNames.critical.dot}`,
   'code-red': `border-transparent ${breakdownUrgencyColorClassNames['code-red'].dot}`,
   'code-green': `border-transparent ${breakdownUrgencyColorClassNames['code-green'].dot}`,

@@ -7,7 +7,6 @@ import {
   assignmentNeedsALookLevel,
   countedAssignmentAttentionLevel,
   jobAssignmentAttentionCounts,
-  loudestNeedingALook,
 } from './assignment-attention.js';
 
 describe('assignment attention', () => {
@@ -18,39 +17,22 @@ describe('assignment attention', () => {
     }
   });
 
-  it('ranks warning below critical, and a notice never needs a look', () => {
-    expect(loudestNeedingALook([])).toBeNull();
-    expect(loudestNeedingALook(['notice'])).toBeNull();
-    expect(loudestNeedingALook(['notice', 'warning'])).toBe('warning');
-    expect(loudestNeedingALook(['notice', 'critical', 'warning'])).toBe('critical');
-  });
-
-  it('lists the Gap Flag before each reading kind, and needs a look only for warning and critical', () => {
-    const assignment = {
-      gapFlag: true,
-      arrival: { attention: ['missing-photo'] as const },
-      departure: { attention: ['ai-disagrees'] as const },
-    };
+  it('lists the Gap Flag before each Disputed reading, all critical', () => {
+    const assignment = { gapFlag: true, arrival: { attention: ['disputed'] as const }, departure: null };
     expect(assignmentAttentionItems(assignment)).toEqual([
       { kind: 'gap-flag', level: 'critical' },
-      { kind: 'missing-photo', level: 'notice' },
-      { kind: 'ai-disagrees', level: 'warning' },
+      { kind: 'disputed', level: 'critical' },
     ]);
     expect(assignmentNeedsALookLevel(assignment)).toBe('critical');
     expect(
-      assignmentNeedsALookLevel({
-        gapFlag: false,
-        arrival: { attention: ['missing-photo', 'ai-pending'] },
-        departure: null,
-      }),
+      assignmentNeedsALookLevel({ gapFlag: false, arrival: { attention: [] }, departure: { attention: [] } }),
     ).toBeNull();
   });
 
-  it('counts open Gap Flags as critical and shows the loudest counted level', () => {
-    const counts = jobAssignmentAttentionCounts(2, { critical: 0, warning: 1 });
-    expect(counts).toEqual({ critical: 2, warning: 1 });
+  it('counts open Gap Flags beside Disputed readings', () => {
+    const counts = jobAssignmentAttentionCounts(2, { critical: 1 });
+    expect(counts).toEqual({ critical: 3 });
     expect(countedAssignmentAttentionLevel(counts)).toBe('critical');
-    expect(countedAssignmentAttentionLevel({ critical: 0, warning: 1 })).toBe('warning');
-    expect(countedAssignmentAttentionLevel({ critical: 0, warning: 0 })).toBeNull();
+    expect(countedAssignmentAttentionLevel({ critical: 0 })).toBeNull();
   });
 });

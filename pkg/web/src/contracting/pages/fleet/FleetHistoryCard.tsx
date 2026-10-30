@@ -22,7 +22,6 @@ import { type DataTableColumnDef, useDataTable } from '@/components/data-table/f
 import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
 import { createDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
-import { Badge } from '@/components/ui/badge.js';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { ACTIVITY_EVENT_ICONS } from '@/contracting/components/activity/ActivityEntry.js';
 import { BreakdownStatusBadge, BreakdownUrgencyIcon } from '@/contracting/components/BreakdownSubjectLabel.js';
@@ -68,7 +67,6 @@ function HistoryWhatHappened({ row }: { row: FleetHistoryRow }) {
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <span className="font-medium">{row.title}</span>
           {row.breakdown ? <BreakdownStatusBadge status={row.breakdown.status} /> : null}
-          {row.evidence ? <Badge variant="outline">{row.evidence}</Badge> : null}
         </div>
         {row.detail ? <div className="mt-1 text-xs text-muted-foreground">{row.detail}</div> : null}
       </div>
@@ -146,6 +144,13 @@ export function FleetHistoryCard({
         enableColumnFilter: false,
         enableSorting: false,
         cell: ({ row }) => <HistoryWhatHappened row={row.original} />,
+      },
+      {
+        id: 'source',
+        header: 'Source',
+        enableColumnFilter: false,
+        enableSorting: false,
+        cell: ({ row }) => row.original.source ?? <span className="text-muted-foreground">—</span>,
       },
     ],
     [kinds],

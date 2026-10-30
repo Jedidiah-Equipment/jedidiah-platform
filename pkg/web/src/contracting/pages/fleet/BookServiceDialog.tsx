@@ -1,6 +1,7 @@
 import { getPlantDateNow } from '@pkg/domain';
 import { type Machine, openServiceFields } from '@pkg/schema/contracting';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
 import { useMemo } from 'react';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import type { SearchableComboboxOption } from '@/components/common/SearchableCombobox.js';
@@ -14,9 +15,10 @@ import { useTRPC } from '@/lib/trpc.js';
 import { BookServiceValues } from './types.js';
 
 /**
- * Books one Machine in; mounted while it is being booked, so closing unmounts it. The Machine page's Services card and
- * the Services page's pinned rows open it on their Machine; the Services page's own button opens it with none, so the
- * Machine is picked from the active fleet not already Booked In, with its hours shown once picked.
+ * Books one Machine in, then opens the new Service Record's page; mounted while it is being booked, so closing unmounts
+ * it. The Machine page's Services card and the Services page's pinned rows open it on their Machine; the Services
+ * page's own button opens it with none, so the Machine is picked from the active fleet not already Booked In, with its
+ * hours shown once picked.
  */
 export function BookServiceDialog({
   machineId,
@@ -28,6 +30,7 @@ export function BookServiceDialog({
   onClose: () => void;
 }) {
   const trpc = useTRPC();
+  const navigate = useNavigate();
   const write = useContractingWrite(useQueryInvalidation().invalidateServices);
   const book = useMutation(trpc.contractingServices.open.mutationOptions(write.dialog));
   const picksMachine = machineId === null;
@@ -53,7 +56,10 @@ export function BookServiceDialog({
       defaultValues={defaultValues}
       validator={BookServiceValues}
       onCreate={(values) => book.mutateAsync({ machineId: values.machineId, ...openServiceFields(values) })}
-      onCreated={onClose}
+      onCreated={(record) => {
+        onClose();
+        void navigate({ to: '/contracting/services/$id', params: { id: record.id } });
+      }}
     >
       {(form) => (
         <>

@@ -100,7 +100,7 @@ async function mount(due = machine) {
 }
 
 test('pins the Machines Due for Service above every Service Record, painted, booking that Machine in from its row', async () => {
-  const { rows, opened } = await mount();
+  const { rows, opened, router } = await mount();
 
   const [pinned, booked] = rows();
   expect(pinned?.textContent).toContain('KOL220-2');
@@ -121,6 +121,12 @@ test('pins the Machines Due for Service above every Service Record, painted, boo
   await act(async () => {
     await vi.waitFor(() => expect(opened).toMatchObject([{ machineId: machine.id }]));
   });
+  await act(async () => {
+    await vi.waitFor(() =>
+      expect(router.state.location).toMatchObject({ pathname: `/contracting/services/${record.id}` }),
+    );
+  });
+  expect(document.querySelector('[role="dialog"]')).toBeNull();
 });
 
 test('shows the John Deere mark on a Machine whose latest reading its telematics reported', async () => {
@@ -155,15 +161,26 @@ test('shows only Booked In Service Records until the Status filter asks for more
   expect(rows()[0]?.textContent).toContain('KOL220-2');
 });
 
-test('opens a Service Record row on its Machine', async () => {
+test('opens a Service Record row on its page', async () => {
   const { rows, router } = await mount();
 
+  expect(rows()[1]?.getAttribute('aria-label')).toBe('Open the service on Machine JD110-1');
   await act(async () => rows()[1]?.click());
   await act(async () => {
     await vi.waitFor(() =>
-      expect(router.state.location).toMatchObject({
-        pathname: `/contracting/fleet/${record.machineId}/edit`,
-      }),
+      expect(router.state.location).toMatchObject({ pathname: `/contracting/services/${record.id}` }),
+    );
+  });
+});
+
+test('opens a pinned Due for Service row on its Machine', async () => {
+  const { rows, router } = await mount();
+
+  expect(rows()[0]?.getAttribute('aria-label')).toBe('Open the Machine KOL220-2');
+  await act(async () => rows()[0]?.click());
+  await act(async () => {
+    await vi.waitFor(() =>
+      expect(router.state.location).toMatchObject({ pathname: `/contracting/fleet/${machine.id}/edit` }),
     );
   });
 });

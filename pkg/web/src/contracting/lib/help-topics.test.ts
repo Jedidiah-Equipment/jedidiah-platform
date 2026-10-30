@@ -23,5 +23,9 @@ describe('helpTopicForPath', () => {
     expect(helpTopicForPath('/contracting/fleet/categories/42/edit')).toBe('contractingCategories');
     expect(helpTopicForPath('/contracting/fleet/implements')).toBe('contractingImplements');
     expect(helpTopicForPath('/contracting/workshop/9bd0c2cb-d97f-4b34-beba-c03e5541c96d')).toBe('contractingWorkshop');
+    expect(helpTopicForPath('/contracting/services')).toBe('contractingServices');
+    expect(helpTopicForPath('/contracting/services/9bd0c2cb-d97f-4b34-beba-c03e5541c96d')).toBe(
+      'contractingServiceRecord',
+    );
   });
 });

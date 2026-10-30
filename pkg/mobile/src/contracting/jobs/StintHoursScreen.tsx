@@ -6,6 +6,7 @@ import {
   johnDeereDifferenceWarning,
   johnDeereLine,
   judgeStintHours,
+  judgeStintHoursEdit,
   needsALookColorClassNames,
   parseCaptureValue,
 } from '@pkg/domain/contracting';
@@ -156,7 +157,8 @@ function EditHours({ job, stint, toolbar, onSaved }: FormProps) {
   const needsReason = hoursEditNeedsReason(job.status);
   const arrivalHours = parseCaptureValue(arrival);
   const departureHours = stint.departure ? parseCaptureValue(departure) : null;
-  const verdict = arrivalHours === null ? null : judgeStintHours({ arrival: arrivalHours, departure: departureHours });
+  const hoursVerdict =
+    arrivalHours === null ? null : judgeStintHours({ arrival: arrivalHours, departure: departureHours });
   const values = StintHoursEditValues.safeParse({
     arrivalHours,
     departureHours,
@@ -166,9 +168,7 @@ function EditHours({ job, stint, toolbar, onSaved }: FormProps) {
   });
   const canSave =
     values.success &&
-    verdict?.ok === true &&
-    (!stint.departure || departureHours !== null) &&
-    (!needsReason || reason.trim() !== '') &&
+    judgeStintHoursEdit({ status: job.status, left: stint.departure !== null }, values.data).ok &&
     !busy;
   const save = () => {
     if (!canSave || !values.success) return;
@@ -207,7 +207,7 @@ function EditHours({ job, stint, toolbar, onSaved }: FormProps) {
             editable={!busy}
             machineId={stint.machineId}
             threshold={job.johnDeereDifferenceThresholdHours}
-            refusal={verdict?.ok === false ? verdict.refusal.message : null}
+            refusal={hoursVerdict?.ok === false ? hoursVerdict.refusal.message : null}
           />
           <CommentInput
             label="Departure comment (optional)"

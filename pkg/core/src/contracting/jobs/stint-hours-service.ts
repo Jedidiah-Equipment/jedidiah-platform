@@ -2,11 +2,11 @@ import { type DatabaseTransaction, type Db, user } from '@pkg/db';
 import { contractingImplements, contractingMachineAssignments } from '@pkg/db/contracting';
 import {
   assignmentState,
-  HOURS_EDIT_REASON_REQUIRED,
-  hoursEditNeedsReason,
   type JobActor,
   jobTransitions,
   judgeStintHours,
+  judgeStintHoursEdit,
+  type StintHoursVerdict,
   snapshotTravelHours,
 } from '@pkg/domain/contracting';
 import type {
@@ -90,8 +90,7 @@ async function assertArrivalResources(
   }
 }
 
-function assertDepartureAfterArrival(arrival: number, departure: number | null) {
-  const verdict = judgeStintHours({ arrival, departure });
+function assertStintHours(verdict: StintHoursVerdict) {
   if (!verdict.ok) throw new JobError(verdict.refusal.code, verdict.refusal.message);
 }
 
@@ -143,7 +142,7 @@ export async function captureStintHours({
           jobTransitions.activate(before, { at: now, byUserId: actor.userId }),
         );
     } else {
-      assertDepartureAfterArrival(stint.arrivalHours ?? 0, input.hours);
+      assertStintHours(judgeStintHours({ arrival: stint.arrivalHours ?? 0, departure: input.hours }));
       const telematics = await latestTelematicsReading(tx, machine.id);
       await writeAssignment(tx, actor.userId, machineCode, stint.id, () => ({
         departureHours: input.hours,
@@ -173,14 +172,8 @@ export async function editStintHours({
   return jobTransaction(db, async (tx) => {
     const { job, stint, machine, machineCode } = await lockAssignmentWithMachine(tx, input.assignmentId);
     assertStintAction('editHours', job, stint, actor);
+    assertStintHours(judgeStintHoursEdit({ status: job.status, left: stint.departureHours !== null }, input));
     const reason = input.reason?.trim() || null;
-    if (hoursEditNeedsReason(job.status) && !reason)
-      throw new JobError('contracting_job.reason_required', HOURS_EDIT_REASON_REQUIRED);
-    if (stint.departureHours !== null && input.departureHours === null)
-      throw new JobError('contracting_job.departure_not_editable', 'A captured departure cannot be cleared.');
-    if (stint.departureHours === null && input.departureHours !== null)
-      throw new JobError('contracting_job.departure_not_editable', 'Capture the departure to record it.');
-    assertDepartureAfterArrival(input.arrivalHours, input.departureHours);
     const arrivalMoved = input.arrivalHours !== stint.arrivalHours;
     const departureMoved = input.departureHours !== stint.departureHours;
     const arrivalComment = input.arrivalComment === undefined ? stint.arrivalComment : input.arrivalComment;

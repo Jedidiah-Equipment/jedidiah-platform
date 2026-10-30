@@ -14,6 +14,7 @@ import {
 } from '@pkg/db/contracting';
 import { and, asc, eq, getTableColumns, inArray } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
+import { jobHoursColumns } from './job-sql.js';
 
 export type DbOrTx = Db | DatabaseTransaction;
 
@@ -69,8 +70,8 @@ export async function loadStints(db: DbOrTx, jobIds: readonly string[]) {
       implementCode: contractingImplements.code,
       driverName: driver.name,
       rateMeasureTypeName: contractingMeasureTypes.name,
-      arrivalByName: arrivalCapturer.name,
-      departureByName: departureCapturer.name,
+      arrival: { ...jobHoursColumns.arrival, byName: arrivalCapturer.name },
+      departure: { ...jobHoursColumns.departure, byName: departureCapturer.name },
       travelSetByName: travelSetter.name,
       hoursAmendedByName: hoursAmender.name,
     })

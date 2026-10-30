@@ -38,10 +38,14 @@ export function deriveStintHours(stint: StintHourColumns): StintHours {
   };
 }
 
+/** When each of a Job's stints had its arrival and departure captured, as the server saved them. */
+export type StintCaptureMoments = readonly { arrival: { at: string } | null; departure: { at: string } | null }[];
+
 /** Start and End dates to confirm at Completion: the days the first arrival and the last departure were captured. */
-export function suggestJobDates(
-  stints: readonly { arrival: { at: string } | null; departure: { at: string } | null }[],
-): { startDate: DateOnlyIso | null; endDate: DateOnlyIso | null } {
+export function suggestJobDates(stints: StintCaptureMoments): {
+  startDate: DateOnlyIso | null;
+  endDate: DateOnlyIso | null;
+} {
   const arrivals = stints.flatMap((stint) => (stint.arrival ? [Date.parse(stint.arrival.at)] : []));
   const departures = stints.flatMap((stint) => (stint.departure ? [Date.parse(stint.departure.at)] : []));
   return {

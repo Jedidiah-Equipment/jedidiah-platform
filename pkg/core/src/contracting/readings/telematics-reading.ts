@@ -26,12 +26,6 @@ export async function latestTelematicsReading(db: Db | DatabaseTransaction, mach
   return latest ?? null;
 }
 
-/** John Deere's latest report for the Machine, as a capture screen shows it beside the hours; null when unlinked. */
-export async function latestTelematics({ db, machineId }: { db: Db; machineId: string }) {
-  const latest = await latestTelematicsReading(db, machineId);
-  return latest ? { hours: latest.hours, at: latest.at.toISOString() } : null;
-}
-
 export type TelematicsReadingResult =
   | {
       outcome: 'unchanged';

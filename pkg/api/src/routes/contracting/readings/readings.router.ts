@@ -2,7 +2,7 @@ import {
   amendReadings,
   estimateReadAtFor,
   latestReading,
-  latestTelematics,
+  latestTelematicsReading,
   listFieldMachines,
   listFieldReadingsPage,
 } from '@pkg/core/contracting';
@@ -34,7 +34,7 @@ export const contractingReadingsRouter = router({
   latestTelematics: authorizedProcedure(['contracting_machine:read', 'contracting_reading:capture'])
     .input(ReadingMachineInput)
     .output(LatestTelematics.nullable())
-    .query(({ ctx, input }) => latestTelematics({ db: ctx.db, ...input })),
+    .query(({ ctx, input }) => latestTelematicsReading(ctx.db, input.machineId)),
   fieldHistoryPage: authorizedProcedure(['contracting_machine:read', 'contracting_reading:capture'])
     .input(FieldReadingPageInput)
     .output(FieldReadingPage)

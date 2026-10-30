@@ -81,7 +81,7 @@ export default function MachineCaptureScreen() {
           const code = error.data.appCode;
           recordReadingCaptured({ ...captured, refused: code });
           // Nothing is saved until the person checks the date the ledger puts the value at and saves again.
-          dispatch({ type: 'refused', code, proposal: readingRefusalOf(error.data).suggestedReadAt });
+          dispatch({ type: 'refused', proposal: readingRefusalOf(error.data).suggestedReadAt });
           if (ledgerMoved(code)) {
             void queryClient.invalidateQueries({
               queryKey: trpc.contractingReadings.latest.queryKey({ machineId }),

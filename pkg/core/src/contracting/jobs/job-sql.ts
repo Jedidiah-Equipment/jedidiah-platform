@@ -1,6 +1,6 @@
 import { contractingJobs, contractingMachineAssignments } from '@pkg/db/contracting';
 import { JOB_NUMBER_DIGITS, JOB_NUMBER_PREFIX } from '@pkg/domain/contracting';
-import type { AssignmentState } from '@pkg/schema/contracting';
+import type { AssignmentState, JobHoursRole } from '@pkg/schema/contracting';
 import { type SQL, type SQLWrapper, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 
@@ -9,6 +9,28 @@ import { alias } from 'drizzle-orm/pg-core';
  * computes in TypeScript (`assignmentState`, `stintAttentionKinds`, `looksFinished`), so a rule changes here and
  * there together.
  */
+
+const stints = contractingMachineAssignments;
+
+/** Each of a stint's Job Hours as the Machine Assignment holds it: the one table every reader of both sides walks. */
+export const jobHoursColumns = {
+  arrival: {
+    hours: stints.arrivalHours,
+    at: stints.arrivalAt,
+    byUserId: stints.arrivalByUserId,
+    comment: stints.arrivalComment,
+    telematicsHours: stints.arrivalTelematicsHours,
+    telematicsAt: stints.arrivalTelematicsAt,
+  },
+  departure: {
+    hours: stints.departureHours,
+    at: stints.departureAt,
+    byUserId: stints.departureByUserId,
+    comment: stints.departureComment,
+    telematicsHours: stints.departureTelematicsHours,
+    telematicsAt: stints.departureTelematicsAt,
+  },
+} as const satisfies Record<JobHoursRole, Record<string, SQLWrapper>>;
 
 /** A Machine Assignment's Job Hours columns, on the table or on an alias of it. */
 type StintColumns = { arrivalHours: SQLWrapper; departureHours: SQLWrapper };

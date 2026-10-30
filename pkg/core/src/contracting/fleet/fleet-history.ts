@@ -39,7 +39,7 @@ import {
 import { and, eq, inArray, isNotNull, type SQL, type SQLWrapper, sql } from 'drizzle-orm';
 import { alias, unionAll } from 'drizzle-orm/pg-core';
 import { breakdownReporter } from '../breakdowns/breakdown-load.js';
-import { jobNumberSql } from '../jobs/job-sql.js';
+import { jobHoursColumns, jobNumberSql } from '../jobs/job-sql.js';
 
 const kindPermissions = {
   reading: 'contracting_machine:read',
@@ -85,11 +85,6 @@ const readingCapturer = alias(user, 'history_capturer');
 const stintJob = alias(contractingJobs, 'history_stint_job');
 const stints = contractingMachineAssignments;
 
-/** Each stint's arrival or departure, as the columns of the role it is listed under. */
-const stintSide = {
-  arrival: { at: stints.arrivalAt, hours: stints.arrivalHours, by: stints.arrivalByUserId },
-  departure: { at: stints.departureAt, hours: stints.departureHours, by: stints.departureByUserId },
-} as const;
 const serviceDate = sql`coalesce(${contractingServiceRecords.endDate}, ${contractingServiceRecords.startDate})`;
 
 /**
@@ -114,7 +109,7 @@ export async function listFleetHistory({
   const days = { from: input.from, to: input.to };
 
   const stintLeaf = (role: JobHoursRole) => {
-    const side = stintSide[role];
+    const side = jobHoursColumns[role];
     return db
       .select({
         kind: sql<FleetHistoryKind>`'reading'::text`.as('kind'),
@@ -402,26 +397,20 @@ const departureCapturer = alias(user, 'history_departure_capturer');
 
 /** The listed stints' Job Hours, each side with its moment and who saved it, and the Job it was on. */
 async function loadStintSides(db: Db, ids: string[]) {
-  const rows = await db
+  return db
     .select({
       id: stints.id,
       jobCode: stintJob.code,
-      arrivalHours: stints.arrivalHours,
-      arrivalAt: stints.arrivalAt,
-      arrivalByName: arrivalCapturer.name,
-      departureHours: stints.departureHours,
-      departureAt: stints.departureAt,
-      departureByName: departureCapturer.name,
+      arrival: { hours: jobHoursColumns.arrival.hours, at: jobHoursColumns.arrival.at, byName: arrivalCapturer.name },
+      departure: {
+        hours: jobHoursColumns.departure.hours,
+        at: jobHoursColumns.departure.at,
+        byName: departureCapturer.name,
+      },
     })
     .from(stints)
     .innerJoin(stintJob, eq(stintJob.id, stints.jobId))
     .leftJoin(arrivalCapturer, eq(arrivalCapturer.id, stints.arrivalByUserId))
     .leftJoin(departureCapturer, eq(departureCapturer.id, stints.departureByUserId))
     .where(inArray(stints.id, ids));
-  return rows.map((row) => ({
-    id: row.id,
-    jobCode: row.jobCode,
-    arrival: { hours: row.arrivalHours, at: row.arrivalAt, byName: row.arrivalByName },
-    departure: { hours: row.departureHours, at: row.departureAt, byName: row.departureByName },
-  }));
 }

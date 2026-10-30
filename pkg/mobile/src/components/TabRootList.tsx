@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect, useRef } from 'react';
 import { FlatList, View } from 'react-native';
 import { ListHeader, ListRow } from '@/components/ListControls';
-import { MAIN_PAGE_CONTENT_STYLE } from '@/components/page-frame';
+import { MAIN_PAGE_CONTENT_STYLE, SECONDARY_PAGE_CONTENT_STYLE } from '@/components/page-frame';
 import { RefreshControl } from '@/components/ui/refresh-control';
 import { Text } from '@/components/ui/text';
 
@@ -49,6 +49,7 @@ export function TabRootList<T>({
   pagination,
   renderItem,
   sections,
+  underSecondaryToolbar = false,
 }: {
   emptyContent: ReactNode;
   header?: ReactNode;
@@ -58,6 +59,8 @@ export function TabRootList<T>({
   pagination?: TabRootListPagination;
   renderItem: (item: T) => ReactNode;
   sections: readonly TabRootListSection<T>[];
+  /** A tab's list pushed as a secondary page, as a Machine's Service history is, sits under that toolbar's border. */
+  underSecondaryToolbar?: boolean;
 }) {
   const loadMoreRequestedRef = useRef(false);
   const loadingMore = pagination?.loadingMore ?? false;
@@ -96,7 +99,7 @@ export function TabRootList<T>({
   return (
     <FlatList
       className="flex-1"
-      contentContainerStyle={MAIN_PAGE_CONTENT_STYLE}
+      contentContainerStyle={underSecondaryToolbar ? SECONDARY_PAGE_CONTENT_STYLE : MAIN_PAGE_CONTENT_STYLE}
       data={rows}
       keyExtractor={(row) => row.key}
       keyboardShouldPersistTaps="handled"

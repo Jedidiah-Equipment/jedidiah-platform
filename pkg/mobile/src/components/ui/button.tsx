@@ -10,6 +10,7 @@ export function Button({
   icon,
   primary = false,
   destructive = false,
+  compact = false,
 }: {
   title: string;
   icon?: TablerIcon;
@@ -18,6 +19,8 @@ export function Button({
   primary?: boolean;
   /** Danger-coloured text on the surface style, for an action that removes something. */
   destructive?: boolean;
+  /** Tighter padding, for a button that rides in a list row. */
+  compact?: boolean;
 }) {
   const foreground = primary ? 'text-primary-foreground' : destructive ? 'text-danger' : 'text-foreground';
   return (
@@ -25,7 +28,7 @@ export function Button({
       accessibilityRole="button"
       accessibilityState={{ disabled }}
       disabled={disabled}
-      className={`flex-row items-center justify-center gap-2 rounded-xl border border-border px-4 py-3 ${primary ? 'bg-primary' : 'bg-surface'} ${disabled ? 'opacity-50' : ''}`}
+      className={`flex-row items-center justify-center gap-2 rounded-xl border border-border ${compact ? 'px-3 py-2' : 'px-4 py-3'} ${primary ? 'bg-primary' : 'bg-surface'} ${disabled ? 'opacity-50' : ''}`}
       onPress={onPress}
     >
       {icon ? <Icon className={foreground} icon={icon} size={16} /> : null}

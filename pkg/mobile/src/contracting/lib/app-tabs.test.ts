@@ -8,7 +8,7 @@ const tabsFor = (contractingRole: Parameters<typeof createUserAccessSummary>[0][
 describe('Contracting app tabs', () => {
   test('leads with Activity for Job or Breakdown readers, and gives Field Notes to everyone', () => {
     expect(tabsFor('foreman')).toEqual(['activity', 'jobs', 'machines', 'workshop', 'field-notes']);
-    expect(tabsFor('workshop-manager')).toEqual(['activity', 'machines', 'workshop', 'field-notes']);
+    expect(tabsFor('workshop-manager')).toEqual(['activity', 'machines', 'workshop', 'services', 'field-notes']);
     expect(tabsFor('contracting-invoicing')).toEqual(['field-notes']);
     expect(tabsFor('driver')).toEqual(['field-notes']);
   });
@@ -24,6 +24,9 @@ describe('Contracting app tabs', () => {
     expect(activeContractingTab(['(protected)', 'contracting', '(tabs)', 'activity'])).toBe('activity');
     expect(activeContractingTab(['(protected)', 'contracting', '(tabs)', 'workshop', '[breakdownId]'])).toBe(
       'workshop',
+    );
+    expect(activeContractingTab(['(protected)', 'contracting', '(tabs)', 'services', 'machine', '[machineId]'])).toBe(
+      'services',
     );
   });
 

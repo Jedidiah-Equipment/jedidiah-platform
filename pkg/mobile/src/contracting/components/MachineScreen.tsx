@@ -13,7 +13,7 @@ import type { FieldMachine, FieldReading } from '@pkg/schema/contracting';
 
 type BusyWith = { job: NonNullable<FieldMachine['busyOnJob']> | null; jobNumber: string };
 
-import { IconCalendarPlus, IconGauge } from '@tabler/icons-react-native';
+import { IconCalendarPlus, IconChevronRight, IconGauge } from '@tabler/icons-react-native';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { FlatList, Pressable, ScrollView, View } from 'react-native';
@@ -23,6 +23,7 @@ import { SECONDARY_PAGE_CONTENT_STYLE } from '@/components/page-frame';
 import { SubTabControl, type SubTabOption } from '@/components/SubTabControl';
 import { SecondaryToolbar } from '@/components/TopToolbar';
 import { Button } from '@/components/ui/button';
+import { Icon } from '@/components/ui/icon';
 import { RefreshControl } from '@/components/ui/refresh-control';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Text } from '@/components/ui/text';
@@ -53,8 +54,12 @@ function SectionTitle({ children }: { children: string }) {
   );
 }
 
-/** Where the Machine stands against its dash sticker: the due status, the due point, what is left, and the interval. */
+/**
+ * Where the Machine stands against its dash sticker: the due status, the due point, what is left, and the interval,
+ * then its Service history for whoever reads Service Records.
+ */
 function ServiceCard({ machine }: { machine: FieldMachine }) {
+  const canReadServices = useSessionPermission('contracting_service:read');
   const colours = serviceDueStatusColorClassNames[machine.serviceDueStatus];
   const badge = machineServiceBadge(machine);
   const remaining = machine.hoursToService;
@@ -81,6 +86,21 @@ function ServiceCard({ machine }: { machine: FieldMachine }) {
           {machine.serviceIntervalHours === null ? 'Not set' : formatHours(machine.serviceIntervalHours)}
         </Text>
       </DetailRow>
+      {canReadServices ? (
+        <Pressable
+          accessibilityHint="Opens the Machine's services"
+          accessibilityRole="button"
+          className="flex-row items-center justify-between gap-3 border-t border-border pt-3 active:opacity-70"
+          onPress={() =>
+            router.push({ pathname: '/contracting/services/machine/[machineId]', params: { machineId: machine.id } })
+          }
+        >
+          <Text className="text-foreground" weight="semibold">
+            Service history
+          </Text>
+          <Icon className="text-muted-foreground" icon={IconChevronRight} size={16} />
+        </Pressable>
+      ) : null}
     </View>
   );
 }

@@ -14,10 +14,10 @@ function asElement(value: unknown): TestElement {
   return value as TestElement;
 }
 
-/** The card is a bordered frame holding an optional leading slot and the tappable body, which holds the row. */
+/** The card is a bordered frame holding optional leading and action slots around the tappable body, which holds the row. */
 function partsOf(card: TestElement) {
-  const [leading, body] = card.props.children as [TestElement | null, TestElement];
-  return { leading, body, children: body.props.children as TestElement[] };
+  const [leading, body, action] = card.props.children as [TestElement | null, TestElement, TestElement | null];
+  return { leading, body, action, children: body.props.children as TestElement[] };
 }
 
 describe('CatalogListCard', () => {
@@ -79,11 +79,13 @@ describe('CatalogListCard', () => {
     expect(partsOf(card).children[2]).toBeNull();
   });
 
-  test('puts a leading element beside the tappable body and takes its border colour', () => {
+  test('puts leading and action elements beside the tappable body and takes its border colour', () => {
     const leading = <ViewMarker kind="flag" />;
+    const action = <ViewMarker kind="book" />;
     const card = asElement(
       CatalogListCard({
         accessibilityHint: 'Opens details',
+        action,
         accessibilityLabel: 'Catalog item',
         avatarName: 'Item name',
         borderClassName: 'border-red-500/60',
@@ -96,9 +98,10 @@ describe('CatalogListCard', () => {
     const parts = partsOf(card);
 
     expect(parts.leading?.props.children).toBe(leading);
+    expect(parts.action?.props.children).toBe(action);
     expect(card.props.className).toContain('border-red-500/60');
     expect(card.props.className).not.toContain('border-border');
-    // The body is the leading control's sibling, so no button holds another.
+    // The body is the controls' sibling, so no button holds another.
     expect(parts.body.props).toMatchObject({ accessibilityRole: 'button', accessibilityLabel: 'Catalog item' });
   });
 

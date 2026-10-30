@@ -33,7 +33,10 @@ export function BookServiceSheet({ machineId, onClose }: { machineId: string; on
       subtitle="Book the Machine in. Close the service on the web when it leaves the workshop."
       error={error}
       footer={<SheetSubmitButton isSubmitting={busy} label="Book service" onPress={() => void form.handleSubmit()} />}
-      onClose={onClose}
+      // Held open until the booking and its refetch settle, so a reopened sheet cannot book the Machine in twice.
+      onClose={() => {
+        if (!busy) onClose();
+      }}
     >
       <form.AppField name="startDate">{(field) => <field.DateField label="Start date" />}</form.AppField>
       <form.AppField name="primaryMechanicUserId">

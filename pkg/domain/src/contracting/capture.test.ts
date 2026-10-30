@@ -86,6 +86,8 @@ describe('judgeCapture', () => {
     ['not-on-site', { stint: 'planned' }, { role: 'departure' }],
     ['departs-before-arrival', { stint: 'on-site', stintArrivedAt: now }, { role: 'departure', readAt: anHourAgo }],
     ['arrives-before-departure', { lastDepartedAt: now }, { readAt: anHourAgo }],
+    // Stint order is judged before any value rule; resolveReadingAmendments pins the same order (AMD-05).
+    ['arrives-before-departure', { lastDepartedAt: now, next: reading('next', 110, now) }, { readAt: anHourAgo }],
     ['previous-changed', {}, { value: 90, disputePrevious: true, expectedPreviousId: 'older' }],
     ['below-latest', {}, { value: 90 }],
     ['baseline-exists', { mayBaseline: true, stint: null }, { role: 'baseline' }],

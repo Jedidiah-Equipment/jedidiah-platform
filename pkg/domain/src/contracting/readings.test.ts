@@ -262,7 +262,12 @@ describe('resolveReadingAmendments', () => {
     });
 
     it('is refused below its new previous reading, naming John Deere as capture does', () => {
-      expect(resolve(ledger(), [amend(departure, { capturedAt: day(27, 12) })], stints)).toEqual({
+      const arrived = [
+        ...ledger().slice(0, 2),
+        { ...arrival, disputed: false, disputeReason: null, capturedAt: day(26, 8) },
+        departure,
+      ];
+      expect(resolve(arrived, [amend(departure, { capturedAt: day(27, 12) })], stints)).toEqual({
         ok: false,
         reason: 'contradicts_telematics',
         id: 'departure',
@@ -334,6 +339,22 @@ describe('resolveReadingAmendments', () => {
         reading('first', day(23, 8), 2895, { role: 'arrival' }),
         reading('before', day(24, 17), 2900, { role: 'departure' }),
         reading('arrival', day(26, 8), 2900, { role: 'arrival' }),
+      ];
+      expect(resolve(earlier, [amend(earlier[2] as AmendableReading, { capturedAt: day(24, 16) })], stints)).toEqual({
+        ok: false,
+        reason: 'out_of_order',
+        id: 'arrival',
+        message:
+          "Stints stay in time order: an arrival after the Machine's previous departure, a departure after its own arrival and before the next arrival.",
+      });
+    });
+
+    // Capture's pair: judgeCapture's arrives-before-departure row with a lower next reading (capture.test.ts).
+    it('judges stint order before placement, as capture does (AMD-05)', () => {
+      const earlier = [
+        reading('first', day(23, 8), 2895, { role: 'arrival' }),
+        reading('before', day(24, 17), 2900, { role: 'departure' }),
+        reading('arrival', day(26, 8), 2906, { role: 'arrival' }),
       ];
       expect(resolve(earlier, [amend(earlier[2] as AmendableReading, { capturedAt: day(24, 16) })], stints)).toEqual({
         ok: false,

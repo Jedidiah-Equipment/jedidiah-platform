@@ -7,7 +7,7 @@ import {
   type ReadingAmendmentRefusal,
   readingCodeForJobRefusal,
 } from '@pkg/domain/contracting';
-import type { ReadingErrorCode } from '@pkg/schema/contracting';
+import type { ReadAtSuggestion, ReadingErrorCode } from '@pkg/schema/contracting';
 import { translatingConstraintViolations } from '../../errors/constraint-violations.js';
 import type { RefusedJobAction } from '../jobs/job-errors.js';
 
@@ -17,6 +17,8 @@ export class ReadingError extends Error {
     message: string,
     /** The Job Action a refusal refused, when a Job's status or ownership refused it. */
     readonly refused?: RefusedJobAction,
+    /** When John Deere puts a refused capture's value, so the form can propose it. */
+    readonly suggestedReadAt?: ReadAtSuggestion,
   ) {
     super(message);
     this.name = 'ReadingError';

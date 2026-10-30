@@ -12,9 +12,11 @@ import {
   getReading,
   listReadingsByMachine,
   patchMachine,
+  recordTelematicsReading,
   verifyCapturedReading,
 } from '@pkg/core/contracting';
 import { user } from '@pkg/db';
+import { contractingJohnDeereLinks } from '@pkg/db/contracting';
 import { fileTooLargeMessage } from '@pkg/domain';
 import { type ContractingPushEvent, READING_PHOTO_POLICY } from '@pkg/domain/contracting';
 import { accessForRole } from '@pkg/domain/testing';
@@ -172,6 +174,53 @@ test('rejects unauthenticated and Equipment-only uploads before parsing their bo
   }
 });
 
+test('a refusal John Deere brackets carries the Read At it proposes beside the appCode', async ({ context }) => {
+  const { app, db, machineId } = context;
+  try {
+    const [link] = await db
+      .insert(contractingJohnDeereLinks)
+      .values({
+        machineId,
+        equipmentId: 'eq-1',
+        principalId: 1,
+        organizationId: '4321',
+        deereName: 'Deere 1',
+        linkedByUserId: 'test-user-id',
+        linkedAt: new Date('2026-09-01T00:00:00Z'),
+      })
+      .returning();
+    if (!link) throw new Error('link insert returned no row');
+    for (const [hours, reportTime] of [
+      [120, '2026-09-07T05:00:00Z'],
+      [125, '2026-09-07T06:00:00Z'],
+    ] as const)
+      await recordTelematicsReading({
+        db,
+        machineId,
+        linkId: link.id,
+        provider: 'john-deere',
+        hours,
+        reportTime: new Date(reportTime),
+        now: new Date('2026-09-08T00:00:00Z'),
+      });
+    const refused = await app.inject(upload(machineId, null, true, { value: '122.5' }));
+    expect(refused.statusCode).toBe(409);
+    expect(refused.json()).toEqual({
+      data: {
+        appCode: 'reading.below_latest',
+        suggestedReadAt: {
+          readAt: '2026-09-07T05:30:00.000Z',
+          floor: { value: 120, capturedAt: '2026-09-07T05:00:00.000Z' },
+          ceiling: { value: 125, capturedAt: '2026-09-07T06:00:00.000Z' },
+        },
+      },
+      message: expect.stringContaining('John Deere reported'),
+    });
+  } finally {
+    await app.close();
+  }
+});
+
 test('reserves a Baseline Reading upload for Contracting administrators', async ({ context }) => {
   const { app, machineId } = context;
   try {
@@ -217,7 +266,10 @@ test('schedules Service Due Soon for the capture that crosses into the window, o
     const crossing = upload(machineId, null, true, { localId: '5f0d7a8e-12c4-4c55-9a43-6a2b8d1e7f10' });
     expect((await app.inject(crossing)).statusCode).toBe(201);
     expect((await app.inject(crossing)).statusCode).toBe(201);
-    expect((await app.inject(upload(machineId, null, true, { value: '130' }))).statusCode).toBe(201);
+    expect(
+      (await app.inject(upload(machineId, null, true, { value: '130', capturedAt: '2026-09-08T08:00:00Z' })))
+        .statusCode,
+    ).toBe(201);
     expect(pushes).toEqual([{ kind: 'machine.service-due-soon', machineId }]);
   } finally {
     await app.close();
@@ -236,7 +288,10 @@ test("crosses into the window at the Machine's own Service Alert Hours, not the 
     });
     expect((await app.inject(upload(machineId, null, true, { value: '123.4' }))).statusCode).toBe(201);
     expect(pushes).toEqual([]);
-    expect((await app.inject(upload(machineId, null, true, { value: '160' }))).statusCode).toBe(201);
+    expect(
+      (await app.inject(upload(machineId, null, true, { value: '160', capturedAt: '2026-09-09T08:00:00Z' })))
+        .statusCode,
+    ).toBe(201);
     expect(pushes).toEqual([{ kind: 'machine.service-due-soon', machineId }]);
   } finally {
     await app.close();

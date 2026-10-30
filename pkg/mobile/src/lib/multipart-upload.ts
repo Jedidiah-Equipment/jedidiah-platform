@@ -4,23 +4,25 @@ import { authedFetch } from './authed-fetch';
 import { addBreadcrumb } from './observability';
 
 const RefusalBody = z
-  .object({ message: z.string().optional(), data: z.object({ appCode: z.string().optional() }).nullish() })
+  .object({ message: z.string().optional(), data: z.looseObject({ appCode: z.string().optional() }).nullish() })
   .catch({});
 
 /**
- * The server judged the upload and refused it: `message` is its sentence for the person, `data.appCode` its reason.
- * Shaped like the API's tRPC errors, so `useBusyAction` shows it and the mutation cache never reports it.
+ * The server judged the upload and refused it: `message` is its sentence for the person, `data.appCode` its reason,
+ * and the rest of `data` whatever context the route sent, for the caller to parse. Shaped like the API's tRPC errors,
+ * so `useBusyAction` shows it and the mutation cache never reports it.
  */
 export class UploadRefusedError extends Error implements ApiErrorShape {
-  readonly data: { appCode: string };
+  readonly data: Readonly<Record<string, unknown>> & { appCode: string };
   constructor(
     appCode: string,
     message: string,
     readonly status: number,
+    context: Readonly<Record<string, unknown>> = {},
   ) {
     super(message);
     this.name = 'UploadRefusedError';
-    this.data = { appCode };
+    this.data = { ...context, appCode };
   }
 }
 
@@ -69,12 +71,10 @@ export async function postMultipart<T = unknown>(path: string, body: FormData, o
           return null;
         }),
       );
-      if (refusal.data?.appCode)
-        throw new UploadRefusedError(
-          refusal.data.appCode,
-          refusal.message ?? 'The server refused this request.',
-          status,
-        );
+      if (refusal.data?.appCode) {
+        const { appCode, ...context } = refusal.data;
+        throw new UploadRefusedError(appCode, refusal.message ?? 'The server refused this request.', status, context);
+      }
     }
     throw new UploadFailedError(failedMessage, 'server', status);
   } catch (error) {

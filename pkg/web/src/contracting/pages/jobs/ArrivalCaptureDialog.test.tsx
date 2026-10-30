@@ -74,6 +74,8 @@ async function enter(name: string, value: string) {
 }
 
 async function enterReadAt(date: string, time: string) {
+  const earlier = [...document.querySelectorAll('button')].find((item) => item.textContent === 'Earlier…');
+  if (earlier?.getAttribute('aria-pressed') === 'false') await act(async () => earlier.click());
   for (const [name, value] of [
     ['readAt', date],
     ['readAt-time', time],

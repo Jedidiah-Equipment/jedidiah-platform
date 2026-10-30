@@ -63,12 +63,12 @@ export function SpotCaptureDialog({
       {(form) => (
         <>
           <ErrorMessage error={latestQuery.error} fallbackMessage="Unable to load the Machine's previous reading." />
+          <ReadingReadAtField form={form} fields={{ readAt: 'readAt' }} capture={capture} />
           <ReadingValueCard
             form={form}
             fields={{ value: 'value', confirmedDispute: 'confirmedDispute', readAt: 'readAt' }}
             capture={capture}
           />
-          <ReadingReadAtField form={form} fields={{ readAt: 'readAt' }} />
           <ReadingCaptureDetails id={`spot-photo-${machine.id}`} {...capture.details}>
             <form.AppField name="comment">
               {(field) => <field.TextareaField label="Comment (optional)" />}

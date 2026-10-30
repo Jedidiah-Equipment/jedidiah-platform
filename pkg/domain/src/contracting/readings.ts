@@ -262,7 +262,7 @@ export const CLOCK_TOLERANCE_HOURS = 1;
 
 export const hoursBetween = (from: Date, to: Date) => (to.getTime() - from.getTime()) / 3_600_000;
 
-type TimedValue = { value: number; capturedAt: Date };
+export type TimedValue = { value: number; capturedAt: Date };
 
 /** Whether `later` shows more engine hours than could have passed since `earlier`. */
 export const outrunsClock = (earlier: TimedValue, later: TimedValue): boolean =>

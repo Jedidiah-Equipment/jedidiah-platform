@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import { Platform, View } from 'react-native';
+import type { ReactNode, Ref } from 'react';
+import { Platform, type ScrollViewInstance, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SECONDARY_PAGE_CONTENT_STYLE } from '@/components/page-frame';
 import { ScrollLockScrollView } from '@/components/scroll-lock';
@@ -15,11 +15,14 @@ export function FormPage({
   children,
   footer,
   error,
+  scrollRef,
 }: {
   toolbar: ReactNode;
   children: ReactNode;
   footer: ReactNode;
   error: string | null;
+  /** For a footer action that brings a field at the top back into view. */
+  scrollRef?: Ref<ScrollViewInstance>;
 }) {
   const { bottom } = useSafeAreaInsets();
   // The footer rides on the keyboard's full height, so Save stays visible while a field is being typed in. The page
@@ -30,6 +33,7 @@ export function FormPage({
       {toolbar}
       <View className="flex-1" style={{ paddingBottom: keyboardPadding }}>
         <ScrollLockScrollView
+          ref={scrollRef}
           keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ ...SECONDARY_PAGE_CONTENT_STYLE, gap: 16 }}

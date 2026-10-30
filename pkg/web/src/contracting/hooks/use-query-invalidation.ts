@@ -34,11 +34,19 @@ export function useQueryInvalidation() {
       invalidateFleet: invalidate('contractingFleet', 'contractingServices'),
       // Reports derive Active Days and Daily Hours from stints and readings.
       invalidateJobs: invalidate('contractingJobs', 'contractingReports'),
+      // Job Hours move the Job, its reports and Activity, and the Machine's Known Hours on every read that shows them.
+      invalidateJobHours: invalidate(
+        'contractingJobs',
+        'contractingReports',
+        'contractingActivity',
+        'contractingReadings',
+        'contractingFleet',
+        'contractingServices',
+      ),
       invalidateJohnDeere: invalidate('contractingJohnDeere'),
       // A John Deere Link writes its Machine's serial number and names its Deere machine on the Machine read.
       invalidateJohnDeereLinks: invalidate('contractingJohnDeere', 'contractingFleet'),
-      // A poll writes readings and each Link's last report, and may flag captured readings Disputed, which a Job's
-      // reading warnings show too.
+      // A poll writes readings and each Link's last report, and moves Known Hours wherever a Job shows them.
       invalidateJohnDeerePoll: invalidate(
         'contractingJohnDeere',
         'contractingReadings',
@@ -59,7 +67,7 @@ export function useQueryInvalidation() {
       // A service moves its Machine's Next Service Due and Booked In; Breakdowns refresh with it as they have since
       // Service Records and the Workshop shared a page.
       invalidateServices: invalidate('contractingServices', 'contractingFleet', 'contractingBreakdowns'),
-      // A threshold change moves Gap Flags and Service Due badges on every screen that shows them.
+      // A threshold change moves the needs-a-look badges and Service Due badges on every screen that shows them.
       invalidateSettings: invalidate(
         'contractingSettings',
         'contractingJobs',

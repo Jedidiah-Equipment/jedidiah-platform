@@ -1,14 +1,14 @@
-import { contractingMachines } from '@pkg/db/contracting';
+import { contractingJobs, contractingMachines } from '@pkg/db/contracting';
 import type { DateOnlyIso } from '@pkg/schema';
 import { eq } from 'drizzle-orm';
 import { expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
 import { createCategory } from '../fleet/category-service.js';
-import { resolveGap } from '../jobs/assignment-service.js';
 import { createJob } from '../jobs/job-service.js';
+import { setTravelHours } from '../jobs/stint-hours-service.js';
 import { captureReading } from '../readings/reading-service.js';
 import { getContractingSettings, updateContractingSettings } from '../settings/settings-service.js';
-import { admin, adminId, foreman, foremanId, plannedStint, seedJobFixtures } from '../test/job-fixtures.js';
+import { admin, adminId, captureHours, foremanId, plannedStint, seedJobFixtures } from '../test/job-fixtures.js';
 import { getUtilisationReport, getUtilisationTrend } from './utilisation-service.js';
 
 const today = '2026-10-12' as DateOnlyIso;
@@ -31,45 +31,30 @@ const test = createTester(async ({ db }) => {
         foremanUserId: foremanId,
       },
     });
-  const capture = (
-    machineId: string,
-    role: 'arrival' | 'departure' | 'spot',
-    value: number,
-    capturedAt: string,
-    assignmentId?: string,
-  ) =>
-    captureReading({
-      db,
-      actor: role === 'spot' ? admin : foreman,
-      input: {
-        machineId,
-        ...(assignmentId ? { assignmentId } : {}),
-        role,
-        value,
-        capturedAt,
-        disputePrevious: false,
-      },
-    });
+  const capture = (machineId: string, value: number, capturedAt: string) =>
+    captureReading({ db, actor: admin, input: { machineId, value, capturedAt } });
+  const workedJob = async (arrival: number, departure: number, startDate: string, endDate: string) => {
+    const job = await newJob();
+    const stint = await plannedStint(db, admin, { jobId: job.id, machineId: fixtures.excavator.id, implementId: null });
+    await captureHours(db, stint.id, 'arrival', arrival);
+    await captureHours(db, stint.id, 'departure', departure);
+    await db.update(contractingJobs).set({ startDate, endDate }).where(eq(contractingJobs.id, job.id));
+    return stint.id;
+  };
   // The tipper has readings but never a stint, then retired on 10 June.
-  await capture(fixtures.tipper.id, 'spot', 900, '2026-06-02T08:00:00+02:00');
-  await capture(fixtures.tipper.id, 'spot', 912.5, '2026-06-08T08:00:00+02:00');
+  await capture(fixtures.tipper.id, 900, '2026-06-02T08:00:00+02:00');
+  await capture(fixtures.tipper.id, 912.5, '2026-06-08T08:00:00+02:00');
   await db
     .update(contractingMachines)
     .set({ retiredAt: new Date('2026-06-10T12:00:00+02:00'), retiredReason: 'Sold' })
     .where(eq(contractingMachines.id, fixtures.tipper.id));
-  // The excavator: on site 28 Jun to 3 Jul with a spot read on 30 Jun, then an 8.8 h gap, then 6 to 7 Jul.
-  const excavator = fixtures.excavator.id;
-  const first = await plannedStint(db, admin, { jobId: (await newJob()).id, machineId: excavator, implementId: null });
-  await capture(excavator, 'arrival', 4002.6, '2026-06-28T09:00:00+02:00', first.id);
-  await capture(excavator, 'spot', 4030.0, '2026-06-30T18:00:00+02:00');
-  await capture(excavator, 'departure', 4051.2, '2026-07-03T12:00:00+02:00', first.id);
-  const second = await plannedStint(db, admin, { jobId: (await newJob()).id, machineId: excavator, implementId: null });
-  await capture(excavator, 'arrival', 4060.0, '2026-07-06T08:00:00+02:00', second.id);
-  await capture(excavator, 'departure', 4070.0, '2026-07-07T08:00:00+02:00', second.id);
-  return { ...fixtures, secondStintId: second.id };
+  // The excavator: 48.6 h on a Job dated 28 Jun to 3 Jul, then 10 h on one dated 6 to 7 Jul after 8.8 h of Travel.
+  await workedJob(4002.6, 4051.2, '2026-06-28', '2026-07-03');
+  const secondStintId = await workedJob(4060, 4070, '2026-07-06', '2026-07-07');
+  return { ...fixtures, secondStintId };
 });
 
-test('derives day counts and hours by kind from the captured ledger, pro-rated across the month boundary', async ({
+test('derives Active Days from Job dates and spreads Work and Travel over them, across the month boundary', async ({
   context,
 }) => {
   const { db } = context;
@@ -82,9 +67,8 @@ test('derives day counts and hours by kind from the captured ledger, pro-rated a
       activeDays: 3,
       fleetDays: 30,
       utilisationPercent: 10,
-      workHours: 29.3,
+      workHours: 24.3,
       travelHours: 0,
-      unresolvedHours: 0,
     }),
     // Readings but no stint, retired on 10 June: in the window for ten days, never worked, no hours of any kind.
     expect.objectContaining({
@@ -94,8 +78,6 @@ test('derives day counts and hours by kind from the captured ledger, pro-rated a
       utilisationPercent: 0,
       workHours: 0,
       travelHours: 0,
-      unaccountedHours: 0,
-      unresolvedHours: 0,
       retiredDate: '2026-06-10',
     }),
   ]);
@@ -113,39 +95,10 @@ test('derives day counts and hours by kind from the captured ledger, pro-rated a
   expect(julyReport.categories.flatMap((category) => category.machines.map((machine) => machine.code))).toEqual([
     'CAT320-1',
   ]);
-  expect(julyReport.fleet).toMatchObject({ activeDays: 5, fleetDays: 31, workHours: 29.3, unresolvedHours: 8.8 });
+  expect(julyReport.fleet).toMatchObject({ activeDays: 5, fleetDays: 31, workHours: 34.3, travelHours: 8.8 });
 
-  await resolveGap({
-    db,
-    actor: admin,
-    input: { id: context.secondStintId, travelHours: 3, unaccountedHours: 5.8, reason: 'Yard work' },
-  });
-  expect((await getUtilisationReport({ db, input: july, today })).fleet).toMatchObject({
-    travelHours: 3,
-    unaccountedHours: 5.8,
-    unresolvedHours: 0,
-  });
-});
-
-test('walks the ledger in Read At order, so a reading entered late splits its stint where it was read', async ({
-  context,
-}) => {
-  const { db, excavator } = context;
-  await captureReading({
-    db,
-    actor: admin,
-    input: {
-      machineId: excavator.id,
-      role: 'spot',
-      value: 4040,
-      capturedAt: '2026-07-01T12:00:00+02:00',
-      disputePrevious: false,
-    },
-  });
-  // 6 of the 18 hours from 30 Jun 18:00 to 1 Jul 12:00 fall in June: 27.4 h + 10 h × 6/18.
-  const [excavators] = (await getUtilisationReport({ db, input: june, today })).categories;
-  expect(excavators?.machines[0]).toMatchObject({ code: 'CAT320-1', workHours: 30.7 });
-  expect((await getUtilisationReport({ db, input: july, today })).fleet).toMatchObject({ workHours: 27.9 });
+  await setTravelHours({ db, actor: admin, input: { assignmentId: context.secondStintId, travelHours: 3 } });
+  expect((await getUtilisationReport({ db, input: july, today })).fleet).toMatchObject({ travelHours: 3 });
 });
 
 test('the trend runs twelve months to the window month for its subject and carries the Settings target', async ({

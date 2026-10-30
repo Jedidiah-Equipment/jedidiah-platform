@@ -53,21 +53,14 @@ export const directoryErrorFamily = defineCoreErrorFamily<DirectoryError>({
 export const readingErrorFamily = defineCoreErrorFamily<ReadingError>({
   codes: {
     'reading.above_next': 'CONFLICT',
-    'reading.baseline_exists': 'CONFLICT',
     'reading.below_latest': 'CONFLICT',
     'reading.capture_id_conflict': 'CONFLICT',
     'reading.invalid_amendment': 'CONFLICT',
     'reading.forbidden': 'FORBIDDEN',
     'reading.future_read_at': 'BAD_REQUEST',
-    'reading.implement_on_site': 'CONFLICT',
-    'reading.invalid_role': 'CONFLICT',
-    'reading.job_invoiced': 'CONFLICT',
-    'reading.machine_on_site': 'CONFLICT',
     'reading.not_found': 'NOT_FOUND',
     'reading.outruns_clock': 'CONFLICT',
-    'reading.previous_changed': 'CONFLICT',
     'reading.retired_machine': 'CONFLICT',
-    'reading.wrong_status': 'CONFLICT',
   },
   is: isReadingError,
   // The refusal's context as `ReadingRefusal` carries it, or nothing when it has none.
@@ -77,6 +70,8 @@ export const readingErrorFamily = defineCoreErrorFamily<ReadingError>({
 
 export const jobErrorFamily = defineCoreErrorFamily<JobError>({
   codes: {
+    'contracting_job.departure_before_arrival': 'BAD_REQUEST',
+    'contracting_job.departure_not_editable': 'BAD_REQUEST',
     'contracting_job.duplicate': 'CONFLICT',
     'contracting_job.forbidden': 'FORBIDDEN',
     'contracting_job.has_on_site_stints': 'CONFLICT',
@@ -84,11 +79,12 @@ export const jobErrorFamily = defineCoreErrorFamily<JobError>({
     'contracting_job.invalid_driver': 'BAD_REQUEST',
     'contracting_job.invalid_foreman': 'BAD_REQUEST',
     'contracting_job.invalid_reference': 'BAD_REQUEST',
+    'contracting_job.machine_on_site': 'CONFLICT',
     'contracting_job.not_found': 'NOT_FOUND',
     'contracting_job.not_owner': 'FORBIDDEN',
-    'contracting_job.open_gap_flags': 'CONFLICT',
     'contracting_job.pricing_incomplete': 'CONFLICT',
     'contracting_job.rate_inactive': 'CONFLICT',
+    'contracting_job.reason_required': 'BAD_REQUEST',
     'contracting_job.stint_not_planned': 'CONFLICT',
     'contracting_job.total_changed': 'CONFLICT',
     'contracting_job.wrong_status': 'CONFLICT',

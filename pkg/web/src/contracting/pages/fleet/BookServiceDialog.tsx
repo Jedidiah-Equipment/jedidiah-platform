@@ -101,8 +101,8 @@ function MachineServiceSummary({ machine }: { machine: Machine | undefined }) {
   return (
     <dl className="grid grid-cols-2 gap-3 rounded-lg border bg-muted/40 p-3 text-sm">
       <div className="space-y-1">
-        <dt className="text-muted-foreground">Current hours</dt>
-        <dd>{hoursOrDash(machine.latestReadingHours)}</dd>
+        <dt className="text-muted-foreground">Known hours</dt>
+        <dd>{hoursOrDash(machine.knownHours)}</dd>
       </div>
       <div className="space-y-1">
         <dt className="text-muted-foreground">Next service due</dt>

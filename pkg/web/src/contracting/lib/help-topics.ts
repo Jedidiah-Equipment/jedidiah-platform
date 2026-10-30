@@ -6,7 +6,6 @@ const helpTopicForRoute = createHelpTopicResolver(
     ['/contracting/activity', 'contractingActivity'],
     ['/contracting/audit', 'contractingAudit'],
     ['/contracting/customers', 'contractingCustomers'],
-    ['/contracting/disputes', 'contractingDisputes'],
     ['/contracting/fleet', 'contractingFleet'],
     ['/contracting/fleet/categories', 'contractingCategories'],
     ['/contracting/fleet/implements', 'contractingImplements'],

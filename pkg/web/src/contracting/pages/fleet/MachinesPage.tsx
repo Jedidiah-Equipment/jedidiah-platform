@@ -1,5 +1,5 @@
 import { formatHours, getFirstName } from '@pkg/domain';
-import { readingProviderSuffix } from '@pkg/domain/contracting';
+import { knownHoursSourceSuffix } from '@pkg/domain/contracting';
 import type { FleetListInput, MachineListItem } from '@pkg/schema/contracting';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
@@ -154,21 +154,21 @@ export function MachinesPage({
         cell: ({ row }) => <BreakdownFlags breakdowns={row.original.openBreakdowns} />,
       },
       {
-        id: 'lastReading',
-        header: 'Last reading',
-        accessorFn: (machine) => machine.latestReadingHours ?? -1,
+        id: 'knownHours',
+        header: 'Known hours',
+        accessorFn: (machine) => machine.knownHours ?? -1,
         enableSorting: true,
         enableGlobalFilter: false,
         cell: ({ row }) =>
-          row.original.latestReadingHours === null ? (
+          row.original.knownHours === null ? (
             <span className="text-muted-foreground">No reading</span>
           ) : (
             <span className="flex flex-col">
-              <span className="tabular-nums">{formatHours(row.original.latestReadingHours)}</span>
-              {row.original.latestReadingAt ? (
+              <span className="tabular-nums">{formatHours(row.original.knownHours)}</span>
+              {row.original.knownHoursAt ? (
                 <span className="text-xs text-muted-foreground">
-                  <DateDisplay date={row.original.latestReadingAt} format="medium" />
-                  {readingProviderSuffix(row.original.latestReadingProvider)}
+                  <DateDisplay date={row.original.knownHoursAt} format="medium" />
+                  {knownHoursSourceSuffix(row.original.knownHoursSource)}
                 </span>
               ) : null}
             </span>

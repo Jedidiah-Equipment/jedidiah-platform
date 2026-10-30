@@ -1,7 +1,7 @@
 import { formatDate, getFirstName } from '@pkg/domain';
 import {
+  knownHoursSourceSuffix,
   machineServiceBadge,
-  readingProviderSuffix,
   serviceRecordBadge,
   serviceRecordSummary,
 } from '@pkg/domain/contracting';
@@ -85,10 +85,8 @@ function MachineCard({ machineId }: { machineId: string }) {
           {(machine) => (
             <dl className="grid gap-4 text-sm sm:grid-cols-3">
               <div className="space-y-1">
-                <dt className="text-muted-foreground">
-                  Current hours{readingProviderSuffix(machine.latestReadingProvider)}
-                </dt>
-                <dd>{hoursOrDash(machine.latestReadingHours)}</dd>
+                <dt className="text-muted-foreground">Known hours{knownHoursSourceSuffix(machine.knownHoursSource)}</dt>
+                <dd>{hoursOrDash(machine.knownHours)}</dd>
               </div>
               <div className="space-y-1">
                 <dt className="text-muted-foreground">Next service due</dt>

@@ -2,23 +2,25 @@ import { z } from 'zod';
 import { DateIso, DateOnlyIso } from '../../common/date.js';
 import { ReadingValue } from '../readings/reading.js';
 import { Hours, JobNumber, Litres, Money, Quantity } from './job.js';
+import { assignmentAttentionKinds } from './job-enums.js';
 
 export const JobCardVariant = z.enum(['internal', 'customer']);
 export type JobCardVariant = z.infer<typeof JobCardVariant>;
 export const JobCardQuery = z.object({ variant: JobCardVariant.default('customer') }).strict();
 
-export const jobCardReadingMarkers = ['disputed', 'amended'] as const;
+export const jobCardReadingMarkers = ['amended'] as const;
 export type JobCardReadingMarker = (typeof jobCardReadingMarkers)[number];
 
 const JobCardReading = z.object({
-  value: ReadingValue,
-  capturedAt: DateIso,
-  /** Internal copy only: Disputed or amended, else null. */
+  hours: ReadingValue,
+  /** Internal copy only: when it was captured. */
+  at: DateIso.nullable(),
+  /** Internal copy only: amended after sign-off, else null. */
   marker: z.enum(jobCardReadingMarkers).nullable(),
   /** Internal copy only. */
   comment: z.string().nullable(),
-  /** Internal copy only: who captured the reading. */
-  capturedByName: z.string().nullable(),
+  /** Internal copy only: who captured it. */
+  byName: z.string().nullable(),
 });
 export type JobCardReading = z.infer<typeof JobCardReading>;
 
@@ -38,8 +40,8 @@ const JobCardStintLine = z.object({
       variant: z.literal('internal'),
       work: Hours.nullable(),
       travel: Hours,
-      unaccounted: Hours,
-      gapReason: z.string().nullable(),
+      /** Every reason the stint needs a look. */
+      attention: z.array(z.enum(assignmentAttentionKinds)),
     }),
   ]),
   measures: z.array(z.object({ name: z.string(), quantity: Quantity })),

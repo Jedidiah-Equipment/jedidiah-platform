@@ -108,9 +108,9 @@ function MachineServiceSummary({ machine }: { machine: FieldMachine | undefined 
   return (
     <View className="flex-row gap-3 rounded-xl border border-border bg-muted/40 p-3">
       <View className="flex-1 gap-1">
-        <Text className="text-sm text-muted-foreground">Current hours</Text>
+        <Text className="text-sm text-muted-foreground">Known hours</Text>
         <Text className="text-foreground" weight="semibold">
-          {machine.latestReadingHours === null ? 'No reading' : formatHours(machine.latestReadingHours)}
+          {machine.knownHours === null ? 'No known hours' : formatHours(machine.knownHours)}
         </Text>
       </View>
       <View className="flex-1 gap-1">

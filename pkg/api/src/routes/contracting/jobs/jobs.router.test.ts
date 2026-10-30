@@ -1,5 +1,5 @@
 import {
-  captureReading,
+  captureStintHours,
   createAssignment,
   createCategory,
   createCustomer,
@@ -10,9 +10,11 @@ import {
   createMeasureType,
   createWorkType,
   getJob,
+  patchMachine,
 } from '@pkg/core/contracting';
 import { eq, user } from '@pkg/db';
-import { contractingHourReadings, contractingJobs, contractingMachineAssignments } from '@pkg/db/contracting';
+import { contractingJobs, contractingMachineAssignments } from '@pkg/db/contracting';
+import type { ContractingPushEvent } from '@pkg/domain/contracting';
 import { accessForRole } from '@pkg/domain/testing';
 import type { ContractingRole } from '@pkg/schema';
 import { MachineCreateInput } from '@pkg/schema/contracting';
@@ -24,7 +26,7 @@ const foremanId = 'test-user-id';
 const managerId = 'router-manager';
 const otherForemanId = 'router-other-foreman';
 const managerActor = accessForRole('contracting-manager', managerId);
-const foremanActor = accessForRole('foreman', foremanId);
+const _foremanActor = accessForRole('foreman', foremanId);
 const otherForemanActor = accessForRole('foreman', otherForemanId);
 const driverId = 'router-driver';
 
@@ -161,17 +163,10 @@ const test = createTester(async ({ db }) => {
   });
   const [otherStint] = (await getJob({ db, id: otherJob.id })).assignments;
   if (!otherStint) throw new Error('Expected other Machine Assignment');
-  await captureReading({
+  await captureStintHours({
     db,
     actor: otherForemanActor,
-    input: {
-      machineId: otherMachine.id,
-      assignmentId: otherStint.id,
-      role: 'arrival',
-      value: 100,
-      capturedAt: '2026-09-16T08:00:00+02:00',
-      disputePrevious: false,
-    },
+    input: { assignmentId: otherStint.id, role: 'arrival', hours: 100 },
   });
   await db.update(contractingJobs).set({ dieselUnitPrice: 23 }).where(eq(contractingJobs.id, ownJob.id));
   await db
@@ -227,18 +222,9 @@ test("serves the phone's Implement and Driver pickers, and a Machine's on-site J
   await expect(foreman.drivers()).resolves.toEqual([{ id: driverId, name: 'Willem' }]);
 
   const workshopCaller = context.createCaller(contractingSession('workshop-manager'));
-  await captureReading({
-    db: context.db,
-    actor: foremanActor,
-    input: {
-      machineId: context.machine.id,
-      assignmentId: context.stint.id,
-      role: 'arrival',
-      value: 100,
-      capturedAt: '2026-09-17T08:00:00+02:00',
-      disputePrevious: false,
-    },
-  });
+  await context
+    .createCaller(contractingSession('foreman'))
+    .contractingJobs.assignments.captureHours({ assignmentId: context.stint.id, role: 'arrival', hours: 100 });
   await expect(workshopCaller.contractingReadings.fieldMachines()).resolves.toEqual(
     expect.arrayContaining([
       expect.objectContaining({ id: context.machine.id, onSiteJobNumber: context.ownJob.jobNumber }),
@@ -356,7 +342,7 @@ test('provides Measure Type choices to managers without granting Rate Card acces
   ).rejects.toMatchObject({ code: 'FORBIDDEN' });
 });
 
-test('counts queue tabs by read mode and exposes each reading’s attention on Job details', async ({ context }) => {
+test('counts queue tabs by read mode and exposes each stint’s attention on Job details', async ({ context }) => {
   const manager = context.createCaller(contractingSession('contracting-manager')).contractingJobs.jobs;
   const foreman = context.createCaller(contractingSession('foreman')).contractingJobs.jobs;
   const invoicing = context.createCaller(contractingSession('contracting-invoicing')).contractingJobs.jobs;
@@ -378,33 +364,26 @@ test('counts queue tabs by read mode and exposes each reading’s attention on J
   expect((await manager.queues()).attention).toMatchObject({ active: null, 'awaiting-pricing': null });
   expect((await foreman.queues()).attention.active).toBeNull();
   expect(await manager.get({ id: context.otherJob.id })).toMatchObject({
-    assignments: [{ arrival: { comment: null, capturedByName: 'Other', attention: [] } }],
+    assignments: [{ arrival: { hours: 100, comment: null, byName: 'Other' }, attention: [] }],
   });
-  const arrivalId = (await manager.get({ id: context.otherJob.id })).assignments[0]?.arrival?.id;
-  if (!arrivalId) throw new Error('Expected arrival reading');
   await context.db
-    .update(contractingHourReadings)
-    .set({ disputed: true, disputeReason: 'The next capture disputes this reading.' })
-    .where(eq(contractingHourReadings.id, arrivalId));
-  expect((await manager.queues()).attention).toMatchObject({ active: 'critical', 'awaiting-pricing': null });
+    .update(contractingMachineAssignments)
+    .set({ travelHours: 9 })
+    .where(eq(contractingMachineAssignments.id, context.otherStint.id));
+  expect((await manager.queues()).attention).toMatchObject({ active: 'needs-a-look', 'awaiting-pricing': null });
   expect((await foreman.queues()).attention.active).toBeNull();
   expect(await manager.get({ id: context.otherJob.id })).toMatchObject({
-    assignments: [{ arrival: { attention: ['disputed'] } }],
+    assignments: [{ attention: ['travel-over-threshold'] }],
   });
-  const departure = {
-    machineId: context.otherMachine.id,
-    assignmentId: context.otherStint.id,
-    role: 'departure' as const,
-    value: 102,
-    capturedAt: '2026-09-17T17:00:00+02:00',
-    disputePrevious: false,
-  };
+  const departure = { assignmentId: context.otherStint.id, role: 'departure' as const, hours: 102 };
   await expect(
-    captureReading({ db: context.db, actor: foremanActor, input: { ...departure, comment: 'Shift ended' } }),
-  ).rejects.toMatchObject({ code: 'reading.forbidden' });
-  await captureReading({ db: context.db, actor: managerActor, input: departure });
+    context.createCaller(contractingSession('foreman')).contractingJobs.assignments.captureHours(departure),
+  ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  await context
+    .createCaller(contractingSession('contracting-manager'))
+    .contractingJobs.assignments.captureHours(departure);
   expect(await manager.get({ id: context.otherJob.id })).toMatchObject({
-    assignments: [{ departure: { capturedByName: 'Henk', comment: null } }],
+    assignments: [{ departure: { hours: 102, byName: 'Sipho', comment: null } }],
   });
 });
 
@@ -509,4 +488,21 @@ test('filters the Invoiced queue by the South African days it was stamped on, ne
       (job) => job.id,
     ),
   ).toEqual([context.pricedJob.id]);
+});
+
+test('schedules Service Due Soon after the Job Hours write that crossed into it, once', async ({ context }) => {
+  const pushes: ContractingPushEvent[] = [];
+  const assignments = context.createCaller(contractingSession('foreman'), {
+    contracting: { push: { schedule: (event) => pushes.push(event) } },
+  }).contractingJobs.assignments;
+  await patchMachine({
+    db: context.db,
+    actorUserId: managerId,
+    input: { id: context.machine.id, nextServiceDueHours: 1500 },
+  });
+  await assignments.captureHours({ assignmentId: context.stint.id, role: 'arrival', hours: 1300 });
+  expect(pushes).toEqual([]);
+  await assignments.editHours({ assignmentId: context.stint.id, arrivalHours: 1420, departureHours: null });
+  await assignments.captureHours({ assignmentId: context.stint.id, role: 'departure', hours: 1450 });
+  expect(pushes).toEqual([{ kind: 'machine.service-due-soon', machineId: context.machine.id }]);
 });

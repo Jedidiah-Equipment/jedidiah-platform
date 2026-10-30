@@ -5,10 +5,10 @@ import {
   hoursToService,
   hoursToServiceLabel,
   isDueForService,
+  knownHoursCrossServiceDueSoon,
   machineBusyWith,
   machineServiceBadge,
   machinesDueForService,
-  serviceDueSoonCrossed,
   serviceDueStatus,
   suggestedNextServiceDue,
   suggestedNextServiceDueValue,
@@ -19,25 +19,25 @@ const threshold = CONTRACTING_SETTINGS_DEFAULTS.serviceDueSoonThresholdHours;
 
 describe('serviceDueStatus', () => {
   test('is unknown until the Machine has both a reading and a Next Service Due', () => {
-    expect(serviceDueStatus({ latestReadingHours: null, nextServiceDueHours: 500 }, threshold)).toBe('unknown');
-    expect(serviceDueStatus({ latestReadingHours: 450, nextServiceDueHours: null }, threshold)).toBe('unknown');
+    expect(serviceDueStatus({ knownHours: null, nextServiceDueHours: 500 }, threshold)).toBe('unknown');
+    expect(serviceDueStatus({ knownHours: 450, nextServiceDueHours: null }, threshold)).toBe('unknown');
   });
 
   test('turns due soon within the threshold, inclusive, and overdue once the meter passes it', () => {
-    expect(serviceDueStatus({ latestReadingHours: 1349, nextServiceDueHours: 1500 }, threshold)).toBe('ok');
-    expect(serviceDueStatus({ latestReadingHours: 1449, nextServiceDueHours: 1500 }, threshold)).toBe('due-soon');
-    expect(serviceDueStatus({ latestReadingHours: 1400, nextServiceDueHours: 1500 }, threshold)).toBe('due-soon');
-    expect(serviceDueStatus({ latestReadingHours: 1500, nextServiceDueHours: 1500 }, threshold)).toBe('due-soon');
-    expect(serviceDueStatus({ latestReadingHours: 1500.1, nextServiceDueHours: 1500 }, threshold)).toBe('overdue');
+    expect(serviceDueStatus({ knownHours: 1349, nextServiceDueHours: 1500 }, threshold)).toBe('ok');
+    expect(serviceDueStatus({ knownHours: 1449, nextServiceDueHours: 1500 }, threshold)).toBe('due-soon');
+    expect(serviceDueStatus({ knownHours: 1400, nextServiceDueHours: 1500 }, threshold)).toBe('due-soon');
+    expect(serviceDueStatus({ knownHours: 1500, nextServiceDueHours: 1500 }, threshold)).toBe('due-soon');
+    expect(serviceDueStatus({ knownHours: 1500.1, nextServiceDueHours: 1500 }, threshold)).toBe('overdue');
   });
 
   test('reads the threshold it is given: 120 h to go is on track at 100 and due soon at 150', () => {
-    expect(serviceDueStatus({ latestReadingHours: 1380, nextServiceDueHours: 1500 }, 100)).toBe('ok');
-    expect(serviceDueStatus({ latestReadingHours: 1380, nextServiceDueHours: 1500 }, 150)).toBe('due-soon');
+    expect(serviceDueStatus({ knownHours: 1380, nextServiceDueHours: 1500 }, 100)).toBe('ok');
+    expect(serviceDueStatus({ knownHours: 1380, nextServiceDueHours: 1500 }, 150)).toBe('due-soon');
   });
 
   test('reports the hours left to one decimal', () => {
-    expect(hoursToService({ latestReadingHours: 1449.3, nextServiceDueHours: 1500.25 })).toBe(51);
+    expect(hoursToService({ knownHours: 1449.3, nextServiceDueHours: 1500.25 })).toBe(51);
   });
 });
 
@@ -70,10 +70,10 @@ describe('machineBusyWith', () => {
   });
 });
 
-describe('serviceDueSoonCrossed', () => {
+describe('knownHoursCrossServiceDueSoon', () => {
   const due = 1500;
-  const crossed = (previousHours: number | null, newHours: number, nextServiceDueHours: number | null = due) =>
-    serviceDueSoonCrossed({ previousHours, newHours, nextServiceDueHours, threshold });
+  const crossed = (before: number | null, after: number, nextServiceDueHours: number | null = due) =>
+    knownHoursCrossServiceDueSoon(before, after, { nextServiceDueHours, serviceAlertHours: null }, threshold);
 
   test('fires once, on the capture that first lands inside the window', () => {
     expect(crossed(null, 1450)).toBe(true);
@@ -91,7 +91,7 @@ describe('serviceDueSoonCrossed', () => {
 
   test('crosses the edge the current threshold draws, never a constant', () => {
     const at = (threshold: number) =>
-      serviceDueSoonCrossed({ previousHours: 1300, newHours: 1380, nextServiceDueHours: 1500, threshold });
+      knownHoursCrossServiceDueSoon(1300, 1380, { nextServiceDueHours: 1500, serviceAlertHours: null }, threshold);
     expect(at(100)).toBe(false);
     expect(at(150)).toBe(true);
   });

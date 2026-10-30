@@ -27,7 +27,7 @@ import { Text } from '@/components/ui/text';
 import { useAppToast } from '@/components/ui/toast';
 import { CategoryIcon } from '@/contracting/components/CategoryIcon';
 import { DetailRow } from '@/contracting/components/DetailRow';
-import { MachineLatestReading } from '@/contracting/components/MachineLatestReading';
+import { MachineKnownHours } from '@/contracting/components/MachineKnownHours';
 import { useFleet } from '@/contracting/readings/use-fleet';
 import { useSessionPermission } from '@/lib/auth-session';
 import { useBusyAction } from '@/lib/use-busy-action';
@@ -110,7 +110,7 @@ function MachineCard({ record, machine }: { record: ServiceRecord; machine: Fiel
           <MachineIdentity record={record} title={`${machine.make} ${machine.model}`}>
             <Icon className="text-muted-foreground" icon={IconChevronRight} size={16} />
           </MachineIdentity>
-          <MachineLatestReading machine={machine} />
+          <MachineKnownHours machine={machine} />
         </Pressable>
       }
     />

@@ -11,6 +11,7 @@ import {
 } from '@pkg/db';
 import { hashPassword } from 'better-auth/crypto';
 import { getTableUniqueName } from 'drizzle-orm';
+import { foldLegacyJobHours } from './legacy-job-hours.js';
 import { assertLocalSeedStorageTarget, assertLocalSeedTarget } from './seed-target-guards.js';
 import { deserializeSnapshotRows } from './snapshot-json.js';
 import { objectFilePath, snapshotDirectory } from './snapshot-paths.js';
@@ -65,12 +66,16 @@ export async function writeLocalSeedSnapshot(database?: Db): Promise<void> {
     assertLocalSeedStorageTarget(readSeedStorageConfig(''));
   }
 
-  const snapshots = await Promise.all(
-    snapshotTables.map(async (config) => ({
-      config,
-      rows: prepareRowsForSeed(config, await readSnapshotFile(config)),
-    })),
+  const rowsByTable = new Map(
+    await Promise.all(
+      snapshotTables.map(async (config) => [config.tableName, await readSnapshotFile(config)] as const),
+    ),
   );
+  foldLegacyJobHours(rowsByTable);
+  const snapshots = snapshotTables.map((config) => ({
+    config,
+    rows: prepareRowsForSeed(config, rowsByTable.get(config.tableName) ?? []),
+  }));
   const localClient = database ? null : createDatabaseClient(localDatabaseUrl);
   const writableDb = database ?? localClient?.db;
 

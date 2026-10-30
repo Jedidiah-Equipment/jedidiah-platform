@@ -1,5 +1,5 @@
 import { formatHours, getFirstName } from '@pkg/domain';
-import { machineBusyWith, readingRoleLabels, readingSourceLabel } from '@pkg/domain/contracting';
+import { machineBusyWith, readingSourceLabel } from '@pkg/domain/contracting';
 import type { FieldMachine, FieldReading } from '@pkg/schema/contracting';
 
 type BusyWith = { job: NonNullable<FieldMachine['busyOnJob']> | null; jobNumber: string };
@@ -29,7 +29,7 @@ import { useSessionPermission } from '@/lib/auth-session';
 import { usePersistedState } from '@/lib/use-persisted-state';
 import { BreakdownIcon } from './BreakdownSubjectIcons';
 import { CategoryIcon } from './CategoryIcon';
-import { MachineLatestReading } from './MachineLatestReading';
+import { MachineKnownHours } from './MachineKnownHours';
 
 type MachineTab = 'details' | 'readings';
 const MACHINE_TABS: readonly SubTabOption<MachineTab>[] = [
@@ -80,14 +80,13 @@ function ServiceHistoryLink({ machineId }: { machineId: string }) {
 
 function ReadingCard({ reading }: { reading: FieldReading }) {
   const source = readingSourceLabel(reading);
-  const caption = [source, reading.disputed ? 'Disputed' : null].filter(Boolean).join(' · ');
   return (
     <View className="gap-1 rounded-xl border border-border bg-surface p-4">
       <Text className="text-foreground" weight="semibold">
-        {formatHours(reading.value)} · {readingRoleLabels[reading.role]}
+        {formatHours(reading.value)}
       </Text>
       <DateText className="text-sm text-muted-foreground" date={reading.capturedAt} format="medium" />
-      {caption ? <Text className="text-sm text-muted-foreground">{caption}</Text> : null}
+      {source ? <Text className="text-sm text-muted-foreground">{source}</Text> : null}
     </View>
   );
 }
@@ -217,7 +216,7 @@ export default function MachineScreen() {
             {machine?.serialNumber ? (
               <Text className="text-sm text-muted-foreground">Serial number {machine.serialNumber}</Text>
             ) : null}
-            <MachineLatestReading machine={machine} />
+            <MachineKnownHours machine={machine} />
           </View>
           {canCapture && machine ? (
             <Button

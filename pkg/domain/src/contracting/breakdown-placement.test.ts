@@ -14,8 +14,8 @@ const stint = (
     machineId,
     implementId: implement,
     createdAt: '2026-10-01T06:00:00.000Z',
-    arrival: arrivedAt ? { capturedAt: arrivedAt } : null,
-    departure: departedAt ? { capturedAt: departedAt } : null,
+    arrival: arrivedAt ? { at: arrivedAt } : null,
+    departure: departedAt ? { at: departedAt } : null,
   }) satisfies PlacedStint;
 const breakdown = (reportedAt: string, kind: 'machine' | 'implement' = 'machine', id = machineId) => ({
   subject: { kind, id },

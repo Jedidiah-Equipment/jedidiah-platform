@@ -1,5 +1,5 @@
 import { formatNumber } from '@pkg/domain';
-import { opensWebJobs, readingProviderSuffix } from '@pkg/domain/contracting';
+import { knownHoursSourceSuffix, opensWebJobs } from '@pkg/domain/contracting';
 import type { Machine } from '@pkg/schema/contracting';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
@@ -175,13 +175,9 @@ function MachineForm({
               <MachineServiceCard machine={machine}>
                 <AutosaveFormFields formProps={formProps} disabled={!canEdit}>
                   <ReadOnlyField
-                    label={`Current hours${readingProviderSuffix(machine.latestReadingProvider)}`}
+                    label={`Known hours${knownHoursSourceSuffix(machine.knownHoursSource)}`}
                     unit="hours"
-                    value={
-                      machine.latestReadingHours === null
-                        ? null
-                        : formatNumber(machine.latestReadingHours, { decimals: 1 })
-                    }
+                    value={machine.knownHours === null ? null : formatNumber(machine.knownHours, { decimals: 1 })}
                   />
                   <form.AppField name="serviceIntervalHours">
                     {(field) => <field.NumberField label="Service interval" unit="hours" />}

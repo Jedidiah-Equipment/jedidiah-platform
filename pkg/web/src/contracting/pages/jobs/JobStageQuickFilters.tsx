@@ -1,7 +1,7 @@
 import {
-  assignmentAttentionLevelColorClassNames,
   jobQueueColorClassNames,
   jobQueueLabels,
+  needsALookColorClassNames,
   stagesCount,
 } from '@pkg/domain/contracting';
 import type { JobQueue, JobQueueSummary } from '@pkg/schema/contracting';
@@ -45,7 +45,7 @@ export function JobStageQuickFilters({
               attention ? (
                 <IconAlertTriangle
                   aria-label="Jobs need a look"
-                  className={cn('size-3.5', assignmentAttentionLevelColorClassNames[attention].icon)}
+                  className={cn('size-3.5', needsALookColorClassNames.icon)}
                 />
               ) : null
             }

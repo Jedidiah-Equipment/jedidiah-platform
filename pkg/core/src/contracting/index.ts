@@ -22,6 +22,7 @@ export * from './jobs/job-read.js';
 export * from './jobs/job-service.js';
 export * from './jobs/measure-service.js';
 export * from './jobs/pricing-service.js';
+export * from './jobs/stint-hours-service.js';
 export * from './mechanics.js';
 export * from './notes/note-service.js';
 export * from './notifications/contracting-push.js';

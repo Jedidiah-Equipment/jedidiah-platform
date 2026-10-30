@@ -105,13 +105,23 @@ async function serviceDueSoonPush(db: Db, machineId: string): Promise<PushMessag
   const machine = await getMachine({ db, id: machineId });
   // Queued work runs after commit: a service closed in between, or a raised threshold, leaves nothing to say.
   // The Machine read already judged its status against its own Service Alert Hours, else the threshold in Settings.
-  if (machine.hoursToService === null || !serviceDueNeedsAttention(machine.serviceDueStatus)) return [];
+  if (
+    machine.hoursToService === null ||
+    machine.knownHours === null ||
+    !serviceDueNeedsAttention(machine.serviceDueStatus)
+  )
+    return [];
   // Nobody is excluded: the capturer is usually a Foreman, and a workshop manager who captured it still wants it.
   return addressed(
     db,
     SERVICE_DUE_SOON_PUSH_KIND,
     null,
-    serviceDueSoonPushMessage({ id: machine.id, code: machine.code, hoursToService: machine.hoursToService }),
+    serviceDueSoonPushMessage({
+      id: machine.id,
+      code: machine.code,
+      knownHours: machine.knownHours,
+      hoursToService: machine.hoursToService,
+    }),
     (access) => canReceivePush(SERVICE_DUE_SOON_PUSH_KIND, access),
   );
 }

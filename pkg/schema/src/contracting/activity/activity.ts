@@ -92,13 +92,12 @@ export const JobCancelledActivityItem = z.object({
   job: ActivityJobRef,
   reason: z.string(),
 });
-/** `occurredAt` is when the server accepted the reading; `readAt` is the Read At, which may be backdated. */
+/** A stint's Job Hours: `occurredAt` is when the server saved them. */
 const hoursShape = {
   ...base,
   job: ActivityJobRef,
   machine: ActivityMachineRef,
   hours: z.number(),
-  readAt: DateIso,
 } as const;
 export const MachineArrivedActivityItem = z.object({ type: z.literal('machine-arrived'), ...hoursShape });
 export const MachineLeftActivityItem = z.object({ type: z.literal('machine-left'), ...hoursShape });

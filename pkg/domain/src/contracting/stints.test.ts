@@ -18,7 +18,7 @@ function stint(
     machineCode,
     createdAt,
     state: capturedAt ? 'left' : 'planned',
-    arrival: capturedAt ? { capturedAt } : null,
+    arrival: capturedAt ? { at: capturedAt } : null,
     workHours,
     travelHours,
     measures: [],

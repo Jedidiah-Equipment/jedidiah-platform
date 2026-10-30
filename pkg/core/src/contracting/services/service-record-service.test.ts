@@ -48,7 +48,7 @@ const spotReading = (db: Parameters<typeof captureReading>[0]['db'], machineId: 
   captureReading({
     db,
     actor: admin,
-    input: { machineId, role: 'spot', value, capturedAt: readAtFor(value), disputePrevious: false },
+    input: { machineId, value, capturedAt: readAtFor(value) },
   });
 
 describe('Service Due Soon', () => {
@@ -63,7 +63,7 @@ describe('Service Due Soon', () => {
     const listed = (await listMachines({ db, input: { status: 'active', search: '' } })).find(
       (machine) => machine.id === excavator.id,
     );
-    expect(listed).toMatchObject({ latestReadingHours: 1449, hoursToService: 51, serviceDueStatus: 'due-soon' });
+    expect(listed).toMatchObject({ knownHours: 1449, hoursToService: 51, serviceDueStatus: 'due-soon' });
   });
 
   test('reports the crossing once, and again after a service re-arms it', async ({ context: { db, excavator } }) => {
@@ -73,13 +73,7 @@ describe('Service Due Soon', () => {
       const { serviceDueSoonCrossed } = await captureReading({
         db,
         actor: admin,
-        input: {
-          machineId: excavator.id,
-          role: 'spot',
-          value,
-          capturedAt: readAtFor(value),
-          disputePrevious: false,
-        },
+        input: { machineId: excavator.id, value, capturedAt: readAtFor(value) },
       });
       if (serviceDueSoonCrossed) crossed.push(value);
     };

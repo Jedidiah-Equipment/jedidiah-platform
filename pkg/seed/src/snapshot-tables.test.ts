@@ -398,9 +398,9 @@ describe('snapshot table registry', () => {
         id: 'r1',
         sequence: 7,
         machineId: 'm1',
-        role: 'spot',
+        value: 12,
       }),
-    ).toMatchObject({ id: 'r1', machineId: 'm1', role: 'spot' });
+    ).toMatchObject({ id: 'r1', machineId: 'm1', value: 12 });
     expect(projectWritableRow(configFor('contracting_hour_reading'), { sequence: 7 })).not.toHaveProperty('sequence');
     expect(configFor('contracting_hour_reading').readOrderColumn).toBe('sequence');
     expect(configFor('contracting_job').resetSequence?.columnName).toBe('code');

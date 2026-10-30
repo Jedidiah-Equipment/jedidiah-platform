@@ -1,12 +1,6 @@
 import {
-  createAssignment,
   createCategory,
-  createCustomer,
-  createFarm,
-  createJob,
   createMachine,
-  createWorkType,
-  getJob,
   listReadingsByMachine,
   patchMachine,
   recordTelematicsReading,
@@ -14,7 +8,6 @@ import {
 import { user } from '@pkg/db';
 import { contractingJohnDeereLinks } from '@pkg/db/contracting';
 import type { ContractingPushEvent } from '@pkg/domain/contracting';
-import { accessForRole } from '@pkg/domain/testing';
 import { MachineCreateInput } from '@pkg/schema/contracting';
 import Fastify from 'fastify';
 import { expect, vi } from 'vitest';
@@ -29,7 +22,6 @@ vi.mock('../../../auth/session.js', async (original) => ({
 }));
 const test = createTester(async ({ db, auth }) => {
   const actorUserId = 'test-user-id';
-  const actor = accessForRole('foreman', actorUserId);
   await db.insert(user).values({
     id: actorUserId,
     name: 'Test',
@@ -45,41 +37,19 @@ const test = createTester(async ({ db, auth }) => {
     actorUserId,
     input: MachineCreateInput.parse({ code: 'T1', make: 'Deere', model: '6140', categoryId: category.id }),
   });
-  const customer = await createCustomer({ db, actorUserId, input: { name: 'Rowley' } });
-  const farm = await createFarm({ db, actorUserId, input: { customerId: customer.id, name: 'Rooikraal' } });
-  const workType = await createWorkType({ db, actorUserId, input: { name: 'Dam building' } });
-  const job = await createJob({
-    db,
-    // Management sets the Job up; the Foreman only captures on it.
-    actor: accessForRole('contracting-manager', actorUserId),
-    input: {
-      customerId: customer.id,
-      farmId: farm.id,
-      workTypeId: workType.id,
-      description: null,
-      foremanUserId: actorUserId,
-    },
-  });
-  await createAssignment({
-    db,
-    actor,
-    input: { jobId: job.id, machineId: machine.id, implementId: null },
-  });
-  const [assignment] = (await getJob({ db, id: job.id })).assignments;
-  if (!assignment) throw new Error('Expected Machine Assignment');
   const app = Fastify();
   app.decorate('auth', auth);
   const pushes: ContractingPushEvent[] = [];
   await registerReadingHttpRoutes(app, { db, push: { schedule: (event) => pushes.push(event) } });
   state.session = mockSession(null);
   (state.session as ReturnType<typeof mockSession>).user.contractingRole = 'foreman';
-  return { assignmentId: assignment.id, db, app, jobId: job.id, machineId: machine.id, pushes };
+  return { db, app, machineId: machine.id, pushes };
 });
 function capture(machineId: string, fields: Record<string, unknown> = {}) {
   return {
     method: 'POST' as const,
     url: '/api/contracting/readings',
-    payload: { machineId, role: 'spot', value: 123.4, capturedAt: '2026-09-07T08:00:00Z', ...fields },
+    payload: { machineId, value: 123.4, capturedAt: '2026-09-07T08:00:00Z', ...fields },
   };
 }
 test('rejects unauthenticated and Equipment-only captures before parsing their body', async ({ context }) => {
@@ -147,29 +117,11 @@ test('a refusal John Deere brackets carries the Read At it proposes beside the a
   }
 });
 
-test('reserves a Baseline Reading for Contracting administrators', async ({ context }) => {
-  const { app, machineId } = context;
-  try {
-    const refused = await app.inject(capture(machineId, { role: 'baseline' }));
-    expect(refused.statusCode).toBe(403);
-    expect(refused.json()).toMatchObject({ data: { appCode: 'reading.forbidden' } });
-    (state.session as ReturnType<typeof mockSession>).user.contractingRole = 'contracting-admin';
-    const accepted = await app.inject(capture(machineId, { role: 'baseline' }));
-    expect(accepted.statusCode).toBe(201);
-    expect(accepted.json()).toMatchObject({ role: 'baseline', method: 'manual' });
-    const second = await app.inject(capture(machineId, { role: 'baseline' }));
-    expect(second.statusCode).toBe(409);
-    expect(second.json()).toMatchObject({ data: { appCode: 'reading.baseline_exists' } });
-  } finally {
-    await app.close();
-  }
-});
-
 test('accepts every phone field and retries a capture without duplicating it', async ({ context }) => {
   const { app, db, machineId } = context;
   try {
     const localId = '78108c3d-4b34-44f1-bf87-4fcb00a6a233';
-    const request = capture(machineId, { localId, expectedPreviousId: null, disputePrevious: false, comment: null });
+    const request = capture(machineId, { localId, comment: null });
     const first = await app.inject(request);
     expect(first.statusCode).toBe(201);
     expect(first.json()).toMatchObject({ id: localId, method: 'manual' });
@@ -226,7 +178,6 @@ test('management captures a backdated spot reading on the Machine alone, as the 
     const response = await app.inject(capture(machineId, { capturedAt: '2026-09-07T06:30:00.000Z' }));
     expect(response.statusCode).toBe(201);
     expect(response.json()).toMatchObject({
-      role: 'spot',
       value: 123.4,
       capturedAt: '2026-09-07T06:30:00.000Z',
     });
@@ -246,26 +197,11 @@ test('stores a trimmed capture comment', async ({ context }) => {
   }
 });
 
-test('takes an arrival on its Machine Assignment and activates its Job', async ({ context }) => {
-  try {
-    const response = await context.app.inject(
-      capture(context.machineId, {
-        role: 'arrival',
-        assignmentId: context.assignmentId,
-      }),
-    );
-    expect(response.statusCode).toBe(201);
-    expect(response.json()).toMatchObject({ role: 'arrival', machineId: context.machineId });
-    expect(await getJob({ db: context.db, id: context.jobId })).toMatchObject({ status: 'active' });
-  } finally {
-    await context.app.close();
-  }
-});
-
 test('refuses invalid Hour Reading fields without a row', async ({ context }) => {
   const { app, db, machineId } = context;
   try {
-    for (const fields of [{ role: 'arrival' }, { value: undefined }, { photo: 'meter.jpg' }]) {
+    // A phone from before Job Hours moved off the ledger sends a role, and is refused rather than misfiled.
+    for (const fields of [{ role: 'spot' }, { role: 'arrival' }, { value: undefined }, { photo: 'meter.jpg' }]) {
       const response = await app.inject(capture(machineId, fields));
       expect(response.statusCode).toBe(400);
       expect(response.json()).toEqual({ message: 'Invalid Hour Reading.' });

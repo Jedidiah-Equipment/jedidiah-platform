@@ -1,11 +1,9 @@
 import type { DateOnlyIso } from '@pkg/schema';
-import type { DayCounts, HourKindTotals, ReadingRole, ReportWindow } from '@pkg/schema/contracting';
+import type { DayCounts, HourKindTotals, ReportWindow } from '@pkg/schema/contracting';
+import { JOHANNESBURG_TIME_ZONE, zonedDateStartToUtcInstant } from '../formatting/date.js';
 import { addDateOnlyDays, diffDateOnlyDays } from '../formatting/date-only.js';
 import { round1 } from './hours.js';
 import { reportWindowInstants } from './report-window.js';
-
-/** One Machine's stint as the day count sees it: plant dates of its readings, departure open while on site. */
-export type ActiveSpan = { arrivalDate: DateOnlyIso; departureDate: DateOnlyIso | null };
 
 const earlier = (a: DateOnlyIso, b: DateOnlyIso) => (a <= b ? a : b);
 const later = (a: DateOnlyIso, b: DateOnlyIso) => (a >= b ? a : b);
@@ -13,8 +11,11 @@ const later = (a: DateOnlyIso, b: DateOnlyIso) => (a >= b ? a : b);
 /** The days a Machine belongs to the fleet: from its creation date through its retirement date. */
 export type FleetSpan = { createdDate: DateOnlyIso; retiredDate: DateOnlyIso | null };
 
-/** What the day counts read off a Machine: its fleet span and its stints. */
-export type UtilisationMachine = FleetSpan & { spans: readonly ActiveSpan[] };
+/** A stint's Job's effective dates: the days the Machine counts as active on it. */
+export type StintJobDates = { startDate: DateOnlyIso; endDate: DateOnlyIso };
+
+/** What the day counts read off a Machine: its fleet span and its stints' Job dates. */
+export type UtilisationMachine = FleetSpan & { stints: readonly StintJobDates[] };
 
 /**
  * The window days the Machine belongs to the fleet, or null when it belongs to none of them. A window after today
@@ -27,17 +28,17 @@ function fleetBounds(fleet: FleetSpan, window: ReportWindow): { from: DateOnlyIs
 }
 
 /**
- * Distinct window days covered by any span, inclusive on both ends; `today` closes an open span. Days outside the
- * Machine's fleet span never count, so a Machine retired while on site, or a Read At back-dated before its creation,
- * cannot have more active days than fleet days.
+ * Distinct window days covered by any stint's Job dates, inclusive on both ends. Days outside the
+ * Machine's fleet span never count, so a Machine retired while on a Job, or a Job dated before its creation, cannot
+ * have more active days than fleet days.
  */
-function activeDaysIn(machine: UtilisationMachine, window: ReportWindow, today: DateOnlyIso): number {
+function activeDaysIn(machine: UtilisationMachine, window: ReportWindow): number {
   const bounds = fleetBounds(machine, window);
   if (!bounds) return 0;
   const days = new Set<DateOnlyIso>();
-  for (const span of machine.spans) {
-    const from = later(span.arrivalDate, bounds.from);
-    const to = earlier(span.departureDate ?? today, bounds.to);
+  for (const stint of machine.stints) {
+    const from = later(stint.startDate, bounds.from);
+    const to = earlier(stint.endDate, bounds.to);
     for (let day = from; day <= to; day = addDateOnlyDays(day, 1)) days.add(day);
   }
   return days.size;
@@ -53,8 +54,8 @@ export const utilisationPercent = (activeDays: number, fleetDays: number): numbe
   fleetDays === 0 ? null : round1((activeDays / fleetDays) * 100);
 
 /** One Machine's day counts for the window: zero fleet days when it was not in the fleet during it. */
-export function dayCounts(machine: UtilisationMachine, window: ReportWindow, today: DateOnlyIso): DayCounts {
-  const activeDays = activeDaysIn(machine, window, today);
+export function dayCounts(machine: UtilisationMachine, window: ReportWindow): DayCounts {
+  const activeDays = activeDaysIn(machine, window);
   const fleetDays = fleetDaysIn(machine, window);
   return { activeDays, fleetDays, utilisationPercent: utilisationPercent(activeDays, fleetDays) };
 }
@@ -66,77 +67,31 @@ export function sumDayCounts(rows: readonly DayCounts[]): DayCounts {
   return { activeDays, fleetDays, utilisationPercent: utilisationPercent(activeDays, fleetDays) };
 }
 
-export type LedgerReading = { id: string; role: ReadingRole; value: number; capturedAt: string };
-export type LedgerStint = {
-  arrivalReadingId: string;
-  departureReadingId: string | null;
-  gap: { travelHours: number; unaccountedHours: number } | null;
-};
-export type HourKind = 'work' | 'travel' | 'unaccounted' | 'unresolved';
-/**
- * One stretch of the meter with a kind and the instants it ran between. A gap run's share is kept unrounded so a
- * resolved split survives many small runs; `allocateHours` rounds each total once.
- */
+export type HourKind = 'work' | 'travel';
+/** One stretch of hours with a kind and the instants it ran between; `allocateHours` rounds each total once. */
 export type HourSegment = { kind: HourKind; hours: number; from: string; to: string };
 
-type GapRun = { from: string; to: string; hours: number };
+/** A Job's dates as instants: its Start date's plant midnight to the plant midnight after its End date. */
+export const jobDatesInstants = (dates: { startDate: DateOnlyIso; endDate: DateOnlyIso }) => ({
+  from: zonedDateStartToUtcInstant(dates.startDate, JOHANNESBURG_TIME_ZONE).toISOString(),
+  to: zonedDateStartToUtcInstant(addDateOnlyDays(dates.endDate, 1), JOHANNESBURG_TIME_ZONE).toISOString(),
+});
 
-/** Splits a closed Hour Gap over its runs by each run's share of the gap's hours, unrounded. */
-function splitGapRuns(runs: readonly GapRun[], closing: LedgerStint, gapFlagThresholdHours: number): HourSegment[] {
-  const gapHours = round1(runs.reduce((sum, run) => sum + run.hours, 0));
-  const split: Record<Exclude<HourKind, 'work'>, number> = closing.gap !== null
-    ? { travel: closing.gap.travelHours, unaccounted: closing.gap.unaccountedHours, unresolved: 0 }
-    : gapHours > gapFlagThresholdHours
-      ? { travel: 0, unaccounted: 0, unresolved: gapHours }
-      : { travel: gapHours, unaccounted: 0, unresolved: 0 };
-  return runs.flatMap((run) => {
-    const share = gapHours === 0 ? 0 : run.hours / gapHours;
-    return (['travel', 'unaccounted', 'unresolved'] as const).flatMap((kind) =>
-      split[kind] > 0 ? [{ kind, hours: split[kind] * share, from: run.from, to: run.to }] : [],
-    );
-  });
-}
+/** One stint's Work and Travel spread evenly over its Job's effective dates. */
+export type DatedStintHours = StintJobDates & { workHours: number; travelHours: number };
 
-/**
- * The ledger walk: a Machine's whole reading ledger in Read At order (ties by acceptance), phases switched by the stints' arrival and
- * departure reading ids (never by role). Before the first arrival and in a gap no arrival has closed count nowhere.
- */
-export function hourSegments(
-  readings: readonly LedgerReading[],
-  stints: readonly LedgerStint[],
-  gapFlagThresholdHours: number,
-): HourSegment[] {
-  const arrivals = new Map(stints.map((stint) => [stint.arrivalReadingId, stint]));
-  const departures = new Set(stints.flatMap((stint) => (stint.departureReadingId ? [stint.departureReadingId] : [])));
-  const segments: HourSegment[] = [];
-  let gapRuns: GapRun[] = [];
-  // A first arrival can open the ledger itself, with no baseline before it.
-  const first = readings[0];
-  let phase: 'before' | 'on-site' | 'gap' = !first
-    ? 'before'
-    : arrivals.has(first.id)
-      ? 'on-site'
-      : departures.has(first.id)
-        ? 'gap'
-        : 'before';
-  for (let index = 1; index < readings.length; index += 1) {
-    const previous = readings[index - 1];
-    const next = readings[index];
-    if (!previous || !next) continue;
-    // A disputed pair may deliberately run backwards; it contributes nothing.
-    const hours = Math.max(0, round1(next.value - previous.value));
-    if (phase === 'on-site') segments.push({ kind: 'work', hours, from: previous.capturedAt, to: next.capturedAt });
-    if (phase === 'gap') gapRuns.push({ from: previous.capturedAt, to: next.capturedAt, hours });
-    const closing = arrivals.get(next.id);
-    if (closing) {
-      if (phase === 'gap') segments.push(...splitGapRuns(gapRuns, closing, gapFlagThresholdHours));
-      gapRuns = [];
-      phase = 'on-site';
-    } else if (departures.has(next.id)) {
-      phase = 'gap';
-    }
-  }
-  return segments;
+/** A Machine's hour totals by kind for the window: each stint's Work and Travel over its Job's dates, then allocated. */
+export function stintHourTotals(stints: readonly DatedStintHours[], window: ReportWindow): HourKindTotals {
+  return allocateHours(
+    stints.flatMap((stint) => {
+      const span = jobDatesInstants(stint);
+      return [
+        { kind: 'work' as const, hours: stint.workHours, ...span },
+        { kind: 'travel' as const, hours: stint.travelHours, ...span },
+      ];
+    }),
+    window,
+  );
 }
 
 /**
@@ -154,16 +109,11 @@ export function overlapShare(from: number, to: number, range: { from: number; to
  * resolves with `end < start`, so its range is empty and every share is zero without a guard.
  */
 export function allocateHours(segments: readonly HourSegment[], window: ReportWindow): HourKindTotals {
-  const totals: Record<HourKind, number> = { work: 0, travel: 0, unaccounted: 0, unresolved: 0 };
+  const totals: Record<HourKind, number> = { work: 0, travel: 0 };
   const instants = reportWindowInstants(window);
   const range = { from: instants.from.getTime(), to: instants.to.getTime() };
   for (const segment of segments) {
     totals[segment.kind] += segment.hours * overlapShare(Date.parse(segment.from), Date.parse(segment.to), range);
   }
-  return {
-    workHours: round1(totals.work),
-    travelHours: round1(totals.travel),
-    unaccountedHours: round1(totals.unaccounted),
-    unresolvedHours: round1(totals.unresolved),
-  };
+  return { workHours: round1(totals.work), travelHours: round1(totals.travel) };
 }

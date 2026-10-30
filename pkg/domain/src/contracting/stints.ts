@@ -26,7 +26,7 @@ export function groupStints<T extends Assignment>(
   }
   const firstArrival = (group: readonly Assignment[]) =>
     group.reduce((earliest, stint) => {
-      const arrival = stint.arrival?.capturedAt ?? '';
+      const arrival = stint.arrival?.at ?? '';
       return earliest === '' || (arrival !== '' && arrival < earliest) ? arrival : earliest;
     }, '');
   const groups = [...visited.values()].sort(
@@ -37,7 +37,7 @@ export function groupStints<T extends Assignment>(
   const machines = groups.map((stints) => {
     stints.sort(
       (left, right) =>
-        (left.arrival?.capturedAt ?? '').localeCompare(right.arrival?.capturedAt ?? '') ||
+        (left.arrival?.at ?? '').localeCompare(right.arrival?.at ?? '') ||
         left.createdAt.localeCompare(right.createdAt),
     );
     return {
@@ -48,7 +48,7 @@ export function groupStints<T extends Assignment>(
         stints.length > 1
           ? {
               workHours: round1(stints.reduce((total, stint) => total + (stint.workHours ?? 0), 0)),
-              travelHours: round1(stints.reduce((total, stint) => total + stint.travelHours, 0)),
+              travelHours: round1(stints.reduce((total, stint) => total + (stint.travelHours ?? 0), 0)),
               amount: round2(stints.reduce((total, stint) => total + stintAmount(stint.pricing), 0)),
             }
           : null,

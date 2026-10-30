@@ -18,22 +18,7 @@ const test = createTester(async ({ db }) => {
   });
   return { db };
 });
-test('reserves Disputes for managers, behind the business wall', async ({ context }) => {
-  const managerSession = mockSession(null);
-  managerSession.user.contractingRole = 'contracting-manager';
-  const manager = context.createCaller(managerSession);
-  expect(await manager.contractingReadings.listDisputes()).toEqual([]);
-  for (const session of [
-    mockSession('admin'),
-    Object.assign(mockSession(null), { user: { ...mockSession(null).user, contractingRole: 'foreman' as const } }),
-  ]) {
-    await expect(context.createCaller(session).contractingReadings.listDisputes()).rejects.toMatchObject({
-      code: 'FORBIDDEN',
-    });
-  }
-});
-
-test('lists a Dispute as one row and names the reading an amendment was refused on', async ({ context }) => {
+test('names the reading an amendment was refused on', async ({ context }) => {
   const managerSession = mockSession(null);
   managerSession.user.contractingRole = 'contracting-manager';
   const manager = context.createCaller(managerSession);
@@ -45,29 +30,15 @@ test('lists a Dispute as one row and names the reading an amendment was refused 
     categoryId: category.id,
   });
   const actor = accessForRole('contracting-manager', managerSession.user.id);
-  const spot = (value: number, capturedAt: string, disputePrevious: boolean) =>
-    captureReading({
-      db: context.db,
-      actor,
-      input: { machineId: machine.id, role: 'spot', value, capturedAt, disputePrevious },
-    });
-  const { reading: previous } = await spot(1200, '2026-09-07T08:00:00Z', false);
-  const { reading: disputing } = await spot(121, '2026-09-07T09:00:00Z', true);
-  const [row] = await manager.contractingReadings.listDisputes();
-  expect(row).toMatchObject({
-    id: previous.id,
-    readings: [{ id: previous.id, stint: null }, { id: disputing.id }],
-    reported: null,
-    reason: 'The previous reading is wrong.',
-  });
+  const spot = (value: number, capturedAt: string) =>
+    captureReading({ db: context.db, actor, input: { machineId: machine.id, value, capturedAt } });
+  await spot(100, '2026-09-07T08:00:00Z');
+  const { reading: later } = await spot(101, '2026-09-07T09:00:00Z');
   const refusal = await manager.contractingReadings
-    .amend({
-      amendments: [{ id: disputing.id, value: 119, capturedAt: '2026-09-07T09:00:00Z' }],
-      reason: 'Tenths drum misread',
-    })
+    .amend({ amendments: [{ id: later.id, value: 99, capturedAt: '2026-09-07T09:00:00Z' }], reason: 'Misread' })
     .catch((error: unknown) => error);
   expect(refusal).toBeInstanceOf(TRPCError);
-  expect(getTRPCPublicMetadata(refusal as TRPCError)).toMatchObject({ readingId: disputing.id });
+  expect(getTRPCPublicMetadata(refusal as TRPCError)).toMatchObject({ readingId: later.id });
 });
 
 test('foremen can find active Machines and read field history without fleet management', async ({ context }) => {
@@ -84,13 +55,7 @@ test('foremen can find active Machines and read field history without fleet mana
   await captureReading({
     db: context.db,
     actor: accessForRole('contracting-admin', adminSession.user.id),
-    input: {
-      machineId: machine.id,
-      role: 'spot',
-      value: 100,
-      capturedAt: '2026-09-08T08:00:00Z',
-      disputePrevious: false,
-    },
+    input: { machineId: machine.id, value: 100, capturedAt: '2026-09-08T08:00:00Z' },
   });
   const foremanSession = mockSession(null);
   foremanSession.user.contractingRole = 'foreman';
@@ -108,9 +73,9 @@ test('foremen can find active Machines and read field history without fleet mana
       currentDriverUserId: null,
       currentDriverName: null,
       serialNumber: null,
-      latestReadingHours: 100,
-      latestReadingProvider: null,
-      latestReadingAt: expect.any(String),
+      knownHours: 100,
+      knownHoursAt: '2026-09-08T08:00:00+00:00',
+      knownHoursSource: 'spot',
       serviceIntervalHours: null,
       nextServiceDueHours: null,
       hoursToService: null,
@@ -123,11 +88,11 @@ test('foremen can find active Machines and read field history without fleet mana
   ]);
   expect(await foreman.contractingReadings.latest({ machineId: machine.id })).toEqual({
     id: expect.any(String),
-    role: 'spot',
     value: 100,
     capturedAt: '2026-09-08T08:00:00.000Z',
     telematicsProvider: null,
   });
+  expect(await foreman.contractingReadings.latestTelematics({ machineId: machine.id })).toBeNull();
   await expect(foreman.contractingFleet.machines.list({})).rejects.toMatchObject({ code: 'FORBIDDEN' });
   await expect(context.createCaller(mockSession('admin')).contractingReadings.fieldMachines()).rejects.toMatchObject({
     code: 'FORBIDDEN',
@@ -150,20 +115,14 @@ test('estimates a Read At for anyone who captures, behind the business wall', as
   });
   const foremanSession = mockSession(null);
   foremanSession.user.contractingRole = 'foreman';
-  const input = { machineId: machine.id, role: 'spot', value: 120 } as const;
+  const input = { machineId: machine.id, value: 120 } as const;
   expect(await context.createCaller(foremanSession).contractingReadings.estimateReadAt(input)).toEqual({
     kind: 'none',
   });
   await captureReading({
     db: context.db,
     actor: accessForRole('contracting-admin', adminSession.user.id),
-    input: {
-      machineId: machine.id,
-      role: 'spot',
-      value: 100,
-      capturedAt: '2026-09-07T08:00:00Z',
-      disputePrevious: false,
-    },
+    input: { machineId: machine.id, value: 100, capturedAt: '2026-09-07T08:00:00Z' },
   });
   expect(await admin.contractingReadings.estimateReadAt(input)).toEqual({ kind: 'now' });
   await expect(

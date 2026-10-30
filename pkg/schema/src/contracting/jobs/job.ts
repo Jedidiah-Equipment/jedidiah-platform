@@ -7,10 +7,17 @@ import { UUID } from '../../common/uuid.js';
 import { OpenBreakdown } from '../breakdowns/open-breakdown.js';
 import { CategoryColour, CategoryIconKey, FleetCode, FleetName } from '../fleet/fleet.js';
 import { RateBasis } from '../rate-card/rate-card.js';
-import { HourReading, ReadingValue } from '../readings/reading.js';
-import { GapFlagThresholdHours } from '../settings/settings.js';
+import { JohnDeereDifferenceThresholdHours, TravelFlagThresholdHours } from '../settings/settings.js';
 import { AssignmentActions, JobActions } from './job-actions.js';
-import { assignmentStates, discountKinds, jobQueues, jobStatuses, needsALookLevels } from './job-enums.js';
+import {
+  assignmentAttentionKinds,
+  assignmentStates,
+  discountKinds,
+  jobQueues,
+  jobStatuses,
+  needsALookLevels,
+} from './job-enums.js';
+import { JobHoursValue } from './stint-hours.js';
 
 export const Hours = z.number().nonnegative().max(999999999.9).multipleOf(0.1);
 export const Litres = z.number().nonnegative().max(9999999999.99).multipleOf(0.01);
@@ -75,7 +82,7 @@ export const JobListInput = createSearchedSortedCursorQueryInput({
     invoicedFrom: DateOnlyIso.optional(),
     /** Keep only Jobs invoiced on or before this South African calendar day; a Job not yet invoiced drops out. */
     invoicedTo: DateOnlyIso.optional(),
-    /** Keep only Jobs whose Machine Assignment attention needs a look: an open Gap Flag, or a Disputed reading. */
+    /** Keep only Jobs with a Machine Assignment that needs a look: Travel over threshold or clamped, or John Deere differs. */
     needsALook: z.boolean().optional(),
     /** Keep only Jobs this Machine has an Assignment on, in any state: planned, on site, or left. */
     machineId: UUID.optional(),
@@ -110,20 +117,12 @@ export const AssignmentPatchInput = z
     id: UUID,
     implementId: UUID.nullable().optional(),
     driverUserId: AuthId.nullable().optional(),
-    travelIncluded: z.boolean().optional(),
   })
   .strict();
 export type AssignmentPatchInput = z.infer<typeof AssignmentPatchInput>;
 export const AssignmentIdInput = z.object({ id: UUID }).strict();
-export const GapResolveInput = z
-  .object({
-    id: UUID,
-    travelHours: Hours,
-    unaccountedHours: Hours,
-    reason: requiredTrimmedText('A reason is required'),
-  })
-  .strict();
-export type GapResolveInput = z.infer<typeof GapResolveInput>;
+export const TravelHoursSetInput = z.object({ assignmentId: UUID, travelHours: Hours }).strict();
+export type TravelHoursSetInput = z.infer<typeof TravelHoursSetInput>;
 export const MeasureSetInput = z.object({ assignmentId: UUID, measureTypeId: UUID, quantity: Quantity }).strict();
 export type MeasureSetInput = z.infer<typeof MeasureSetInput>;
 export const MeasureRemoveInput = z.object({ assignmentId: UUID, measureTypeId: UUID }).strict();
@@ -158,30 +157,6 @@ export const ChargeLine = z.object({
 });
 export type ChargeLine = z.infer<typeof ChargeLine>;
 
-export const jobReadingAttentionKinds = ['disputed'] as const;
-export type JobReadingAttentionKind = (typeof jobReadingAttentionKinds)[number];
-export const JobReading = HourReading.pick({
-  id: true,
-  role: true,
-  value: true,
-  capturedAt: true,
-  createdAt: true,
-  capturedByUserId: true,
-  method: true,
-  comment: true,
-  telematicsProvider: true,
-  disputed: true,
-  disputeReason: true,
-  amendedAt: true,
-  amendmentReason: true,
-}).extend({
-  capturedByName: z.string().nullable(),
-  amendedByName: z.string().nullable(),
-  /** Every attention kind on the reading; the domain assigns each its level. */
-  attention: z.array(z.enum(jobReadingAttentionKinds)),
-});
-export type JobReading = z.infer<typeof JobReading>;
-
 export const StintPricing = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('no-charge') }),
   z.object({
@@ -201,17 +176,6 @@ export const StintPricing = z.discriminatedUnion('kind', [
 ]);
 export type StintPricing = z.infer<typeof StintPricing>;
 
-/** The Machine's departure that opens an Assignment's Hour Gap, and the Job it left. */
-export const PreviousDeparture = z.object({
-  value: ReadingValue,
-  capturedAt: DateIso,
-  /** Null when this reader may not see that Job. */
-  job: z
-    .object({ jobNumber: JobNumber, status: z.enum(jobStatuses), customerName: z.string(), farmName: z.string() })
-    .nullable(),
-});
-export type PreviousDeparture = z.infer<typeof PreviousDeparture>;
-
 export const Assignment = z.object({
   id: UUID,
   jobId: UUID,
@@ -226,19 +190,20 @@ export const Assignment = z.object({
   driverName: z.string().nullable(),
   state: z.enum(assignmentStates),
   createdAt: DateIso,
-  arrival: JobReading.nullable(),
-  departure: JobReading.nullable(),
-  /** Null before arrival, and for a Machine's first arrival, which has no Hour Gap. */
-  previousDeparture: PreviousDeparture.nullable(),
-  travelIncluded: z.boolean(),
+  arrival: JobHoursValue.nullable(),
+  departure: JobHoursValue.nullable(),
+  /** Snapshot at arrival, hand-set after; null until the Machine arrives. */
+  travelHours: Hours.nullable(),
+  /** The arrival was below the Machine's previous departure, so Travel was stored as 0. */
+  travelClamped: z.boolean(),
+  /** Who set Travel by hand; null while it is the arrival's snapshot. */
+  travelSetByName: z.string().nullable(),
   workHours: Hours.nullable(),
-  gapHours: Hours.nullable(),
-  travelHours: Hours,
-  unaccountedHours: Hours,
   billableHours: Hours.nullable(),
-  gapFlag: z.boolean(),
-  gapResolved: z.boolean(),
-  gapReason: z.string().nullable(),
+  /** Every reason the stint needs a look; none blocks anything. */
+  attention: z.array(z.enum(assignmentAttentionKinds)),
+  /** The latest management edit of its Job Hours, with its reason. */
+  amendment: z.object({ at: DateIso, byName: z.string(), reason: z.string() }).nullable(),
   measures: z.array(Measure),
   /** Null while the stint is un-priced, or when money is redacted for this reader. */
   pricing: StintPricing.nullable(),
@@ -263,9 +228,8 @@ const jobSummaryShape = {
   onSiteStints: z.number().int().nonnegative(),
   leftStints: z.number().int().nonnegative(),
   looksFinished: z.boolean(),
-  openGapFlags: z.number().int().nonnegative(),
-  /** The Job's Machine Assignment attention that needs a look: each open Gap Flag and Disputed reading. */
-  assignmentAttention: z.object({ critical: z.number().int().nonnegative() }),
+  /** How many of the Job's Machine Assignments need a look. */
+  assignmentAttention: z.number().int().nonnegative(),
   startDate: DateOnlyIso.nullable(),
   endDate: DateOnlyIso.nullable(),
   pricedAt: DateIso.nullable(),
@@ -324,8 +288,9 @@ export const JobFacts = z.object({
   pricing: JobPricing,
   assignments: z.array(Assignment),
   chargeLines: z.array(ChargeLine),
-  /** The Gap Flag threshold every stint above was judged against, so a screen names the value, never a constant. */
-  gapFlagThresholdHours: GapFlagThresholdHours,
+  /** The thresholds every stint above was judged against, so a screen names the value, never a constant. */
+  travelFlagThresholdHours: TravelFlagThresholdHours,
+  johnDeereDifferenceThresholdHours: JohnDeereDifferenceThresholdHours,
 });
 export type JobFacts = z.infer<typeof JobFacts>;
 

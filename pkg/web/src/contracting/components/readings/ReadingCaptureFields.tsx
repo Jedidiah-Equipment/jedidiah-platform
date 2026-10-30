@@ -1,8 +1,6 @@
-import { formatDate, formatHours, getPlantDateNow } from '@pkg/domain';
+import { formatHours } from '@pkg/domain';
 import { IconArrowRight } from '@tabler/icons-react';
 import type React from 'react';
-import { NumberField } from '@/components/form/fields/NumberField.js';
-import { withFieldGroup } from '@/components/form/index.js';
 import { Card, CardContent } from '@/components/ui/card.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 
@@ -69,45 +67,3 @@ export function ReadingCaptureCard({
     </Card>
   );
 }
-
-/** Render inside a reading form's value AppField. */
-function ReadingValueField({ label }: { label: string }) {
-  return (
-    <NumberField
-      label={<span className="text-xs">{label}</span>}
-      decimals={1}
-      min={0}
-      unit="hours"
-      className="text-lg font-semibold md:text-lg"
-    />
-  );
-}
-
-/**
- * One reading's correction: the recorded hours and Read At beside the fields that replace them. The Job page's amend
- * mounts it once, a Dispute's resolve once per reading, both over a `ReadingCorrection`.
- */
-export const ReadingCorrectionFields = withFieldGroup({
-  defaultValues: { value: 0, readAt: '' },
-  props: {} as { recorded: { value: number; capturedAt: string } | null },
-  render: function ReadingCorrectionFieldsGroup({ group, recorded }) {
-    return (
-      <ReadingCaptureCard
-        previousLabel="Recorded reading"
-        previousValue={recorded?.value}
-        rows={
-          <ReadingCaptureRow
-            label="Recorded Read At"
-            recorded={<span className="text-sm">{recorded ? formatDate(recorded.capturedAt, 'medium') : '—'}</span>}
-          >
-            <group.AppField name="readAt">
-              {(field) => <field.DateTimePickerField label="Corrected Read At" maxValue={getPlantDateNow()} />}
-            </group.AppField>
-          </ReadingCaptureRow>
-        }
-      >
-        <group.AppField name="value">{() => <ReadingValueField label="Corrected reading" />}</group.AppField>
-      </ReadingCaptureCard>
-    );
-  },
-});

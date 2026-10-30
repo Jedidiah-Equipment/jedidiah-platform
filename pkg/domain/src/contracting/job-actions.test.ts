@@ -28,19 +28,18 @@ const manager: Matrix = {
   editSetup: '✓✓sscc',
   assignForeman: '✓✓sscc',
   assign: '✓✓sscc',
-  patchTravel: '✓✓✓pcc',
   editMeasures: 's✓✓pcc',
   editChargeLines: 's✓✓pcc',
   priceChargeLines: 'nnnnnn',
-  resolveGaps: 's✓✓pcc',
   editSignOffDetails: 'ss✓✓cc',
   editDieselLitres: 'ss✓pcc',
   complete: 's✓sscc',
   cancel: '✓✓✓pcc',
   price: 'nnnnnn',
   stampInvoice: 'nnnnnn',
-  amendReadings: '✓✓✓✓cc',
   capture: '✓✓sscc',
+  editHours: '✓✓✓✓cc',
+  setTravel: '✓✓✓✓cc',
   reportBreakdown: '✓✓sscc',
   addNote: '✓✓✓✓✓✓',
 };
@@ -49,16 +48,16 @@ const none: Matrix = Object.fromEntries(jobActionNames.map((action) => [action, 
 const foremanOnOwnJob: Matrix = {
   ...none,
   assign: '✓✓sscc',
-  patchTravel: '✓✓sscc',
   capture: '✓✓sscc',
+  editHours: '✓✓sscc',
   reportBreakdown: '✓✓sscc',
   addNote: '✓✓✓pss',
 };
 const foremanOnAnotherJob: Matrix = {
   ...none,
   assign: 'oooooo',
-  patchTravel: 'oooooo',
   capture: 'oooooo',
+  editHours: 'oooooo',
   reportBreakdown: 'oooooo',
   addNote: 'oooooo',
 };
@@ -100,12 +99,12 @@ describe('a refused verdict', () => {
     expect(refusal('price', 'completed', manager)).toBe('You do not have permission to price the Job.');
     expect(refusal('assign', 'active', sipho, 'thabo')).toBe('This Job is assigned to another Foreman.');
     expect(refusal('editChargeLines', 'invoiced', admin)).toBe('This Job is Invoiced, so nothing on it can change.');
-    expect(refusal('patchTravel', 'priced', admin)).toBe('This Job is Priced, so you can no longer change travel.');
+    expect(refusal('editMeasures', 'priced', admin)).toBe('This Job is Priced, so you can no longer change Measures.');
     expect(refusal('editSetup', 'completed', admin)).toBe(
       'You can only change Job setup while the Job is Upcoming or Active.',
     );
-    expect(refusal('patchTravel', 'completed', sipho)).toBe(
-      'You can only change travel while the Job is Upcoming or Active.',
+    expect(refusal('editHours', 'completed', sipho)).toBe(
+      'You can only change hours while the Job is Upcoming or Active.',
     );
     expect(refusal('editSignOffDetails', 'active', admin)).toBe(
       'You can only change sign-off details while the Job is Completed or Priced.',

@@ -160,7 +160,6 @@ describe('JohnDeereLinkService', () => {
     const t01 = await machine('T01');
     await db.insert(contractingHourReadings).values({
       machineId: t01.id,
-      role: 'baseline',
       value: 1200.5,
       capturedAt: new Date('2026-10-25T10:00:00.000Z'),
       capturedByUserId: adminId,

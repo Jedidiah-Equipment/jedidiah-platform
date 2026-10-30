@@ -20,12 +20,7 @@ import {
 } from '@tabler/icons-react';
 import { linkOptions } from '@tanstack/react-router';
 import type { NavSection } from '@/components/app-shell/NavSections.js';
-import {
-  ActivityUnreadNavIndicator,
-  DisputesNavIndicator,
-  ServicesNavIndicator,
-  WorkshopNavIndicator,
-} from './AppNavIndicators.js';
+import { ActivityUnreadNavIndicator, ServicesNavIndicator, WorkshopNavIndicator } from './AppNavIndicators.js';
 
 const isCategoriesPath = (pathname: string) => pathname.startsWith('/contracting/fleet/categories');
 
@@ -101,13 +96,6 @@ export const contractingNavSections = [
         link: linkOptions({ to: '/contracting/services' }),
         icon: IconEngine,
         indicator: ServicesNavIndicator,
-      },
-      {
-        title: 'Disputes',
-        permission: 'contracting_reading:update',
-        link: linkOptions({ to: '/contracting/disputes' }),
-        icon: IconGauge,
-        indicator: DisputesNavIndicator,
       },
       {
         title: 'Customers',

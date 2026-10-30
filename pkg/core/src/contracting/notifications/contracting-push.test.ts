@@ -340,13 +340,7 @@ describe('Contracting push fan-out', () => {
     await captureReading({
       db,
       actor: admin,
-      input: {
-        machineId: excavator.id,
-        role: 'spot',
-        value: 1449,
-        capturedAt: '2026-09-07T08:00:00Z',
-        disputePrevious: false,
-      },
+      input: { machineId: excavator.id, value: 1449, capturedAt: '2026-09-07T08:00:00Z' },
     });
     const sent: PushMessage[] = [];
 
@@ -368,7 +362,10 @@ describe('Contracting push fan-out', () => {
       'ExponentPushToken[wendy-1]',
       'ExponentPushToken[wendy-2]',
     ]);
-    expect(sent[0]).toMatchObject({ title: 'Service due soon · CAT320-1', body: '51.0 h to next service.' });
+    expect(sent[0]).toMatchObject({
+      title: 'Service due soon · CAT320-1',
+      body: 'Known hours 1 449.0 h · 51.0 h to next service.',
+    });
 
     // A service closed before the queue ran moved the due point on: there is nothing left to say.
     await patchMachine({ db, actorUserId: adminId, input: { id: excavator.id, nextServiceDueHours: 2000 } });

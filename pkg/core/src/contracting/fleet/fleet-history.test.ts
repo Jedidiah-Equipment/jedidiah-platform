@@ -1,5 +1,10 @@
 import type { Db } from '@pkg/db';
-import { contractingBreakdowns, contractingHourReadings, contractingMachineAssignments } from '@pkg/db/contracting';
+import {
+  contractingBreakdowns,
+  contractingHourReadings,
+  contractingJohnDeereLinks,
+  contractingMachineAssignments,
+} from '@pkg/db/contracting';
 import { type AppPermission, DateOnlyIso } from '@pkg/schema';
 import { FleetHistoryListInput } from '@pkg/schema/contracting';
 import { eq } from 'drizzle-orm';
@@ -7,7 +12,7 @@ import { expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
 import { createJob } from '../jobs/job-service.js';
 import { closeServiceRecord, openServiceRecord } from '../services/service-record-service.js';
-import { admin, adminId, foremanId, leftStint, plannedStint, seedJobFixtures } from '../test/job-fixtures.js';
+import { admin, adminId, foremanId, leftStint, seedJobFixtures } from '../test/job-fixtures.js';
 import { createCategory } from './category-service.js';
 import { listFleetHistory, listFleetHistoryFilterOptions } from './fleet-history.js';
 import { createImplement } from './implement-service.js';
@@ -32,8 +37,11 @@ const test = createTester(async ({ db }) => {
       foremanUserId: foremanId,
     },
   });
-  // Arrives 2026-09-01 05:00Z at 1 000 h, leaves 06:00Z at 1 001 h.
   const stint = await leftStint(db, job.id, machineId, 1000, 1001);
+  await db
+    .update(contractingMachineAssignments)
+    .set({ arrivalAt: new Date('2026-09-01T05:00:00Z'), departureAt: new Date('2026-09-01T06:00:00Z') })
+    .where(eq(contractingMachineAssignments.id, stint.id));
   const [breakdown] = await db
     .insert(contractingBreakdowns)
     .values({
@@ -62,15 +70,27 @@ const test = createTester(async ({ db }) => {
       nextServiceDueHours: 1501,
     },
   });
+  const [link] = await db
+    .insert(contractingJohnDeereLinks)
+    .values({
+      machineId,
+      equipmentId: 'eq-1',
+      principalId: 1,
+      organizationId: '4321',
+      deereName: 'Deere 1',
+      linkedByUserId: adminId,
+      linkedAt: new Date('2026-09-01T00:00:00Z'),
+    })
+    .returning();
   const [telematics] = await db
     .insert(contractingHourReadings)
     .values({
       machineId,
-      role: 'spot',
       value: 1002,
       capturedAt: new Date('2026-09-02T08:00:00Z'),
       method: 'telematics',
       telematicsProvider: 'john-deere',
+      telematicsLinkId: link?.id,
     })
     .returning();
   const implementCategory = await createCategory({
@@ -148,14 +168,18 @@ test('lists readings, Breakdowns and services as one newest-first timeline, a se
         breakdown: { urgency: 'code-red', status: 'open' },
         opens: { to: 'breakdown', id: breakdown.id },
       },
-      expect.objectContaining({
-        id: stint.departureReadingId,
+      {
+        id: stint.id,
+        kind: 'reading',
+        at: '2026-09-01T06:00:00.000Z',
         title: 'Departure · 1 001.0 h',
         detail: job.jobNumber,
         source: 'Sipho',
+        readingRole: 'departure',
+        breakdown: null,
         opens: { to: 'job', jobNumber: job.jobNumber },
-      }),
-      expect.objectContaining({ id: stint.arrivalReadingId, title: 'Arrival · 1 000.0 h', detail: job.jobNumber }),
+      },
+      expect.objectContaining({ id: stint.id, title: 'Arrival · 1 000.0 h', readingRole: 'arrival' }),
     ],
   });
 });
@@ -219,30 +243,4 @@ test('lists only the kinds the caller may read, and an Implement only its Breakd
   ).toBe(false);
   expect(listFleetHistoryFilterOptions({ actor: admin, subject: implement })).toEqual({ kinds: ['breakdown'] });
   expect(await titles(context, { subject: implement })).toEqual(['Bent tine']);
-});
-
-test('lists a reading that closed one stint and opened the next once, under the Job it opened', async ({ context }) => {
-  const { db, fixtures, machineId, stint } = context;
-  const next = await createJob({
-    db,
-    actor: admin,
-    input: {
-      customerId: fixtures.customer.id,
-      farmId: fixtures.farm.id,
-      workTypeId: fixtures.workType.id,
-      description: null,
-      foremanUserId: foremanId,
-    },
-  });
-  const planned = await plannedStint(db, admin, { jobId: next.id, machineId, implementId: null });
-  await db
-    .update(contractingMachineAssignments)
-    .set({ arrivalReadingId: stint.departureReadingId })
-    .where(eq(contractingMachineAssignments.id, planned.id));
-  const { items, total } = await history(context);
-  expect(total).toBe(5);
-  expect(items.find((row) => row.id === stint.departureReadingId)).toMatchObject({
-    detail: next.jobNumber,
-    opens: { to: 'job', jobNumber: next.jobNumber },
-  });
 });

@@ -17,10 +17,10 @@ Equipment context's Job. A Job's
 statuses: **Upcoming** (pre-created; freely editable and deletable; the future-work list; visible
 to management only until a Foreman is assigned), **Active** (entered automatically when its first
 machine starts; cancellable by management with a mandatory reason), **Completed** (the
-Contracting Manager's sign-off, reachable only once every Assignment has left and every Gap Flag
-is resolved: work confirmed done, Charge Lines and notes added, final start and end dates stamped
-— suggested from the earliest arrival and latest departure **Read At** times, never from when they were accepted, tweakable), **Priced**
-(rates applied and frozen as a snapshot — diesel litres and travel lock with it; a reading amendment reopens the Job to Completed for
+Contracting Manager's sign-off, reachable only once every Assignment has left: work confirmed done, Charge Lines
+and notes added, final start and end dates stamped — suggested from when the first arrival and last departure were
+captured, tweakable), **Priced**
+(rates applied and frozen as a snapshot — diesel litres and travel lock with it; a Job Hours or Travel Hours edit reopens the Job to Completed for
 re-pricing — the chosen Rates and their snapshotted unit amounts stay, line amounts recompute from
 the amended hours, and manual amount edits are discarded), and **Invoiced** (the invoice number stamped; the wall — after it, nothing moves). There is no "submitted" status: foremen never close Jobs; a
 Job whose machines have all stopped surfaces in the Contracting Manager's queue as looking
@@ -29,8 +29,8 @@ the invoice — that chain is the app's core promise.
 
 **Machine Assignment** is one Machine's stint on one Job. Management may plan it when setting
 the Job up — machine and Implement chosen ahead of arrival, a **planned** Assignment — or the
-Foreman adds it from the phone, planned until the Machine arrives; either way it becomes **on site** when its arrival Hour Reading is
-captured and **left** when its departure is. A Machine may have **several sequential Assignments
+Foreman adds it from the phone, planned until the Machine arrives; either way it becomes **on site** when its arrival hours are
+captured and **left** when its departure hours are. A Machine may have **several sequential Assignments
 on the same Job** — leaving and returning, often with a different Implement — but **at most one
 on-site Assignment at a time across all Jobs**, which is what enforces that a machine is never in
 two places at once; planned Assignments never count against that. An Assignment names at most one
@@ -47,10 +47,10 @@ Slot (an Equipment scheduling term).
 rates, and totals — reviewed at sign-off, priced, and keyed into the invoicing system. It is a
 presentation of the Job, never a second record: "send me the job card" means the document. It
 renders on demand (never stored — priced amounts are frozen, so regeneration is deterministic)
-under the Jedidiah Contracting letterhead, in two variants: **internal**, carrying reading
-markers (Disputed, amended), gap resolutions, capture comments, and attribution; and the **customer copy**, the clean
-dispute trail of readings and amounts that shows **one total hours figure per line — never the
-work/travel split**. Reading values print. Diesel is shown
+under the Jedidiah Contracting letterhead, in two variants: **internal**, carrying the amended
+marker, Travel Hours, capture moments and comments, and attribution; and the **customer copy**, the clean
+trail of hours and amounts that shows **one total hours figure per line — never the
+work/travel split**. Job Hours print. Diesel is shown
 VAT-exempt. Its ex-VAT total is a works summary — a Job Card is never an invoice.
 
 **Job Sheet** is the signed-in person's reading of one Job on a screen: the served Job Actions and Assignment
@@ -74,21 +74,21 @@ roles. It is not the Job's **sign-off notes**, the one free-text field managemen
 _Avoid_: comment, message, chat message, feedback
 
 **Job Actions** are the derived verdicts of what one person may do to a Job in its current status:
-change its setup, Foreman, Machine Assignments, travel, Measures, Charge Lines and their amounts, Hour Gaps,
-sign-off details and diesel litres; complete, cancel, price or stamp it; amend its readings; capture on it.
+change its setup, Foreman, Machine Assignments, Travel Hours, Measures, Charge Lines and their amounts,
+sign-off details and diesel litres; complete, cancel, price or stamp it; capture and edit its Job Hours.
 They are computed, never stored, and judged for the person asking — a Foreman works only his own Jobs, while
 open — and they are the same answer the server's write gates apply, so a screen shows a control
 when its verdict allows it and hides it when the person lacks the permission. Both the web and the phone read
 the verdicts the server serves; no surface derives its own. A refused verdict carries the
 one sentence that says why; the server's refusal and the screen show that sentence. Invoiced and Cancelled
 are both closed: no Job Action is open on either. A check that judges what a write carries rather than the
-Job — the Mark as Priced gate, the invoice total, a capture below the latest reading — is not a Job Action
+Job — the Mark as Priced gate, the invoice total, a departure below its arrival — is not a Job Action
 and stays with the write that reads that input.
 
 **Assignment Actions** are the verdicts of what one person may do to one Machine Assignment now: remove it
 while planned; change its Implement and Driver until it has left; capture its arrival while planned and its
-departure while on site; record Measures once it has arrived; resolve its Hour Gap and price it once it has
-left. Each is judged as its Job Action first and the Assignment's state second, and served on every Machine
+departure while on site; edit its Job Hours and set its Travel Hours once it has arrived; record Measures once
+it has arrived; price it once it has left. Each is judged as its Job Action first and the Assignment's state second, and served on every Machine
 Assignment of the Job detail beside the Job's own verdicts, so a screen offers a control only when the served
 verdict allows it; a refused verdict carries the one sentence that says why. Re-adding a Machine that has left
 is the Job's assign action on a new Assignment, not an Assignment Action on the old one.
@@ -111,7 +111,7 @@ utilisation views.
 
 **Rate Card** is the list of named **Rates** management maintains and Pricing chooses from —
 supervised and unsupervised plant hire, tractor-and-tanker, disking per hectare, … — each with a
-**basis**: time (billed per hour of the Assignment's work plus included travel) or one **Measure
+**basis**: time (billed per hour of the Assignment's work plus its Travel Hours) or one **Measure
 Type** (billed per unit of that Measure recorded on the Assignment). **Measure Type** is the
 management-maintained list of production units — hectares, loads, … — in display order; a Measure
 on an Assignment names one. Rates hang on nothing but their name: not on a Category, a Machine, or
@@ -160,85 +160,61 @@ context's `JOB-xxxxx`.
 
 ## Hours
 
-**Hour Reading** is one captured value of a Machine's hour meter: the value, when the meter was
-read (its **Read At** time) and by whom. Whoever captures it types the value —
-the Foreman in the field, an administrator for a Baseline Reading — or the Machine's telematics reports
-it (a Telematics Reading). Every capture form asks first whether the meter was read **today** or **earlier**,
-then takes the hours and works out from the Machine's previous readings when those hours were on the meter:
-fixed when John Deere's readings bracket them, a guess when only captured readings do, now when they are at or
-above the latest; the capturer confirms that date, correcting it where it is a guess, before anything else is
-asked. Hours the meter cannot have reached, or that John Deere puts before the stint began, are refused at the
-hours step. Read At is never in the future. Read At orders a Machine's readings:
-the **latest reading** is the one with the latest Read At, and every capture is judged against its
-**time neighbours** — it must be at or above the nearest reading before its Read At and at or below
-the nearest reading after it. A late-entered reading takes its place in time, so a departure dated
-yesterday lands behind today's readings. An Hour Gap reads the two readings its Assignments name, so
-a backdated Read At moves no hour between Jobs; for the same reason a Machine's stints stay in time
-order — no arrival is dated before its last departure, no departure before its own arrival. Capture
-needs a connection: the server judges every capture as the ledger's truth, and a Foreman without
-signal keeps a Field Note instead. Every way a capture is refused is one rule in one ordered table,
-judged under the Machine lock; the phone and the web stop only what that table says the server would
-refuse, and show its sentence when it does. Disputes surface to management as **Disputes** — a
-reading is **Disputed** when it belongs to an unresolved out-of-sequence pair or a Telematics Reading
-contradicts it. Disputes never return to the Foreman, who is never
-re-interrupted in the field. A reading may carry the capturer's
-optional **capture comment**, shown wherever management reviews it; the capture screen shows the
-minimum value the meter can now read. A field reading plays one of three roles:
-**arrival** (machine on site) and **departure** (machine leaving) on a Machine Assignment, or
-**spot** — an ad-hoc capture with no billing effect, existing to keep a Machine's known
-hours current for service tracking, taken on the phone at the Machine or on the web Machine page;
-the fourth role, **Baseline Reading**, is defined below. The
-pre-travel opening is never captured: it is the machine's previous departure reading, so travel
-and work time are derived and no hour can vanish between Jobs. A capture strictly below the
-Machine's latest reading is refused (equal is accepted — an idle machine reads its departure value),
-unless the Foreman asserts the latest reading is wrong, which saves his value as disputed and flags
-the pair for management as a Dispute; a backdated capture that falls below or above its neighbours is refused
-outright, since the fix is its time or its value. No capture may contradict a Telematics Reading.
-**The meter cannot outrun the clock**: engine hours between two readings never exceed the wall-clock hours
-between them (an hour of slack for the dash and the phone), and a capture that would is refused naming both
-readings, since the fix is a Read At on one of them.
-The Foreman may re-capture a reading only while his Assignment is open; from Completion onward only management
-amends, with a mandatory reason — an amendment corrects the value or Read At or both, and the amended reading is judged again at
-its place in time by the capture rules, so stints stay in time order, and engine hours between it and either neighbour
-never exceed the wall-clock hours between them (an hour of slack for the dash and the phone); an amendment that moves a reading's hours or Read At on a
-Priced Job returns it to Completed for re-pricing, and Invoiced freezes everything. Derived values always recompute after an amendment.
+**Job Hours** are the arrival and departure meter values on a Machine Assignment, each with an optional
+comment, who captured it and when it was captured. One rule holds: departure at or above arrival — equal is
+accepted, a Machine delivered and collected unused bills no Work hours. Job Hours carry no Read At, never join the
+Hour Reading ledger, and are never compared to another stint or to a reading. They are captured on the phone from
+the Job (Start and Stop) and on the web Job page. The Foreman edits his own while the Job is open (Upcoming or
+Active); management edits them until the Job is Invoiced, with a mandatory reason once there is a Job Card. An edit on
+a Priced Job returns it to Completed for re-pricing, and the internal Job Card marks the stint amended.
+_Avoid_: arrival reading, departure reading, stint reading.
 
-**Baseline Reading** is an optional, administrator-captured Hour Reading that anchors a Machine
-before its first Job — at a service, say — and must be the Machine's first reading. Most Machines
-never get one: hours are captured on site the first time the app sees the Machine,
-and that first reading of whatever role opens its ledger. Hours are never collected from paper,
-stickers or memory ahead of use, because a value taken off site has no known currency. Until a
-Machine has a reading nothing derives for it — no Hour Gap, no Travel Hours, no Service Due Soon.
+**Travel Hours** are a Machine Assignment's billed travel: snapshot when the arrival is captured as the arrival
+hours less the Machine's last departure hours on any Job, clamped at 0 — a Machine with no earlier departure, or one
+moved by truck, has 0. An arrival edit recomputes them until someone sets them by hand; management sets them until the
+Job is Invoiced, and nothing recalculates them after. They are billed at the Assignment's rate. Over the **Travel Flag
+threshold** in Settings (4 h unless changed), or clamped from a negative, the stint needs a look.
+_Avoid_: Hour Gap, Gap Flag, Unaccounted Interval, Unresolved.
+
+**Hour Reading** is one entry in a Machine's hour-meter ledger: the value, when the meter was read (its **Read At**
+time) and by whom. The ledger holds two kinds and nothing else — **spot readings** and **Telematics Readings**. A
+spot reading is typed by a person, on the phone at the Machine or on the web Machine page; it exists to keep Known
+Hours current for service tracking and reporting, and has no billing effect. Job Hours never join it. An
+administrator's first spot reading on a Machine is its baseline; there is no separate kind. Every spot capture form
+asks first whether the meter was read **today** or **earlier**, then takes the hours and works out from the
+Machine's previous readings when those hours were on the meter: fixed when John Deere's readings bracket them, a
+guess when only captured readings do, now when they are at or above the latest; the capturer confirms that date,
+correcting it where it is a guess, before anything else is asked. Read At is never in the future. Read At orders the
+ledger: the **latest reading** is the one with the latest Read At, and every spot capture is judged against its
+**time neighbours** — at or above the nearest reading before its Read At and at or below the nearest reading after
+it; one that falls below or above is refused, since the fix is its time or its value. **The meter cannot outrun the
+clock**: engine hours between two readings never exceed the wall-clock hours between them (an hour of slack for the
+dash and the phone), and a capture that would is refused naming both readings. Capture needs a connection: the
+server judges every capture under the Machine lock, and a Foreman without signal keeps a Field Note instead. Every
+way a capture is refused is one rule in one ordered table; the phone and the web stop only what that table says the
+server would refuse, and show its sentence when it does. A reading may carry the capturer's optional **capture
+comment**. Management amends spot readings with a mandatory reason; the amended reading is judged again at its place
+in time. Hours are never collected from paper, stickers or memory ahead of use, because a value taken off site has no
+known currency.
+
+**Known Hours** is a Machine's best-known meter value: the higher of the ledger's latest reading and the Machine's
+latest Job Hours, with its source (John Deere, a spot reading, or a Job) and when. It is what Service Due Soon, the
+Services page and Service Record suggestions read. The ledger's own latest reading is still what a spot capture is
+judged against and what the John Deere Links compare shows; the two are named differently and never confused.
 
 **Telematics Reading** is an Hour Reading the Machine's own telematics reported rather than a person
-captured: role spot, its Read At the time the machine reported, its evidence the manufacturer's report,
-captured by nobody (the System). It is beyond dispute — never Disputed, never amended — and a captured reading it contradicts is the one that becomes Disputed for
-management, who correct its hours or Read At back into sequence. One may move its Read At forward when the machine reports the
-same value again, so the ledger says the hours stand as of the latest report. _Avoid_: telemetry reading,
+captured: its Read At the time the machine reported, its evidence the manufacturer's report, captured by nobody
+(the System), never amended. No spot capture may contradict one. One may move its Read At forward when the machine
+reports the same value again, so the ledger says the hours stand as of the latest report. A linked Machine's Job
+Hours are compared to its latest Telematics Reading: over the **John Deere difference threshold** (Settings, 10 h
+unless changed) the capture warns and the stint needs a look; nothing blocks. _Avoid_: telemetry reading,
 automatic reading, JDLink reading, API reading.
 
-**Dispute** is a connected group of Disputed readings on one Machine — a pair joined by "the previous
-reading is wrong", plus any Disputed reading sharing a stint with one of them. A Dispute is one row on
-**Disputes** and is resolved at once: management corrects hours and Read At of each reading in it
-under one reason, and the row clears when every reading sits in sequence. A reading John Deere contradicted
-shows that report beside it; the report itself is never edited. _Avoid_: exception pair, conflict.
-
-**Hour Gap** is the derived interval between one Assignment's departure reading and the machine's
-next arrival reading; spot readings never bound a gap, and a Machine's first arrival has no
-preceding departure, so it opens the ledger with no gap and no Travel Hours. By default the whole gap is **Travel Hours**, billed to the destination Job
-at the Assignment's rate under an include toggle that defaults on; a machine moved by truck simply
-has a zero gap. A gap above the **Gap Flag threshold** in Settings (4 h unless changed) raises a **Gap Flag**, surfaced at
-sign-off and blocking nothing in the field — the Job cannot be Completed while one is open;
-management resolves it by splitting the gap into billable Travel
-Hours and an **Unaccounted Interval** with a mandatory reason, which clears the flag. Time in the
-yard is an Unaccounted Interval — there are no internal Jobs. An unresolved gap over the threshold
-reports its hours as **Unresolved** until management splits it.
-
-**Assignment Attention** is everything that flags a Machine Assignment for a person, at one level:
-**critical** means the hours are wrong or contradictory (a Disputed reading) or it stops the Job moving on (an
-open Gap Flag); critical **needs a look** — it is counted on the Jobs list, filtered for, and borders the
-Assignment's card — and is red everywhere.
-_Avoid_: bare "attention", alert, issue
+**Assignment Attention** is everything that flags a Machine Assignment for a person, at one level, **needs a
+look** (amber): Travel Hours over the Travel Flag threshold, Travel clamped from a negative, or a John Deere
+difference over its threshold. Travel set by hand has been looked at, so it clears both Travel kinds. It is counted
+on the Jobs list and the Dashboard and filtered for, borders nothing red, and blocks nothing. _Avoid_: bare
+"attention", alert, issue, critical.
 
 **Field Note** is a generic note a Foreman keeps on his phone — when the app cannot take a capture,
 without signal, typically — and later acts on himself: a description, one or more photos, and the
@@ -287,12 +263,12 @@ detailed record for now: one service on one Machine — start and end date, the 
 service, the primary Mechanic (from the same set as a Breakdown's), and free-text notes. A Service
 is a recurring, expected event and deliberately not a Breakdown. **Closing a Service Record requires
 setting the Machine's Next Service Due** — the number the mechanic prints on the dash sticker at that moment; the Machine's
-optional **Service Interval** only pre-fills it from the reading at service. **Service Due Soon** is the derived flag raised when the Machine's latest
-known Hour Reading comes within the Machine's **Service Alert Hours** of Next Service Due — its own value, or the
-**Service Due Soon threshold** in Settings (100 h unless changed) when it has none — kept honest mid-job by spot
-readings from the field and by Telematics Readings. It notifies the workshop-manager, contracting-manager, contracting-admin and super-admin
+optional **Service Interval** only pre-fills it from the reading at service. **Service Due Soon** is the derived flag raised when the Machine's Known Hours
+come within the Machine's **Service Alert Hours** of Next Service Due — its own value, or the
+**Service Due Soon threshold** in Settings (100 h unless changed) when it has none — kept honest mid-job by Job Hours, spot
+readings from the field and Telematics Readings. It notifies the workshop-manager, contracting-manager, contracting-admin and super-admin
 roles by push notification once, at the
-capture or Telematics Reading that first brings the reading within the threshold; closing a Service Record moves the
+capture or Telematics Reading that first brings Known Hours within the threshold; closing a Service Record moves the
 due point on and re-arms it.
 
 **Due for Service** is a derived state: a Machine whose Service Due Soon status is due soon or overdue and
@@ -329,12 +305,12 @@ checks are UX only.
 - **contracting-admin**: every contracting permission the spanning super-admin has — Pricing,
   the Rate Card, fleet, invoice stamping, all of it — without user administration and without any
   Equipment reach.
-- **contracting-manager**: all operations — Job create/edit/assign/complete/cancel, reading
-  amendments and gap resolution, breakdowns and servicing, fleet management — but no Pricing and
+- **contracting-manager**: all operations — Job create/edit/assign/complete/cancel, Job Hours and
+  spot reading amendments, Travel Hours, breakdowns and servicing, fleet management — but no Pricing and
   no Rate Card; sees priced amounts.
 - **workshop-manager**: reads everything contracting; writes Breakdowns (mechanic assignment,
   transitions, close-out) and Servicing (records, interval and due fields); reports Breakdowns.
-- **foreman**: sees only Jobs assigned to him; manages his own Assignments and captures readings;
+- **foreman**: sees only Jobs assigned to him; manages his own Assignments and captures Job Hours and spot readings;
   reports Breakdowns; never sees money — no rates and no priced amounts.
 - **contracting-invoicing**: reads Priced and Completed Job Cards and stamps the Invoice Number;
   nothing else.
@@ -351,8 +327,8 @@ Drivers and Mechanics are non-login user records holding permissionless contract
 and the Rate Card deliberately sit with contracting-admin and super-admin alone; foremen are
 money-blind by design.
 
-**Settings** is the one row of Contracting-wide values management edits on the web: the Gap Flag
-threshold, the Service Due Soon threshold (which a Machine's Service Alert Hours may override) and the
+**Settings** is the one row of Contracting-wide values management edits on the web: the Travel Flag
+threshold, the John Deere difference threshold, the Service Due Soon threshold (which a Machine's Service Alert Hours may override) and the
 Utilisation Target %. Every derived read takes the
 current value; nothing stored is re-judged.
 
@@ -365,7 +341,7 @@ its machine. Unlinking stops the feed and keeps every reading. _Avoid_: integrat
 
 The **Dashboard** is the web home: counts and lists of what needs a person now — the Jobs needing a look, the
 Breakdowns not yet Fixed, the Machines Due for Service, the Jobs waiting for sign-off, pricing or an
-Invoice Number, and the Disputes — and two counts of what is under way: the Active Jobs not yet looking
+Invoice Number — and two counts of what is under way: the Active Jobs not yet looking
 finished and the Machines On Job. Each block shows only to a role holding the permission that reads what
 it lists, and it refreshes every minute. Apart from the Daily Hours heat map, a trailing six-month card for the roles that read reports, it never shows anything over a period; that is Reporting's.
 
@@ -376,10 +352,10 @@ Breakdowns, newest first — the phone's first tab and a web page under the Dash
 item** is one entry in it, in one of four filter categories: **Notes** (Job Notes and Breakdown Notes),
 **Breakdowns** (reported, Mechanic assigned, fixing started, fixed), **Jobs** (started — the first
 arrival on it — completed, cancelled) and **Hours** (a Machine arriving on site and leaving, each with
-its reading). Every item is one stored record read as itself; the feed stores nothing of its own and
+its Job Hours). Every item is one stored record read as itself; the feed stores nothing of its own and
 reads no Audit Event (ADR 0023). A person sees exactly the items on the Jobs and Breakdowns their reach
 already shows them — a Foreman his own Jobs and his own Breakdowns, workshop-manager and up everything;
-contracting-invoicing has none. Spot and Baseline readings, amendments, disputes, Upcoming, Priced,
+contracting-invoicing has none. Spot readings, amendments, Upcoming, Priced,
 Invoiced, reopening, Measures, Charge Lines, photos, report edits, Service Records, Service Due Soon
 and Field Notes are not Activity. A Job's own Activity is everything on it, its Breakdowns included; a
 Breakdown's is only its own. Across contexts, say **Contracting Activity**; Equipment's is Job Activity.
@@ -393,26 +369,23 @@ Breakdown's own thread. The two businesses' marks are independent (see [GLOSSARY
 
 ## Reporting
 
-An **Active Day** is a calendar day on which a Machine had an on-site Assignment (planned stints
-never count). **Utilisation %**
+An **Active Day** is a calendar day inside a Job's dates — its stored Start and End, else from its first arrival's
+capture to its last departure's, an open Job running to today — for a Machine with an arrival on that Job (planned
+stints never count). **Utilisation %**
 is active days over days in the window, counting only days the Machine was in the fleet — days,
 never hours, and month attribution is exact. **Fleet Load** is the share of Machines with at
 least one Active Day in the window. **Utilisation Target %** is the single global reference line
-management sets in Settings; empty draws no line. **Hour totals by kind** are a Machine's meter hours
-in a window as **Work** (inside a stint), **Travel** and **Unaccounted** (its Hour Gaps, as resolved
-or, under the threshold, all travel) and **Unresolved**, derived from consecutive readings — spot
-readings included — and spread across months by elapsed time; hours before a Machine's first arrival
-and in a gap no arrival has closed count nowhere (**Daily Hours** count them). Mechanic performance — Solved count, average
+management sets in Settings; empty draws no line. **Hour totals by kind** are a Machine's **Work** and **Travel**
+hours from its stints' Job Hours and Travel Hours, spread evenly over each Job's dates. Mechanic performance — Solved count, average
 report-to-Solved time in days, Not solved count — is derived from Breakdowns over the window (Not solved
 ignores it) and never stored; **Solved** counts the `solved` status the Workshop shows as Fixed. Reporting is
 readable by every role that reads all Jobs; Foremen and invoicing never see it.
 
-**Daily Hours** are a Machine's meter hours attributed to one plant-date day, derived from consecutive Hour
-Readings and spread across the days between them by elapsed time, so two readings three days apart average
-out over the three days and a Telematics Reading logged hourly is exact. Unfiltered and per Machine they count every
-positive meter delta whatever the phase (yard time and hours before a first arrival included, which the Hour totals
-by kind drop); under a Job they count only Work hours inside that Job's stints, an open stint running to the
-Machine's latest reading. A disputed pair that runs backwards counts nothing. A day is **estimated** when its hours
-come from a reading pair spanning more than one plant day. The web shows them as a heat map, a cell per day shaded
+**Daily Hours** are a Machine's meter hours attributed to one plant-date day. Per Machine they come from the
+ledger alone — consecutive spot and Telematics Readings, spread across the days between them by elapsed time, so two
+readings three days apart average out over the three days and a Telematics Reading logged hourly is exact; an
+unlinked Machine with no spot readings shows none. Under a Job they come from its stints' Job Hours, spread evenly
+over the Job's dates and all estimated. A day is **estimated** when its hours come from a reading pair spanning
+more than one plant day or from a Job's spread. The web shows them as a heat map, a cell per day shaded
 by quarters of the busiest day, on the Machine page, the Job page and the Dashboard, for the roles that read
 reports. _Avoid_: utilisation heat map (Utilisation % counts Active Days, never hours), usage, activity (Activity is the feed)

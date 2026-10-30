@@ -8,7 +8,6 @@ import type {
 } from '@pkg/schema/contracting';
 import type { ActivityEventPresentation } from '../activity/presentation.js';
 import { hasPermission } from '../auth/authorization.js';
-import { formatDate } from '../formatting/date.js';
 import { formatHours } from '../formatting/number.js';
 import { getFirstName } from '../formatting/text.js';
 import { breakdownUrgencyLabels } from './breakdowns.js';
@@ -84,17 +83,6 @@ export function activityEntryRecord(
 
 const at = (job: ActivityJobRef | null) => (job ? ` at ${job.jobNumber}` : '');
 
-/** A Read At more than this far from acceptance was backdated, so the detail names it. */
-const READ_AT_TOLERANCE_MS = 60_000;
-
-/** The hours, plus the Read At when it differs from the accepted instant by more than a minute. */
-function hoursDetail(item: { hours: number; readAt: string; occurredAt: string }): string {
-  const parts = [formatHours(item.hours)];
-  if (Math.abs(Date.parse(item.readAt) - Date.parse(item.occurredAt)) > READ_AT_TOLERANCE_MS)
-    parts.push(`read ${formatDate(item.readAt, 'medium')}`);
-  return parts.join(' · ');
-}
-
 /** What an event item says; notes render as bubbles and never come here. */
 export function presentActivityEvent(item: ActivityEventItem): ActivityEventPresentation {
   const actorName = getFirstName(item.actor.name);
@@ -139,14 +127,14 @@ export function presentActivityEvent(item: ActivityEventItem): ActivityEventPres
       return {
         actorName,
         sentence: `put ${item.machine.code} on site at ${item.job.jobNumber}`,
-        detail: hoursDetail(item),
+        detail: formatHours(item.hours),
         tone: 'blue',
       };
     case 'machine-left':
       return {
         actorName,
         sentence: `took ${item.machine.code} off site at ${item.job.jobNumber}`,
-        detail: hoursDetail(item),
+        detail: formatHours(item.hours),
         tone: 'gray',
       };
   }

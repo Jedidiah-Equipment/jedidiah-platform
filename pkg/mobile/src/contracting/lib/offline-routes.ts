@@ -4,7 +4,7 @@ import { CONTRACTING_TAB_HREF } from './app-tabs';
 const FIELD_NOTES = CONTRACTING_TAB_HREF['field-notes'] as string;
 const isAtOrUnder = (pathname: string, route: string) => pathname === route || pathname.startsWith(`${route}/`);
 
-/** Every route sits behind the offline cover except Field Notes: capture is online only (ADR 0021). */
+/** Every route sits behind the offline cover except Field Notes: capture is online only (ADR 0029). */
 export function isOfflineCapableRoute(pathname: string): boolean {
   return isAtOrUnder(pathname, FIELD_NOTES);
 }

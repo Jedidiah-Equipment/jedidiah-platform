@@ -22,7 +22,12 @@ function contractingSession(role: ContractingRole) {
   return session;
 }
 
-const input = { gapFlagThresholdHours: 3.5, serviceDueSoonThresholdHours: 120, utilisationTargetPercent: 65 };
+const input = {
+  travelFlagThresholdHours: 3.5,
+  johnDeereDifferenceThresholdHours: 12,
+  serviceDueSoonThresholdHours: 120,
+  utilisationTargetPercent: 65,
+};
 
 test('allows only contracting-admin and super-admin to read and save Contracting Settings', async ({ context }) => {
   const forbidden = [

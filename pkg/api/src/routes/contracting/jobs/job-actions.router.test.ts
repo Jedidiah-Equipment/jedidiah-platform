@@ -1,5 +1,5 @@
 import {
-  captureReading,
+  captureStintHours,
   completeJob,
   createAssignment,
   createCategory,
@@ -12,9 +12,7 @@ import {
   createRate,
   createWorkType,
   getJob,
-  getReading,
   isBreakdownError,
-  isReadingError,
   markPriced,
   patchChargeLine,
   reportBreakdown,
@@ -107,29 +105,11 @@ const test = createTester(async ({ db }) => {
     const [planned] = (await getJob({ db, id: job.id })).assignments;
     if (!planned) throw new Error('Expected Machine Assignment');
     const stint = { id: planned.id, machineId: worked.id };
-    const capture = (role: 'arrival' | 'departure', value: number, on: { id: string; machineId: string } = stint) =>
-      captureReading({
-        db,
-        actor: setup,
-        input: {
-          machineId: on.machineId,
-          assignmentId: on.id,
-          role,
-          value,
-          capturedAt: new Date(Date.parse('2026-09-01T06:00:00Z') + ++sequence * 60_000).toISOString(),
-          disputePrevious: false,
-        },
-      });
-    const fixture: Fixture = {
-      job,
-      stint,
-      spare,
-      arrivalReadingId: null,
-      chargeLineId: null,
-      stints: [{ ...stint, state: 'planned' }],
-    };
+    const capture = (role: 'arrival' | 'departure', hours: number, on: { id: string } = stint) =>
+      captureStintHours({ db, actor: setup, input: { assignmentId: on.id, role, hours } });
+    const fixture: Fixture = { job, stint, spare, chargeLineId: null, stints: [{ ...stint, state: 'planned' }] };
     if (status === 'upcoming') return fixture;
-    fixture.arrivalReadingId = (await capture('arrival', 100)).reading.id;
+    await capture('arrival', 100);
     const plan = async () => {
       const added = await machine();
       await createAssignment({ db, actor: setup, input: { jobId: job.id, machineId: added.id, implementId: null } });
@@ -139,7 +119,6 @@ const test = createTester(async ({ db }) => {
     };
     const gone = await plan();
     await capture('arrival', 10, gone);
-    // Fixture readings are minutes apart, so each stint moves the meter within the clock's hour of slack.
     await capture('departure', 11, gone);
     const later = await plan();
     fixture.stints = [
@@ -186,7 +165,6 @@ type Fixture = {
   job: { id: string };
   stint: { id: string; machineId: string };
   spare: { id: string };
-  arrivalReadingId: string | null;
   chargeLineId: string | null;
   /** Every stint on the Job, in each state it holds one. */
   stints: StintFixture[];
@@ -202,20 +180,12 @@ const attempts: Record<
   assignForeman: (caller, { job }) => caller.contractingJobs.jobs.patch({ id: job.id, foremanUserId: callerId }),
   assign: (caller, { job, spare }) =>
     caller.contractingJobs.assignments.add({ jobId: job.id, machineId: spare.id, implementId: null }),
-  patchTravel: (caller, { stint }) => caller.contractingJobs.assignments.patch({ id: stint.id, travelIncluded: false }),
   editMeasures: (caller, { stint }, { loadsId }) =>
     caller.contractingJobs.measures.set({ assignmentId: stint.id, measureTypeId: loadsId, quantity: 3 }),
   editChargeLines: (caller, { job }) =>
     caller.contractingJobs.chargeLines.create({ jobId: job.id, description: 'Low-bed' }),
   priceChargeLines: (caller, { chargeLineId }) =>
     chargeLineId === null ? null : caller.contractingJobs.chargeLines.patch({ id: chargeLineId, amount: 1 }),
-  resolveGaps: (caller, { stint }) =>
-    caller.contractingJobs.assignments.resolveGap({
-      id: stint.id,
-      travelHours: 0,
-      unaccountedHours: 0,
-      reason: 'Yard',
-    }),
   editSignOffDetails: (caller, { job }) => caller.contractingJobs.jobs.patch({ id: job.id, notes: 'Signed off' }),
   editDieselLitres: (caller, { job }) => caller.contractingJobs.jobs.patch({ id: job.id, dieselLitres: 5 }),
   complete: (caller, { job }) =>
@@ -231,32 +201,11 @@ const attempts: Record<
   price: (caller, { job }) => caller.contractingJobs.pricing.setDiscount({ jobId: job.id, discount: null }),
   stampInvoice: (caller, { job }) =>
     caller.contractingJobs.invoicing.stamp({ id: job.id, invoiceNumber: 'INV-1', expectedTotal: 0.01 }),
-  amendReadings: (caller, { arrivalReadingId }, { db }) =>
-    arrivalReadingId === null
-      ? null
-      : getReading({ db, id: arrivalReadingId }).then(({ capturedAt }) =>
-          caller.contractingReadings.amend({
-            // A minute earlier: an amendment must change something.
-            amendments: [
-              { id: arrivalReadingId, value: 100, capturedAt: new Date(capturedAt.getTime() - 60_000).toISOString() },
-            ],
-            reason: 'Captured late',
-          }),
-        ),
-  // Capture arrives over HTTP, so it is judged where that route hands over: the core capture.
-  capture: (_caller, { stint }, { db }, role) =>
-    captureReading({
-      db,
-      actor: accessForRole(role, callerId),
-      input: {
-        machineId: stint.machineId,
-        assignmentId: stint.id,
-        role: 'arrival',
-        value: 500,
-        capturedAt: '2026-09-20T08:00:00Z',
-        disputePrevious: false,
-      },
-    }),
+  capture: (caller, { stint }) =>
+    caller.contractingJobs.assignments.captureHours({ assignmentId: stint.id, role: 'arrival', hours: 500 }),
+  editHours: (caller, { stints }) => editHoursOn(caller, stints[0] as StintFixture),
+  setTravel: (caller, { stint }) =>
+    caller.contractingJobs.assignments.setTravel({ assignmentId: stint.id, travelHours: 1 }),
   // Reporting arrives over multipart HTTP too, so it is judged at the core report.
   reportBreakdown: (_caller, { job, stint }, { db }, role) =>
     reportBreakdown({
@@ -275,14 +224,8 @@ const attempts: Record<
 /** The Job Action a write was refused under, if a Job Action refused it. */
 function refusalOf(error: unknown): { action: string; reason: string } | undefined {
   if (error instanceof TRPCError) {
-    // A Job refusal's metadata is the refused action; a Reading refusal nests it beside its other context.
-    const metadata = getTRPCPublicMetadata(error) as
-      | { action: string; reason: string }
-      | { refused?: { action: string; reason: string } }
-      | undefined;
-    return metadata && 'refused' in metadata ? metadata.refused : (metadata as { action: string; reason: string });
+    return getTRPCPublicMetadata(error) as { action: string; reason: string } | undefined;
   }
-  if (isReadingError(error)) return error.refusal.refused;
   if (isBreakdownError(error)) return error.refused;
   return undefined;
 }
@@ -354,18 +297,13 @@ describe('money reaches only the readers the server sends it to', () => {
   });
 });
 
-const stintCapture = (db: Db, role: ContractingRole, stint: StintFixture, reading: 'arrival' | 'departure') =>
-  captureReading({
-    db,
-    actor: accessForRole(role, callerId),
-    input: {
-      machineId: stint.machineId,
-      assignmentId: stint.id,
-      role: reading,
-      value: reading === 'arrival' ? 500 : 600,
-      capturedAt: reading === 'arrival' ? '2026-09-20T08:00:00Z' : '2026-09-25T08:00:00Z',
-      disputePrevious: false,
-    },
+/** An edit that changes the stint's hours: a departure only where one was captured, a reason for a signed-off Job. */
+const editHoursOn = (caller: AppRouterCaller, stint: StintFixture) =>
+  caller.contractingJobs.assignments.editHours({
+    assignmentId: stint.id,
+    arrivalHours: 1,
+    departureHours: stint.state === 'left' ? 200 : null,
+    reason: 'Misread',
   });
 
 /** One write per Assignment Action, as a surface asks for it on one stint. */
@@ -375,36 +313,22 @@ const stintAttempts: Record<
 > = {
   remove: (caller, stint) => caller.contractingJobs.assignments.remove({ id: stint.id }),
   changeResources: (caller, stint) => caller.contractingJobs.assignments.patch({ id: stint.id, driverUserId: null }),
-  // Capture arrives over HTTP, so it is judged where that route hands over: the core capture.
-  captureArrival: (_caller, stint, { db }, role) => stintCapture(db, role, stint, 'arrival'),
-  captureDeparture: (_caller, stint, { db }, role) => stintCapture(db, role, stint, 'departure'),
+  captureArrival: (caller, stint) =>
+    caller.contractingJobs.assignments.captureHours({ assignmentId: stint.id, role: 'arrival', hours: 500 }),
+  captureDeparture: (caller, stint) =>
+    caller.contractingJobs.assignments.captureHours({ assignmentId: stint.id, role: 'departure', hours: 600 }),
   editMeasures: (caller, stint, { loadsId }) =>
     caller.contractingJobs.measures.set({ assignmentId: stint.id, measureTypeId: loadsId, quantity: 3 }),
-  resolveGap: (caller, stint) =>
-    caller.contractingJobs.assignments.resolveGap({
-      id: stint.id,
-      travelHours: 0,
-      unaccountedHours: 0,
-      reason: 'Yard',
-    }),
+  editHours: (caller, stint) => editHoursOn(caller, stint),
+  setTravel: (caller, stint) =>
+    caller.contractingJobs.assignments.setTravel({ assignmentId: stint.id, travelHours: 1 }),
   price: (caller, stint, { rateId }) => caller.contractingJobs.pricing.setStintRate({ assignmentId: stint.id, rateId }),
 };
 
-const isCapture = (action: AssignmentActionName) => action === 'captureArrival' || action === 'captureDeparture';
+const errorCode = (error: unknown) => (error instanceof TRPCError ? getTRPCAppCode(error) : undefined);
+const stateCode = 'contracting_job.wrong_status';
 
-function errorCode(error: unknown): string | undefined {
-  if (error instanceof TRPCError) return getTRPCAppCode(error);
-  if (isReadingError(error)) return error.code;
-  return undefined;
-}
-
-function expectStintAgreement(
-  action: AssignmentActionName,
-  verdict: AssignmentActionVerdict,
-  error: unknown,
-  label: string,
-) {
-  const stateCode = isCapture(action) ? 'reading.invalid_role' : 'contracting_job.wrong_status';
+function expectStintAgreement(verdict: AssignmentActionVerdict, error: unknown, label: string) {
   if (verdict.allowed || verdict.reason !== 'wrong-state') {
     expectAgreement(verdict as JobActionVerdict, error, label);
     // A state refusal names no Job Action, so `expectAgreement` alone would let one through an allowed verdict.
@@ -429,7 +353,7 @@ describe('Assignment Actions served on each stint agree with what the server doe
         if (!stint) throw new Error(`Expected a ${assignment.state} stint`);
         const write = stintAttempts[action](caller, stint, context, role);
         const label = `${role} · ${status} · ${assignment.state} · ${action}`;
-        expectStintAgreement(action, assignment.actions[action], await settle(write), label);
+        expectStintAgreement(assignment.actions[action], await settle(write), label);
       }
     }
   });

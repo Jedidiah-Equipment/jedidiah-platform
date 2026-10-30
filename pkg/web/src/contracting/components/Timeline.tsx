@@ -1,5 +1,5 @@
-import { assignmentAttentionLevelColorClassNames, breakdownUrgencyColorClassNames } from '@pkg/domain/contracting';
-import type { AssignmentAttentionLevel, BreakdownUrgency, NeedsALookLevel } from '@pkg/schema/contracting';
+import { breakdownUrgencyColorClassNames, needsALookColorClassNames } from '@pkg/domain/contracting';
+import type { BreakdownUrgency, NeedsALookLevel } from '@pkg/schema/contracting';
 import type { Icon as TablerIcon } from '@tabler/icons-react';
 import type React from 'react';
 import { Button } from '@/components/ui/button.js';
@@ -18,7 +18,7 @@ const dotClassNames: Record<DotTone, string> = {
   done: 'border-emerald-500 bg-emerald-500',
   current: 'border-primary bg-primary',
   empty: 'border-muted-foreground bg-card',
-  critical: `border-transparent ${assignmentAttentionLevelColorClassNames.critical.dot}`,
+  'needs-a-look': `border-transparent ${needsALookColorClassNames.dot}`,
   'code-red': `border-transparent ${breakdownUrgencyColorClassNames['code-red'].dot}`,
   'code-green': `border-transparent ${breakdownUrgencyColorClassNames['code-green'].dot}`,
 };
@@ -63,13 +63,13 @@ export function IconAction({
   label,
   icon: Icon,
   onClick,
-  level,
+  needsALook = false,
 }: {
   label: string;
   icon: TablerIcon;
   onClick: () => void;
-  /** Paints the button in an assignment attention level's colours. */
-  level?: AssignmentAttentionLevel;
+  /** Paints the button in the needs-a-look amber. */
+  needsALook?: boolean;
 }) {
   return (
     <Tooltip>
@@ -77,7 +77,7 @@ export function IconAction({
         render={
           <Button
             aria-label={label}
-            className={level ? assignmentAttentionLevelColorClassNames[level].button : undefined}
+            className={needsALook ? needsALookColorClassNames.button : undefined}
             onClick={onClick}
             size="icon-sm"
             type="button"

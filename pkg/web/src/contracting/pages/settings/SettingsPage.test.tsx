@@ -20,7 +20,8 @@ vi.mock('@/hooks/use-api-mutation-error-toast.js', () => ({
 
 test('saves only on an explicit Save, resets to the saved row, and keeps a refused draft', async () => {
   let saved: ContractingSettings = {
-    gapFlagThresholdHours: 4,
+    travelFlagThresholdHours: 4,
+    johnDeereDifferenceThresholdHours: 10,
     serviceDueSoonThresholdHours: 100,
     utilisationTargetPercent: 70,
     updatedAt: '2026-10-12T08:00:00.000Z' as ContractingSettings['updatedAt'],
@@ -112,26 +113,26 @@ test('saves only on an explicit Save, resets to the saved row, and keeps a refus
     expect(save().disabled).toBe(true);
 
     // Save is enabled only while the draft differs from the saved row.
-    await edit('gapFlagThresholdHours', '4.5');
+    await edit('travelFlagThresholdHours', '4.5');
     expect(save().disabled).toBe(false);
-    await edit('gapFlagThresholdHours', '4.0');
+    await edit('travelFlagThresholdHours', '4.0');
     expect(save().disabled).toBe(true);
 
     // Typing changes nothing on the server until Save; clearing the target saves it as empty.
-    await edit('gapFlagThresholdHours', '2.5');
+    await edit('travelFlagThresholdHours', '2.5');
     await edit('utilisationTargetPercent', '');
     expect(save().disabled).toBe(false);
-    expect(saved.gapFlagThresholdHours).toBe(4);
+    expect(saved.travelFlagThresholdHours).toBe(4);
     await submit();
-    expect(saved).toMatchObject({ gapFlagThresholdHours: 2.5, utilisationTargetPercent: null });
+    expect(saved).toMatchObject({ travelFlagThresholdHours: 2.5, utilisationTargetPercent: null });
     await vi.waitFor(() => expect(save().disabled).toBe(true));
-    expect(field('gapFlagThresholdHours').value).toBe('2.5');
+    expect(field('travelFlagThresholdHours').value).toBe('2.5');
     expect(field('utilisationTargetPercent').value).toBe('');
 
     // The saved row is the new baseline, and a cleared target matches an empty one.
-    await edit('gapFlagThresholdHours', '4');
+    await edit('travelFlagThresholdHours', '4');
     expect(save().disabled).toBe(false);
-    await edit('gapFlagThresholdHours', '2.5');
+    await edit('travelFlagThresholdHours', '2.5');
     await edit('utilisationTargetPercent', '25');
     expect(save().disabled).toBe(false);
     await edit('utilisationTargetPercent', '');

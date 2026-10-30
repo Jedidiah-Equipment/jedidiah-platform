@@ -1,10 +1,9 @@
-import { AuthId, UUID } from '@pkg/schema';
+import { AuthId, emptyStringOr, UUID } from '@pkg/schema';
 import { type Assignment, ReadingComment, ReadingValue } from '@pkg/schema/contracting';
 import { useState } from 'react';
 import { z } from 'zod';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
-import { emptyStringOr } from '@/components/form/utils/form-schema.js';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
 import {

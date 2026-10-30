@@ -1,4 +1,4 @@
-import { UUID } from '@pkg/schema';
+import { emptyStringOr, UUID } from '@pkg/schema';
 import {
   type CatalogProductRangeTranslation,
   type CatalogProductRangeTranslationPatchInput,
@@ -7,8 +7,6 @@ import {
   TranslatableProductRangeVariantFields,
 } from '@pkg/schema/equipment';
 import { z } from 'zod';
-
-import { emptyStringOr } from '@/components/form/utils/form-schema.js';
 
 const ProductRangeTranslationTargetSchema = z.discriminatedUnion('kind', [
   z.object({ field: z.enum(['description', 'name']), kind: z.literal('range') }),

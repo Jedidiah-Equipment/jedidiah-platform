@@ -4,14 +4,15 @@ import { revalidateLogic } from '@tanstack/react-form';
 import { useAppForm } from '@/components/form';
 import { ModalSheet, SheetSubmitButton } from '@/components/ModalSheet';
 import { useAppToast } from '@/components/ui/toast';
+import { useMechanics } from '@/contracting/lib/use-mechanics';
 import { useBusyAction } from '@/lib/use-busy-action';
-import { useBookService, useServiceMechanics } from './use-services';
+import { useBookService } from './use-services';
 
 const BOOK_FAILED = 'Could not book the service. Check your connection and try again.';
 
 /** Books the Machine on screen in for a service; mounted while open, so each open starts from today. */
 export function BookServiceSheet({ machineId, onClose }: { machineId: string; onClose: () => void }) {
-  const mechanics = useServiceMechanics();
+  const mechanics = useMechanics('service');
   const book = useBookService();
   const showToast = useAppToast();
   const { busy, error, run } = useBusyAction();

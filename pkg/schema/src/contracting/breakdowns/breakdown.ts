@@ -217,6 +217,8 @@ export const BreakdownFilterOptions = z.object({
 export type BreakdownFilterOptions = z.infer<typeof BreakdownFilterOptions>;
 /** The Contracting roles whose holders may be assigned as a Mechanic: the workshop manager can assign himself. */
 export const MECHANIC_ROLES = ['mechanic', 'workshop-manager'] as const satisfies readonly ContractingRole[];
+export const isMechanicRole = (role: ContractingRole | null | undefined): role is (typeof MECHANIC_ROLES)[number] =>
+  MECHANIC_ROLES.some((mechanicRole) => mechanicRole === role);
 export const Mechanic = z.object({ id: AuthId, name: z.string() });
 export type Mechanic = z.infer<typeof Mechanic>;
 /** Where a report of this subject files when it names no Job, as the reader may see that Job. */

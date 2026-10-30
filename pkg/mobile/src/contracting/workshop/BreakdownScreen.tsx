@@ -17,6 +17,7 @@ import { ScrollLockScrollView } from '@/components/scroll-lock';
 import { SecondaryToolbar } from '@/components/TopToolbar';
 import { Button } from '@/components/ui/button';
 import { Card, CardIconAction } from '@/components/ui/card';
+import { DialogCard } from '@/components/ui/dialog-card';
 import { Text } from '@/components/ui/text';
 import { ThemedModal } from '@/components/ui/themed-modal';
 import { useAppToast } from '@/components/ui/toast';
@@ -166,25 +167,27 @@ function UrgencyModal({
   };
   return (
     <ThemedModal backdropLabel="Keep the urgency" open={open} onClose={close} dismissDisabled={busy}>
-      <View className="w-full gap-3 rounded-2xl border border-border bg-background p-4">
-        <Text className="text-lg text-foreground" weight="bold">
-          Change urgency
-        </Text>
-        {error ? <Text className="text-danger">{error}</Text> : null}
-        <Button
-          primary={!busy}
-          title={busy ? 'Saving…' : `Change to ${breakdownUrgencyLabels[next]}`}
-          disabled={busy}
-          onPress={() =>
-            void run(async () => {
-              await patch.mutateAsync({ id: breakdown.id, urgency: next });
-              showToast('success', `Now ${breakdownUrgencyLabels[next]}`);
-              close();
-            }, BREAKDOWN_SAVE_FAILED)
-          }
-        />
-        <Button title="Cancel" disabled={busy} onPress={close} />
-      </View>
+      <DialogCard
+        title="Change urgency"
+        error={error}
+        actions={
+          <>
+            <Button
+              primary={!busy}
+              title={busy ? 'Saving…' : `Change to ${breakdownUrgencyLabels[next]}`}
+              disabled={busy}
+              onPress={() =>
+                void run(async () => {
+                  await patch.mutateAsync({ id: breakdown.id, urgency: next });
+                  showToast('success', `Now ${breakdownUrgencyLabels[next]}`);
+                  close();
+                }, BREAKDOWN_SAVE_FAILED)
+              }
+            />
+            <Button title="Cancel" disabled={busy} onPress={close} />
+          </>
+        }
+      />
     </ThemedModal>
   );
 }

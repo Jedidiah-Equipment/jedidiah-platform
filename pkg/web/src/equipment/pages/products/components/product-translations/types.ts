@@ -1,4 +1,4 @@
-import { UUID } from '@pkg/schema';
+import { emptyStringOr, UUID } from '@pkg/schema';
 import {
   type CatalogProductTranslation,
   type CatalogProductTranslationPatchInput,
@@ -7,8 +7,6 @@ import {
   TranslatableProductFields,
 } from '@pkg/schema/equipment';
 import { z } from 'zod';
-
-import { emptyStringOr } from '@/components/form/utils/form-schema.js';
 
 const ProductTranslationTargetSchema = z.discriminatedUnion('kind', [
   z.object({

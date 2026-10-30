@@ -1,4 +1,5 @@
 import type { UUID } from '@pkg/schema';
+import { emptyStringOr } from '@pkg/schema';
 import {
   type ProductRange,
   type ProductRangeCreateInput,
@@ -9,8 +10,6 @@ import {
   ProductRangeUpdateInput as ProductRangeUpdateInputSchema,
 } from '@pkg/schema/equipment';
 import { z } from 'zod';
-
-import { emptyStringOr } from '@/components/form/utils/form-schema.js';
 
 // Browser form shape for a Range. Per-field rules defer to the `@pkg/schema` scalars; the server
 // re-validates the same constraints on create/update. The image is never part of this payload — it is

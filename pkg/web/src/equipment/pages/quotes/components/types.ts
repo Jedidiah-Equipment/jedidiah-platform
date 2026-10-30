@@ -5,7 +5,7 @@ import {
   toQuoteOfferingInput,
   toQuoteWorkItemFormState,
 } from '@pkg/domain/equipment';
-import { AuthId, DateIsoString, DateOnlyIsoString, Price, requiredSelection, UUID } from '@pkg/schema';
+import { AuthId, DateIsoString, DateOnlyIsoString, emptyStringOr, Price, requiredSelection, UUID } from '@pkg/schema';
 import {
   CustomerCompanyName,
   Department,
@@ -34,8 +34,6 @@ import {
   QuoteWorkTitle,
 } from '@pkg/schema/equipment';
 import { z } from 'zod';
-
-import { emptyStringOr } from '@/components/form/utils/form-schema.js';
 
 export const CustomerMode = z.enum(['existing', 'inline']);
 

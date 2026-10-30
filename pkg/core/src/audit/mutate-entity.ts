@@ -66,8 +66,15 @@ export async function mutateEntity<TTable extends PgTable & { id: PgColumn }, TR
   lockWhere?: SQL;
   /** Raised both when the lock select misses and when the update returns no row. */
   notFound: () => Error;
-  /** Builds the caller's result inside the same transaction (re-query, secondary reads, schema parse). */
-  project: (tx: DatabaseTransaction, row: TTable['$inferSelect']) => Promise<TResult> | TResult;
+  /**
+   * Builds the caller's result inside the same transaction (re-query, secondary reads, schema parse). `before` is the
+   * row as it was under the lock, for an answer that compares the two states (did this write escalate a Breakdown).
+   */
+  project: (
+    tx: DatabaseTransaction,
+    row: TTable['$inferSelect'],
+    before: TTable['$inferSelect'],
+  ) => Promise<TResult> | TResult;
   /**
    * The write set. A full replacement for `updateXxxx`; an undefined-keeps merge over `before` for
    * `patchXxxx`. Include `updatedAt: new Date()` here where the table has one — never automatic,
@@ -96,7 +103,7 @@ export async function mutateEntity<TTable extends PgTable & { id: PgColumn }, TR
     const changes = diffAuditUpdate(descriptor, before, after);
 
     if (!changes) {
-      return project(tx, before);
+      return project(tx, before, before);
     }
 
     const [row] = (await tx
@@ -118,6 +125,6 @@ export async function mutateEntity<TTable extends PgTable & { id: PgColumn }, TR
       ...(summary === undefined ? {} : { summary }),
     });
 
-    return project(tx, row);
+    return project(tx, row, before);
   });
 }

@@ -1,12 +1,12 @@
 import { z } from 'zod';
 import { AuthId } from '../../auth/auth-id.js';
 import { DateOnlyIso } from '../../common/date.js';
-import { requiredSelection } from '../../common/form.js';
+import { emptyStringOr, requiredSelection } from '../../common/form.js';
 
 /** Booking a Machine in as both the web and the phone hold it: no Mechanic yet is an empty string. */
 export const OpenServiceValues = z.object({
   startDate: requiredSelection(DateOnlyIso, 'Choose the start date'),
-  primaryMechanicUserId: z.union([z.literal(''), AuthId]),
+  primaryMechanicUserId: emptyStringOr(AuthId),
   notes: z.string(),
 });
 export type OpenServiceValues = z.input<typeof OpenServiceValues>;

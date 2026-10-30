@@ -241,13 +241,25 @@ const refuseMisplaced = ({ rule, sentence }: Misplacement): CaptureRefused => ({
       : sentence,
 });
 
-/** The place the entry at `index` holds in a ledger in Read At order. */
+/**
+ * The place the entry at `index` holds in a ledger in Read At order. Telematics Readings can fall back, so on each side
+ * the report that binds it is the nearest one it contradicts, else the nearest: every report holds it to sequence.
+ */
 export function placementIn(ledger: readonly CaptureNeighbour[], index: number): Placement {
+  const here = ledger[index];
+  const binding = (reports: readonly CaptureNeighbour[], contradicted: (report: CaptureNeighbour) => boolean) =>
+    reports.find(contradicted) ?? reports[0] ?? null;
   return {
     previous: ledger[index - 1] ?? null,
     next: ledger[index + 1] ?? null,
-    previousTelematics: ledger.slice(0, index).findLast(isReported) ?? null,
-    nextTelematics: ledger.slice(index + 1).find(isReported) ?? null,
+    previousTelematics: binding(
+      ledger.slice(0, index).filter(isReported).reverse(),
+      (report) => !!here && here.value < report.value,
+    ),
+    nextTelematics: binding(
+      ledger.slice(index + 1).filter(isReported),
+      (report) => !!here && here.value > report.value,
+    ),
   };
 }
 

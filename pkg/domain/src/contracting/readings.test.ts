@@ -295,6 +295,21 @@ describe('resolveReadingAmendments', () => {
       });
     });
 
+    it('is refused against an earlier report a lower later one does not hide', () => {
+      const fallen = [
+        reading('high', day(1, 9), 1200, { telematicsProvider: 'john-deere' }),
+        reading('low', day(1, 10), 1150, { telematicsProvider: 'john-deere' }),
+        reading('captured', day(5), 1100, { disputed: true, disputeReason: 'John Deere reported 1 200.0 h.' }),
+      ];
+      expect(resolve(fallen, [amend(fallen[2] as AmendableReading, { value: 1150 })])).toEqual({
+        ok: false,
+        reason: 'contradicts_telematics',
+        id: 'captured',
+        message: `John Deere reported 1 200.0 h at ${formatDate(day(1, 9), 'medium')}. Check the time or the value.`,
+      });
+      expect(resolve(fallen, [amend(fallen[2] as AmendableReading, { value: 1200 })])).toMatchObject({ ok: true });
+    });
+
     it('is refused in the future', () => {
       expect(resolve(ledger(), [amend(departure, { capturedAt: new Date(NOW.getTime() + 1) })])).toMatchObject({
         ok: false,

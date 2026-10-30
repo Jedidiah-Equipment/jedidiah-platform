@@ -17,6 +17,7 @@ import { useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { toast } from 'sonner';
 import { z } from 'zod';
+import { localDateTimeValue } from '@/components/form/utils/form-schema.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { readingRefusal } from '@/contracting/lib/reading-refusal.js';
 import { useCan } from '@/hooks/use-access.js';
@@ -105,8 +106,9 @@ export function useReadingCapture<TValues>(target: CaptureTarget, toDraft: (valu
       flushSync(() => setReadAt(readAtEarlier));
       readAtPicker.current?.querySelector<HTMLElement>('button, input')?.focus();
     },
-    /** What the picker now shows; it holds minutes, so the instant it still shows keeps its seconds. */
-    pickReadAt: (value: string) => setReadAt((current) => readAtPickedFromPicker(current, value)),
+    /** What the picker now shows, which names no time until it is a whole one; the instant it still shows keeps its seconds. */
+    pickReadAt: (value: string) =>
+      setReadAt((current) => readAtPickedFromPicker(current, localDateTimeValue.safeParse(value).success ? value : '')),
     /** A new value: the Read At proposed for the refused one stays as the person's own time. */
     editValue: () => setReadAt(readAtAfterValueEdit),
     reset: () => {

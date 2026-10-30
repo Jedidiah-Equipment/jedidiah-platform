@@ -63,9 +63,15 @@ export const createContractingBreakdownsRouter = (push: ContractingPushScheduler
     patch: authorizedProcedure(writers)
       .input(BreakdownPatchInput)
       .output(BreakdownDetail)
-      .mutation(({ ctx, input }) =>
-        mapCoreErrors(() => patchBreakdown({ db: ctx.db, actor: ctx.access, input }), breakdownErrorFamily),
-      ),
+      .mutation(async ({ ctx, input }) => {
+        const { breakdown, escalated } = await mapCoreErrors(
+          () => patchBreakdown({ db: ctx.db, actor: ctx.access, input }),
+          breakdownErrorFamily,
+        );
+        if (escalated)
+          push.schedule({ kind: 'breakdown.escalated', breakdownId: breakdown.id, byUserId: ctx.access.userId });
+        return breakdown;
+      }),
     assignMechanic: authorizedProcedure('contracting_breakdown:update')
       .input(BreakdownAssignMechanicInput)
       .output(BreakdownDetail)

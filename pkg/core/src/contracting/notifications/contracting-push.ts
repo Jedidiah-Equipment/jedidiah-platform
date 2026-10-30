@@ -80,17 +80,21 @@ async function notePush<K extends NoteThreadKind>(db: Db, kind: K, noteId: strin
   );
 }
 
-async function breakdownReportedPush(db: Db, breakdownId: string): Promise<PushMessage[]> {
+/** A reported Breakdown, or one an editor changed to Code Red: the same alert, kept from whoever caused it. */
+async function breakdownPush(db: Db, breakdownId: string, escalatedByUserId: string | null): Promise<PushMessage[]> {
   // Actor-blind on purpose: the push goes out on the server's behalf, not the reporter's.
   const [row] = await selectBreakdowns(db).where(eq(contractingBreakdowns.id, breakdownId)).limit(1);
   if (!row) return [];
   const breakdown = toBreakdownSummary(row);
+  const escalated = escalatedByUserId !== null;
+  // Queued work runs after commit: a Breakdown changed back to Code Green in between has nothing left to escalate.
+  if (escalated && breakdown.urgency !== 'code-red') return [];
   const kind = breakdownPushKind(breakdown.urgency);
   return addressed(
     db,
     kind,
-    breakdown.reportedByUserId,
-    breakdownPushMessage({ ...breakdown, subjectCode: breakdown.subject.code }),
+    escalatedByUserId ?? breakdown.reportedByUserId,
+    breakdownPushMessage({ ...breakdown, subjectCode: breakdown.subject.code }, { escalated }),
     (access) => canReceivePush(kind, access),
   );
 }
@@ -114,7 +118,9 @@ async function serviceDueSoonPush(db: Db, machineId: string): Promise<PushMessag
 export function buildContractingPush({ db, event }: { db: Db; event: ContractingPushEvent }): Promise<PushMessage[]> {
   switch (event.kind) {
     case 'breakdown.reported':
-      return breakdownReportedPush(db, event.breakdownId);
+      return breakdownPush(db, event.breakdownId, null);
+    case 'breakdown.escalated':
+      return breakdownPush(db, event.breakdownId, event.byUserId);
     case 'machine.service-due-soon':
       return serviceDueSoonPush(db, event.machineId);
     case 'note.added':

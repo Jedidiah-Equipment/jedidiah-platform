@@ -26,19 +26,19 @@ Administrator get none either.
 
 | Alert | Sent when | Says | Tapping it opens |
 | --- | --- | --- | --- |
-| Code Red | A Code Red Breakdown is reported, from the phone or the web. | The Machine or Implement, the first line of the problem, the Farm and Job, and who reported it. | The Breakdown |
+| Code Red | A Code Red Breakdown is reported, from the phone or the web, or an existing Breakdown is changed to Code Red. | The Machine or Implement, the first line of the problem, the Farm and Job, and who reported it. A Breakdown changed to Code Red says **Now Code Red**. | The Breakdown |
 | Code Green | A Code Green Breakdown is reported, from the phone or the web. | The same as Code Red. | The Breakdown |
 | Service Due Soon | A reading first brings a Machine within its **Service alert hours** of its Next Service Due, or within the Service Due Soon threshold in **Settings** (100 hours unless changed) when it has none. | The Machine and the hours left before its service, or how far past it the reading already is. | The Machine |
 | Breakdown note | Someone adds a Breakdown Note. | The Machine or Implement code, the author and a preview of the note’s first line. | The Breakdown’s **Activity** |
 | Job note | Someone adds a Job Note. | The Job Number, the author and a preview of the note’s first line. | The Job’s **Activity** |
 
 Each event alerts once. Sending the same Breakdown report again from a phone that lost signal does not
-alert again. A Machine already Service Due Soon does not alert again at its next reading; it alerts
+alert again. Each change of a Breakdown to Code Red alerts; changing it back to Code Green does not. A Machine already Service Due Soon does not alert again at its next reading; it alerts
 again only after a Service Record is closed and the Machine nears its new Next Service Due.
 
 ## Who never gets an alert
 
-- Whoever reported the Breakdown does not get its report alert; whoever wrote a note does not get its note alert.
+- Whoever reported the Breakdown does not get its report alert; whoever changed it to Code Red does not get that alert; whoever wrote a note does not get its note alert.
 - A shared device, such as a tablet signed in as itself.
 - Someone who turned that alert off in the phone app's **Settings**; their other alerts still come. See
   [Choose your alerts](./choose-your-alerts).

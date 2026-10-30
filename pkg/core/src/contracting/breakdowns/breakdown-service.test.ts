@@ -1,6 +1,6 @@
 import { auditEvents, user } from '@pkg/db';
 import { accessForRole } from '@pkg/domain/testing';
-import { ActivityListInput, BreakdownListInput, JobListInput } from '@pkg/schema/contracting';
+import { ActivityListInput, BreakdownListInput, type BreakdownPatchInput, JobListInput } from '@pkg/schema/contracting';
 import { and, asc, eq } from 'drizzle-orm';
 import { expect } from 'vitest';
 import { InMemoryStorageAdapter } from '../../storage/in-memory-storage-adapter.js';
@@ -20,6 +20,7 @@ import {
   listBreakdownFilterOptions,
   listBreakdownJobOptions,
   listBreakdowns,
+  patchBreakdown,
   reportBreakdown,
   solveBreakdown,
   startBreakdown,
@@ -164,6 +165,23 @@ test('solving straight from Open stamps both dates and needs a close-out note', 
   await expect(startBreakdown({ db, actor: workshop, id: breakdown.id })).rejects.toMatchObject({
     code: 'breakdown.solved',
   });
+});
+
+test('a patch escalates only when it moves a Breakdown from Code Green to Code Red', async ({ context }) => {
+  const { db, excavator } = context;
+  const { id } = await reportNew({
+    db,
+    actor: foreman,
+    input: report({ kind: 'machine', id: excavator.id }, { urgency: 'code-green' }),
+  });
+  const patch = async (input: Omit<BreakdownPatchInput, 'id'>) => {
+    const { breakdown, escalated } = await patchBreakdown({ db, actor: workshop, input: { id, ...input } });
+    return [breakdown.urgency, escalated];
+  };
+  expect(await patch({ description: 'Rattle' })).toEqual(['code-green', false]);
+  expect(await patch({ urgency: 'code-red' })).toEqual(['code-red', true]);
+  expect(await patch({ urgency: 'code-red' })).toEqual(['code-red', false]);
+  expect(await patch({ urgency: 'code-green' })).toEqual(['code-green', false]);
 });
 
 test('only a Mechanic can be the primary Mechanic', async ({ context }) => {

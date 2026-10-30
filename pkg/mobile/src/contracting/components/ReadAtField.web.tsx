@@ -1,13 +1,20 @@
 import { formatDate } from '@pkg/domain';
 import { readAtFromInput, readAtInputValue } from '@pkg/domain/contracting';
-import type { ChangeEvent } from 'react';
-import { useRef } from 'react';
+import { type ChangeEvent, useImperativeHandle, useRef } from 'react';
+import { View } from 'react-native';
 import { DateFieldTrigger } from '@/components/form/fields/DateFieldTrigger';
+import { SegmentedControl } from '@/components/SegmentedControl';
+import { Text } from '@/components/ui/text';
+import {
+  READ_AT_CHOICES,
+  type ReadAtFieldHandle,
+  type ReadAtFieldProps,
+} from '@/contracting/components/read-at-field-shared';
 
-export type ReadAtFieldProps = { value: Date | null; onChange: (value: Date | null) => void; disabled?: boolean };
+export type { ReadAtFieldHandle, ReadAtFieldProps };
 
 /** The date-time picker package has no web build; the browser's own `datetime-local` input stands in. */
-export function ReadAtField({ value, onChange, disabled = false }: ReadAtFieldProps) {
+export function ReadAtField({ value, onChange, disabled = false, hint = null, ref }: ReadAtFieldProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const openPicker = () => {
@@ -16,18 +23,28 @@ export function ReadAtField({ value, onChange, disabled = false }: ReadAtFieldPr
     if (typeof input.showPicker === 'function') input.showPicker();
     else input.click();
   };
+  useImperativeHandle(ref, () => ({ open: openPicker }));
 
   return (
-    <>
-      <DateFieldTrigger
+    <View className="gap-2">
+      <SegmentedControl
         disabled={disabled}
-        hasErrors={false}
-        label="Read At"
-        onClear={() => onChange(null)}
-        onOpen={openPicker}
-        placeholder={`Now · ${formatDate(new Date(), 'medium')}`}
-        value={value ? formatDate(value, 'medium') : ''}
+        onChange={(choice) => (choice === 'now' ? onChange(null) : openPicker())}
+        options={READ_AT_CHOICES}
+        value={value === null ? 'now' : 'earlier'}
       />
+      {value !== null ? (
+        <DateFieldTrigger
+          disabled={disabled}
+          hasErrors={false}
+          label="Read At"
+          onClear={() => onChange(null)}
+          onOpen={openPicker}
+          placeholder="Pick when the meter was read"
+          value={formatDate(value, 'medium')}
+        />
+      ) : null}
+      {hint ? <Text className="text-xs text-muted-foreground">{hint}</Text> : null}
       <input
         aria-hidden
         disabled={disabled}
@@ -42,6 +59,6 @@ export function ReadAtField({ value, onChange, disabled = false }: ReadAtFieldPr
         type="datetime-local"
         value={readAtInputValue(value ?? new Date())}
       />
-    </>
+    </View>
   );
 }

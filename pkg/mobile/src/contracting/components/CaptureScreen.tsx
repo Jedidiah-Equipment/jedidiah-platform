@@ -1,18 +1,20 @@
 import { formatHours } from '@pkg/domain';
 import {
+  belowLatestSentence,
   capturedAtFor,
   captureRefusals,
   deriveCaptureForm,
   isBackdated,
   type ReadAtChoice,
   readAtAfterPhoto,
+  readAtSuggestionSentence,
   readingProviderSuffix,
 } from '@pkg/domain/contracting';
-import { ReadingComment, type ReadingErrorCode, type ReadingRole } from '@pkg/schema/contracting';
+import { ReadAtSuggestion, ReadingComment, type ReadingErrorCode, type ReadingRole } from '@pkg/schema/contracting';
 import { useQueryClient } from '@tanstack/react-query';
 import { type Href, router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useRef, useState } from 'react';
-import { View } from 'react-native';
+import { type ScrollViewInstance, View } from 'react-native';
 import { FormPage } from '@/components/FormPage';
 import { FieldLabel, FieldShell } from '@/components/form/fields/FieldShell';
 import { SecondaryToolbar } from '@/components/TopToolbar';
@@ -22,7 +24,7 @@ import { TextInput } from '@/components/ui/text-input';
 import { useVoiceSession } from '@/components/voice/use-voice-session';
 import { VoiceTextArea } from '@/components/voice/VoiceTextArea';
 import { type MeterPhoto, MeterPhotoField } from '@/contracting/components/MeterPhotoField';
-import { ReadAtField } from '@/contracting/components/ReadAtField';
+import { ReadAtField, type ReadAtFieldHandle } from '@/contracting/components/ReadAtField';
 import { type PlannedStint, StintOverrideCard, useStintOverrides } from '@/contracting/components/StintOverrideCard';
 import { recordReadingCaptured } from '@/contracting/observability';
 import { type AttemptIdentity, captureAttempt, captureAttemptPayload } from '@/contracting/readings/capture-attempt';
@@ -108,6 +110,10 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
   const [photo, setPhoto] = useState<MeterPhoto | null>(null);
   // Null is "now".
   const [readAt, setReadAt] = useState<ReadAtChoice | null>(null);
+  // The Read At the server proposed for the last refused value; typing a new value or choosing Now drops it.
+  const [suggestion, setSuggestion] = useState<ReadAtSuggestion | null>(null);
+  const scroll = useRef<ScrollViewInstance>(null);
+  const readAtField = useRef<ReadAtFieldHandle>(null);
   const [value, setValue] = useState('');
   // Judged once typing stops, as web does: a half-typed value is not yet below the previous reading.
   const [valueFocused, setValueFocused] = useState(false);
@@ -125,7 +131,11 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
     { latest, management, hasPhoto: photo !== null, now: new Date() },
     { role, value, disputedReadingId, comment, readAt: readAt?.at ?? null, stintOverrides },
   );
-  const { parsed, below, disputeConfirmed, commentRequired, futureReadAt } = form;
+  const { parsed, below, disputable, disputeConfirmed, commentRequired, futureReadAt } = form;
+  const readEarlier = () => {
+    scroll.current?.scrollTo({ y: 0 });
+    readAtField.current?.open();
+  };
   const canSave = form.request !== null && canCapture && !!machine && !cameraOpen;
   function save() {
     const request = form.request;
@@ -162,6 +172,12 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
         // The busy action shows a refusal's sentence and reports anything else; the ledger's own refusals also refetch.
         if (error instanceof UploadRefusedError) {
           recordReadingCaptured({ ...captured, refused: error.data.appCode });
+          // Nothing is saved until the person checks the time John Deere puts the value at and saves again.
+          const proposed = ReadAtSuggestion.safeParse(error.data.suggestedReadAt);
+          if (proposed.success) {
+            setSuggestion(proposed.data);
+            setReadAt({ at: new Date(proposed.data.readAt), by: 'hand' });
+          }
           if (LEDGER_MOVED.has(error.data.appCode)) {
             setDisputedReadingId(null);
             void queryClient.invalidateQueries({
@@ -195,21 +211,22 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
         />
       }
       error={error}
+      scrollRef={scroll}
       footer={
         <>
           {!canCapture ? <Text className="text-danger">Your role cannot capture readings.</Text> : null}
           {/* In the fixed footer, so the warning never pushes the form's fields while it comes and goes. */}
-          {below && !valueFocused ? (
+          {below && !valueFocused && latest ? (
             <View className="gap-3 rounded-xl border border-danger p-4">
-              <Text className="text-foreground">
-                This is below the previous reading. Correct your value, retake the photo, or dispute the previous
-                reading.
-              </Text>
-              <Button
-                title={disputeConfirmed ? 'Previous reading disputed · undo' : 'The previous reading is wrong'}
-                onPress={() => setDisputedReadingId(disputeConfirmed ? null : (latest?.id ?? null))}
-                disabled={busy}
-              />
+              <Text className="text-foreground">{belowLatestSentence(latest)}</Text>
+              <Button title="Read earlier…" onPress={readEarlier} disabled={busy} />
+              {disputable ? (
+                <Button
+                  title={disputeConfirmed ? 'Previous reading disputed · undo' : 'The previous reading is wrong'}
+                  onPress={() => setDisputedReadingId(disputeConfirmed ? null : latest.id)}
+                  disabled={busy}
+                />
+              ) : null}
             </View>
           ) : null}
           <Button
@@ -223,6 +240,21 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
         </>
       }
     >
+      <FieldShell
+        label="When was the meter read?"
+        errors={futureReadAt ? [{ message: captureRefusals['future-read-at'].message }] : []}
+      >
+        <ReadAtField
+          ref={readAtField}
+          value={readAt?.at ?? null}
+          disabled={busy}
+          hint={suggestion ? readAtSuggestionSentence(suggestion) : null}
+          onChange={(next) => {
+            setReadAt(next ? { at: next, by: 'hand' } : null);
+            if (!next) setSuggestion(null);
+          }}
+        />
+      </FieldShell>
       <MeterPhotoField
         photo={photo}
         cameraOpen={cameraOpen}
@@ -265,6 +297,7 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
           onChangeText={(text) => {
             setValue(text);
             setDisputedReadingId(null);
+            setSuggestion(null);
           }}
         />
       </FieldShell>
@@ -285,13 +318,6 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
       {target.kind === 'stint' && target.role === 'arrival' ? (
         <StintOverrideCard planned={target.planned} overrides={overrides} />
       ) : null}
-      <FieldShell label="Read At" errors={futureReadAt ? [{ message: captureRefusals['future-read-at'].message }] : []}>
-        <ReadAtField
-          value={readAt?.at ?? null}
-          disabled={busy}
-          onChange={(next) => setReadAt(next ? { at: next, by: 'hand' } : null)}
-        />
-      </FieldShell>
     </FormPage>
   );
 }

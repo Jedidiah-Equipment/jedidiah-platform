@@ -1,10 +1,20 @@
 import { formatHours, getPlantDateNow } from '@pkg/domain';
-import { captureRefusals, isFutureReadAt, READING_PHOTO_POLICY, readAtFromInput } from '@pkg/domain/contracting';
+import {
+  belowLatestSentence,
+  captureRefusals,
+  isFutureReadAt,
+  READING_PHOTO_POLICY,
+  readAtFromInput,
+  readAtInputValue,
+  readAtSuggestionSentence,
+} from '@pkg/domain/contracting';
+import type { LatestReading } from '@pkg/schema/contracting';
 import { IconArrowRight } from '@tabler/icons-react';
 import type React from 'react';
-import { useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { NumberField } from '@/components/form/fields/NumberField.js';
 import { withFieldGroup } from '@/components/form/index.js';
+import { Button } from '@/components/ui/button.js';
 import { Card, CardContent } from '@/components/ui/card.js';
 import { Checkbox } from '@/components/ui/checkbox.js';
 import { Field, FieldContent, FieldDescription, FieldLabel } from '@/components/ui/field.js';
@@ -79,38 +89,48 @@ export function ReadingCaptureCard({
   );
 }
 
-/** The below-latest warning: confirming the previous reading is wrong records the value and disputes it. */
-export function DisputeField({
+/**
+ * The below-latest warning. The fix is usually when the meter was read, so it always offers Read earlier…; below a
+ * human reading it also offers the dispute, which records the value and disputes the previous one.
+ */
+export function BelowLatestWarning({
   id,
   value,
-  previous,
-  checked,
-  onCheckedChange,
-  onBlur,
+  latest,
+  dispute,
+  onReadEarlier,
 }: {
   id: string;
   value: number;
-  previous: number;
-  checked: boolean;
-  onCheckedChange: (checked: boolean) => void;
-  onBlur?: () => void;
+  latest: LatestReading;
+  /** Null when the latest is beyond dispute. */
+  dispute: { checked: boolean; onCheckedChange: (checked: boolean) => void; onBlur?: () => void } | null;
+  onReadEarlier: () => void;
 }) {
   return (
-    <div className="rounded-lg border border-warning/45 bg-warning/10 p-3">
-      <Field orientation="horizontal">
-        <Checkbox
-          checked={checked}
-          id={id}
-          onBlur={onBlur}
-          onCheckedChange={(next) => onCheckedChange(next === true)}
-        />
-        <FieldContent>
-          <FieldLabel htmlFor={id}>The previous reading is wrong</FieldLabel>
-          <FieldDescription>
-            Record {formatHours(value)} and dispute the {formatHours(previous)} reading.
-          </FieldDescription>
-        </FieldContent>
-      </Field>
+    <div className="space-y-3 rounded-lg border border-warning/45 bg-warning/10 p-3">
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-sm">{belowLatestSentence(latest)}</p>
+        <Button onClick={onReadEarlier} size="sm" type="button" variant="outline">
+          Read earlier…
+        </Button>
+      </div>
+      {dispute ? (
+        <Field orientation="horizontal">
+          <Checkbox
+            checked={dispute.checked}
+            id={id}
+            onBlur={dispute.onBlur}
+            onCheckedChange={(next) => dispute.onCheckedChange(next === true)}
+          />
+          <FieldContent>
+            <FieldLabel htmlFor={id}>The previous reading is wrong</FieldLabel>
+            <FieldDescription>
+              Record {formatHours(value)} and dispute the {formatHours(latest.value)} reading.
+            </FieldDescription>
+          </FieldContent>
+        </Field>
+      ) : null}
     </div>
   );
 }
@@ -138,13 +158,18 @@ export function ReadingValueField({
 }
 
 /**
- * The previous reading beside the value being captured, with the dispute offered once a value below the previous one
- * loses focus. Every capture dialog mounts it over its `value` and `confirmedDispute` fields; typing clears a dispute,
- * which belongs to the value it was confirmed for.
+ * The previous reading beside the value being captured, with the below-latest warning once a value below the previous
+ * one loses focus. Every capture dialog mounts it over its `value` and `confirmedDispute` fields; typing clears a
+ * dispute, which belongs to the value it was confirmed for, and a proposed Read At, which belongs to the value refused.
  */
 export const ReadingValueCard = withFieldGroup({
   defaultValues: { value: Number.NaN, confirmedDispute: null as ConfirmedDispute, readAt: '' },
-  props: {} as { capture: Pick<ReadingCapture<unknown>, 'judgeValue' | 'latest' | 'latestQuery'> },
+  props: {} as {
+    capture: Pick<
+      ReadingCapture<unknown>,
+      'judgeValue' | 'latest' | 'latestQuery' | 'chooseEarlier' | 'clearSuggestion'
+    >;
+  },
   render: function ReadingValueCardGroup({ group, capture }) {
     const [readingFocused, setReadingFocused] = useState(false);
     const { latest, latestQuery } = capture;
@@ -159,14 +184,20 @@ export const ReadingValueCard = withFieldGroup({
               return !readingFocused && latest && verdict.below ? (
                 <group.AppField name="confirmedDispute">
                   {(field) => (
-                    <DisputeField
-                      checked={verdict.disputeConfirmed}
-                      id={field.name}
-                      onBlur={field.handleBlur}
-                      onCheckedChange={(checked) =>
-                        field.handleChange(checked ? { value: values.value, previousId: latest.id } : null)
+                    <BelowLatestWarning
+                      dispute={
+                        verdict.disputable
+                          ? {
+                              checked: verdict.disputeConfirmed,
+                              onBlur: field.handleBlur,
+                              onCheckedChange: (checked) =>
+                                field.handleChange(checked ? { value: values.value, previousId: latest.id } : null),
+                            }
+                          : null
                       }
-                      previous={latest.value}
+                      id={field.name}
+                      latest={latest}
+                      onReadEarlier={capture.chooseEarlier}
                       value={values.value}
                     />
                   )}
@@ -178,7 +209,14 @@ export const ReadingValueCard = withFieldGroup({
       >
         <div onFocusCapture={() => setReadingFocused(true)} onBlurCapture={() => setReadingFocused(false)}>
           <group.AppField name="value">
-            {() => <ReadingValueField onInput={() => group.setFieldValue('confirmedDispute', null)} />}
+            {() => (
+              <ReadingValueField
+                onInput={() => {
+                  group.setFieldValue('confirmedDispute', null);
+                  capture.clearSuggestion();
+                }}
+              />
+            )}
           </group.AppField>
         </div>
       </ReadingCaptureCard>
@@ -186,21 +224,69 @@ export const ReadingValueCard = withFieldGroup({
   },
 });
 
-/** When the meter was read, as a `datetime-local` value; blank is now, and a time still to come is refused. */
+/**
+ * When the meter was read, asked first: Now keeps the form's Read At blank, Earlier… reveals the picker. A Read At the
+ * server proposed lands in the picker with the reports it came from; a time still to come is refused.
+ */
 export const ReadingReadAtField = withFieldGroup({
   defaultValues: { readAt: '' },
-  render: function ReadingReadAtFieldGroup({ group }) {
+  props: {} as {
+    capture: Pick<ReadingCapture<unknown>, 'earlier' | 'readAtFocus' | 'chooseEarlier' | 'chooseNow' | 'suggestion'>;
+  },
+  render: function ReadingReadAtFieldGroup({ group, capture }) {
+    const { earlier, readAtFocus, suggestion } = capture;
+    const picker = useRef<HTMLDivElement>(null);
+    const { setFieldValue } = group;
+    const choiceLabel = useId();
+    useEffect(() => {
+      if (readAtFocus > 0) picker.current?.querySelector<HTMLElement>('button, input')?.focus();
+    }, [readAtFocus]);
+    useEffect(() => {
+      if (suggestion) setFieldValue('readAt', readAtInputValue(new Date(suggestion.readAt)));
+    }, [suggestion, setFieldValue]);
     return (
-      <>
-        <group.AppField name="readAt">
-          {(field) => (
-            <field.DateTimePickerField
-              label="Read At"
-              maxValue={getPlantDateNow()}
-              description="When the meter was read. Leave blank to use the current time."
-            />
-          )}
-        </group.AppField>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-sm font-medium" id={choiceLabel}>
+            When was the meter read?
+          </span>
+          <fieldset aria-labelledby={choiceLabel} className="flex gap-1">
+            <Button
+              aria-pressed={!earlier}
+              onClick={() => {
+                capture.chooseNow();
+                setFieldValue('readAt', '');
+              }}
+              size="sm"
+              type="button"
+              variant={earlier ? 'outline' : 'default'}
+            >
+              Now
+            </Button>
+            <Button
+              aria-pressed={earlier}
+              onClick={capture.chooseEarlier}
+              size="sm"
+              type="button"
+              variant={earlier ? 'default' : 'outline'}
+            >
+              Earlier…
+            </Button>
+          </fieldset>
+        </div>
+        {earlier ? (
+          <div ref={picker}>
+            <group.AppField name="readAt">
+              {(field) => (
+                <field.DateTimePickerField
+                  label="Read At"
+                  maxValue={getPlantDateNow()}
+                  {...(suggestion ? { description: readAtSuggestionSentence(suggestion) } : {})}
+                />
+              )}
+            </group.AppField>
+          </div>
+        ) : null}
         <group.Subscribe selector={(state) => readAtFromInput(state.values.readAt)}>
           {(readAt) =>
             readAt && isFutureReadAt(readAt) ? (
@@ -210,7 +296,7 @@ export const ReadingReadAtField = withFieldGroup({
             ) : null
           }
         </group.Subscribe>
-      </>
+      </div>
     );
   },
 });

@@ -42,11 +42,13 @@ const test = createTester(async ({ db }) => {
 });
 
 const day = (value: string) => DateOnlyIso.parse(value);
+// Read as many hours into the year as the meter shows, so the meter never outruns the clock.
+const readAtFor = (value: number) => new Date(Date.parse('2026-01-01T00:00:00Z') + value * 3_600_000).toISOString();
 const spotReading = (db: Parameters<typeof captureReading>[0]['db'], machineId: string, value: number) =>
   captureReading({
     db,
     actor: admin,
-    input: { machineId, role: 'spot', value, capturedAt: '2026-09-07T08:00:00Z', disputePrevious: false },
+    input: { machineId, role: 'spot', value, capturedAt: readAtFor(value), disputePrevious: false },
   });
 
 describe('Service Due Soon', () => {
@@ -75,7 +77,7 @@ describe('Service Due Soon', () => {
           machineId: excavator.id,
           role: 'spot',
           value,
-          capturedAt: '2026-09-07T08:00:00Z',
+          capturedAt: readAtFor(value),
           disputePrevious: false,
         },
       });

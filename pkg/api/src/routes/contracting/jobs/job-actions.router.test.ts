@@ -140,7 +140,8 @@ const test = createTester(async ({ db }) => {
     };
     const gone = await plan();
     await capture('arrival', 10, gone);
-    await capture('departure', 20, gone);
+    // Fixture readings are minutes apart, so each stint moves the meter within the clock's hour of slack.
+    await capture('departure', 11, gone);
     const later = await plan();
     fixture.stints = [
       { ...stint, state: 'on-site' },
@@ -153,7 +154,7 @@ const test = createTester(async ({ db }) => {
     fixture.chargeLineId = line.id;
     await patchChargeLine({ db, actor: setup, input: { id: line.id, amount: 0 } });
     if (status === 'active') return fixture;
-    await capture('departure', 110);
+    await capture('departure', 101);
     await completeJob({
       db,
       actor: setup,
@@ -352,7 +353,7 @@ const stintCapture = (db: Db, role: ContractingRole, stint: StintFixture, readin
       assignmentId: stint.id,
       role: reading,
       value: reading === 'arrival' ? 500 : 600,
-      capturedAt: reading === 'arrival' ? '2026-09-20T08:00:00Z' : '2026-09-21T08:00:00Z',
+      capturedAt: reading === 'arrival' ? '2026-09-20T08:00:00Z' : '2026-09-25T08:00:00Z',
       disputePrevious: false,
       comment: 'Photo unavailable',
     },

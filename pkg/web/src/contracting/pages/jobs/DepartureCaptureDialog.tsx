@@ -45,11 +45,11 @@ export function DepartureCaptureDialog({ stint, onClose }: { stint: Assignment |
       contentClassName="sm:max-w-md"
       defaultValues={{ value: Number.NaN, reason: '', confirmedDispute: null, readAt: '' }}
       validator={DepartureValues}
-      // Judged once the latest has loaded, and a value below it waits for its dispute; a missing reason or a bad
-      // value say so on submit.
+      // Judged once the latest has loaded; a value below a human latest waits for its dispute, and Earlier… for its
+      // time. A missing reason or a bad value say so on submit.
       canSubmit={(values) => {
         const verdict = judge(values);
-        return latestQuery.isSuccess && (!verdict.below || verdict.disputeConfirmed);
+        return latestQuery.isSuccess && (!verdict.disputable || verdict.disputeConfirmed) && !verdict.readAtPending;
       }}
       onBeforeCreate={(values) => judge(values).request !== null}
       onCreate={async (values) => {
@@ -61,12 +61,12 @@ export function DepartureCaptureDialog({ stint, onClose }: { stint: Assignment |
       {(form) => (
         <>
           <ErrorMessage error={latestQuery.error} fallbackMessage="Unable to load the Machine's previous reading." />
+          <ReadingReadAtField form={form} fields={{ readAt: 'readAt' }} capture={capture} />
           <ReadingValueCard
             form={form}
             fields={{ value: 'value', confirmedDispute: 'confirmedDispute', readAt: 'readAt' }}
             capture={capture}
           />
-          <ReadingReadAtField form={form} fields={{ readAt: 'readAt' }} />
           <ReadingCaptureDetails id={`departure-photo-${stint?.id ?? 'closed'}`} {...capture.details}>
             <div className="flex items-center gap-3" aria-hidden="true">
               <Separator className="flex-1" />

@@ -21,33 +21,45 @@ export type RouteAuthContext = {
   session: AppSession;
 };
 
-// A mapped HTTP failure with a stable status, public message, and optional `appCode`. Routes throw this
-// (directly or by mapping a core error into one) so {@link sendHttpError} can render it uniformly.
+// A mapped HTTP failure with a stable status, public message, optional `appCode`, and optional public `data`
+// sent beside it. Routes throw this (directly or by mapping a core error into one) so {@link sendHttpError} can
+// render it uniformly.
 export class RouteHttpError extends Error {
   readonly appCode: string | undefined;
+  readonly data: Readonly<Record<string, unknown>> | undefined;
   readonly statusCode: number;
 
   constructor({
     appCode,
+    data,
     message,
     statusCode,
     cause,
-  }: { appCode?: string | undefined; message: string; statusCode: number; cause?: unknown }) {
+  }: {
+    appCode?: string | undefined;
+    data?: Readonly<Record<string, unknown>> | undefined;
+    message: string;
+    statusCode: number;
+    cause?: unknown;
+  }) {
     super(message, { cause });
     this.name = 'RouteHttpError';
     this.appCode = appCode;
+    this.data = data;
     this.statusCode = statusCode;
   }
 }
 
 // Maps a core error through the same families the tRPC routers use, so both transports agree on a
-// status for every code. Anything no family owns is returned unchanged for the caller to handle.
+// status for every code, and a family's public metadata object rides in the body's `data` beside the
+// `appCode`. Anything no family owns is returned unchanged for the caller to handle.
 export function mapCoreErrorToRoute(error: unknown, ...families: CoreErrorFamily[]): unknown {
   for (const family of families) {
     const mapping = family.match(error);
     if (mapping)
       return new RouteHttpError({
         appCode: mapping.appCode,
+        ...(isPublicData(mapping.metadata) ? { data: mapping.metadata } : {}),
         cause: error,
         message: mapping.message,
         statusCode: getHTTPStatusCodeFromError(new TRPCError({ code: mapping.code })),
@@ -55,6 +67,9 @@ export function mapCoreErrorToRoute(error: unknown, ...families: CoreErrorFamily
   }
   return error;
 }
+
+const isPublicData = (metadata: unknown): metadata is Record<string, unknown> =>
+  typeof metadata === 'object' && metadata !== null && !Array.isArray(metadata);
 
 // Resolves the session and access summary, or sends a 401 and returns null when there is no session.
 export async function requireRouteAuth(request: FastifyRequest, reply: FastifyReply): Promise<RouteAuthContext | null> {
@@ -223,7 +238,7 @@ export function requireMaxLength(schema: { maxLength: number | null }): number {
 
 function sendNonUploadHttpError(reply: FastifyReply, error: unknown, options: SendHttpErrorOptions): void {
   if (error instanceof RouteHttpError) {
-    reply.status(error.statusCode).send({ data: { appCode: error.appCode }, message: error.message });
+    reply.status(error.statusCode).send({ data: { ...error.data, appCode: error.appCode }, message: error.message });
     return;
   }
 

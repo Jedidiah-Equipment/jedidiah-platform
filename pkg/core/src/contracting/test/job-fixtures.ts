@@ -101,6 +101,8 @@ export async function addedChargeLine(db: Db, actor: JobActor, input: ChargeLine
   return added;
 }
 
+const lastDepartureOn = new Map<string, number>();
+
 /** A planned stint that arrived and left, with its readings. */
 export async function leftStint(db: Db, jobId: string, machineId: string, arrival: number, departure: number) {
   const planned = await plannedStint(db, admin, { jobId, machineId, implementId: null });
@@ -113,14 +115,20 @@ export async function leftStint(db: Db, jobId: string, machineId: string, arriva
         assignmentId: planned.id,
         role,
         value,
-        // The departure as many hours after the arrival as the meter moved, so the meter never outruns the clock.
-        capturedAt: nextCapture(role === 'departure' ? Math.max(1, departure - arrival) : 1),
+        // Each reading as many hours after the last as the meter moved, so the meter never outruns the clock.
+        capturedAt: nextCapture(
+          Math.max(
+            1,
+            role === 'departure' ? departure - arrival : arrival - (lastDepartureOn.get(machineId) ?? arrival),
+          ),
+        ),
         disputePrevious: false,
         ...(role === 'departure' ? { comment: 'Photo unavailable' } : {}),
       },
     });
   const { reading: arrived } = await capture('arrival', arrival);
   const { reading: departed } = await capture('departure', departure);
+  lastDepartureOn.set(machineId, departure);
   return { id: planned.id, arrivalReadingId: arrived.id, departureReadingId: departed.id };
 }
 

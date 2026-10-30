@@ -24,7 +24,8 @@ const test = createTester(async ({ db }) => {
   return { ...fixtures, job };
 });
 
-let minute = 0;
+// Half a day apart, so the meter never outruns the clock.
+let halfDay = 0;
 const capture = (
   db: Parameters<typeof captureReading>[0]['db'],
   stint: { id: string; machineId: string },
@@ -39,7 +40,7 @@ const capture = (
       assignmentId: stint.id,
       role,
       value,
-      capturedAt: new Date(Date.parse('2026-09-01T06:00:00Z') + ++minute * 60_000).toISOString(),
+      capturedAt: new Date(Date.parse('2026-09-01T06:00:00Z') + ++halfDay * 12 * 3_600_000).toISOString(),
       disputePrevious: false,
       comment: 'Photo unavailable',
     },

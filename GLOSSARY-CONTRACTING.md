@@ -167,8 +167,10 @@ it (a Telematics Reading); a photo is attached whenever
 the camera allows, taken on the spot or chosen from the phone's gallery, and a reading without
 one is stamped **Missing Photo Evidence**. Read At defaults to when a chosen photo says it was
 taken, and otherwise to the moment of capture — a photo with no usable time, or one whose time
-lies in the future, is still accepted and defaults to that moment; whoever captures may correct
-it, and it is never in the future. Gallery photos and Read At correction are phone affordances,
+lies in the future, is still accepted and defaults to that moment; every capture form asks first whether
+the meter is being read **now** or was read **earlier**, and a value that falls below John Deere's readings
+has the form propose the moment John Deere puts it at, which the capturer confirms or corrects before
+anything is saved. It is never in the future. Gallery photos and Read At correction are phone affordances,
 and every web capture offers both from a photo chosen on disk. Read At orders a Machine's readings:
 the **latest reading** is the one with the latest Read At, and every capture is judged against its
 **time neighbours** — it must be at or above the nearest reading before its Read At and at or below
@@ -203,6 +205,9 @@ Machine's latest reading is refused (equal is accepted — an idle machine reads
 unless the Foreman asserts the latest reading is wrong, which saves his value as disputed and flags
 the pair for management; a backdated capture that falls below or above its neighbours is refused
 outright, since the fix is its time or its value. No capture may contradict a Telematics Reading.
+**The meter cannot outrun the clock**: engine hours between two readings never exceed the wall-clock hours
+between them (an hour of slack for the dash and the phone), and a capture that would is refused naming both
+readings, since the fix is a Read At on one of them.
 The Foreman may re-capture a reading only while his Assignment is open; from Completion onward only management
 amends, with a mandatory reason — an amendment corrects the value or Read At or both, and the amended reading is judged again at
 its place in time by the capture rules, so stints stay in time order, and engine hours between it and either neighbour

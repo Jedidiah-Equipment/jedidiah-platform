@@ -115,11 +115,11 @@ test('refuses to backfill a stint behind another Job’s, so no Hour Gap moves',
   const { db } = context;
   await stintOn(context, [
     [100, '2026-09-01T08:00:00Z'],
-    [110, '2026-09-01T15:00:00Z'],
+    [110, '2026-09-01T18:00:00Z'],
   ]);
   const { job: later } = await stintOn(context, [
     [130, '2026-09-03T08:00:00Z'],
-    [140, '2026-09-03T15:00:00Z'],
+    [140, '2026-09-03T18:00:00Z'],
   ]);
   await expect(stintOn(context, [[115, '2026-09-02T08:00:00Z']])).rejects.toMatchObject({
     code: 'reading.invalid_role',
@@ -141,15 +141,15 @@ test('starts an Hour Gap at the departure before the arrival’s Read At, whatev
   const { db } = context;
   await stintOn(context, [
     [100, '2026-09-01T08:00:00Z'],
-    [110, '2026-09-01T15:00:00Z'],
+    [110, '2026-09-01T18:00:00Z'],
   ]);
   const { job: later } = await stintOn(context, [
     [130, '2026-09-03T08:00:00Z'],
-    [140, '2026-09-03T15:00:00Z'],
+    [140, '2026-09-03T18:00:00Z'],
   ]);
   const { job: late, readingIds } = await stintOn(context, [
     [150, '2026-09-04T08:00:00Z'],
-    [160, '2026-09-04T15:00:00Z'],
+    [160, '2026-09-04T18:00:00Z'],
   ]);
   for (const [id, value, capturedAt] of [
     [readingIds[0], 115, '2026-09-02T08:00:00Z'],

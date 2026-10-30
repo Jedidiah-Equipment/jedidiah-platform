@@ -13,8 +13,12 @@ import {
   captureIsBelowLatest,
   captureNeedsComment,
   captureRefusals,
+  captureValueVerdict,
   deriveCaptureForm,
   judgeCapture,
+  readAtSuggestionSentence,
+  suggestReadAt,
+  type ValueBracket,
 } from './capture.js';
 import { FUTURE_READ_AT_TOLERANCE_MS, isFutureReadAt } from './read-at.js';
 
@@ -26,6 +30,8 @@ const refusedJob: JobActionVerdict = {
 };
 
 const anHourAgo = new Date('2026-10-09T07:00:00Z');
+const aDayAgo = new Date('2026-10-08T08:00:00Z');
+const noBracket: ValueBracket = { floor: null, ceiling: null };
 const reading = (
   id: string,
   value: number,
@@ -36,10 +42,11 @@ const reading = (
 
 const world = (overrides: Partial<CaptureWorld> = {}): CaptureWorld => ({
   latest: { id: 'latest', value: 100 },
-  previous: reading('latest', 100, anHourAgo),
+  previous: reading('latest', 100, aDayAgo),
   next: null,
   previousTelematics: null,
   nextTelematics: null,
+  valueBracket: noBracket,
   stint: 'planned',
   stintArrivedAt: null,
   lastDepartedAt: null,
@@ -84,7 +91,7 @@ describe('judgeCapture', () => {
     [
       'baseline-exists',
       { previous: null, next: reading('latest', 100, now, null, 'baseline') },
-      { value: 90, readAt: anHourAgo },
+      { value: 99.5, readAt: anHourAgo },
     ],
   ])('refuses %s', (rule, given, attempt) => {
     expect(judgeCapture(world(given), capture(attempt))).toMatchObject({ ok: false, rule });
@@ -242,6 +249,114 @@ describe('judgeCapture', () => {
     ).toMatchObject({ rule: 'above-next', reason: 'reading.above_next' });
   });
 
+  describe('the meter cannot outrun the clock', () => {
+    const arrival = reading('arrival', 1232.8, new Date('2026-10-27T14:17:00Z'), null, 'arrival');
+    const onSite = world({
+      latest: { id: 'arrival', value: 1232.8 },
+      previous: arrival,
+      stint: 'on-site',
+      stintArrivedAt: arrival.capturedAt,
+      now: new Date('2026-10-27T14:19:00Z'),
+    });
+    const departure = (value: number, readAt = new Date('2026-10-27T14:19:00Z')) =>
+      capture({ role: 'departure', value, readAt });
+
+    test('refuses engine hours since the previous reading that the clock never allowed, naming it', () => {
+      expect(judgeCapture(onSite, departure(1258.2))).toEqual({
+        ok: false,
+        rule: 'outruns-clock',
+        reason: 'reading.outruns_clock',
+        message: `${formatHours(25.4)} of engine time cannot pass in ${formatHours(0)} of clock time since the arrival reading of ${formatHours(1232.8)} at ${formatDate(arrival.capturedAt, 'medium')}. Check Read At on this reading, or correct that reading's Read At from its Job.`,
+      });
+    });
+
+    test('refuses a backdated value the next reading could not have reached in time', () => {
+      const next = reading('next', 1010, now, null, 'departure');
+      expect(
+        judgeCapture(
+          world({ previous: null, next, latest: { id: 'next', value: 1010 } }),
+          capture({ value: 1000, readAt: anHourAgo }),
+        ),
+      ).toMatchObject({
+        rule: 'outruns-clock',
+        message: expect.stringContaining('clock time before the departure reading'),
+      });
+    });
+
+    test('allows an hour of slack', () => {
+      expect(judgeCapture(onSite, departure(1233.7, arrival.capturedAt))).toMatchObject({ ok: true });
+    });
+
+    test('judges a Telematics previous like any other', () => {
+      const reported = reading('deere', 1000, anHourAgo, 'john-deere');
+      expect(
+        judgeCapture(
+          world({ latest: { id: 'deere', value: 1000 }, previous: reported, previousTelematics: reported }),
+          capture({ value: 1005 }),
+        ),
+      ).toMatchObject({ rule: 'outruns-clock' });
+    });
+  });
+
+  describe('proposing a Read At', () => {
+    const at = (time: string) => new Date(`2026-10-08T${time}:00Z`);
+    const floor = reading('deere-floor', 1000, at('10:00'), 'john-deere');
+    const ceiling = reading('deere-ceiling', 1010, at('11:00'), 'john-deere');
+    const bracket: ValueBracket = { floor, ceiling };
+
+    test('is the floor’s Read At when the value matches it', () => {
+      expect(suggestReadAt(1000, bracket, null)).toEqual({ readAt: floor.capturedAt, floor, ceiling: null });
+    });
+
+    test('interpolates on hours between the bracketing reports', () => {
+      expect(suggestReadAt(1005, bracket, null)).toEqual({ readAt: at('10:30'), floor, ceiling });
+    });
+
+    test('proposes nothing without a floor, or above a floor with no ceiling', () => {
+      expect(suggestReadAt(1005, { floor: null, ceiling }, null)).toBeNull();
+      expect(suggestReadAt(1005, { floor, ceiling: null }, null)).toBeNull();
+    });
+
+    test('proposes nothing that would break the stint’s time order', () => {
+      expect(suggestReadAt(1005, bracket, at('10:45'))).toBeNull();
+    });
+
+    test('says which reports the proposal came from', () => {
+      expect(readAtSuggestionSentence({ floor, ceiling })).toBe(
+        `John Deere puts this reading between ${formatDate(floor.capturedAt, 'medium')} and ${formatDate(ceiling.capturedAt, 'medium')}.`,
+      );
+      expect(
+        readAtSuggestionSentence({ floor: { value: 1000, capturedAt: floor.capturedAt.toISOString() }, ceiling: null }),
+      ).toBe(`John Deere read ${formatHours(1000)} at ${formatDate(floor.capturedAt, 'medium')}.`);
+    });
+
+    test('rides on the three value refusals when John Deere brackets the value, and only then', () => {
+      const suggestedReadAt = { readAt: at('10:30'), floor, ceiling };
+      const later = reading('deere-later', 1020, at('12:00'), 'john-deere');
+      const contradicts = world({
+        latest: { id: 'deere-later', value: 1020 },
+        previous: later,
+        previousTelematics: later,
+      });
+      const human = reading('human', 1020, at('12:00'));
+      const belowPrevious = world({
+        latest: { id: 'today', value: 1030 },
+        previous: human,
+        next: reading('today', 1030, now),
+      });
+      const belowLatest = world({ latest: { id: 'human', value: 1020 }, previous: human });
+      const attempt = capture({ value: 1005, readAt: at('12:30') });
+      for (const [given, rule] of [
+        [contradicts, 'contradicts-telematics'],
+        [belowPrevious, 'below-previous'],
+        [belowLatest, 'below-latest'],
+      ] as const) {
+        expect(judgeCapture({ ...given, valueBracket: bracket }, attempt)).toMatchObject({ rule, suggestedReadAt });
+        expect(judgeCapture(given, attempt)).not.toHaveProperty('suggestedReadAt');
+      }
+    });
+  });
+
   test('judges in the stated order', () => {
     expect(judgeCapture(world({ machineRetired: true, jobVerdict: refusedJob }), capture())).toMatchObject({
       rule: 'retired-machine',
@@ -341,7 +456,7 @@ describe('captureCrossesServiceDueSoon', () => {
 
 describe('deriveCaptureForm', () => {
   const formWorld = (overrides: Partial<CaptureFormWorld> = {}): CaptureFormWorld => ({
-    latest: { id: 'latest', value: 100, capturedAt: anHourAgo.toISOString() },
+    latest: { id: 'latest', value: 100, capturedAt: anHourAgo.toISOString(), telematicsProvider: null },
     management: false,
     hasPhoto: true,
     now,
@@ -384,6 +499,22 @@ describe('deriveCaptureForm', () => {
       request: { disputePrevious: true, expectedPreviousId: 'latest' },
     });
     expect(deriveCaptureForm(formWorld(), draft({ value: '90', disputedReadingId: 'older' })).request).toBeNull();
+  });
+
+  test('posts a draft below a Telematics latest, which the server answers with a Read At, and offers no dispute', () => {
+    const deere = formWorld({
+      latest: { id: 'deere', value: 100, capturedAt: anHourAgo.toISOString(), telematicsProvider: 'john-deere' },
+    });
+    expect(deriveCaptureForm(deere, draft({ value: '90' }))).toMatchObject({
+      below: true,
+      disputable: false,
+      request: { value: 90, disputePrevious: false },
+    });
+    expect(captureValueVerdict(deere.latest, 90, 'deere', null)).toEqual({
+      below: true,
+      disputable: false,
+      disputeConfirmed: false,
+    });
   });
 
   test('leaves a Read At before the latest to the server, and pre-judges one at or after it', () => {

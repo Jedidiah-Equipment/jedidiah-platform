@@ -1,23 +1,31 @@
 /** @vitest-environment jsdom */
 
-import { createUserAccessSummary, formatHours } from '@pkg/domain';
+import { createUserAccessSummary, formatDate, formatHours } from '@pkg/domain';
 import type { Assignment } from '@pkg/schema/contracting';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { MultipartRefusedError } from '@/contracting/lib/post-multipart.js';
 import { DepartureCaptureDialog } from './DepartureCaptureDialog.js';
 
 const capture = vi.hoisted(() => vi.fn(async (..._args: unknown[]) => undefined));
 vi.mock('@/contracting/components/readings/capture-reading.js', () => ({ captureReading: capture }));
 const latestId = '00000000-0000-4000-8000-000000000009';
 const refetchLatest = vi.hoisted(() => vi.fn(async () => undefined));
+const latestProvider = vi.hoisted(() => ({ current: null as 'john-deere' | null }));
 vi.mock('@/contracting/components/readings/use-latest-reading.js', () => ({
   useLatestReading: () => ({
     refetch: refetchLatest,
     isSuccess: true,
     isPending: false,
     error: null,
-    data: { id: latestId, role: 'spot', value: 130, capturedAt: '2026-09-17T12:00:00.000Z' },
+    data: {
+      id: latestId,
+      role: 'spot',
+      value: 130,
+      capturedAt: '2026-09-17T12:00:00.000Z',
+      telematicsProvider: latestProvider.current,
+    },
   }),
 }));
 vi.mock('@/contracting/hooks/use-query-invalidation.js', () => ({
@@ -62,6 +70,7 @@ afterEach(async () => {
   document.body.replaceChildren();
   capture.mockClear();
   refetchLatest.mockClear();
+  latestProvider.current = null;
   vi.restoreAllMocks();
 });
 
@@ -88,6 +97,8 @@ async function enter(name: string, value: string) {
 }
 
 async function enterReadAt(date: string, time: string) {
+  const earlier = [...document.querySelectorAll('button')].find((item) => item.textContent === 'Earlier…');
+  if (earlier?.getAttribute('aria-pressed') === 'false') await act(async () => earlier.click());
   for (const [name, value] of [
     ['readAt', date],
     ['readAt-time', time],
@@ -201,6 +212,52 @@ it('posts a departure read before the latest reading, leaving its neighbours to 
       disputePrevious: false,
       capturedAt: new Date(2026, 8, 16, 16, 0).toISOString(),
     }),
+    null,
+    'Unable to capture departure reading.',
+  );
+});
+
+it('offers only Read earlier… below a John Deere latest, and lets the server answer the value', async () => {
+  latestProvider.current = 'john-deere';
+  const { save } = await mount();
+  await enter('value', '126');
+  await act(async () => document.querySelector<HTMLTextAreaElement>('[name="reason"]')?.focus());
+  await enter('reason', 'Entered a day late');
+  expect(document.body.textContent).toContain(
+    `Below John Deere's ${formatHours(130)} at ${formatDate(new Date('2026-09-17T12:00:00.000Z'), 'medium')}.`,
+  );
+  expect(document.querySelector('#confirmedDispute')).toBeNull();
+  expect(save.disabled).toBe(false);
+  const readEarlier = [...document.querySelectorAll('button')].find((item) => item.textContent === 'Read earlier…');
+  await act(async () => readEarlier?.click());
+  expect(document.querySelector('[name="readAt"]')).not.toBeNull();
+  // Earlier… with no time picked yet posts nothing.
+  expect(save.disabled).toBe(true);
+});
+
+it('proposes the Read At John Deere puts a refused value at, and posts it on the second Save', async () => {
+  // Seconds the picker cannot show: the second Save still posts the proposal's own instant.
+  const readAt = new Date(2026, 8, 16, 9, 30, 27);
+  const floor = { value: 125, capturedAt: new Date(2026, 8, 16, 9, 0).toISOString() };
+  const ceiling = { value: 127, capturedAt: new Date(2026, 8, 16, 10, 0).toISOString() };
+  capture.mockRejectedValueOnce(
+    new MultipartRefusedError(`John Deere reported ${formatHours(127)}. Check the time or the value.`, {
+      appCode: 'reading.below_latest',
+      suggestedReadAt: { readAt: readAt.toISOString(), floor, ceiling },
+    }),
+  );
+  const { save, onClose } = await mount();
+  await enter('value', '131');
+  await enter('reason', 'Entered a day late');
+  await act(async () => save.click());
+  expect(onClose).not.toHaveBeenCalled();
+  expect(document.querySelector<HTMLInputElement>('[name="readAt-time"]')?.value).toBe('09:30');
+  expect(document.body.textContent).toContain(
+    `John Deere puts this reading between ${formatDate(new Date(floor.capturedAt), 'medium')} and ${formatDate(new Date(ceiling.capturedAt), 'medium')}.`,
+  );
+  await act(async () => save.click());
+  expect(capture).toHaveBeenLastCalledWith(
+    expect.objectContaining({ value: 131, capturedAt: readAt.toISOString() }),
     null,
     'Unable to capture departure reading.',
   );

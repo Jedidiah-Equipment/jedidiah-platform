@@ -1,5 +1,5 @@
-import { createContext, useContext, useState } from 'react';
-import { ScrollView, type ScrollViewProps } from 'react-native';
+import { createContext, type Ref, useContext, useState } from 'react';
+import { ScrollView, type ScrollViewInstance, type ScrollViewProps } from 'react-native';
 
 /**
  * Lets a press-and-hold control inside a scrolling page stop it scrolling while held: a native scroll takes the touch
@@ -12,10 +12,14 @@ export function useScrollLock() {
 }
 
 /** A `ScrollView` its children can hold still with `useScrollLock`. Every scrolling form body is one. */
-export function ScrollLockScrollView({ children, ...props }: Omit<ScrollViewProps, 'scrollEnabled'>) {
+export function ScrollLockScrollView({
+  children,
+  ref,
+  ...props
+}: Omit<ScrollViewProps, 'scrollEnabled'> & { ref?: Ref<ScrollViewInstance> }) {
   const [locked, setLocked] = useState(false);
   return (
-    <ScrollView {...props} scrollEnabled={!locked}>
+    <ScrollView {...props} ref={ref} scrollEnabled={!locked}>
       <ScrollLockContext.Provider value={setLocked}>{children}</ScrollLockContext.Provider>
     </ScrollView>
   );

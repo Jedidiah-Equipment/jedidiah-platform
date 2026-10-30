@@ -51,6 +51,19 @@ test('a refusal is the server’s own sentence and code, shaped so the mutation 
   }
 });
 
+test('a refusal keeps the context the route sent beside its code', async () => {
+  const suggestedReadAt = { readAt: '2026-10-27T08:30:00.000Z' };
+  vi.stubGlobal('fetch', async () =>
+    Response.json(
+      { data: { appCode: 'reading.below_latest', suggestedReadAt }, message: 'Check the time' },
+      { status: 409 },
+    ),
+  );
+  expect(await post().catch((error: unknown) => error)).toMatchObject({
+    data: { appCode: 'reading.below_latest', suggestedReadAt },
+  });
+});
+
 test('signed-out, retry-later, unexplained and 5xx answers are failures that carry the status', async () => {
   for (const status of [401, 408, 429, 500, 502]) {
     vi.stubGlobal('fetch', async () => Response.json({ data: { appCode: 'reading.refused' } }, { status }));

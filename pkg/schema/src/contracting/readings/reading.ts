@@ -155,6 +155,14 @@ export const LatestReading = HourReading.pick({
 });
 export type LatestReading = z.infer<typeof LatestReading>;
 
+/** When John Deere puts a refused capture's value, as the refusal carries it: the report it matched, or the two it fell between. */
+export const ReadAtSuggestion = z.object({
+  readAt: DateIso,
+  floor: z.object({ value: ReadingValue, capturedAt: DateIso }),
+  ceiling: z.object({ value: ReadingValue, capturedAt: DateIso }).nullable(),
+});
+export type ReadAtSuggestion = z.infer<typeof ReadAtSuggestion>;
+
 export const FieldReading = HourReading.pick({
   id: true,
   machineId: true,

@@ -87,12 +87,12 @@ export function ArrivalCaptureDialog({ stint, onClose }: { stint: Assignment | n
       {(form) => (
         <>
           <ErrorMessage error={latestQuery.error} fallbackMessage="Unable to load the Machine's previous reading." />
+          <ReadingReadAtField form={form} fields={{ readAt: 'readAt' }} capture={capture} />
           <ReadingValueCard
             form={form}
             fields={{ value: 'value', confirmedDispute: 'confirmedDispute', readAt: 'readAt' }}
             capture={capture}
           />
-          <ReadingReadAtField form={form} fields={{ readAt: 'readAt' }} />
           <form.Subscribe
             selector={(state) => ({ implementId: state.values.implementId, driverUserId: state.values.driverUserId })}
           >

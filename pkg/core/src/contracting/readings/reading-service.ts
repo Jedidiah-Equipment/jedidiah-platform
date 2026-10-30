@@ -11,6 +11,7 @@ import { hasPermission, validateFile } from '@pkg/domain';
 import {
   amendedLedger,
   assignmentState,
+  type CaptureAttempt,
   type CaptureNeighbour,
   type CaptureWorld,
   captureCrossesServiceDueSoon,
@@ -19,16 +20,20 @@ import {
   type JobActor,
   jobReadStatuses,
   judgeCapture,
+  NO_VALUE_BRACKET,
+  proposesReadAt,
   READING_PHOTO_POLICY,
   readingExceptionTypes,
   readingVerification,
   resolveReadingAmendments,
+  type ValueBracket,
 } from '@pkg/domain/contracting';
 import { type AuthId, getNextCursor } from '@pkg/schema';
 import {
   FieldReading,
   type FieldReadingPageInput,
   LatestReading,
+  ReadAtSuggestion,
   ReadingAmendInput,
   ReadingCaptureInput,
 } from '@pkg/schema/contracting';
@@ -200,32 +205,43 @@ export async function captureReading({
             previousTelematics: previousTelematics ? toNeighbour(previousTelematics) : null,
             nextTelematics: nextTelematics ? toNeighbour(nextTelematics) : null,
           };
-        const judgement = judgeCapture(
-          {
-            ...neighbours,
-            stint: stint ? assignmentState(stint.stint) : null,
-            stintArrivedAt: stintArrival?.capturedAt ?? null,
-            lastDepartedAt: lastDeparture?.capturedAt ?? null,
-            jobVerdict: stint?.jobVerdict ?? null,
-            management: hasPermission(actor, 'contracting_job:work-any'),
-            mayBaseline: hasPermission(actor, 'contracting_reading:capture-baseline'),
-            machineRetired: machine.retiredAt !== null,
-            implementValid: stint?.implementValid ?? true,
-            driverValid: stint?.driverValid ?? true,
-            hasPhoto: !!evidence,
-            now,
-            futureToleranceMs: FUTURE_READ_AT_TOLERANCE_MS,
-          },
-          {
-            role: input.role,
-            value: input.value,
-            readAt,
-            disputePrevious: input.disputePrevious,
-            expectedPreviousId: input.expectedPreviousId,
-            comment: input.comment ?? null,
-          },
-        );
-        if (!judgement.ok) throw new ReadingError(judgement.reason, judgement.message, judgement.refused);
+        const world: CaptureWorld = {
+          ...neighbours,
+          valueBracket: NO_VALUE_BRACKET,
+          stint: stint ? assignmentState(stint.stint) : null,
+          stintArrivedAt: stintArrival?.capturedAt ?? null,
+          lastDepartedAt: lastDeparture?.capturedAt ?? null,
+          jobVerdict: stint?.jobVerdict ?? null,
+          management: hasPermission(actor, 'contracting_job:work-any'),
+          mayBaseline: hasPermission(actor, 'contracting_reading:capture-baseline'),
+          machineRetired: machine.retiredAt !== null,
+          implementValid: stint?.implementValid ?? true,
+          driverValid: stint?.driverValid ?? true,
+          hasPhoto: !!evidence,
+          now,
+          futureToleranceMs: FUTURE_READ_AT_TOLERANCE_MS,
+        };
+        const attempt: CaptureAttempt = {
+          role: input.role,
+          value: input.value,
+          readAt,
+          disputePrevious: input.disputePrevious,
+          expectedPreviousId: input.expectedPreviousId,
+          comment: input.comment ?? null,
+        };
+        const judged = judgeCapture(world, attempt);
+        // Only a value refusal proposes a Read At, so only one reads the Telematics Readings bracketing the value.
+        const judgement =
+          !judged.ok && proposesReadAt(judged.rule)
+            ? judgeCapture({ ...world, valueBracket: await valueBracketFor(tx, input.machineId, input.value) }, attempt)
+            : judged;
+        if (!judgement.ok)
+          throw new ReadingError(
+            judgement.reason,
+            judgement.message,
+            judgement.refused,
+            judgement.suggestedReadAt && ReadAtSuggestion.parse(judgement.suggestedReadAt),
+          );
         const disputed = judgement.disputes !== null;
         if (disputed && latest)
           await updateAudited(tx, actorUserId, latest, {
@@ -287,6 +303,40 @@ export async function captureReading({
     }
     throw error;
   }
+}
+
+/**
+ * The Telematics Readings `value` falls between. Every report after the floor reads above the value, so the ceiling is
+ * the next one, at the time its value was first reported: its Read At moves on while the value stands, and the row was
+ * inserted by the poll that first saw it.
+ */
+async function valueBracketFor(tx: DatabaseTransaction, machineId: string, value: number): Promise<ValueBracket> {
+  const onMachine = and(eq(contractingHourReadings.machineId, machineId), isTelematics);
+  const [floor] = await tx
+    .select()
+    .from(contractingHourReadings)
+    .where(and(onMachine, lte(contractingHourReadings.value, value)))
+    .orderBy(...newestFirst)
+    .limit(1);
+  if (!floor) return NO_VALUE_BRACKET;
+  const [ceiling] =
+    floor.value === value
+      ? []
+      : await tx
+          .select()
+          .from(contractingHourReadings)
+          .where(and(onMachine, gt(contractingHourReadings.capturedAt, floor.capturedAt)))
+          .orderBy(...oldestFirst)
+          .limit(1);
+  return {
+    floor: toNeighbour(floor),
+    ceiling: ceiling
+      ? {
+          ...toNeighbour(ceiling),
+          capturedAt: new Date(Math.min(ceiling.createdAt.getTime(), ceiling.capturedAt.getTime())),
+        }
+      : null,
+  };
 }
 
 const toNeighbour = ({ id, role, value, capturedAt, telematicsProvider }: Row): CaptureNeighbour => ({

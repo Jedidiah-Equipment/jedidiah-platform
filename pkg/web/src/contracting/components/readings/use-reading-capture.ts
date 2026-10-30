@@ -1,10 +1,17 @@
-import { capturedAtFor, captureValueVerdict, deriveCaptureForm, parseCaptureValue } from '@pkg/domain/contracting';
+import {
+  capturedAtFor,
+  captureValueVerdict,
+  deriveCaptureForm,
+  parseCaptureValue,
+  readAtInputValue,
+} from '@pkg/domain/contracting';
 import { UUID } from '@pkg/schema';
-import { type Assignment, type ReadingCaptureInput, ReadingValue } from '@pkg/schema/contracting';
+import { type Assignment, ReadAtSuggestion, type ReadingCaptureInput, ReadingValue } from '@pkg/schema/contracting';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
+import { MultipartRefusedError } from '@/contracting/lib/post-multipart.js';
 import { useCan } from '@/hooks/use-access.js';
 import { captureReading } from './capture-reading.js';
 import { useLatestReading } from './use-latest-reading.js';
@@ -56,9 +63,21 @@ export function useReadingCapture<TValues>(target: CaptureTarget, toDraft: (valu
   const management = useCan('contracting_job:work-any').can;
   const [photo, setPhoto] = useState<File | null>(null);
   const [error, setError] = useState('');
+  // Earlier with no time picked yet holds Save back; the form's blank Read At is still "now".
+  const [earlier, setEarlier] = useState(false);
+  const [readAtFocus, setReadAtFocus] = useState(0);
+  const [suggestion, setSuggestion] = useState<ReadAtSuggestion | null>(null);
   const latest = latestQuery.isSuccess ? latestQuery.data : undefined;
-  const judgeDraft = (draft: CaptureFormDraft) =>
-    deriveCaptureForm(
+  // The picker holds minutes; while it still shows the proposal, the proposal's own instant is the Read At, so a
+  // departure proposed seconds after its arrival is not posted before it.
+  const withProposedReadAt = (draft: CaptureFormDraft): CaptureFormDraft => {
+    const proposed = suggestion ? new Date(suggestion.readAt) : null;
+    return proposed && draft.readAt && readAtInputValue(draft.readAt) === readAtInputValue(proposed)
+      ? { ...draft, readAt: proposed }
+      : draft;
+  };
+  const judgeDraft = (draft: CaptureFormDraft) => {
+    const verdict = deriveCaptureForm(
       { latest, management, hasPhoto: photo !== null, now: new Date() },
       {
         role,
@@ -69,24 +88,44 @@ export function useReadingCapture<TValues>(target: CaptureTarget, toDraft: (valu
         stintOverrides: draft.stintOverrides,
       },
     );
+    // Earlier… chosen but no time picked yet: nothing posts until there is one.
+    const readAtPending = earlier && draft.readAt === null;
+    return { ...verdict, readAtPending, request: readAtPending ? null : verdict.request };
+  };
   return {
     latestQuery,
     /** The latest once loaded: null when the ledger is empty, undefined while loading or failed. */
     latest,
     photo,
-    judge: (values: TValues) => judgeDraft(toDraft(values)),
+    judge: (values: TValues) => judgeDraft(withProposedReadAt(toDraft(values))),
     /** Whether the value is below the latest and its dispute confirmed: all the reading card needs. */
     judgeValue: (value: CaptureValue & { readAt: Date | null }) =>
       captureValueVerdict(latest, parseFormValue(value.value), disputedReadingId(value), value.readAt),
     /** Spread onto `ReadingCaptureDetails`. */
     details: { photo, onPhotoChange: setPhoto, error, onError: setError },
+    /** The Read At choice: Earlier… once chosen, or once the server proposed a time. */
+    earlier,
+    readAtFocus,
+    chooseEarlier: () => {
+      setEarlier(true);
+      setReadAtFocus((count) => count + 1);
+    },
+    chooseNow: () => {
+      setEarlier(false);
+      setSuggestion(null);
+    },
+    /** The Read At the server proposed for the last refused value; typing a new value drops it. */
+    suggestion,
+    clearSuggestion: () => setSuggestion(null),
     reset: () => {
       setPhoto(null);
       setError('');
+      setEarlier(false);
+      setSuggestion(null);
     },
     /** Judges the values once more and posts what that judgement built, read when the draft's Read At says. */
     submit: async (values: TValues) => {
-      const draft = toDraft(values);
+      const draft = withProposedReadAt(toDraft(values));
       const { request } = judgeDraft(draft);
       if (!machineId || !request) throw new Error('This reading cannot be captured yet.');
       setError('');
@@ -105,6 +144,12 @@ export function useReadingCapture<TValues>(target: CaptureTarget, toDraft: (valu
         await Promise.all([invalidateJobs(), invalidateReadings()]);
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : copy[role].failed);
+        const proposed =
+          cause instanceof MultipartRefusedError ? ReadAtSuggestion.safeParse(cause.data.suggestedReadAt) : null;
+        if (proposed?.success) {
+          setSuggestion(proposed.data);
+          setEarlier(true);
+        }
         // The ledger may have moved under the dialog: a newer latest re-judges the value and drops a stale dispute.
         void latestQuery.refetch();
         throw cause;

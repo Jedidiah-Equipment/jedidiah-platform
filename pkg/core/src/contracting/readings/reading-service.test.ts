@@ -132,7 +132,9 @@ test('serializes competing captures and preserves the ledger when an upload or i
   };
   await captureReading({ db, actor, input });
   const results = await Promise.allSettled(
-    [110, 105].map((value) => captureReading({ db, actor, input: { ...input, value } })),
+    [110, 105].map((value) =>
+      captureReading({ db, actor, input: { ...input, value, capturedAt: '2026-09-08T08:00:00Z' } }),
+    ),
   );
   expect(results.some((result) => result.status === 'fulfilled')).toBe(true);
   const history = await listReadingsByMachine({ db, machineId });
@@ -252,7 +254,7 @@ test('ignores a stale dispute flag on equal and increasing captures', async ({ c
     disputePrevious: false,
   };
   await captureReading({ db, actor, input });
-  for (const value of [100, 110])
+  for (const value of [100, 100.5])
     expect(
       (await captureReading({ db, actor, input: { ...input, value, disputePrevious: true } })).reading,
     ).toMatchObject({
@@ -339,10 +341,10 @@ test('retries a delivered mobile capture without creating another reading or dis
     disputePrevious: false,
   };
   const { reading: first } = await captureReading({ db, actor, input });
-  await captureReading({ db, actor, input: { ...input, localId: undefined, value: 110 } });
+  await captureReading({ db, actor, input: { ...input, localId: undefined, value: 100.5 } });
   const { reading: retry } = await captureReading({ db, actor, input });
   expect(retry.id).toBe(first.id);
-  expect((await listReadingsByMachine({ db, machineId })).map((row) => row.value)).toEqual([110, 100]);
+  expect((await listReadingsByMachine({ db, machineId })).map((row) => row.value)).toEqual([100.5, 100]);
 });
 
 test('refuses a Read At more than five minutes ahead, but still replays a stored capture', async ({ context }) => {
@@ -532,7 +534,7 @@ test('a background check lands on a pending reading against its current value, a
     db,
     actor,
     evidence: photoEvidence(storage),
-    input: { ...input, value: 170, capturedAt: '2026-09-08T08:00:00Z' },
+    input: { ...input, value: 170, capturedAt: '2026-09-12T08:00:00Z' },
   });
   await amendHours(db, actor, amended.id, 171, 'Typed the wrong tenth');
   const disagreed = await verifyCapturedReading({
@@ -552,9 +554,9 @@ test('crosses the Service Due Soon edge the threshold in Settings draws at captu
   const capture = (value: number, capturedAt: string) =>
     captureReading({ db, actor, input: { machineId, role: 'spot', value, capturedAt, disputePrevious: false } });
   await sticker(1500);
-  expect((await capture(1300, '2026-09-07T08:00:00Z')).serviceDueSoonCrossed).toBe(false);
+  expect((await capture(1300, '2026-09-01T08:00:00Z')).serviceDueSoonCrossed).toBe(false);
   // 120 h to go is outside the default 100 h threshold.
-  expect((await capture(1380, '2026-09-07T09:00:00Z')).serviceDueSoonCrossed).toBe(false);
+  expect((await capture(1380, '2026-09-05T08:00:00Z')).serviceDueSoonCrossed).toBe(false);
 
   await sticker(2000);
   await updateContractingSettings({
@@ -563,6 +565,6 @@ test('crosses the Service Due Soon edge the threshold in Settings draws at captu
     input: { ...(await getContractingSettings({ db })), serviceDueSoonThresholdHours: 150 },
   });
   // Raising the threshold sends nothing by itself; 120 h to go now crosses at the next capture, once.
-  expect((await capture(1880, '2026-09-07T10:00:00Z')).serviceDueSoonCrossed).toBe(true);
-  expect((await capture(1881, '2026-09-07T11:00:00Z')).serviceDueSoonCrossed).toBe(false);
+  expect((await capture(1880, '2026-09-27T08:00:00Z')).serviceDueSoonCrossed).toBe(true);
+  expect((await capture(1881, '2026-09-27T09:00:00Z')).serviceDueSoonCrossed).toBe(false);
 });

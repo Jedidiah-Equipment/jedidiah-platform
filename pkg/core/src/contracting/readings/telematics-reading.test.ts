@@ -1,5 +1,5 @@
 import { auditEvents, type Db, user } from '@pkg/db';
-import { contractingJohnDeereLinks } from '@pkg/db/contracting';
+import { contractingHourReadings, contractingJohnDeereLinks } from '@pkg/db/contracting';
 import { accessForRole } from '@pkg/domain/testing';
 import { MachineCreateInput } from '@pkg/schema/contracting';
 import { and, eq } from 'drizzle-orm';
@@ -165,7 +165,7 @@ test('disputes an earlier captured reading above the report, with the reason, an
   const spot = (value: number, capturedAt: string) =>
     captureReading({ db, actor, input: { machineId, role: 'spot', value, capturedAt, disputePrevious: false } });
   const { reading: early } = await spot(1010, '2026-09-07T06:00:00Z');
-  const { reading: late } = await spot(1100, '2026-09-07T12:00:00Z');
+  const { reading: late } = await spot(1015, '2026-09-07T12:00:00Z');
 
   const result = await reportFor(context)(1005, '2026-09-07T09:00:00Z');
   expect(written(result).disputedReadingIds).toEqual([early.id]);
@@ -262,6 +262,58 @@ test('refuses a capture that contradicts the nearest John Deere reading past a D
   await expect(spot(1150, '2026-09-07T13:00:00Z')).rejects.toMatchObject({ code: 'reading.below_latest' });
   await expect(spot(1250, '2026-09-07T10:00:00Z')).rejects.toMatchObject({ code: 'reading.above_next' });
   expect(await listReadingsByMachine({ db, machineId })).toHaveLength(2);
+});
+
+test('proposes the Read At John Deere puts a refused value at, bracketing it by value', async ({ context }) => {
+  const { db, actor, machineId } = context;
+  const report = reportFor(context);
+  await report(990, '2026-09-07T09:00:00Z');
+  await report(1000, '2026-09-07T10:00:00Z');
+  await report(1010, '2026-09-07T11:00:00Z');
+  await report(1020, '2026-09-07T12:00:00Z');
+  await expect(
+    captureReading({
+      db,
+      actor,
+      input: { machineId, role: 'spot', value: 1005, capturedAt: '2026-09-07T13:00:00Z', disputePrevious: false },
+    }),
+  ).rejects.toMatchObject({
+    code: 'reading.below_latest',
+    suggestedReadAt: {
+      readAt: '2026-09-07T10:30:00.000Z',
+      floor: { value: 1000, capturedAt: '2026-09-07T10:00:00.000Z' },
+      ceiling: { value: 1010, capturedAt: '2026-09-07T11:00:00.000Z' },
+    },
+  });
+});
+
+test('bounds a proposal by when the ceiling’s value was first reported, not where its Read At moved to', async ({
+  context,
+}) => {
+  const { db, actor, machineId } = context;
+  const report = reportFor(context);
+  await report(1000, '2026-09-07T10:00:00Z');
+  const ceiling = written(await report(1010, '2026-09-07T11:00:00Z')).reading;
+  // Polled at 11:00, then the Machine stood: later polls move the report's Read At on.
+  await db
+    .update(contractingHourReadings)
+    .set({ createdAt: at('2026-09-07T11:00:00Z') })
+    .where(eq(contractingHourReadings.id, ceiling.id));
+  expect(await reportFor(context, '2026-09-10T00:00:00Z')(1010, '2026-09-09T07:00:00Z')).toMatchObject({
+    outcome: 'moved',
+  });
+  await expect(
+    captureReading({
+      db,
+      actor,
+      input: { machineId, role: 'spot', value: 1005, capturedAt: '2026-09-09T08:00:00Z', disputePrevious: false },
+    }),
+  ).rejects.toMatchObject({
+    suggestedReadAt: {
+      readAt: '2026-09-07T10:30:00.000Z',
+      ceiling: { value: 1010, capturedAt: '2026-09-07T11:00:00.000Z' },
+    },
+  });
 });
 
 test('disputes a captured reading at the report’s own Read At when it reads higher', async ({ context }) => {

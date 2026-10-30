@@ -1,7 +1,11 @@
 import { type DatabaseTransaction, type Db, user } from '@pkg/db';
+import { contractingBreakdowns, contractingServiceRecords } from '@pkg/db/contracting';
 import type { AuthId, ContractingRole } from '@pkg/schema';
-import { MECHANIC_ROLES, type Mechanic } from '@pkg/schema/contracting';
+import { isMechanicRole, MECHANIC_ROLES, type Mechanic } from '@pkg/schema/contracting';
 import { and, asc, eq, inArray } from 'drizzle-orm';
+import { BreakdownError } from './breakdowns/breakdown-errors.js';
+import { unsolvedBreakdown } from './breakdowns/breakdown-load.js';
+import { serviceRecordStatusCondition } from './services/service-record-status.js';
 
 /** The people a workshop manager may assign: non-device users holding one of the {@link MECHANIC_ROLES}. */
 export async function listMechanics({ db }: { db: Db }): Promise<Mechanic[]> {
@@ -22,5 +26,34 @@ export async function assertContractingMechanic(tx: DatabaseTransaction, userId:
   if (!isMechanicRole(person?.role) || person?.isDevice) throw refuse();
 }
 
-export const isMechanicRole = (role: ContractingRole | null | undefined) =>
-  MECHANIC_ROLES.some((mechanicRole) => mechanicRole === role);
+/** Refuses a role or device change that would take someone out of the set while they hold unsolved Breakdowns or open Service Records. */
+export async function assertMechanicAccountChangeAllowed({
+  db,
+  userId,
+  contractingRole,
+  isDevice,
+}: {
+  db: Db;
+  userId: AuthId;
+  contractingRole?: ContractingRole | null | undefined;
+  isDevice?: boolean | undefined;
+}) {
+  if ((contractingRole === undefined || isMechanicRole(contractingRole)) && isDevice !== true) return;
+  const [[breakdown], [serviceRecord]] = await Promise.all([
+    db
+      .select({ id: contractingBreakdowns.id })
+      .from(contractingBreakdowns)
+      .where(and(eq(contractingBreakdowns.primaryMechanicUserId, userId), unsolvedBreakdown))
+      .limit(1),
+    db
+      .select({ id: contractingServiceRecords.id })
+      .from(contractingServiceRecords)
+      .where(and(eq(contractingServiceRecords.primaryMechanicUserId, userId), serviceRecordStatusCondition('open')))
+      .limit(1),
+  ]);
+  if (breakdown || serviceRecord)
+    throw new BreakdownError(
+      'breakdown.invalid_mechanic',
+      "Reassign this mechanic's Breakdowns that are not yet Fixed and open Service Records before changing their role.",
+    );
+}

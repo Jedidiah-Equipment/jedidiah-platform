@@ -1,6 +1,6 @@
+import { emptyStringOr } from '@pkg/schema';
 import { CustomerEmail, CustomerName, CustomerOptionalText, FarmName, WorkTypeName } from '@pkg/schema/contracting';
 import { z } from 'zod';
-import { emptyStringOr } from '@/components/form/utils/form-schema.js';
 
 export const CustomerCreateValues = z.object({ name: CustomerName });
 export const CustomerFormValues = z.object({

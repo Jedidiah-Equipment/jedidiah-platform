@@ -1,4 +1,4 @@
-import { DateOnlyIso, DateOnlyIsoString, requiredSelection, UUID } from '@pkg/schema';
+import { DateOnlyIso, DateOnlyIsoString, emptyStringOr, requiredSelection, UUID } from '@pkg/schema';
 import {
   hasUniquePartIds,
   InventoryUnitCost,
@@ -28,7 +28,7 @@ import {
 import { z } from 'zod';
 
 import { roundNumberFieldValue } from '@/components/form/fields/NumberField.js';
-import { emptyStringOr, optionalNumber } from '@/components/form/utils/form-schema.js';
+import { optionalNumber } from '@/components/form/utils/form-schema.js';
 import { MovementOperatorValue } from '@/equipment/pages/inventory/components/types.js';
 
 export type PurchaseOrderCreateFormValues = z.infer<typeof PurchaseOrderCreateFormValues>;

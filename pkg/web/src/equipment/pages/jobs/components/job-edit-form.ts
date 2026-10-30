@@ -1,8 +1,6 @@
-import { DateOnlyIsoString, type UUID } from '@pkg/schema';
+import { DateOnlyIsoString, emptyStringOr, type UUID } from '@pkg/schema';
 import { type Job, JobDescription, JobUpdateInput } from '@pkg/schema/equipment';
 import { z } from 'zod';
-
-import { emptyStringOr } from '@/components/form/utils/form-schema.js';
 
 export type JobEditFormValues = z.infer<typeof JobEditFormValues>;
 export const JobEditFormValues = z.object({

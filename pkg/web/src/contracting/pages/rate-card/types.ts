@@ -1,4 +1,4 @@
-import { UUID } from '@pkg/schema';
+import { emptyStringOr, UUID } from '@pkg/schema';
 import {
   MeasureTypeName,
   RateAmount,
@@ -8,7 +8,6 @@ import {
   type RatePatchInput,
 } from '@pkg/schema/contracting';
 import { z } from 'zod';
-import { emptyStringOr } from '@/components/form/utils/form-schema.js';
 
 export const RateFormValues = z.object({
   name: RateName,

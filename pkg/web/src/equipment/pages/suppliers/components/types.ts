@@ -1,4 +1,4 @@
-import { NullableThumbnailDataUrl, type UUID } from '@pkg/schema';
+import { emptyStringOr, NullableThumbnailDataUrl, type UUID } from '@pkg/schema';
 import {
   type Supplier,
   SupplierCompanyName,
@@ -9,8 +9,6 @@ import {
   SupplierUpdateInput,
 } from '@pkg/schema/equipment';
 import { z } from 'zod';
-
-import { emptyStringOr } from '@/components/form/utils/form-schema.js';
 
 export type SupplierFormValues = z.infer<typeof SupplierFormValues>;
 export const SupplierFormValues = z.object({

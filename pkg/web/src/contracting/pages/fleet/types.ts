@@ -1,5 +1,5 @@
 import { serviceDueNeedsAttention } from '@pkg/domain/contracting';
-import { AuthId, DateOnlyIso, requiredSelection, UUID } from '@pkg/schema';
+import { AuthId, DateOnlyIso, emptyStringOr, requiredSelection, UUID } from '@pkg/schema';
 import {
   CategoryColour,
   CategoryIconKey,
@@ -24,7 +24,7 @@ import {
   ServiceRecordCloseInput,
 } from '@pkg/schema/contracting';
 import { z } from 'zod';
-import { emptyStringOr, nanToNull, optionalNumber } from '@/components/form/utils/form-schema.js';
+import { nanToNull, optionalNumber } from '@/components/form/utils/form-schema.js';
 
 export const fleetStatusOptions = FleetListInput.shape.status.unwrap().options;
 export const fleetStatusLabels: Record<FleetListInput['status'], string> = {

@@ -1,5 +1,5 @@
 import type { WorkingCalendar } from '@pkg/domain/equipment';
-import { DateOnlyIso, DateOnlyIsoString, UUID } from '@pkg/schema';
+import { DateOnlyIso, DateOnlyIsoString, emptyStringOr, UUID } from '@pkg/schema';
 import {
   type Bay,
   type BoardListResult,
@@ -12,8 +12,6 @@ import {
   SlotDurationDays,
 } from '@pkg/schema/equipment';
 import { z } from 'zod';
-
-import { emptyStringOr } from '@/components/form/utils/form-schema.js';
 
 import { describeInsertAtDatePlacement, getInsertAtDatePickerBounds } from './book-slot-insert-at-date.js';
 

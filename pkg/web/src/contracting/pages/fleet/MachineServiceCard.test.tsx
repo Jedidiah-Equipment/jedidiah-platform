@@ -67,8 +67,9 @@ test('an open record reads as a Booked in since line linking to its page, with n
   });
   const container = document.createElement('div');
   document.body.append(container);
+  const root = createRoot(container);
   await act(async () =>
-    createRoot(container).render(
+    root.render(
       <QueryClientProvider client={queryClient}>
         <TRPCProvider queryClient={queryClient} trpcClient={trpcClient}>
           <RouterProvider router={router} />
@@ -84,4 +85,5 @@ test('an open record reads as a Booked in since line linking to its page, with n
   expect(link?.getAttribute('href')).toBe(`/contracting/services/${record.id}`);
   expect(container.textContent).toContain('Machine service settings');
   expect(container.querySelector('textarea')).toBeNull();
+  await act(async () => root.unmount());
 });

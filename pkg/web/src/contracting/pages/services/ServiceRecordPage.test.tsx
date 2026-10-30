@@ -7,7 +7,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryHistory, createRootRoute, createRouter, RouterProvider } from '@tanstack/react-router';
 import { createTRPCClient, httpLink } from '@trpc/client';
 import { act } from 'react';
-import { createRoot } from 'react-dom/client';
+import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, expect, test, vi } from 'vitest';
 import { buildMachine, buildServiceRecord } from '@/contracting/test/fleet-fixtures.js';
 import { createTrpcOptions, TRPCProvider } from '@/lib/trpc.js';
@@ -36,7 +36,12 @@ const closedRecord = buildServiceRecord({
   closedByName: 'Sipho Dlamini',
 });
 
-afterEach(() => {
+const roots: Root[] = [];
+
+afterEach(async () => {
+  await act(async () => {
+    for (const root of roots.splice(0)) root.unmount();
+  });
   document.body.replaceChildren();
 });
 
@@ -85,8 +90,10 @@ async function mount(record: ServiceRecord, { without = [] as AppPermission[] } 
   });
   const container = document.createElement('div');
   document.body.append(container);
+  const root = createRoot(container);
+  roots.push(root);
   await act(async () =>
-    createRoot(container).render(
+    root.render(
       <QueryClientProvider client={queryClient}>
         <TRPCProvider queryClient={queryClient} trpcClient={trpcClient}>
           <RouterProvider router={router} />

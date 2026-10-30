@@ -2,6 +2,7 @@ import { formatDate, getFirstName } from '@pkg/domain';
 import { machineServiceBadge, readingProviderSuffix, serviceRecordBadge } from '@pkg/domain/contracting';
 import type { Machine, ServiceRecord } from '@pkg/schema/contracting';
 import { type UseQueryResult, useQuery } from '@tanstack/react-query';
+import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { PrimaryLink } from '@/components/common/PrimaryLink.js';
 import { QueryContent } from '@/components/common/QueryContent.js';
 import { ReadOnlyField } from '@/components/form/index.js';
@@ -145,7 +146,7 @@ function ClosedServiceCard({ record }: { record: ServiceRecord }) {
           </EditFormFullWidth>
         </EditFormGrid>
         <p className="text-muted-foreground text-sm">
-          Closed {formatDate(record.closedAt, 'medium')}
+          Closed <DateDisplay date={record.closedAt} format="medium" />
           {byFirstName(record.closedByName)}
         </p>
       </CardContent>

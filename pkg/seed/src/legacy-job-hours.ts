@@ -1,4 +1,4 @@
-import { groupBy } from '@pkg/domain';
+import { formatHours, groupBy } from '@pkg/domain';
 import { snapshotTravelHours } from '@pkg/domain/contracting';
 import type { SnapshotRow } from './snapshot-table-definitions.js';
 
@@ -14,7 +14,7 @@ const before = (a: Reading, b: Reading) => {
 
 /**
  * A snapshot read before migration 0185 keeps Job Hours as arrival and departure readings in the ledger. Fold them onto
- * their stints the way the migration did, Travel included, and drop them from the ledger. A current snapshot passes
+ * their stints the way the migration did, Travel and a departure below its arrival included, and drop them from the ledger. A current snapshot passes
  * through unchanged. Temporary: delete this fold once the snapshot is regenerated after 0185 runs in production.
  */
 export function foldLegacyJobHours(rowsByTable: Map<string, SnapshotRow[]>): void {
@@ -54,17 +54,27 @@ export function foldLegacyJobHours(rowsByTable: Map<string, SnapshotRow[]>): voi
           (stint.travelIncluded
             ? snapshotTravelHours(arrival.value, previousDeparture(arrival)?.value ?? null).travelHours
             : 0));
+      const below = arrival && departure && departure.value < arrival.value ? departure : null;
       return {
         ...stint,
         ...side('arrival', arrival),
         ...side('departure', departure),
+        ...(below
+          ? {
+              departureHours: arrival?.value,
+              hoursAmendedAt: new Date(),
+              hoursAmendedByUserId: below.capturedByUserId,
+              hoursAmendmentReason: `Departure ${formatHours(below.value)} was below the arrival; set to the arrival when Job Hours moved onto the stint.`,
+            }
+          : {
+              hoursAmendedAt: time(amended?.amendedAt),
+              hoursAmendedByUserId: amended?.amendedBy ?? null,
+              hoursAmendmentReason: amended?.amendmentReason ?? null,
+            }),
         travelHours,
         travelClamped: false,
         travelSetAt: arrival ? time(stint.gapResolvedAt) : null,
         travelSetByUserId: arrival ? (stint.gapResolvedByUserId ?? null) : null,
-        hoursAmendedAt: time(amended?.amendedAt),
-        hoursAmendedByUserId: amended?.amendedBy ?? null,
-        hoursAmendmentReason: amended?.amendmentReason ?? null,
       };
     }),
   );

@@ -66,6 +66,7 @@ beforeAll(async () => {
     )[0]?.id as string;
   const machineM = await machine('M1');
   const machineN = await machine('N1');
+  const machineP = await machine('P1');
   const job = async (status: 'priced' | 'completed', code: number) =>
     (
       await sql`insert into contracting.job (code, customer_id, farm_id, work_type_id, status, start_date, end_date, completed_at, completed_by_user_id, priced_at, priced_subtotal, priced_total, diesel_amount)
@@ -146,6 +147,15 @@ beforeAll(async () => {
     { travelIncluded: false },
   );
 
+  // Machine P: a Disputed departure below its arrival, which billed no Work.
+  await stint(
+    '00000000-0000-4000-8000-0000000000d1',
+    jobC,
+    machineP,
+    await reading(machineP, 'arrival', 300, 1),
+    await reading(machineP, 'departure', 290, 3, { disputed: true }),
+  );
+
   await migrateWith(databaseUrl, migrationsFolder);
 });
 
@@ -188,8 +198,8 @@ describe('0185 job hours on the assignment', () => {
     );
     // Work + the Travel deriveStintHours billed before: none on a first arrival, the whole flagged gap, the resolved
     // split's Travel, and nothing where travel was excluded.
-    expect(billable).toEqual({ a1: 50, a2: 10, b1: 20, b2: 10, c1: 13 });
-    const [a1, , , , c1] = stints;
+    expect(billable).toEqual({ a1: 50, a2: 10, b1: 20, b2: 10, c1: 13, d1: 0 });
+    const [a1, , , , c1, d1] = stints;
     expect(a1).toMatchObject({
       arrivalHours: '100.0',
       departureHours: '150.0',
@@ -202,6 +212,13 @@ describe('0185 job hours on the assignment', () => {
       hoursAmendmentReason: 'Misread',
     });
     expect(c1).toMatchObject({ travelHours: '3.0', travelSetByUserId: 'u2', hoursAmendedByUserId: null });
+    // A departure below its arrival lands on the arrival, marked amended by its capturer.
+    expect(d1).toMatchObject({
+      departureHours: '300.0',
+      hoursAmendedByUserId: 'u1',
+      hoursAmendmentReason:
+        'Departure 290.0 h was below the arrival; set to the arrival when Job Hours moved onto the stint.',
+    });
   });
 
   it('leaves only spot readings on the ledger, with no dispute left behind', async () => {

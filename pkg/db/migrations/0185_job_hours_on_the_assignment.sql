@@ -48,6 +48,13 @@ FROM (
   ORDER BY candidate.stint_id, reading.amended_at DESC
 ) amended
 WHERE amended.stint_id = stint.id;--> statement-breakpoint
+-- A Disputed departure below its arrival billed no Work; land it on the arrival, marked amended, so departure >= arrival holds.
+UPDATE "contracting"."machine_assignment"
+SET "departure_hours" = "arrival_hours",
+  "hours_amended_at" = now(),
+  "hours_amended_by_user_id" = "departure_by_user_id",
+  "hours_amendment_reason" = 'Departure ' || "departure_hours" || ' h was below the arrival; set to the arrival when Job Hours moved onto the stint.'
+WHERE "departure_hours" < "arrival_hours";--> statement-breakpoint
 -- Travel as it bills today: a resolved gap's Travel Hours, else the gap from the Machine's previous departure when included.
 UPDATE "contracting"."machine_assignment" stint
 SET "travel_hours" = coalesce(

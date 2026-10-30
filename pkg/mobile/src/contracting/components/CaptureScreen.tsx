@@ -5,12 +5,17 @@ import {
   captureRefusals,
   deriveCaptureForm,
   isBackdated,
+  READ_AT_NOW,
   type ReadAtChoice,
   readAtAfterPhoto,
+  readAtAfterRefusal,
+  readAtAfterValueEdit,
+  readAtOf,
+  readAtProposal,
   readAtSuggestionSentence,
   readingProviderSuffix,
 } from '@pkg/domain/contracting';
-import { ReadAtSuggestion, ReadingComment, type ReadingErrorCode, type ReadingRole } from '@pkg/schema/contracting';
+import { ReadingComment, type ReadingErrorCode, type ReadingRole, readingRefusalOf } from '@pkg/schema/contracting';
 import { useQueryClient } from '@tanstack/react-query';
 import { type Href, router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useRef, useState } from 'react';
@@ -108,10 +113,8 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
   const management = useSessionPermission('contracting_job:work-any');
   const [cameraOpen, setCameraOpen] = useState(false);
   const [photo, setPhoto] = useState<MeterPhoto | null>(null);
-  // Null is "now".
-  const [readAt, setReadAt] = useState<ReadAtChoice | null>(null);
-  // The Read At the server proposed for the last refused value; typing a new value or choosing Now drops it.
-  const [suggestion, setSuggestion] = useState<ReadAtSuggestion | null>(null);
+  const [readAt, setReadAt] = useState<ReadAtChoice>(READ_AT_NOW);
+  const proposal = readAtProposal(readAt);
   const scroll = useRef<ScrollViewInstance>(null);
   const readAtField = useRef<ReadAtFieldHandle>(null);
   const [value, setValue] = useState('');
@@ -129,7 +132,7 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
   const stintOverrides = target.kind === 'stint' && target.role === 'arrival' ? overrides.value : undefined;
   const form = deriveCaptureForm(
     { latest, management, hasPhoto: photo !== null, now: new Date() },
-    { role, value, disputedReadingId, comment, readAt: readAt?.at ?? null, stintOverrides },
+    { role, value, disputedReadingId, comment, readAt, stintOverrides },
   );
   const { parsed, below, disputable, disputeConfirmed, commentRequired, futureReadAt } = form;
   const readEarlier = () => {
@@ -151,16 +154,16 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
         comment,
         disputedReadingId,
         stintOverrides: stintOverrides ?? null,
-        readAt: readAt?.at ?? null,
+        readAt: readAtOf(readAt),
       }),
     );
     const { localId, attemptedAt } = attempt.current;
-    const capturedAt = capturedAtFor(readAt?.at ?? null, attemptedAt);
+    const capturedAt = capturedAtFor(readAtOf(readAt), attemptedAt);
     const captured = {
       role,
       hasPhoto: photo !== null,
       photoSource: photo?.source ?? null,
-      backdated: isBackdated(readAt?.at ?? null, attemptedAt),
+      backdated: isBackdated(readAtOf(readAt), attemptedAt),
     };
     return run(async () => {
       try {
@@ -173,11 +176,8 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
         if (error instanceof UploadRefusedError) {
           recordReadingCaptured({ ...captured, refused: error.data.appCode });
           // Nothing is saved until the person checks the time John Deere puts the value at and saves again.
-          const proposed = ReadAtSuggestion.safeParse(error.data.suggestedReadAt);
-          if (proposed.success) {
-            setSuggestion(proposed.data);
-            setReadAt({ at: new Date(proposed.data.readAt), by: 'hand' });
-          }
+          const { suggestedReadAt } = readingRefusalOf(error.data);
+          setReadAt((current) => readAtAfterRefusal(current, suggestedReadAt));
           if (LEDGER_MOVED.has(error.data.appCode)) {
             setDisputedReadingId(null);
             void queryClient.invalidateQueries({
@@ -246,13 +246,10 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
       >
         <ReadAtField
           ref={readAtField}
-          value={readAt?.at ?? null}
+          choice={readAt}
           disabled={busy}
-          hint={suggestion ? readAtSuggestionSentence(suggestion) : null}
-          onChange={(next) => {
-            setReadAt(next ? { at: next, by: 'hand' } : null);
-            if (!next) setSuggestion(null);
-          }}
+          hint={proposal ? readAtSuggestionSentence(proposal) : null}
+          onChange={setReadAt}
         />
       </FieldShell>
       <MeterPhotoField
@@ -297,7 +294,7 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
           onChangeText={(text) => {
             setValue(text);
             setDisputedReadingId(null);
-            setSuggestion(null);
+            setReadAt(readAtAfterValueEdit);
           }}
         />
       </FieldShell>

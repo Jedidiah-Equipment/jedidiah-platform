@@ -12,10 +12,10 @@ import type {
   BreakdownActionName,
   BreakdownErrorCode,
   JobActionBlockedReason,
+  RefusedJobAction,
 } from '@pkg/schema/contracting';
 import { BREAKDOWN_MAX_PHOTOS } from '@pkg/schema/contracting';
 import { translatingConstraintViolations } from '../../errors/constraint-violations.js';
-import type { RefusedJobAction } from '../jobs/job-errors.js';
 
 /** Which Breakdown Action a refusal refused, and why: public context a surface can branch on. */
 export type RefusedBreakdownAction = { action: BreakdownActionName; reason: BreakdownActionBlockedReason };

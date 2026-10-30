@@ -21,36 +21,60 @@ export type DateTimePickerFieldProps = {
  * time typed as HH:mm. Picking a date with no time yet fills in the current time so the value is never half set. The
  * time reaches the form as it is typed, a wrong one as typed, so validate the field with `localDateTimeValue`.
  */
-export function DateTimePickerField({
+export function DateTimePickerField(props: DateTimePickerFieldProps) {
+  const field = useFieldContext<string>();
+  return (
+    <DateTimeInput
+      {...props}
+      errors={getFieldErrors(field.state.meta.errors)}
+      name={field.name}
+      onBlur={field.handleBlur}
+      onChange={field.handleChange}
+      value={field.state.value}
+    />
+  );
+}
+
+/** {@link DateTimePickerField} held by its caller rather than a form field; `errors` are the caller's own. */
+export function DateTimeInput({
   description,
   disabled = false,
+  errors = [],
   label,
   maxValue,
+  name,
+  onBlur,
+  onChange,
   placeholder,
-}: DateTimePickerFieldProps) {
-  const field = useFieldContext<string>();
-  const [date = '', time = ''] = field.state.value.split('T');
+  value,
+}: DateTimePickerFieldProps & {
+  errors?: { message?: string }[];
+  name: string;
+  onBlur?: () => void;
+  onChange: (value: string) => void;
+  value: string;
+}) {
+  const [date = '', time = ''] = value.split('T');
   // What is typed in the time box, shown as typed until it blurs as a valid time.
   const [typedTime, setTypedTime] = React.useState<string | null>(null);
   const typedWrong = typedTime !== null && typedTime.trim() !== '' && !parseTimeInput(typedTime);
-  const formErrors = getFieldErrors(field.state.meta.errors);
   // The form only shows its errors once submitted; a wrong time says so as soon as it is typed.
-  const fieldErrors = typedWrong && formErrors.length === 0 ? [{ message: WRONG_TIME_MESSAGE }] : formErrors;
+  const fieldErrors = typedWrong && errors.length === 0 ? [{ message: WRONG_TIME_MESSAGE }] : errors;
   const isInvalid = fieldErrors.length > 0;
   const change = (nextDate: string, nextTime: string) =>
-    field.handleChange(nextDate && nextTime ? `${nextDate}T${nextTime}` : '');
+    onChange(nextDate && nextTime ? `${nextDate}T${nextTime}` : '');
 
   return (
     <Field data-disabled={disabled} data-invalid={isInvalid}>
-      <FieldLabel htmlFor={field.name}>{label}</FieldLabel>
+      <FieldLabel htmlFor={name}>{label}</FieldLabel>
       <div className="grid grid-cols-[1fr_6rem] gap-2">
         <DatePicker
           aria-invalid={isInvalid}
           disabled={disabled}
-          id={field.name}
+          id={name}
           {...(maxValue ? { maxValue } : {})}
-          name={field.name}
-          onBlur={field.handleBlur}
+          name={name}
+          onBlur={() => onBlur?.()}
           onChange={(nextDate) => change(nextDate, time || localNow()[1])}
           value={date}
           {...(placeholder ? { placeholder } : {})}
@@ -60,10 +84,10 @@ export function DateTimePickerField({
           aria-label="Time"
           disabled={disabled}
           inputMode="numeric"
-          name={`${field.name}-time`}
+          name={`${name}-time`}
           onBlur={() => {
             if (typedTime !== null && (typedTime.trim() === '' || parseTimeInput(typedTime))) setTypedTime(null);
-            field.handleBlur();
+            onBlur?.();
           }}
           onChange={(event) => {
             const typed = event.target.value;

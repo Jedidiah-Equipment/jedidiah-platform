@@ -1,4 +1,5 @@
 import { formatDate } from '@pkg/domain';
+import { READ_AT_NOW, readAtOf, readAtPicked } from '@pkg/domain/contracting';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useImperativeHandle, useState } from 'react';
 import { Platform, View } from 'react-native';
@@ -6,6 +7,7 @@ import { DateFieldTrigger } from '@/components/form/fields/DateFieldTrigger';
 import { SegmentedControl } from '@/components/SegmentedControl';
 import { Text } from '@/components/ui/text';
 import {
+  chooseReadAt,
   READ_AT_CHOICES,
   type ReadAtFieldHandle,
   type ReadAtFieldProps,
@@ -14,14 +16,15 @@ import {
 export type { ReadAtFieldHandle, ReadAtFieldProps };
 
 /** When the meter was read: Now, or Earlier… with a time; Android picks the date then the time, iOS both at once. */
-export function ReadAtField({ value, onChange, disabled = false, hint = null, ref }: ReadAtFieldProps) {
+export function ReadAtField({ choice, onChange, disabled = false, hint = null, ref }: ReadAtFieldProps) {
   const [open, setOpen] = useState(false);
-  const shown = value ?? new Date();
+  const at = readAtOf(choice);
+  const shown = at ?? new Date();
+  const pick = (picked: Date) => onChange((current) => readAtPicked(current, picked));
 
   const openPicker = () => {
+    // The inline picker opens on a time, which is not a pick until the person chooses a day or a time in it.
     if (Platform.OS !== 'android') {
-      // The inline picker shows a time from the start, so Save posts the time on screen.
-      if (value === null) onChange(new Date());
       setOpen(true);
       return;
     }
@@ -37,28 +40,27 @@ export function ReadAtField({ value, onChange, disabled = false, hint = null, re
           value: date,
           onChange: (timeEvent, time) => {
             if (timeEvent.type !== 'set' || !time) return;
-            onChange(new Date(date.getFullYear(), date.getMonth(), date.getDate(), time.getHours(), time.getMinutes()));
+            pick(new Date(date.getFullYear(), date.getMonth(), date.getDate(), time.getHours(), time.getMinutes()));
           },
         });
       },
     });
   };
-  useImperativeHandle(ref, () => ({ open: openPicker }));
+  useImperativeHandle(ref, () => ({ open: () => chooseReadAt('earlier', onChange, openPicker) }));
   const now = () => {
     setOpen(false);
-    onChange(null);
+    onChange(() => READ_AT_NOW);
   };
-  const earlier = value !== null || open;
 
   return (
     <View className="gap-2">
       <SegmentedControl
         disabled={disabled}
-        onChange={(choice) => (choice === 'now' ? now() : openPicker())}
+        onChange={(next) => (next === 'now' ? now() : chooseReadAt(next, onChange, openPicker))}
         options={READ_AT_CHOICES}
-        value={earlier ? 'earlier' : 'now'}
+        value={choice.kind}
       />
-      {earlier ? (
+      {choice.kind === 'earlier' ? (
         <DateFieldTrigger
           disabled={disabled}
           expanded={open}
@@ -67,16 +69,16 @@ export function ReadAtField({ value, onChange, disabled = false, hint = null, re
           onClear={now}
           onOpen={() => (Platform.OS === 'android' ? openPicker() : setOpen((current) => !current))}
           placeholder="Pick when the meter was read"
-          value={value ? formatDate(value, 'medium') : ''}
+          value={at ? formatDate(at, 'medium') : ''}
         />
       ) : null}
-      {open && Platform.OS === 'ios' ? (
+      {open && choice.kind === 'earlier' && Platform.OS === 'ios' ? (
         <DateTimePicker
           display="inline"
           maximumDate={new Date()}
           mode="datetime"
           onChange={(event, date) => {
-            if (event.type === 'set' && date) onChange(date);
+            if (event.type === 'set' && date) pick(date);
           }}
           value={shown}
         />

@@ -1,17 +1,19 @@
-import { formatHours, getPlantDateNow } from '@pkg/domain';
+import { formatDate, formatHours, getPlantDateNow } from '@pkg/domain';
 import {
   belowLatestSentence,
   captureRefusals,
   isFutureReadAt,
   READING_PHOTO_POLICY,
-  readAtFromInput,
   readAtInputValue,
+  readAtOf,
+  readAtProposal,
   readAtSuggestionSentence,
 } from '@pkg/domain/contracting';
 import type { LatestReading } from '@pkg/schema/contracting';
 import { IconArrowRight } from '@tabler/icons-react';
 import type React from 'react';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useId, useState } from 'react';
+import { DateTimeInput } from '@/components/form/fields/DateTimePickerField.js';
 import { NumberField } from '@/components/form/fields/NumberField.js';
 import { withFieldGroup } from '@/components/form/index.js';
 import { Button } from '@/components/ui/button.js';
@@ -160,15 +162,13 @@ export function ReadingValueField({
 /**
  * The previous reading beside the value being captured, with the below-latest warning once a value below the previous
  * one loses focus. Every capture dialog mounts it over its `value` and `confirmedDispute` fields; typing clears a
- * dispute, which belongs to the value it was confirmed for, and a proposed Read At, which belongs to the value refused.
+ * dispute, which belongs to the value it was confirmed for, and the reports a proposed Read At came from, which belong to
+ * the value refused.
  */
 export const ReadingValueCard = withFieldGroup({
-  defaultValues: { value: Number.NaN, confirmedDispute: null as ConfirmedDispute, readAt: '' },
+  defaultValues: { value: Number.NaN, confirmedDispute: null as ConfirmedDispute },
   props: {} as {
-    capture: Pick<
-      ReadingCapture<unknown>,
-      'judgeValue' | 'latest' | 'latestQuery' | 'chooseEarlier' | 'clearSuggestion'
-    >;
+    capture: Pick<ReadingCapture<unknown>, 'judgeValue' | 'latest' | 'latestQuery' | 'readEarlier' | 'editValue'>;
   },
   render: function ReadingValueCardGroup({ group, capture }) {
     const [readingFocused, setReadingFocused] = useState(false);
@@ -180,7 +180,7 @@ export const ReadingValueCard = withFieldGroup({
         warning={
           <group.Subscribe selector={(state) => state.values}>
             {(values) => {
-              const verdict = capture.judgeValue({ ...values, readAt: readAtFromInput(values.readAt) });
+              const verdict = capture.judgeValue(values);
               return !readingFocused && latest && verdict.below ? (
                 <group.AppField name="confirmedDispute">
                   {(field) => (
@@ -197,7 +197,7 @@ export const ReadingValueCard = withFieldGroup({
                       }
                       id={field.name}
                       latest={latest}
-                      onReadEarlier={capture.chooseEarlier}
+                      onReadEarlier={capture.readEarlier}
                       value={values.value}
                     />
                   )}
@@ -213,7 +213,7 @@ export const ReadingValueCard = withFieldGroup({
               <ReadingValueField
                 onInput={() => {
                   group.setFieldValue('confirmedDispute', null);
-                  capture.clearSuggestion();
+                  capture.editValue();
                 }}
               />
             )}
@@ -225,78 +225,101 @@ export const ReadingValueCard = withFieldGroup({
 });
 
 /**
- * When the meter was read, asked first: Now keeps the form's Read At blank, Earlier… reveals the picker. A Read At the
- * server proposed lands in the picker with the reports it came from; a time still to come is refused.
+ * When the meter was read, asked first: Now posts the moment of capture, Earlier… reveals the picker and holds Save
+ * until a time is picked. A Read At the server proposed lands in the picker with the reports it came from; a time
+ * still to come is refused.
  */
-export const ReadingReadAtField = withFieldGroup({
-  defaultValues: { readAt: '' },
-  props: {} as {
-    capture: Pick<ReadingCapture<unknown>, 'earlier' | 'readAtFocus' | 'chooseEarlier' | 'chooseNow' | 'suggestion'>;
-  },
-  render: function ReadingReadAtFieldGroup({ group, capture }) {
-    const { earlier, readAtFocus, suggestion } = capture;
-    const picker = useRef<HTMLDivElement>(null);
-    const { setFieldValue } = group;
-    const choiceLabel = useId();
-    useEffect(() => {
-      if (readAtFocus > 0) picker.current?.querySelector<HTMLElement>('button, input')?.focus();
-    }, [readAtFocus]);
-    useEffect(() => {
-      if (suggestion) setFieldValue('readAt', readAtInputValue(new Date(suggestion.readAt)));
-    }, [suggestion, setFieldValue]);
-    return (
-      <div className="space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-sm font-medium" id={choiceLabel}>
-            When was the meter read?
-          </span>
-          <fieldset aria-labelledby={choiceLabel} className="flex gap-1">
-            <Button
-              aria-pressed={!earlier}
-              onClick={() => {
-                capture.chooseNow();
-                setFieldValue('readAt', '');
-              }}
-              size="sm"
-              type="button"
-              variant={earlier ? 'outline' : 'default'}
-            >
-              Now
-            </Button>
-            <Button
-              aria-pressed={earlier}
-              onClick={capture.chooseEarlier}
-              size="sm"
-              type="button"
-              variant={earlier ? 'default' : 'outline'}
-            >
-              Earlier…
-            </Button>
-          </fieldset>
-        </div>
-        {earlier ? (
-          <div ref={picker}>
-            <group.AppField name="readAt">
-              {(field) => (
-                <field.DateTimePickerField
-                  label="Read At"
-                  maxValue={getPlantDateNow()}
-                  {...(suggestion ? { description: readAtSuggestionSentence(suggestion) } : {})}
-                />
-              )}
-            </group.AppField>
-          </div>
-        ) : null}
-        <group.Subscribe selector={(state) => readAtFromInput(state.values.readAt)}>
-          {(readAt) =>
-            readAt && isFutureReadAt(readAt) ? (
-              <p className="text-sm text-destructive" role="alert">
-                {captureRefusals['future-read-at'].message}
-              </p>
-            ) : null
-          }
-        </group.Subscribe>
+export function ReadingReadAtField({
+  capture,
+}: {
+  capture: Pick<ReadingCapture<unknown>, 'readAt' | 'readAtPicker' | 'chooseNow' | 'readEarlier' | 'pickReadAt'>;
+}) {
+  const { readAt } = capture;
+  const choiceLabel = useId();
+  // What the picker shows while it names no time, so a half-typed or wrong time stays on screen.
+  const [typed, setTyped] = useState('');
+  const earlier = readAt.kind === 'earlier';
+  const at = readAtOf(readAt);
+  const proposal = readAtProposal(readAt);
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm font-medium" id={choiceLabel}>
+          When was the meter read?
+        </span>
+        <fieldset aria-labelledby={choiceLabel} className="flex gap-1">
+          <Button
+            aria-pressed={!earlier}
+            onClick={() => {
+              setTyped('');
+              capture.chooseNow();
+            }}
+            size="sm"
+            type="button"
+            variant={earlier ? 'outline' : 'default'}
+          >
+            Now
+          </Button>
+          <Button
+            aria-pressed={earlier}
+            onClick={capture.readEarlier}
+            size="sm"
+            type="button"
+            variant={earlier ? 'default' : 'outline'}
+          >
+            Earlier…
+          </Button>
+        </fieldset>
       </div>
+      {earlier ? (
+        <div ref={capture.readAtPicker}>
+          <DateTimeInput
+            label="Read At"
+            maxValue={getPlantDateNow()}
+            name="readAt"
+            onChange={(value) => {
+              setTyped(value);
+              capture.pickReadAt(value);
+            }}
+            value={at ? readAtInputValue(at) : typed}
+            {...(proposal ? { description: readAtSuggestionSentence(proposal) } : {})}
+          />
+        </div>
+      ) : null}
+      {at && isFutureReadAt(at) ? (
+        <p className="text-sm text-destructive" role="alert">
+          {captureRefusals['future-read-at'].message}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * One reading's correction: the recorded hours and Read At beside the fields that replace them. The Job page's amend
+ * mounts it once, a Dispute's resolve once per reading, both over a `ReadingCorrection`.
+ */
+export const ReadingCorrectionFields = withFieldGroup({
+  defaultValues: { value: 0, readAt: '' },
+  props: {} as { recorded: { value: number; capturedAt: string } | null },
+  render: function ReadingCorrectionFieldsGroup({ group, recorded }) {
+    return (
+      <ReadingCaptureCard
+        previousLabel="Recorded reading"
+        previousValue={recorded?.value}
+        rows={
+          <ReadingCaptureRow
+            label="Recorded Read At"
+            recorded={<span className="text-sm">{recorded ? formatDate(recorded.capturedAt, 'medium') : '—'}</span>}
+          >
+            <group.AppField name="readAt">
+              {(field) => <field.DateTimePickerField label="Corrected Read At" maxValue={getPlantDateNow()} />}
+            </group.AppField>
+          </ReadingCaptureRow>
+        }
+      >
+        <group.AppField name="value">{() => <ReadingValueField label="Corrected reading" />}</group.AppField>
+      </ReadingCaptureCard>
     );
   },
 });

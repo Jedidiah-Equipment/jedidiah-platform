@@ -1,11 +1,10 @@
-import { readAtFromInput } from '@pkg/domain/contracting';
 import { AuthId, UUID } from '@pkg/schema';
 import { type Assignment, ReadingComment, ReadingValue } from '@pkg/schema/contracting';
 import { useState } from 'react';
 import { z } from 'zod';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
-import { emptyStringOr, localDateTimeValue } from '@/components/form/utils/form-schema.js';
+import { emptyStringOr } from '@/components/form/utils/form-schema.js';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
 import {
@@ -21,7 +20,6 @@ const ArrivalValues = z.object({
   value: ReadingValue,
   comment: z.union([z.string().trim().length(0), ReadingComment]),
   confirmedDispute: ConfirmedDispute,
-  readAt: localDateTimeValue,
   implementId: emptyStringOr(UUID),
   driverUserId: emptyStringOr(AuthId),
 });
@@ -33,7 +31,6 @@ export function ArrivalCaptureDialog({ stint, onClose }: { stint: Assignment | n
   if (stint?.id !== opened?.id) setOpened(stint);
   const capture = useReadingCapture({ role: 'arrival', stint }, (values: ArrivalValues) => ({
     ...values,
-    readAt: readAtFromInput(values.readAt),
     stintOverrides: changesAssignment(opened, values)
       ? { implementId: values.implementId || null, driverUserId: values.driverUserId || null }
       : undefined,
@@ -67,7 +64,6 @@ export function ArrivalCaptureDialog({ stint, onClose }: { stint: Assignment | n
         value: Number.NaN,
         comment: '',
         confirmedDispute: null,
-        readAt: '',
         implementId: opened?.implementId ?? '',
         driverUserId: opened?.driverUserId ?? '',
       }}
@@ -87,10 +83,10 @@ export function ArrivalCaptureDialog({ stint, onClose }: { stint: Assignment | n
       {(form) => (
         <>
           <ErrorMessage error={latestQuery.error} fallbackMessage="Unable to load the Machine's previous reading." />
-          <ReadingReadAtField form={form} fields={{ readAt: 'readAt' }} capture={capture} />
+          <ReadingReadAtField capture={capture} />
           <ReadingValueCard
             form={form}
-            fields={{ value: 'value', confirmedDispute: 'confirmedDispute', readAt: 'readAt' }}
+            fields={{ value: 'value', confirmedDispute: 'confirmedDispute' }}
             capture={capture}
           />
           <form.Subscribe

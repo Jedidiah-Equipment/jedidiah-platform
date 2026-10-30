@@ -19,6 +19,7 @@ import {
   type ServiceError,
 } from '@pkg/core/contracting';
 import { isJohnDeereError, type JohnDeereError } from '@pkg/integrations/contracting';
+import type { ReadingRefusal } from '@pkg/schema/contracting';
 
 import { defineCoreErrorFamily } from '../../trpc/errors.js';
 
@@ -71,8 +72,9 @@ export const readingErrorFamily = defineCoreErrorFamily<ReadingError>({
     'reading.wrong_status': 'CONFLICT',
   },
   is: isReadingError,
-  metadata: ({ refused, suggestedReadAt, readingId }) =>
-    refused || suggestedReadAt || readingId ? { ...refused, suggestedReadAt, readingId } : undefined,
+  // The refusal's context as `ReadingRefusal` carries it, or nothing when it has none.
+  metadata: ({ refusal }): ReadingRefusal | undefined =>
+    Object.values(refusal).some((value) => value !== undefined) ? refusal : undefined,
 });
 
 export const jobErrorFamily = defineCoreErrorFamily<JobError>({

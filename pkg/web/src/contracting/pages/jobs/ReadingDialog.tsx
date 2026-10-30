@@ -1,5 +1,5 @@
 import { formatDate, formatHours, getFirstName } from '@pkg/domain';
-import { amendmentSettledFinding, DISPUTED_WITHOUT_REASON, isBackdated } from '@pkg/domain/contracting';
+import { amendmentSettledFinding, disputedReadingReason, isBackdated } from '@pkg/domain/contracting';
 import type { JobReading } from '@pkg/schema/contracting';
 import { IconAlertTriangle, IconPencil } from '@tabler/icons-react';
 import { useState } from 'react';
@@ -102,7 +102,7 @@ export function ReadingDialog({
                           <IconAlertTriangle aria-hidden />
                           <AlertTitle>Disputed reading</AlertTitle>
                           <AlertDescription className="text-muted-foreground">
-                            {reading.disputeReason ?? DISPUTED_WITHOUT_REASON}
+                            {disputedReadingReason(reading)}
                           </AlertDescription>
                         </Alert>
                       ) : null}

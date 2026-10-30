@@ -11,8 +11,16 @@ import {
 import { formatDate } from '../formatting/date.js';
 import { formatHours } from '../formatting/number.js';
 import { assignmentActionRefusal, assignmentStateAllows } from './assignment-actions.js';
-import { FUTURE_READ_AT_REFUSAL, isFutureReadAt } from './read-at.js';
-import { outrunsClock, outrunsClockSentence, type TimedValue, telematicsProviderLabels } from './readings.js';
+import { FUTURE_READ_AT_REFUSAL, isFutureReadAt, type ReadAtChoice, readAtOf, readAtPending } from './read-at.js';
+import {
+  isReported,
+  outrunsClock,
+  outrunsClockSentence,
+  type ReportedReading,
+  type TimedValue,
+  telematicsDisputeReason,
+  telematicsProviderLabels,
+} from './readings.js';
 import { serviceDueSoonCrossed } from './service-due.js';
 
 /** A reading either side of a capture's Read At; `telematicsProvider` names who reported a Telematics Reading. */
@@ -24,27 +32,29 @@ export type CaptureNeighbour = {
   telematicsProvider: TelematicsProvider | null;
 };
 
+/** A Telematics Reading as a neighbour. */
+export type ReportNeighbour = ReportedReading<CaptureNeighbour>;
+
+/** A reading's place in time: its two neighbours, and the nearest Telematics Reading on each side. */
+export type Placement = {
+  /** The nearest reading at or before the Read At (ties by the latest accepted), or null. */
+  previous: CaptureNeighbour | null;
+  /** The nearest reading after the Read At (ties by the first accepted), or null. */
+  next: CaptureNeighbour | null;
+  /** The nearest Telematics Reading at or before the Read At: the reading answers to it however many captured readings stand between. */
+  previousTelematics: CaptureNeighbour | null;
+  /** The nearest Telematics Reading after the Read At. */
+  nextTelematics: CaptureNeighbour | null;
+};
+
 /**
  * What an Hour Reading capture is judged against: the server's rows under the Machine lock, gathered by core as
  * facts. Outside this table, and enforced elsewhere: a replayed capture id, a Machine or Assignment that does not
  * exist, and the two busy rules, which the database's unique constraints raise after the write.
  */
-export type CaptureWorld = {
+export type CaptureWorld = Placement & {
   /** The Machine's latest reading by Read At, or null while its ledger is empty. */
   latest: { id: string; value: number } | null;
-  /** The nearest reading at or before the capture's Read At (ties by the latest accepted), or null. */
-  previous: CaptureNeighbour | null;
-  /** The nearest reading after the capture's Read At (ties by the first accepted), or null. */
-  next: CaptureNeighbour | null;
-  /** The nearest Telematics Reading at or before the capture's Read At: the capture answers to it however many captured readings stand between. */
-  previousTelematics: CaptureNeighbour | null;
-  /** The nearest Telematics Reading after the capture's Read At. */
-  nextTelematics: CaptureNeighbour | null;
-  /**
-   * The Telematics Readings the capture's value falls between, whatever its Read At. Only a refusal that
-   * `proposesReadAt` reads it, so core gathers it only for one.
-   */
-  valueBracket: ValueBracket;
   /** The stint the capture lands on; null for a spot or baseline reading. */
   stint: AssignmentState | null;
   /** A departure's stint arrival Read At; null otherwise. */
@@ -99,11 +109,11 @@ export type CaptureRule =
   | 'below-latest'
   | 'baseline-exists';
 
-/** The refusals whose sentence names the neighbour the capture falls outside. */
-type NeighbourRule = 'above-next' | 'contradicts-telematics' | 'below-previous';
+/** The rules a reading answers to at its place in time, whether captured there or amended to it. */
+export type PlacementRule = 'above-next' | 'contradicts-telematics' | 'below-previous' | 'outruns-clock';
 
 /** The refusals that bring their own sentence. */
-type SentencedRule = 'job-refused' | 'outruns-clock' | NeighbourRule;
+type SentencedRule = 'job-refused' | PlacementRule;
 
 /** The stint constraints' refusals: the database raises these after the write, so the table cannot judge them. */
 export type CaptureConstraintRule = 'machine-busy' | 'implement-busy';
@@ -161,8 +171,6 @@ export type CaptureRefused = {
   message: string;
   /** Set when the Job refused: the Job Action and its reason, as the server's refusal metadata carries them. */
   refused?: { action: 'capture'; reason: JobActionBlockedReason };
-  /** Set on a value refusal John Deere brackets: when the meter most likely showed the value. */
-  suggestedReadAt?: ReadAtSuggestion;
 };
 /** `disputes` names the latest reading an accepted capture below it disputes. */
 export type CaptureVerdict = { ok: true; disputes: string | null } | CaptureRefused;
@@ -174,79 +182,133 @@ const refuse = (rule: Exclude<CaptureRule, SentencedRule>): CaptureRefused => ({
   message: captureRefusals[rule].message,
 });
 
-/** A refusal against a neighbour, naming its value and Read At; the fix is the capture's time or its value. */
-const refuseAgainst = (rule: NeighbourRule, neighbour: CaptureNeighbour): CaptureRefused => {
+/** Where a reading falls outside its place: the rule, the neighbour it answers to, and one sentence naming it. */
+export type Misplacement = { rule: PlacementRule; neighbour: CaptureNeighbour; sentence: string };
+
+/** Against a neighbour, naming its value and Read At; the fix is the reading's time or its value. */
+const against = (rule: Exclude<PlacementRule, 'outruns-clock'>, neighbour: CaptureNeighbour): Misplacement => {
   const reading = `${formatHours(neighbour.value)} at ${formatDate(neighbour.capturedAt, 'medium')}`;
-  const said = neighbour.telematicsProvider
-    ? `${telematicsProviderLabels[neighbour.telematicsProvider]} reported ${reading}.`
+  const said = isReported(neighbour)
+    ? telematicsDisputeReason(neighbour)
     : rule === 'above-next'
       ? `A later reading of ${reading} is lower.`
       : `A reading of ${reading} is higher.`;
-  return {
-    ok: false,
-    rule,
-    reason: rule === 'above-next' ? 'reading.above_next' : 'reading.below_latest',
-    message: `${said} Check the time or the value.`,
-  };
+  return { rule, neighbour, sentence: `${said} Check the time or the value.` };
 };
-
-/** Named after the neighbour it outruns; the fix is a Read At, on this reading or on that one from its Job. */
-const refuseOutrunsClock = (
-  earlier: TimedValue,
-  later: TimedValue,
-  neighbour: CaptureNeighbour,
-  side: 'since' | 'before',
-): CaptureRefused => ({
-  ok: false,
-  rule: 'outruns-clock',
-  reason: 'reading.outruns_clock',
-  message: `${outrunsClockSentence(earlier, later, neighbour, side)} Check Read At on this reading, or correct that reading's Read At from its Job.`,
-});
 
 /**
- * The Telematics Readings a value falls between: the last reported at or below it, at its Read At, and the first
- * reported above it, at the time it was first reported (a report's Read At moves on while its value stands).
+ * Whether a reading may sit at its place in time: never contradicting the nearest Telematics Reading on either side,
+ * never above the next reading or below the previous one, and never outrunning the clock against either. One judge for
+ * a capture and an amendment alike; each words its own refusal. `latestId` names the latest reading a capture may
+ * dispute rather than be refused below; an amendment disputes nothing, so it names none.
  */
-export type ValueBracket = { floor: CaptureNeighbour | null; ceiling: CaptureNeighbour | null };
+export function judgePlacement(
+  { previous, next, previousTelematics, nextTelematics }: Placement,
+  here: TimedValue,
+  latestId: string | null = null,
+): Misplacement | null {
+  if (nextTelematics && here.value > nextTelematics.value) return against('above-next', nextTelematics);
+  if (previousTelematics && here.value < previousTelematics.value)
+    return against('contradicts-telematics', previousTelematics);
+  if (next && here.value > next.value) return against('above-next', next);
+  if (previous && here.value < previous.value && previous.id !== latestId) return against('below-previous', previous);
+  if (previous && outrunsClock(previous, here))
+    return {
+      rule: 'outruns-clock',
+      neighbour: previous,
+      sentence: outrunsClockSentence(previous, here, previous, 'since'),
+    };
+  if (next && outrunsClock(here, next))
+    return { rule: 'outruns-clock', neighbour: next, sentence: outrunsClockSentence(here, next, next, 'before') };
+  return null;
+}
 
-export const NO_VALUE_BRACKET: ValueBracket = { floor: null, ceiling: null };
+const placementCodes: Record<PlacementRule, ReadingErrorCode> = {
+  'above-next': 'reading.above_next',
+  'contradicts-telematics': 'reading.below_latest',
+  'below-previous': 'reading.below_latest',
+  'outruns-clock': 'reading.outruns_clock',
+};
 
-export type ReadAtSuggestion = {
+/** A misplaced capture refused; outrunning the clock is fixed by a Read At, on this reading or on that one from its Job. */
+const refuseMisplaced = ({ rule, sentence }: Misplacement): CaptureRefused => ({
+  ok: false,
+  rule,
+  reason: placementCodes[rule],
+  message:
+    rule === 'outruns-clock'
+      ? `${sentence} Check Read At on this reading, or correct that reading's Read At from its Job.`
+      : sentence,
+});
+
+/** The place the entry at `index` holds in a ledger in Read At order. */
+export function placementIn(ledger: readonly CaptureNeighbour[], index: number): Placement {
+  return {
+    previous: ledger[index - 1] ?? null,
+    next: ledger[index + 1] ?? null,
+    previousTelematics: ledger.slice(0, index).findLast(isReported) ?? null,
+    nextTelematics: ledger.slice(index + 1).find(isReported) ?? null,
+  };
+}
+
+/**
+ * The Telematics Readings a value falls between: the last reported at or below it, and the first reported above it,
+ * with `createdAt`, when the poll that first saw its value stored it.
+ */
+export type ValueBracket = { floor: ReportNeighbour | null; ceiling: (ReportNeighbour & { createdAt: Date }) | null };
+
+export type SuggestedReadAt = {
   readAt: Date;
   /** The report the value matched, or the two it fell between, so the form can say so. */
-  floor: CaptureNeighbour;
-  ceiling: CaptureNeighbour | null;
+  floor: ReportNeighbour;
+  ceiling: ReportNeighbour | null;
 };
+
+/** When a Telematics Reading's value was first reported: its Read At moves on while the value stands. */
+const firstReportedAt = ({ capturedAt, createdAt }: { capturedAt: Date; createdAt: Date }) =>
+  new Date(Math.min(capturedAt.getTime(), createdAt.getTime()));
 
 /**
  * When John Deere says a value was on the meter: the floor's Read At when the value matches it (a Telematics Reading's
- * Read At is the last time that value was reported), otherwise the moment between the bracketing reports at which
- * hours would have reached it, which inside an hourly poll is near exact. Null when no Telematics Reading brackets
- * the value, or when the moment would break the stint's time order anyway.
+ * Read At is the last time that value was reported), otherwise the moment between the floor and when the ceiling's
+ * value was first reported at which hours would have reached it, which inside an hourly poll is near exact. Null when
+ * no Telematics Reading brackets the value, or when the moment would break the stint's time order anyway.
  */
-export function suggestReadAt(value: number, bracket: ValueBracket, notBefore: Date | null): ReadAtSuggestion | null {
-  const { floor, ceiling } = bracket;
+export function suggestReadAt(value: number, bracket: ValueBracket, notBefore: Date | null): SuggestedReadAt | null {
+  const { floor } = bracket;
   if (!floor) return null;
   const exact = value === floor.value;
+  const ceiling =
+    !exact && bracket.ceiling ? { ...bracket.ceiling, capturedAt: firstReportedAt(bracket.ceiling) } : null;
   if (!exact && !ceiling) return null;
-  const readAt =
-    ceiling && !exact
-      ? new Date(
-          floor.capturedAt.getTime() +
-            ((value - floor.value) / (ceiling.value - floor.value)) *
-              (ceiling.capturedAt.getTime() - floor.capturedAt.getTime()),
-        )
-      : floor.capturedAt;
+  const readAt = ceiling
+    ? new Date(
+        floor.capturedAt.getTime() +
+          ((value - floor.value) / (ceiling.value - floor.value)) *
+            (ceiling.capturedAt.getTime() - floor.capturedAt.getTime()),
+      )
+    : floor.capturedAt;
   if (notBefore && readAt.getTime() < notBefore.getTime()) return null;
-  return { readAt, floor, ceiling: exact ? null : ceiling };
+  return { readAt, floor, ceiling };
 }
+
+/** The earliest Read At the stint order lets a proposal take: a departure's arrival, an arrival's last departure. */
+export const earliestReadAtFor = (
+  role: ReadingRole,
+  world: Pick<CaptureWorld, 'stintArrivedAt' | 'lastDepartedAt'>,
+): Date | null => (role === 'departure' ? world.stintArrivedAt : role === 'arrival' ? world.lastDepartedAt : null);
 
 type Reported = { value: number; capturedAt: Date | string };
 
 /** Under a proposed Read At: the report the value matched, or the two it fell between. */
-export function readAtSuggestionSentence({ floor, ceiling }: { floor: Reported; ceiling: Reported | null }): string {
-  // Only John Deere reports today; the wire names no provider.
-  const by = telematicsProviderLabels['john-deere'];
+export function readAtSuggestionSentence({
+  floor,
+  ceiling,
+}: {
+  floor: Reported & { telematicsProvider: TelematicsProvider };
+  ceiling: Reported | null;
+}): string {
+  const by = telematicsProviderLabels[floor.telematicsProvider];
   return ceiling
     ? `${by} puts this reading between ${formatDate(floor.capturedAt, 'medium')} and ${formatDate(ceiling.capturedAt, 'medium')}.`
     : `${by} read ${formatHours(floor.value)} at ${formatDate(floor.capturedAt, 'medium')}.`;
@@ -286,19 +348,10 @@ export const proposesReadAt = (rule: CaptureRule) =>
   rule === 'contradicts-telematics' || rule === 'below-previous' || rule === 'below-latest';
 
 /**
- * Whether this capture may land on the Machine's ledger as the server holds it under the lock. A value refusal carries
- * the Read At John Deere puts the value at, when the world's value bracket gives one.
+ * Whether this capture may land on the Machine's ledger as the server holds it under the lock. A refusal the caller
+ * may answer with a proposed Read At is one `proposesReadAt` names; `suggestReadAt` proposes it.
  */
 export function judgeCapture(world: CaptureWorld, capture: CaptureAttempt): CaptureVerdict {
-  const verdict = judgeCaptureRules(world, capture);
-  if (verdict.ok || !proposesReadAt(verdict.rule)) return verdict;
-  const notBefore =
-    capture.role === 'departure' ? world.stintArrivedAt : capture.role === 'arrival' ? world.lastDepartedAt : null;
-  const suggestedReadAt = suggestReadAt(capture.value, world.valueBracket, notBefore);
-  return suggestedReadAt ? { ...verdict, suggestedReadAt } : verdict;
-}
-
-function judgeCaptureRules(world: CaptureWorld, capture: CaptureAttempt): CaptureVerdict {
   if (capture.role === 'baseline' && !world.mayBaseline) return refuse('baseline-forbidden');
   if (isFutureReadAt(capture.readAt, world.now, world.futureToleranceMs)) return refuse('future-read-at');
   if (world.machineRetired) return refuse('retired-machine');
@@ -321,17 +374,13 @@ function judgeCaptureRules(world: CaptureWorld, capture: CaptureAttempt): Captur
     capture.expectedPreviousId !== (world.latest?.id ?? null)
   )
     return refuse('previous-changed');
-  const { previous, next, previousTelematics, nextTelematics } = world;
-  // A Telematics Reading is beyond dispute, so no capture may contradict the nearest one on either side.
-  if (nextTelematics && capture.value > nextTelematics.value) return refuseAgainst('above-next', nextTelematics);
-  if (previousTelematics && capture.value < previousTelematics.value)
-    return refuseAgainst('contradicts-telematics', previousTelematics);
-  if (next && capture.value > next.value) return refuseAgainst('above-next', next);
-  if (previous && capture.value < previous.value && previous.id !== world.latest?.id)
-    return refuseAgainst('below-previous', previous);
-  const here = { value: capture.value, capturedAt: capture.readAt };
-  if (previous && outrunsClock(previous, here)) return refuseOutrunsClock(previous, here, previous, 'since');
-  if (next && outrunsClock(here, next)) return refuseOutrunsClock(here, next, next, 'before');
+  const misplaced = judgePlacement(
+    world,
+    { value: capture.value, capturedAt: capture.readAt },
+    world.latest?.id ?? null,
+  );
+  if (misplaced) return refuseMisplaced(misplaced);
+  const { previous, next } = world;
   // Only a capture that becomes the latest is judged against it; one dated behind it answers to its neighbours.
   const below = next === null && captureIsBelowLatest(capture.value, world.latest);
   if (below && !capture.disputePrevious) return refuse('below-latest');
@@ -367,8 +416,7 @@ export type CaptureDraft = {
   /** The reading the person said is wrong, or null. */
   disputedReadingId: string | null;
   comment: string;
-  /** Null is "now". */
-  readAt: Date | null;
+  readAt: ReadAtChoice;
   stintOverrides: ReadingCaptureInput['stintOverrides'];
 };
 
@@ -386,6 +434,11 @@ export type CaptureFormVerdict = {
   disputeConfirmed: boolean;
   commentRequired: boolean;
   futureReadAt: boolean;
+  /**
+   * Save waits on the person before it can post anything: a dispute below a human latest, or a time under Earlier….
+   * Everything else a form can refuse, it says on submit.
+   */
+  awaitingPerson: boolean;
   /** Null until the draft would pass every rule the form can judge; then the request the client posts. */
   request: CaptureRequest | null;
 };
@@ -421,20 +474,13 @@ export function captureValueVerdict(
 export function deriveCaptureForm(world: CaptureFormWorld, draft: CaptureDraft): CaptureFormVerdict {
   const parsed = parseCaptureValue(draft.value);
   const latest = world.latest ?? null;
-  const { below, disputable, disputeConfirmed } = captureValueVerdict(
-    latest,
-    parsed,
-    draft.disputedReadingId,
-    draft.readAt,
-  );
+  const readAt = readAtOf(draft.readAt);
+  const { below, disputable, disputeConfirmed } = captureValueVerdict(latest, parsed, draft.disputedReadingId, readAt);
   const commentRequired = captureNeedsComment(draft.role, world);
-  const futureReadAt = draft.readAt !== null && isFutureReadAt(draft.readAt, world.now);
+  const futureReadAt = readAt !== null && isFutureReadAt(readAt, world.now);
   // Below a Telematics Reading the draft posts, so the server answers with the Read At John Deere puts it at.
-  const passes =
-    parsed !== null &&
-    (!disputable || disputeConfirmed) &&
-    !(commentRequired && !draft.comment.trim()) &&
-    !futureReadAt;
+  const awaitingPerson = (disputable && !disputeConfirmed) || readAtPending(draft.readAt);
+  const passes = parsed !== null && !awaitingPerson && !(commentRequired && !draft.comment.trim()) && !futureReadAt;
   return {
     parsed,
     below,
@@ -442,6 +488,7 @@ export function deriveCaptureForm(world: CaptureFormWorld, draft: CaptureDraft):
     disputeConfirmed,
     commentRequired,
     futureReadAt,
+    awaitingPerson,
     request:
       passes && parsed !== null
         ? {

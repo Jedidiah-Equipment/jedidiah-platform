@@ -8,7 +8,12 @@ import {
   judgeAssignmentAction,
   judgeJobAction,
 } from '@pkg/domain/contracting';
-import type { AssignmentActionName, JobActionBlockedReason, JobActionName } from '@pkg/schema/contracting';
+import type {
+  AssignmentActionName,
+  JobActionBlockedReason,
+  JobActionName,
+  RefusedJobAction,
+} from '@pkg/schema/contracting';
 import { translatingConstraintViolations } from '../../errors/constraint-violations.js';
 
 export type JobErrorCode =
@@ -27,9 +32,6 @@ export type JobErrorCode =
   | 'contracting_job.pricing_incomplete'
   | 'contracting_job.total_changed'
   | 'contracting_job.rate_inactive';
-
-/** Which Job Action a refusal refused, and why: public context a surface can branch on. */
-export type RefusedJobAction = { action: JobActionName; reason: JobActionBlockedReason };
 
 export class JobError extends Error {
   constructor(

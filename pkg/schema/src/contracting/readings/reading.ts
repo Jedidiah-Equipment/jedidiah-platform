@@ -4,6 +4,7 @@ import { DateIso } from '../../common/date.js';
 import { CursorQueryInput, createCursorQueryResult } from '../../common/pagination.js';
 import { UUID } from '../../common/uuid.js';
 import { CategoryColour, CategoryIconKey } from '../fleet/fleet.js';
+import { RefusedJobAction } from '../jobs/job-actions.js';
 import {
   readingExceptionTypes,
   readingMethods,
@@ -193,13 +194,41 @@ export const LatestReading = HourReading.pick({
 });
 export type LatestReading = z.infer<typeof LatestReading>;
 
+const SuggestingReport = z.object({
+  value: ReadingValue,
+  capturedAt: DateIso,
+  telematicsProvider: z.enum(telematicsProviders),
+});
 /** When John Deere puts a refused capture's value, as the refusal carries it: the report it matched, or the two it fell between. */
 export const ReadAtSuggestion = z.object({
   readAt: DateIso,
-  floor: z.object({ value: ReadingValue, capturedAt: DateIso }),
-  ceiling: z.object({ value: ReadingValue, capturedAt: DateIso }).nullable(),
+  floor: SuggestingReport,
+  ceiling: SuggestingReport.nullable(),
 });
 export type ReadAtSuggestion = z.infer<typeof ReadAtSuggestion>;
+
+/**
+ * What a Reading refusal carries beside its sentence and `appCode`: the Job Action a Job refused, the Read At John
+ * Deere puts a refused value at, and the reading an amendment of several was refused on.
+ */
+export const ReadingRefusal = z.object({
+  refused: RefusedJobAction.optional(),
+  suggestedReadAt: ReadAtSuggestion.optional(),
+  readingId: UUID.optional(),
+});
+export type ReadingRefusal = z.infer<typeof ReadingRefusal>;
+
+/** Each key read on its own, so one this client cannot read never costs it the others. */
+const ReadingRefusalReader = z
+  .object({
+    refused: ReadingRefusal.shape.refused.catch(undefined),
+    suggestedReadAt: ReadingRefusal.shape.suggestedReadAt.catch(undefined),
+    readingId: ReadingRefusal.shape.readingId.catch(undefined),
+  })
+  .catch({});
+
+/** A Reading refusal's context from whatever the transport carried; anything unreadable carries none. */
+export const readingRefusalOf = (data: unknown): ReadingRefusal => ReadingRefusalReader.parse(data);
 
 export const FieldReading = HourReading.pick({
   id: true,

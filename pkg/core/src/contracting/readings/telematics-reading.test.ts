@@ -279,10 +279,12 @@ test('proposes the Read At John Deere puts a refused value at, bracketing it by 
     }),
   ).rejects.toMatchObject({
     code: 'reading.below_latest',
-    suggestedReadAt: {
-      readAt: '2026-09-07T10:30:00.000Z',
-      floor: { value: 1000, capturedAt: '2026-09-07T10:00:00.000Z' },
-      ceiling: { value: 1010, capturedAt: '2026-09-07T11:00:00.000Z' },
+    refusal: {
+      suggestedReadAt: {
+        readAt: '2026-09-07T10:30:00.000Z',
+        floor: { value: 1000, capturedAt: '2026-09-07T10:00:00.000Z' },
+        ceiling: { value: 1010, capturedAt: '2026-09-07T11:00:00.000Z' },
+      },
     },
   });
 });
@@ -309,9 +311,11 @@ test('bounds a proposal by when the ceiling’s value was first reported, not wh
       input: { machineId, role: 'spot', value: 1005, capturedAt: '2026-09-09T08:00:00Z', disputePrevious: false },
     }),
   ).rejects.toMatchObject({
-    suggestedReadAt: {
-      readAt: '2026-09-07T10:30:00.000Z',
-      ceiling: { value: 1010, capturedAt: '2026-09-07T11:00:00.000Z' },
+    refusal: {
+      suggestedReadAt: {
+        readAt: '2026-09-07T10:30:00.000Z',
+        ceiling: { value: 1010, capturedAt: '2026-09-07T11:00:00.000Z' },
+      },
     },
   });
 });

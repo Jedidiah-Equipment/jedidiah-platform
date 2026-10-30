@@ -26,6 +26,10 @@ export type JobActionName = (typeof jobActionNames)[number];
 export const JobActionBlockedReason = z.enum(['no-permission', 'not-your-job', 'wrong-status', 'priced', 'closed']);
 export type JobActionBlockedReason = z.infer<typeof JobActionBlockedReason>;
 
+/** Which Job Action a refusal refused, and why: public context a surface can branch on. */
+export const RefusedJobAction = z.object({ action: z.enum(jobActionNames), reason: JobActionBlockedReason });
+export type RefusedJobAction = z.infer<typeof RefusedJobAction>;
+
 export const JobActionVerdict = z.discriminatedUnion('allowed', [
   z.object({ allowed: z.literal(true) }),
   /** `message` is the one sentence that says why, as the server's refusal and the Job sheet both show it. */

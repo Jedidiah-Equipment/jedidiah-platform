@@ -731,7 +731,7 @@ test('lists each Dispute as one row with its stints, and an AI-flagged reading o
       { id: departure.id, value: 4728.4, capturedAt: departure.capturedAt.toISOString() },
       { id: arrival.id, value: 4800, capturedAt: arrival.capturedAt.toISOString() },
     ]),
-  ).rejects.toMatchObject({ code: 'reading.outruns_clock', readingId: arrival.id });
+  ).rejects.toMatchObject({ code: 'reading.outruns_clock', refusal: { readingId: arrival.id } });
   await resolve([
     { id: departure.id, value: 4728.4, capturedAt: departure.capturedAt.toISOString() },
     { id: arrival.id, value: 4728.4, capturedAt: arrival.capturedAt.toISOString() },

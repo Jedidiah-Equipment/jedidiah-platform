@@ -1,9 +1,7 @@
-import { readAtFromInput } from '@pkg/domain/contracting';
 import { type Machine, ReadingComment, ReadingValue } from '@pkg/schema/contracting';
 import { z } from 'zod';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
-import { localDateTimeValue } from '@/components/form/utils/form-schema.js';
 import { MachineDialogTitle, machineDialogSubject } from '@/contracting/components/MachineDialogTitle.js';
 import {
   ReadingCaptureDetails,
@@ -16,13 +14,12 @@ const SpotValues = z.object({
   value: ReadingValue,
   comment: z.union([z.string().trim().length(0), ReadingComment]),
   confirmedDispute: ConfirmedDispute,
-  readAt: localDateTimeValue,
 });
 type SpotValues = z.infer<typeof SpotValues>;
 
 /**
  * A spot Hour Reading on one Machine, captured in the office from a photo of its meter: no Assignment, no billing
- * effect, only the Machine's hours kept current. Read At says when the meter was read; blank is now. Mounted while
+ * effect, only the Machine's hours kept current. Read At says when the meter was read. Mounted while
  * the reading is being captured, so closing unmounts it.
  */
 export function SpotCaptureDialog({
@@ -34,7 +31,6 @@ export function SpotCaptureDialog({
 }) {
   const capture = useReadingCapture({ role: 'spot', machineId: machine.id }, (values: SpotValues) => ({
     ...values,
-    readAt: readAtFromInput(values.readAt),
     stintOverrides: undefined,
   }));
   const { latestQuery } = capture;
@@ -49,7 +45,7 @@ export function SpotCaptureDialog({
       title={<MachineDialogTitle machine={machineDialogSubject(machine)}>Capture hours</MachineDialogTitle>}
       contentClassName="sm:max-w-md"
       submitLabel="Capture"
-      defaultValues={{ value: Number.NaN, comment: '', confirmedDispute: null, readAt: '' }}
+      defaultValues={{ value: Number.NaN, comment: '', confirmedDispute: null }}
       validator={SpotValues}
       canSubmit={canCapture}
       disableSubmitWhenInvalid
@@ -63,10 +59,10 @@ export function SpotCaptureDialog({
       {(form) => (
         <>
           <ErrorMessage error={latestQuery.error} fallbackMessage="Unable to load the Machine's previous reading." />
-          <ReadingReadAtField form={form} fields={{ readAt: 'readAt' }} capture={capture} />
+          <ReadingReadAtField capture={capture} />
           <ReadingValueCard
             form={form}
-            fields={{ value: 'value', confirmedDispute: 'confirmedDispute', readAt: 'readAt' }}
+            fields={{ value: 'value', confirmedDispute: 'confirmedDispute' }}
             capture={capture}
           />
           <ReadingCaptureDetails id={`spot-photo-${machine.id}`} {...capture.details}>

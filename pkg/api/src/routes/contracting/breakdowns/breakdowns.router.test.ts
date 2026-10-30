@@ -98,9 +98,12 @@ test('Contracting invoicing cannot see Breakdowns', async ({ context }) => {
   await expect(karen.list({})).rejects.toMatchObject({ code: 'FORBIDDEN' });
 });
 
-test('the mechanic picker leaves out Device Accounts', async ({ context }) => {
+test('the mechanic picker offers the workshop manager and leaves out Device Accounts', async ({ context }) => {
   const connor = context.createCaller(sessionAs('connor', 'workshop-manager')).contractingBreakdowns;
-  expect(await connor.options.mechanics()).toEqual([{ id: 'danie', name: 'danie' }]);
+  expect(await connor.options.mechanics()).toEqual([
+    { id: 'connor', name: 'connor' },
+    { id: 'danie', name: 'danie' },
+  ]);
 });
 
 test('serves where a report files and what is open, naming the Job only for a reader who may open it', async ({

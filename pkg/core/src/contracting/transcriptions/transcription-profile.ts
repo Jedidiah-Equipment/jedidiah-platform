@@ -15,7 +15,7 @@ import type { TranscriptionProfile } from '../../transcriptions/transcription-pr
 import { activePersonCondition } from '../../users/active-person.js';
 
 const RECENT_JOB_DAYS = 90;
-const FIELD_ROLES = ['driver', 'mechanic', 'foreman'] as const;
+const KEYTERM_ROLES = ['driver', 'mechanic', 'workshop-manager', 'foreman'] as const;
 
 /**
  * Proper nouns a Contracting speech call should expect — fleet, people, places — each with where it came from, in the
@@ -44,7 +44,7 @@ async function loadContractingKeytermCandidates({
     db
       .select({ name: user.name })
       .from(user)
-      .where(and(inArray(user.contractingRole, FIELD_ROLES), activePersonCondition()))
+      .where(and(inArray(user.contractingRole, KEYTERM_ROLES), activePersonCondition()))
       .orderBy(user.name),
     db
       .selectDistinct({ farm: contractingFarms.name, customer: contractingCustomers.name })

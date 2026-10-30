@@ -14,6 +14,7 @@ import {
   contractingJobs,
   contractingMachineAssignments,
   contractingMachines,
+  contractingServiceRecords,
 } from '@pkg/db/contracting';
 import { hasPermission, JOHANNESBURG_TIME_ZONE, validateFile } from '@pkg/domain';
 import {
@@ -48,14 +49,14 @@ import {
   openJobStatuses,
   unsolvedBreakdownStatuses,
 } from '@pkg/schema/contracting';
-import { and, asc, desc, eq, inArray, ne, or, type SQL, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, ne, or, type SQL, sql } from 'drizzle-orm';
 import { recordAuditCreate } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
 import { filePolicyViolation } from '../../files/file-errors.js';
 import type { StorageAdapter } from '../../storage/storage-adapter.js';
 import { onSiteAssignment, stintSubjectColumn } from '../fleet/on-site-assignment.js';
 import { type DbOrTx, selectJobs } from '../jobs/job-load.js';
-import { assertContractingMechanic } from '../mechanics.js';
+import { assertContractingMechanic, isMechanicRole } from '../mechanics.js';
 import { breakdownDescriptor } from './breakdown-audit.js';
 import {
   assertBreakdownAction,
@@ -760,7 +761,7 @@ export async function getBreakdownReportContext({
   });
 }
 
-/** Refuses a role or device change that would strand a Mechanic's unsolved Breakdowns. */
+/** Refuses a role or device change that would strand a Mechanic's unsolved Breakdowns or open Service Records. */
 export async function assertMechanicAccountChangeAllowed({
   db,
   userId,
@@ -772,15 +773,24 @@ export async function assertMechanicAccountChangeAllowed({
   contractingRole?: ContractingRole | null | undefined;
   isDevice?: boolean | undefined;
 }) {
-  if ((contractingRole === undefined || contractingRole === 'mechanic') && isDevice !== true) return;
-  const [assigned] = await db
-    .select({ id: contractingBreakdowns.id })
-    .from(contractingBreakdowns)
-    .where(and(eq(contractingBreakdowns.primaryMechanicUserId, userId), unsolved))
-    .limit(1);
-  if (assigned)
+  if ((contractingRole === undefined || isMechanicRole(contractingRole)) && isDevice !== true) return;
+  const [[breakdown], [serviceRecord]] = await Promise.all([
+    db
+      .select({ id: contractingBreakdowns.id })
+      .from(contractingBreakdowns)
+      .where(and(eq(contractingBreakdowns.primaryMechanicUserId, userId), unsolved))
+      .limit(1),
+    db
+      .select({ id: contractingServiceRecords.id })
+      .from(contractingServiceRecords)
+      .where(
+        and(eq(contractingServiceRecords.primaryMechanicUserId, userId), isNull(contractingServiceRecords.closedAt)),
+      )
+      .limit(1),
+  ]);
+  if (breakdown || serviceRecord)
     throw new BreakdownError(
       'breakdown.invalid_mechanic',
-      "Reassign this mechanic's Breakdowns that are not yet Fixed before changing their role.",
+      "Reassign this mechanic's Breakdowns that are not yet Fixed and open Service Records before changing their role.",
     );
 }

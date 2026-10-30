@@ -14,7 +14,7 @@ export type ContractingAccountChange = {
 
 /**
  * Refuses a role or device change that would strand work the person still holds in Contracting: a Driver's
- * Machines, a Mechanic's unsolved Breakdowns. Each holder's rule lives with its feature; this is the one
+ * Machines, a Mechanic's unsolved Breakdowns and open Service Records. Each holder's rule lives with its feature; this is the one
  * gate the auth plugin calls.
  */
 export async function assertContractingAccountChangeAllowed(change: ContractingAccountChange): Promise<void> {

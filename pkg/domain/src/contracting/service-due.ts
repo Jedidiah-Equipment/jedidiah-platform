@@ -1,5 +1,7 @@
-import type { ServiceDueStatus, ServiceRecordStatus } from '@pkg/schema/contracting';
+import type { ServiceDueStatus, ServiceRecord, ServiceRecordStatus } from '@pkg/schema/contracting';
+import { formatDate } from '../formatting/date.js';
 import { formatHours } from '../formatting/number.js';
+import { getFirstName } from '../formatting/text.js';
 import { type BadgeColorClassNames, statusBadgeColorClassNames } from '../theme/status-badge.js';
 import { round1 } from './hours.js';
 import { round2 } from './pricing.js';
@@ -44,24 +46,38 @@ export function knownHoursCrossServiceDueSoon(
 export const suggestedNextServiceDue = (readingAtServiceHours: number, serviceIntervalHours: number | null) =>
   serviceIntervalHours === null ? null : round2(readingAtServiceHours + serviceIntervalHours);
 
+/**
+ * The close form's Next Service Due as a typed reading suggests it, until someone types over it: blank (NaN, as the
+ * form holds a blank number) while the reading is blank or the Machine has no interval.
+ */
+export const suggestedNextServiceDueValue = (readingAtServiceHours: number, serviceIntervalHours: number | null) =>
+  (Number.isNaN(readingAtServiceHours) ? null : suggestedNextServiceDue(readingAtServiceHours, serviceIntervalHours)) ??
+  Number.NaN;
+
+/** The line under the close form's Next Service Due, which says it was suggested only when it could have been. */
+export const nextServiceDueHint = (serviceIntervalHours: number | null) =>
+  serviceIntervalHours === null
+    ? 'The hour reading printed on the sticker.'
+    : 'The hour reading printed on the sticker. Suggested from the service interval; change it if the sticker says otherwise.';
+
 /** Due soon or overdue: the statuses a screen paints in their warning colour. */
 export const serviceDueNeedsAttention = (status: ServiceDueStatus) => status === 'due-soon' || status === 'overdue';
 
-type MachineServiceState = { serviceDueStatus: ServiceDueStatus; serviceBookedIn: boolean };
+type MachineServiceState = { serviceDueStatus: ServiceDueStatus; bookedInServiceId: string | null };
 
 /**
  * Due for Service: due soon or overdue with no open Service Record. Booking the Machine in takes it off before its
  * hours change. The Services page's pinned rows, the menu dot and the Dashboard all read this one predicate.
  */
-export const isDueForService = ({ serviceDueStatus, serviceBookedIn }: MachineServiceState) =>
-  serviceDueNeedsAttention(serviceDueStatus) && !serviceBookedIn;
+export const isDueForService = ({ serviceDueStatus, bookedInServiceId }: MachineServiceState) =>
+  serviceDueNeedsAttention(serviceDueStatus) && bookedInServiceId === null;
 
 /** The Machines Due for Service: overdue first, then the fewest hours left; unknown is not urgency. */
 export function machinesDueForService<
   T extends {
     code: string;
     serviceDueStatus: ServiceDueStatus;
-    serviceBookedIn: boolean;
+    bookedInServiceId: string | null;
     hoursToService: number | null;
   },
 >(machines: readonly T[]): T[] {
@@ -112,9 +128,18 @@ export const serviceRecordBadge = (status: ServiceRecordStatus) => ({
   colours: serviceRecordStatusColorClassNames[status],
 });
 
+/** A Service Record in one line: Booked in since its start with its Mechanic, or when it was closed and by whom. */
+export function serviceRecordSummary(
+  record: Pick<ServiceRecord, 'status' | 'startDate' | 'mechanicName' | 'closedAt' | 'closedByName'>,
+) {
+  if (record.status === 'closed')
+    return `Closed ${formatDate(record.closedAt, 'short')}${record.closedByName ? ` by ${getFirstName(record.closedByName)}` : ''}`;
+  return `Booked in since ${formatDate(record.startDate, 'short')}${record.mechanicName ? ` · ${getFirstName(record.mechanicName)}` : ''}`;
+}
+
 /** The service badge every surface shows for a Machine: Booked in while a Service Record is open, else its status. */
 export function machineServiceBadge(machine: MachineServiceState): { label: string; colours: BadgeColorClassNames } {
-  if (machine.serviceBookedIn) return serviceRecordBadge('open');
+  if (machine.bookedInServiceId !== null) return serviceRecordBadge('open');
   return {
     label: serviceDueStatusLabels[machine.serviceDueStatus],
     colours: serviceDueStatusColorClassNames[machine.serviceDueStatus],

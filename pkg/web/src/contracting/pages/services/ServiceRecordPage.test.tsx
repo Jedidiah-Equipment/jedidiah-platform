@@ -23,7 +23,7 @@ vi.mock('@/hooks/use-api-mutation-error-toast.js', () => ({
 const machine = buildMachine({
   id: '00000000-0000-4000-8000-000000000002',
   code: 'JD110-1',
-  serviceBookedIn: true,
+  bookedInServiceId: '00000000-0000-4000-8000-0000000000aa',
   knownHoursSource: 'telematics',
 });
 const openRecord = buildServiceRecord({ primaryMechanicUserId: 'thabo', mechanicName: 'Thabo Nkosi' });
@@ -114,7 +114,7 @@ test('an open record shows its Machine, autosaves a notes change and closes thro
   const { container, button, patched } = await mount(openRecord);
 
   expect(container.querySelector('h1')?.textContent).toContain('JD110-1');
-  expect(container.textContent).toContain('Booked in 20 Oct 2026 · Thabo');
+  expect(container.textContent).toContain('Booked in since 20 Oct 2026 · Thabo');
   expect(container.querySelector('a')?.getAttribute('href')).toBe(`/contracting/fleet/${machine.id}/edit`);
 
   const notes = container.querySelector<HTMLTextAreaElement>('textarea[name="notes"]');
@@ -149,7 +149,7 @@ test('a closed record reads back what was recorded, with nothing to edit or clos
 test('a reader without contracting_service:update sees the open record but cannot close it', async () => {
   const { container, button } = await mount(openRecord, { without: ['contracting_service:update'] });
 
-  expect(container.textContent).toContain('Booked in 20 Oct 2026');
+  expect(container.textContent).toContain('Booked in since 20 Oct 2026');
   expect(button('Close service')).toBeUndefined();
   expect(container.querySelector<HTMLTextAreaElement>('textarea[name="notes"]')?.closest('fieldset')?.disabled).toBe(
     true,

@@ -25,7 +25,7 @@ export function buildMachine(overrides: Partial<Record<keyof Machine, unknown>> 
     hoursToService: -12.5,
     effectiveServiceAlertHours: 100,
     serviceDueStatus: 'overdue',
-    serviceBookedIn: false,
+    bookedInServiceId: null,
     busyOnJob: null,
     serialNumber: null,
     johnDeere: null,

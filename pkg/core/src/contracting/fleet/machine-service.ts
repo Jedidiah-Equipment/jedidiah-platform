@@ -178,12 +178,15 @@ const derivedMachineColumns = (machine: MachineColumns) => ({
     order by stint.arrival_at desc
     limit 1
   )`.as('busy_on_job'),
-  serviceBookedIn: sql<boolean>`exists (
-    select 1
+  // Nothing refuses a second open record, so the newest start is the one in the workshop.
+  bookedInServiceId: sql<string | null>`(
+    select booked.id
     from contracting.service_record booked
     where booked.machine_id = ${machine.id}
       and booked.closed_at is null
-  )`.as('service_booked_in'),
+    order by booked.start_date desc, booked.created_at desc
+    limit 1
+  )`.as('booked_in_service_id'),
   johnDeere: sql<JohnDeereRow | null>`(
     select json_build_object(
       'equipmentId', link.equipment_id,
@@ -204,7 +207,7 @@ function mapMachine(
     currentDriver: { name: string } | null;
     known: KnownHoursRow | null;
     busyOnJob: BusyOnJobRow | null;
-    serviceBookedIn: boolean;
+    bookedInServiceId: string | null;
     johnDeere: JohnDeereRow | null;
   },
   settingsThresholdHours: number,

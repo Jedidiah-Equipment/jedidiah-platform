@@ -1,7 +1,7 @@
-import type { FieldMachine, ServiceRecord } from '@pkg/schema/contracting';
-import { IconFilter, IconUser } from '@tabler/icons-react-native';
+import type { FieldMachine, ServiceRecord, ServiceRecordStatus } from '@pkg/schema/contracting';
+import { IconUser } from '@tabler/icons-react-native';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { View } from 'react-native';
 import {
   type ListControlOption,
@@ -12,25 +12,18 @@ import {
 } from '@/components/ListControls';
 import { infiniteQueryPagination, TabRootList } from '@/components/TabRootList';
 import { Text } from '@/components/ui/text';
-import { contractingStorageKey } from '@/contracting/lib/contracting-storage';
 import { useSessionPermission } from '@/lib/auth-session';
 import { useDebouncedSearch } from '@/lib/use-debounced-search';
-import { usePersistedState } from '@/lib/use-persisted-state';
 import { BookServiceSheet } from './BookServiceSheet';
 import { DueMachineRow } from './DueMachineRow';
 import { ServiceRow } from './ServiceRow';
 import { serviceRecordHref } from './service-routes';
-import { isStatusFilter, type StatusFilter, statusesFor, statusOptions } from './service-status-filter';
-import { useMachinesDueForService, useServiceFilterOptions, useServiceRecordList } from './use-services';
+import { useServiceFilterOptions, useServiceRecordList } from './use-services';
 
-const STATUS_KEY = contractingStorageKey('services', 'status');
 const EVERY_MECHANIC = 'all';
 const LOADING_MESSAGE = 'Loading services…';
 
-type Row =
-  | { kind: 'due'; machine: FieldMachine }
-  | { kind: 'record'; record: ServiceRecord }
-  | { kind: 'message'; message: string };
+type Row = { kind: 'due'; machine: FieldMachine } | { kind: 'record'; record: ServiceRecord };
 
 function SectionHeader({ children }: { children: string }) {
   return (
@@ -41,49 +34,53 @@ function SectionHeader({ children }: { children: string }) {
 }
 
 /**
- * The web's Services page on the phone: the Machines Due for Service pinned above the Service Records, which no
- * search or filter hides. Scoped to one Machine it is that Machine's Service history: every status, nothing pinned
- * and nothing persisted, and booking only while the Machine is not Booked In.
+ * Service Records newest start first, searched and filtered by Mechanic here; the screen decides the rest. The
+ * Services tab pins the Machines Due for Service above them, which no search or filter hides.
  */
-export function ServicesList({ scope }: { scope: { machineId: string; bookable: boolean } | null }) {
+export function ServicesList({
+  statuses,
+  statusControl,
+  machineIds = [],
+  due,
+  book,
+  emptyMessage,
+  underSecondaryToolbar = false,
+}: {
+  statuses: readonly ServiceRecordStatus[];
+  statusControl?: ReactNode;
+  machineIds?: readonly string[];
+  /** The Machines Due for Service, pinned above the records with a Book button each. */
+  due?: { machines: readonly FieldMachine[]; failed: boolean };
+  /** Where the list's Book a service books: its Machine, or null to pick one. No button without it. */
+  book?: { machineId: string | null };
+  /** What the list says with no records before any search or Mechanic filter. */
+  emptyMessage: string;
+  underSecondaryToolbar?: boolean;
+}) {
   const canBook = useSessionPermission('contracting_service:update');
-  const due = useMachinesDueForService();
   const filterOptions = useServiceFilterOptions();
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedSearch(search);
-  const [savedStatus, setStatus] = usePersistedState<StatusFilter>(STATUS_KEY, 'open', isStatusFilter);
-  const status = scope ? 'all' : savedStatus;
   const [mechanic, setMechanic] = useState(EVERY_MECHANIC);
   const [booking, setBooking] = useState<{ machineId: string | null } | null>(null);
   const { canRead, query, records } = useServiceRecordList({
     search: debouncedSearch,
-    statuses: statusesFor(status),
+    statuses,
     mechanicUserIds: mechanic === EVERY_MECHANIC ? [] : [mechanic],
-    machineIds: scope ? [scope.machineId] : [],
+    machineIds,
   });
-  const pinned = scope ? [] : (due.data ?? []);
   const mechanicOptions: ListControlOption<string>[] = [
     { label: 'All mechanics', value: EVERY_MECHANIC },
     ...(filterOptions.data?.mechanics ?? []).map((person) => ({ label: person.name, value: person.id })),
   ];
-  const filtered = search !== '' || (!scope && status !== 'open') || mechanic !== EVERY_MECHANIC;
-  const emptyMessage = !canRead
+  const message = !canRead
     ? 'Your role cannot view Service Records.'
     : query.isError
       ? 'Unable to load Service Records. Pull to retry.'
-      : filtered
+      : search !== '' || mechanic !== EVERY_MECHANIC
         ? 'No services match your search or filters.'
-        : scope
-          ? 'This Machine has no services yet.'
-          : 'Nothing is booked in.';
+        : emptyMessage;
   const initialLoading = canRead && query.isPending;
-  const recordRows: Row[] = records.length
-    ? records.map((record) => ({ kind: 'record', record }))
-    : // Under pinned rows the list is not empty, so the records say why they are missing themselves.
-      pinned.length
-      ? [{ kind: 'message', message: initialLoading ? LOADING_MESSAGE : emptyMessage }]
-      : [];
-  const canBookHere = canBook && (scope?.bookable ?? true);
   return (
     <>
       <TabRootList<Row>
@@ -100,18 +97,7 @@ export function ServicesList({ scope }: { scope: { machineId: string; bookable: 
               }
               trailing={
                 <View className="flex-row items-center gap-2">
-                  {scope ? null : (
-                    <ListDropdownControl
-                      accessibilityLabel="Filter services by status"
-                      defaultValue="open"
-                      dismissLabel="Dismiss service status filter"
-                      icon={IconFilter}
-                      menuWidth={200}
-                      onChange={setStatus}
-                      options={statusOptions}
-                      value={status}
-                    />
-                  )}
+                  {statusControl}
                   {filterOptions.data ? (
                     <ListDropdownControl
                       accessibilityLabel="Filter services by Mechanic"
@@ -124,16 +110,13 @@ export function ServicesList({ scope }: { scope: { machineId: string; bookable: 
                       value={mechanic}
                     />
                   ) : null}
-                  {canBookHere ? (
-                    <ListCreateControl
-                      label="Book a service"
-                      onPress={() => setBooking({ machineId: scope?.machineId ?? null })}
-                    />
+                  {canBook && book ? (
+                    <ListCreateControl label="Book a service" onPress={() => setBooking(book)} />
                   ) : null}
                 </View>
               }
             />
-            {!scope && due.isError && !due.data ? (
+            {due?.failed ? (
               <Text className="text-sm text-muted-foreground">The Machines due could not be loaded.</Text>
             ) : null}
           </View>
@@ -142,11 +125,16 @@ export function ServicesList({ scope }: { scope: { machineId: string; bookable: 
           {
             key: 'due',
             header: <SectionHeader>Due for a service</SectionHeader>,
-            data: pinned.map((machine) => ({ kind: 'due', machine })),
+            data: (due?.machines ?? []).map((machine) => ({ kind: 'due', machine })),
           },
-          { key: 'records', header: scope ? undefined : <SectionHeader>Services</SectionHeader>, data: recordRows },
+          {
+            key: 'records',
+            header: due ? <SectionHeader>Services</SectionHeader> : undefined,
+            data: records.map((record) => ({ kind: 'record', record })),
+            empty: <Text className="text-muted-foreground">{initialLoading ? LOADING_MESSAGE : message}</Text>,
+          },
         ]}
-        keyOf={(row) => (row.kind === 'due' ? row.machine.id : row.kind === 'record' ? row.record.id : row.kind)}
+        keyOf={(row) => (row.kind === 'due' ? row.machine.id : row.record.id)}
         pagination={infiniteQueryPagination(query, 'Loading more services…')}
         renderItem={(row) =>
           row.kind === 'due' ? (
@@ -154,16 +142,14 @@ export function ServicesList({ scope }: { scope: { machineId: string; bookable: 
               machine={row.machine}
               onBook={canBook ? () => setBooking({ machineId: row.machine.id }) : undefined}
             />
-          ) : row.kind === 'record' ? (
-            <ServiceRow record={row.record} />
           ) : (
-            <Text className="text-muted-foreground">{row.message}</Text>
+            <ServiceRow record={row.record} />
           )
         }
         initialLoading={initialLoading}
         loadingContent={<Text className="text-muted-foreground">{LOADING_MESSAGE}</Text>}
-        emptyContent={<Text className="text-muted-foreground">{emptyMessage}</Text>}
-        underSecondaryToolbar={scope !== null}
+        emptyContent={<Text className="text-muted-foreground">{message}</Text>}
+        underSecondaryToolbar={underSecondaryToolbar}
       />
       {booking ? (
         <BookServiceSheet

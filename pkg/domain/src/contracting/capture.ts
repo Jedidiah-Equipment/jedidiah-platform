@@ -11,6 +11,7 @@ import {
 import { formatDate } from '../formatting/date.js';
 import { formatHours } from '../formatting/number.js';
 import { assignmentActionRefusal, assignmentStateAllows } from './assignment-actions.js';
+import { FUTURE_READ_AT_REFUSAL, isFutureReadAt } from './read-at.js';
 import { telematicsProviderLabels } from './readings.js';
 import { serviceDueSoonCrossed } from './service-due.js';
 
@@ -107,7 +108,7 @@ export const captureRefusals: Record<
     code: 'reading.forbidden',
     message: 'Only a Contracting administrator can capture a Baseline Reading.',
   },
-  'future-read-at': { code: 'reading.future_read_at', message: 'Read At cannot be in the future.' },
+  'future-read-at': { code: 'reading.future_read_at', message: FUTURE_READ_AT_REFUSAL },
   'retired-machine': { code: 'reading.retired_machine', message: 'Cannot capture readings for a retired Machine.' },
   'implement-invalid': { code: 'reading.invalid_role', message: 'The selected Implement is no longer available.' },
   'driver-invalid': { code: 'reading.invalid_role', message: 'Select a person with the Contracting driver role.' },
@@ -199,13 +200,6 @@ export const captureIsBelowLatest = (value: number, latest: { value: number } | 
 /** Whoever works every Job must say why a departure has no photo. */
 export const captureNeedsComment = (role: ReadingRole, world: Pick<CaptureWorld, 'management' | 'hasPhoto'>): boolean =>
   role === 'departure' && world.management && !world.hasPhoto;
-
-/** Phone clocks drift; a Read At this far ahead of the server is still the Foreman's "now". */
-export const FUTURE_READ_AT_TOLERANCE_MS = 5 * 60_000;
-
-/** Whether a Read At is still to come. The server passes the tolerance; the phone, judging its own clock, none. */
-export const isFutureReadAt = (readAt: Date, now = new Date(), toleranceMs = 0) =>
-  readAt.getTime() > now.getTime() + toleranceMs;
 
 /** Whether this capture may land on the Machine's ledger as the server holds it under the lock. */
 export function judgeCapture(world: CaptureWorld, capture: CaptureAttempt): CaptureVerdict {

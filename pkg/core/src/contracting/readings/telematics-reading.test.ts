@@ -7,13 +7,8 @@ import { expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
 import { createCategory } from '../fleet/category-service.js';
 import { createMachine, patchMachine, retireMachine } from '../fleet/machine-service.js';
-import {
-  amendReading,
-  captureReading,
-  latestReading,
-  listReadingExceptions,
-  listReadingsByMachine,
-} from './reading-service.js';
+import { amendHours } from '../test/job-fixtures.js';
+import { captureReading, latestReading, listReadingExceptions, listReadingsByMachine } from './reading-service.js';
 import { recordTelematicsReading, type TelematicsReadingResult } from './telematics-reading.js';
 
 const test = createTester(async ({ db }) => {
@@ -215,22 +210,23 @@ test('settles a contradicted reading when management amends it back into sequenc
   await report(1200, '2026-09-07T10:00:00Z');
   expect((await listReadingExceptions({ db })).map((row) => row.id).sort()).toEqual([before.id, after.id].sort());
 
-  await expect(
-    amendReading({ db, actor, input: { id: after.id, value: 1150, reason: 'Misread' } }),
-  ).rejects.toMatchObject({ code: 'reading.invalid_amendment' });
-  await amendReading({ db, actor, input: { id: after.id, value: 1200, reason: 'Misread' } });
+  await expect(amendHours(db, actor, after.id, 1150, 'Misread')).rejects.toMatchObject({
+    code: 'reading.invalid_amendment',
+  });
+  await amendHours(db, actor, after.id, 1200, 'Misread');
   // The other contradicted reading keeps its flag until it is amended itself.
   expect((await listReadingExceptions({ db })).map((row) => row.id)).toEqual([before.id]);
-  await amendReading({ db, actor, input: { id: before.id, value: 1050, reason: 'Misread' } });
+  await amendHours(db, actor, before.id, 1050, 'Misread');
   expect(await listReadingExceptions({ db })).toEqual([]);
 });
 
 test('refuses to amend a John Deere reading', async ({ context }) => {
   const { db, actor, machineId } = context;
   const stored = written(await reportFor(context)(1000, '2026-09-07T08:00:00Z'));
-  await expect(
-    amendReading({ db, actor, input: { id: stored.reading.id, value: 999, reason: 'Wrong' } }),
-  ).rejects.toMatchObject({ code: 'reading.invalid_amendment', message: 'A Telematics Reading cannot be amended.' });
+  await expect(amendHours(db, actor, stored.reading.id, 999, 'Wrong')).rejects.toMatchObject({
+    code: 'reading.invalid_amendment',
+    message: 'A Telematics Reading cannot be amended.',
+  });
   expect(await listReadingsByMachine({ db, machineId })).toMatchObject([{ value: 1000, amendedBy: null }]);
 });
 
@@ -291,7 +287,7 @@ test('keeps a reading John Deere contradicts disputed when its Disputed pair is 
       actor,
       input: { machineId, role: 'spot', value, capturedAt, disputePrevious: false, ...dispute },
     });
-  const { reading: first } = await spot(100, '2026-09-07T06:00:00Z');
+  const { reading: first } = await spot(100, '2026-09-06T20:00:00Z');
   const { reading: second } = await spot(90, '2026-09-07T07:00:00Z', {
     disputePrevious: true,
     expectedPreviousId: first.id,
@@ -300,7 +296,7 @@ test('keeps a reading John Deere contradicts disputed when its Disputed pair is 
   await reportFor(context)(85, '2026-09-07T10:00:00Z');
   expect((await listReadingExceptions({ db })).map((row) => row.id).sort()).toEqual([first.id, second.id].sort());
 
-  await amendReading({ db, actor, input: { id: first.id, value: 80, reason: 'Misread' } });
+  await amendHours(db, actor, first.id, 80, 'Misread');
   // The pair is settled, but 90 still sits above the 85 John Deere reported later.
   const [remaining] = await listReadingExceptions({ db });
   expect(remaining).toMatchObject({ id: second.id, disputed: true });

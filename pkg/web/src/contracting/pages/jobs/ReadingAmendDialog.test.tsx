@@ -1,5 +1,7 @@
 /** @vitest-environment jsdom */
 
+import { readAtFromInput, readAtInputValue } from '@pkg/domain/contracting';
+import { DateIso } from '@pkg/schema';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -7,7 +9,12 @@ import { ReadingAmendDialog } from './ReadingAmendDialog.js';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 const roots: Root[] = [];
-const reading = { id: '00000000-0000-4000-8000-000000000001', value: 120.4 };
+// Read At carries seconds the picker cannot show.
+const reading = {
+  id: '00000000-0000-4000-8000-000000000001',
+  value: 120.4,
+  capturedAt: DateIso.parse('2026-10-27T13:00:42.000Z'),
+};
 const machine = { machineCode: 'BEL14-1', categoryIcon: 'tractor', categoryColour: 'lime' } as const;
 
 afterEach(async () => {
@@ -73,8 +80,23 @@ it('validates the correction and mandatory reason before submitting the decimal 
   expect(document.querySelector('[name="value"]')?.getAttribute('aria-invalid')).toBe('true');
   await enter('value', '128.5');
   await act(async () => button('Amend reading').click());
-  expect(onAmend).toHaveBeenCalledExactlyOnceWith({ id: reading.id, value: 128.5, reason: 'Corrected from the meter' });
+  expect(onAmend).toHaveBeenCalledExactlyOnceWith({
+    amendments: [{ id: reading.id, value: 128.5, capturedAt: reading.capturedAt }],
+    reason: 'Corrected from the meter',
+  });
   expect(onAmended).toHaveBeenCalledOnce();
+});
+
+it('posts a corrected Read At from the picker', async () => {
+  const { onAmend } = await mount();
+  await enter('readAt-time', '07:30');
+  await enter('reason', 'Captured the next evening');
+  await act(async () => button('Amend reading').click());
+  const day = readAtInputValue(new Date(reading.capturedAt)).slice(0, 10);
+  expect(onAmend).toHaveBeenCalledExactlyOnceWith({
+    amendments: [{ id: reading.id, value: 120.4, capturedAt: readAtFromInput(`${day}T07:30`)?.toISOString() }],
+    reason: 'Captured the next evening',
+  });
 });
 
 it('discards a cancelled correction and reopens with the recorded value and a fresh reason', async () => {

@@ -16,7 +16,7 @@ import { completeJob, createJob } from '../jobs/job-service.js';
 import { markPriced, setStintRate } from '../jobs/pricing-service.js';
 import { createMeasureType } from '../rate-card/measure-type-service.js';
 import { createRate } from '../rate-card/rate-service.js';
-import { captureReading } from '../readings/reading-service.js';
+import { amendReadings, captureReading, getReading } from '../readings/reading-service.js';
 import { createWorkType } from '../work-types/work-type-service.js';
 
 export const adminId = 'fixture-admin';
@@ -78,8 +78,8 @@ export async function seedJobFixtures(db: Db) {
 export type JobFixtures = Awaited<ReturnType<typeof seedJobFixtures>> & { db: Db };
 
 let clock = Date.parse('2026-09-01T06:00:00+02:00');
-const nextCapture = () => {
-  clock += 60 * 60 * 1000;
+const nextCapture = (hours = 1) => {
+  clock += hours * 60 * 60 * 1000;
   return new Date(clock).toISOString();
 };
 
@@ -113,7 +113,8 @@ export async function leftStint(db: Db, jobId: string, machineId: string, arriva
         assignmentId: planned.id,
         role,
         value,
-        capturedAt: nextCapture(),
+        // The departure as many hours after the arrival as the meter moved, so the meter never outruns the clock.
+        capturedAt: nextCapture(role === 'departure' ? Math.max(1, departure - arrival) : 1),
         disputePrevious: false,
         ...(role === 'departure' ? { comment: 'Photo unavailable' } : {}),
       },
@@ -169,4 +170,15 @@ export async function pricedJob(
   const total = (await getJob({ db, id: completed.jobId })).pricing.total;
   await markPriced({ db, actor: admin, input: { id: completed.jobId, expectedTotal: total } });
   return { ...completed, total };
+}
+
+/** Amends a reading's hours at the Read At it already has. */
+export async function amendHours(db: Db, actor: JobActor, id: string, value: number, reason = 'Misread') {
+  const { capturedAt } = await getReading({ db, id });
+  const [amended] = await amendReadings({
+    db,
+    actor,
+    input: { amendments: [{ id, value, capturedAt: capturedAt.toISOString() }], reason },
+  });
+  return amended;
 }

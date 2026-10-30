@@ -16,6 +16,7 @@ import {
   loudestNeedingALook,
   needsALook,
 } from './assignment-attention.js';
+import { FUTURE_READ_AT_REFUSAL, isFutureReadAt } from './read-at.js';
 
 export const readingRoleLabels: Record<ReadingRole, string> = {
   baseline: 'Baseline',
@@ -255,70 +256,191 @@ export type ReadingDisputeState = {
   disputeReason: string | null;
   disputedPreviousId: string | null;
 };
-export type AmendableReading = ReadingDisputeState & { id: string; value: number };
+
+/** Engine hours cannot pass faster than the clock; an hour of slack covers Deere's floor-to-tenth and phone clocks. */
+export const CLOCK_TOLERANCE_HOURS = 1;
+
+export const hoursBetween = (from: Date, to: Date) => (to.getTime() - from.getTime()) / 3_600_000;
+
+type TimedValue = { value: number; capturedAt: Date };
+
+/** Whether `later` shows more engine hours than could have passed since `earlier`. */
+export const outrunsClock = (earlier: TimedValue, later: TimedValue): boolean =>
+  later.value - earlier.value > hoursBetween(earlier.capturedAt, later.capturedAt) + CLOCK_TOLERANCE_HOURS;
+
+/** "25.4 h of engine time cannot pass in 0.0 h of clock time since the arrival reading of 1 232.8 h at 27 Oct 2026, 16:17." */
+export function outrunsClockSentence(
+  earlier: TimedValue,
+  later: TimedValue,
+  neighbour: TimedValue & { role: ReadingRole },
+  side: 'since' | 'before',
+): string {
+  const engine = formatHours(later.value - earlier.value);
+  const clock = formatHours(hoursBetween(earlier.capturedAt, later.capturedAt));
+  const reading = `the ${readingRoleLabels[neighbour.role].toLowerCase()} reading of ${formatHours(neighbour.value)} at ${formatDate(neighbour.capturedAt, 'medium')}`;
+  return `${engine} of engine time cannot pass in ${clock} of clock time ${side} ${reading}.`;
+}
+
+export type AmendableReading = ReadingDisputeState & SequencedReading & { role: ReadingRole };
+/** A stint as its readings bound it; core reads them off machine_assignment, in any order. */
+export type StintBounds = { assignmentId: string; arrivalId: string; departureId: string | null };
+export type ReadingAmendmentRefusal =
+  | 'not_found'
+  | 'out_of_range'
+  | 'out_of_order'
+  | 'outruns_clock'
+  | 'future_read_at';
 export type ReadingAmendmentResolution =
-  | { ok: false; reason: 'not_found' | 'out_of_range' }
+  | { ok: false; reason: ReadingAmendmentRefusal; id: string; message: string }
   | { ok: true; changes: ({ id: string } & ReadingDisputeState)[] };
+type Amendment = { id: string; value: number; capturedAt: Date };
+
+/** A Machine's ledger as the amendments would leave it: amended values and Read Ats in place, in ledger order. */
+export function amendedLedger<T extends SequencedReading>(
+  readings: readonly T[],
+  amendments: readonly Amendment[],
+): T[] {
+  const amended = new Map(amendments.map((amendment) => [amendment.id, amendment]));
+  return readings
+    .map((reading) => {
+      const change = amended.get(reading.id);
+      return change ? { ...reading, value: change.value, capturedAt: change.capturedAt } : reading;
+    })
+    .sort(ledgerOrder);
+}
+
+/** Readings disputed on their own, with no pair: a Telematics Reading contradicted them. */
+function standaloneDisputes(readings: readonly AmendableReading[]): Set<string> {
+  const disputedTargets = new Set(readings.flatMap((reading) => reading.disputedPreviousId ?? []));
+  return new Set(
+    readings
+      .filter((reading) => reading.disputed && !reading.disputedPreviousId && !disputedTargets.has(reading.id))
+      .map((reading) => reading.id),
+  );
+}
 
 /**
- * Where an amended value lands in a Machine's ledger (`readings` ascending by Read At, ties by acceptance) and which
- * dispute pairs it settles. Amended hours must stay between the neighbouring readings. A pair settles
- * when the disputing reading is no longer below the one it disputes and the amended reading is one of
- * the two; pairs the amendment did not touch keep their flags. `changes` lists the amended reading and
- * every other reading whose dispute state moved, so the caller writes exactly those rows.
+ * Whether a set of amendments may land on a Machine's ledger (`readings`, any order), and the dispute state it leaves.
+ * Each amended reading that moved is judged again at its new place in time: never in the future, between its new
+ * neighbours, contradicting no Telematics Reading, not outrunning the clock against either neighbour, and every stint
+ * it bounds still in time order. An amendment that moves nothing acknowledges the evidence warning and is not judged
+ * again, unless it is the only way to settle a reading John Deere contradicted.
  */
-export function resolveReadingAmendment(
+export function resolveReadingAmendments(
   readings: readonly AmendableReading[],
-  amendment: { id: string; value: number },
+  amendments: readonly Amendment[],
+  stints: readonly StintBounds[],
+  now: Date,
 ): ReadingAmendmentResolution {
-  const index = readings.findIndex((reading) => reading.id === amendment.id);
-  const before = readings[index];
-  if (!before) return { ok: false, reason: 'not_found' };
-  const previous = readings[index - 1];
-  const next = readings[index + 1];
-  // A reading John Deere contradicted is disputed with no pair: only a value back in sequence settles it.
-  const disputedTargets = new Set(readings.flatMap((reading) => reading.disputedPreviousId ?? []));
-  const standalone = (reading: AmendableReading) =>
-    reading.disputed && !reading.disputedPreviousId && !disputedTargets.has(reading.id);
-  if (
-    (amendment.value !== before.value || standalone(before)) &&
-    ((previous && amendment.value < previous.value) || (next && amendment.value > next.value))
-  )
-    return { ok: false, reason: 'out_of_range' };
+  const refuse = (reason: ReadingAmendmentRefusal, id: string, message: string) =>
+    ({ ok: false, reason, id, message }) as const;
+  const original = new Map(readings.map((reading) => [reading.id, reading]));
+  const missing = amendments.find((amendment) => !original.has(amendment.id));
+  if (missing) return refuse('not_found', missing.id, 'Hour Reading not found.');
+  const amended = new Set(amendments.map((amendment) => amendment.id));
+  const standalone = standaloneDisputes(readings);
+  const ledger = amendedLedger(readings, amendments);
+  for (const [index, reading] of ledger.entries()) {
+    const before = original.get(reading.id);
+    if (!before || !amended.has(reading.id)) continue;
+    const moved = reading.value !== before.value || reading.capturedAt.getTime() !== before.capturedAt.getTime();
+    if (!moved && !standalone.has(reading.id)) continue;
+    if (isFutureReadAt(reading.capturedAt, now)) return refuse('future_read_at', reading.id, FUTURE_READ_AT_REFUSAL);
+    const previous = ledger[index - 1];
+    const next = ledger[index + 1];
+    if ((previous && reading.value < previous.value) || (next && reading.value > next.value))
+      return refuse('out_of_range', reading.id, 'Amended hours must be between the neighbouring readings.');
+    // A disputed reading between them can hide a report the amended reading would still contradict.
+    const reported = contradictingTelematics(ledger, reading.id);
+    if (reported)
+      return refuse('out_of_range', reading.id, `${telematicsDisputeReason(reported)} Check the time or the value.`);
+    if (previous && outrunsClock(previous, reading))
+      return refuse('outruns_clock', reading.id, outrunsClockSentence(previous, reading, previous, 'since'));
+    if (next && outrunsClock(reading, next))
+      return refuse('outruns_clock', reading.id, outrunsClockSentence(reading, next, next, 'before'));
+  }
+  const disorder = stintOutOfOrder(readings, ledger, stints, amended);
+  if (disorder)
+    return refuse(
+      'out_of_order',
+      disorder,
+      "Stints stay in time order: an arrival after the Machine's previous departure, a departure after its own arrival and before the next arrival.",
+    );
+  return { ok: true, changes: disputeChanges(readings, ledger, amended) };
+}
 
-  const values = new Map(
-    readings.map((reading) => [reading.id, reading.id === amendment.id ? amendment.value : reading.value]),
-  );
-  const stillDisputed = new Set(
-    readings.filter((reading) => reading.id !== amendment.id && standalone(reading)).map((reading) => reading.id),
-  );
+/**
+ * The amended reading that breaks stint order, or null: walking the stints as they stood, each arrival at or after
+ * the previous stint's departure and each departure at or after its own arrival. Order nobody moved is not judged.
+ */
+function stintOutOfOrder(
+  readings: readonly SequencedReading[],
+  ledger: readonly SequencedReading[],
+  stints: readonly StintBounds[],
+  amended: ReadonlySet<string>,
+): string | null {
+  const position = new Map([...readings].sort(ledgerOrder).map((reading, index) => [reading.id, index]));
+  const at = new Map(ledger.map((reading) => [reading.id, reading]));
+  const breaks = (earlier: SequencedReading, later: SequencedReading) =>
+    ledgerOrder(later, earlier) < 0 && (amended.has(earlier.id) || amended.has(later.id));
+  const culprit = (earlier: SequencedReading, later: SequencedReading) =>
+    amended.has(later.id) ? later.id : earlier.id;
+  let lastDeparture: SequencedReading | null = null;
+  for (const stint of [...stints].sort(
+    (left, right) => (position.get(left.arrivalId) ?? 0) - (position.get(right.arrivalId) ?? 0),
+  )) {
+    const arrival = at.get(stint.arrivalId);
+    if (!arrival) continue;
+    const departure = stint.departureId ? at.get(stint.departureId) : undefined;
+    if (lastDeparture && breaks(lastDeparture, arrival)) return culprit(lastDeparture, arrival);
+    if (departure && breaks(arrival, departure)) return culprit(arrival, departure);
+    lastDeparture = departure ?? lastDeparture;
+  }
+  return null;
+}
+
+/** Two readings are in sequence when the earlier in the ledger reads no higher than the later. */
+const inSequence = (left: SequencedReading, right: SequencedReading) =>
+  ledgerOrder(left, right) < 0 ? left.value <= right.value : right.value <= left.value;
+
+/**
+ * Dispute state over the ledger as it would stand. A pair settles once its two readings are in sequence and an
+ * amendment touched one of them; pairs no amendment touched keep their flags. A reading a Telematics Reading
+ * contradicts is Disputed with that report's sentence, so one whose move clears the contradiction settles. Lists the
+ * amended readings and every reading whose state moved, so the caller writes exactly those rows.
+ */
+function disputeChanges(
+  before: readonly AmendableReading[],
+  ledger: readonly AmendableReading[],
+  amended: ReadonlySet<string>,
+): ({ id: string } & ReadingDisputeState)[] {
+  const at = new Map(ledger.map((reading) => [reading.id, reading]));
+  const stillDisputed = new Set([...standaloneDisputes(before)].filter((id) => !amended.has(id)));
   const settledLinks = new Set<string>();
-  for (const reading of readings) {
-    if (!reading.disputedPreviousId) continue;
-    const disputedValue = values.get(reading.disputedPreviousId);
-    if (disputedValue === undefined) continue;
-    const touched = reading.id === amendment.id || reading.disputedPreviousId === amendment.id;
-    if (touched && (values.get(reading.id) ?? 0) >= disputedValue) settledLinks.add(reading.id);
+  for (const reading of ledger) {
+    const disputedPrevious = reading.disputedPreviousId ? at.get(reading.disputedPreviousId) : undefined;
+    if (!disputedPrevious) continue;
+    const touched = amended.has(reading.id) || amended.has(disputedPrevious.id);
+    if (touched && inSequence(reading, disputedPrevious)) settledLinks.add(reading.id);
     else {
       stillDisputed.add(reading.id);
-      stillDisputed.add(reading.disputedPreviousId);
+      stillDisputed.add(disputedPrevious.id);
     }
   }
-
   const changes: ({ id: string } & ReadingDisputeState)[] = [];
-  for (const reading of readings) {
-    const disputed = stillDisputed.has(reading.id);
+  for (const reading of before) {
+    const paired = stillDisputed.has(reading.id);
+    const reported = paired ? null : contradictingTelematics(ledger, reading.id);
     const state: ReadingDisputeState = {
-      disputed,
-      disputeReason: disputed ? reading.disputeReason : null,
+      disputed: paired || reported !== null,
+      disputeReason: reported ? telematicsDisputeReason(reported) : paired ? reading.disputeReason : null,
       disputedPreviousId: settledLinks.has(reading.id) ? null : reading.disputedPreviousId,
     };
     const unchanged =
       reading.disputed === state.disputed &&
       reading.disputeReason === state.disputeReason &&
       reading.disputedPreviousId === state.disputedPreviousId;
-    if (reading.id !== amendment.id && unchanged) continue;
-    changes.push({ id: reading.id, ...state });
+    if (amended.has(reading.id) || !unchanged) changes.push({ id: reading.id, ...state });
   }
-  return { ok: true, changes };
+  return changes;
 }

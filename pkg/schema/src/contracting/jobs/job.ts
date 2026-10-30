@@ -172,6 +172,7 @@ export const JobReading = HourReading.pick({
   role: true,
   value: true,
   capturedAt: true,
+  createdAt: true,
   capturedByUserId: true,
   method: true,
   comment: true,

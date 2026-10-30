@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { formatDate } from '../formatting/date.js';
 import {
   type AmendableReading,
   amendmentSettledFinding,
@@ -14,18 +15,42 @@ import {
   readingPhotoPath,
   readingsContradictedBy,
   readingVerification,
-  resolveReadingAmendment,
+  resolveReadingAmendments,
   type SequencedReading,
   shownReadingAttention,
 } from './readings.js';
 
-const clean = (id: string, value: number): AmendableReading => ({
+const day = (date: number, hour = 8, minute = 0) => new Date(Date.UTC(2026, 9, date, hour, minute));
+const NOW = day(29, 12);
+const reading = (
+  id: string,
+  capturedAt: Date,
+  value: number,
+  overrides: Partial<AmendableReading> = {},
+): AmendableReading => ({
   id,
+  sequence: capturedAt.getTime() / 60_000,
+  capturedAt,
   value,
+  role: 'spot',
+  telematicsProvider: null,
   disputed: false,
   disputeReason: null,
   disputedPreviousId: null,
+  ...overrides,
 });
+const clean = (id: string, value: number) => reading(id, day(Number(id.slice(1)) + 1), value);
+const settled = (id: string) => ({ id, disputed: false, disputeReason: null, disputedPreviousId: null });
+const amend = (target: AmendableReading, change: { value?: number; capturedAt?: Date } = {}) => ({
+  id: target.id,
+  value: change.value ?? target.value,
+  capturedAt: change.capturedAt ?? target.capturedAt,
+});
+const resolve = (
+  readings: AmendableReading[],
+  amendments: ReturnType<typeof amend>[],
+  stints: Parameters<typeof resolveReadingAmendments>[2] = [],
+) => resolveReadingAmendments(readings, amendments, stints, NOW);
 const disputedPair = (): AmendableReading[] => [
   clean('r0', 100),
   { ...clean('r1', 1200), disputed: true, disputeReason: 'The next capture disputes this reading.' },
@@ -94,79 +119,200 @@ describe('contradictingTelematics', () => {
   });
 });
 
-describe('resolveReadingAmendment', () => {
+describe('resolveReadingAmendments', () => {
   // A captured reading John Deere contradicted is disputed on its own, with no pair.
   const contradicted = (): AmendableReading[] => [
     clean('r0', 100),
     { ...clean('r1', 90), disputed: true, disputeReason: 'John Deere reported 100.0 h at 3 Jun 2026, 14:05.' },
     clean('r2', 120),
     { ...clean('r3', 80), disputed: true, disputeReason: 'John Deere reported 130.0 h at 4 Jun 2026, 14:05.' },
+    clean('r4', 90),
+  ];
+  const [, r1, , , r4] = contradicted() as [
+    AmendableReading,
+    AmendableReading,
+    AmendableReading,
+    AmendableReading,
+    AmendableReading,
   ];
 
   it('settles a reading John Deere contradicted only when its value is back in sequence', () => {
-    expect(resolveReadingAmendment(contradicted(), { id: 'r1', value: 90 })).toEqual({
-      ok: false,
-      reason: 'out_of_range',
-    });
-    expect(resolveReadingAmendment(contradicted(), { id: 'r1', value: 110 })).toEqual({
-      ok: true,
-      changes: [{ id: 'r1', disputed: false, disputeReason: null, disputedPreviousId: null }],
-    });
+    expect(resolve(contradicted(), [amend(r1)])).toMatchObject({ ok: false, reason: 'out_of_range', id: 'r1' });
+    expect(resolve(contradicted(), [amend(r1, { value: 110 })])).toEqual({ ok: true, changes: [settled('r1')] });
   });
 
   it('keeps every other contradicted reading disputed when a different reading is amended', () => {
-    const readings = [...contradicted(), clean('r4', 140)];
-    expect(resolveReadingAmendment(readings, { id: 'r4', value: 150 })).toEqual({
-      ok: true,
-      changes: [{ id: 'r4', disputed: false, disputeReason: null, disputedPreviousId: null }],
-    });
+    expect(resolve(contradicted(), [amend(r4, { value: 91 })])).toEqual({ ok: true, changes: [settled('r4')] });
   });
 
   it('refuses unknown readings and values outside the neighbouring readings', () => {
-    expect(resolveReadingAmendment(disputedPair(), { id: 'missing', value: 1 })).toEqual({
+    const [, wrong] = disputedPair() as [AmendableReading, AmendableReading];
+    expect(resolve(disputedPair(), [{ ...amend(wrong), id: 'missing' }])).toMatchObject({
       ok: false,
       reason: 'not_found',
+      id: 'missing',
     });
-    expect(resolveReadingAmendment(disputedPair(), { id: 'r1', value: 99 })).toEqual({
-      ok: false,
-      reason: 'out_of_range',
-    });
-    expect(resolveReadingAmendment(disputedPair(), { id: 'r1', value: 122 })).toEqual({
-      ok: false,
-      reason: 'out_of_range',
-    });
+    for (const value of [99, 122])
+      expect(resolve(disputedPair(), [amend(wrong, { value })])).toEqual({
+        ok: false,
+        reason: 'out_of_range',
+        id: 'r1',
+        message: 'Amended hours must be between the neighbouring readings.',
+      });
   });
 
   it('settles the pair when the amended reading brings the disputing reading back into order', () => {
-    expect(resolveReadingAmendment(disputedPair(), { id: 'r1', value: 120 })).toEqual({
+    const [, wrong] = disputedPair() as [AmendableReading, AmendableReading];
+    expect(resolve(disputedPair(), [amend(wrong, { value: 120 })])).toEqual({
       ok: true,
-      changes: [
-        { id: 'r1', disputed: false, disputeReason: null, disputedPreviousId: null },
-        { id: 'r2', disputed: false, disputeReason: null, disputedPreviousId: null },
-      ],
+      changes: [settled('r1'), settled('r2')],
     });
   });
 
   it('keeps a pair the amendment did not touch and still reports the amended reading', () => {
     const readings = [...disputedPair(), clean('r4', 140)];
-    expect(resolveReadingAmendment(readings, { id: 'r4', value: 135 })).toEqual({
+    expect(resolve(readings, [amend(readings[4] as AmendableReading, { value: 135 })])).toEqual({
       ok: true,
-      changes: [{ id: 'r4', disputed: false, disputeReason: null, disputedPreviousId: null }],
+      changes: [settled('r4')],
     });
   });
 
-  it('keeps the pair when the amended value leaves the disputing reading below', () => {
-    const result = resolveReadingAmendment(disputedPair(), { id: 'r2', value: 121 });
-    expect(result).toEqual({
+  it('acknowledges an unchanged disputing reading without judging its range, and keeps the pair', () => {
+    const disputing = disputedPair()[2] as AmendableReading;
+    expect(resolve(disputedPair(), [amend(disputing)])).toEqual({
       ok: true,
       changes: [
-        {
-          id: 'r2',
-          disputed: true,
-          disputeReason: 'The previous reading is wrong.',
-          disputedPreviousId: 'r1',
-        },
+        { id: 'r2', disputed: true, disputeReason: 'The previous reading is wrong.', disputedPreviousId: 'r1' },
       ],
+    });
+  });
+
+  it('settles a pair whose order flips once the disputing reading is re-dated before the one it disputed', () => {
+    const readings = [
+      clean('r0', 110),
+      { ...clean('r1', 125), disputed: true, disputeReason: 'The next capture disputes this reading.' },
+      {
+        ...clean('r2', 121),
+        disputed: true,
+        disputeReason: 'The previous reading is wrong.',
+        disputedPreviousId: 'r1',
+      },
+    ];
+    expect(resolve(readings, [amend(readings[2] as AmendableReading, { capturedAt: day(1, 20) })])).toEqual({
+      ok: true,
+      changes: [settled('r1'), settled('r2')],
+    });
+  });
+
+  describe('a re-dated reading', () => {
+    // The production case: an arrival and departure saved on 27 Oct at 15:00 with Read At "now", flagged by
+    // John Deere's 2 927.2 h at 10:09 that morning.
+    const deere = reading('deere', day(27, 10, 9), 2927.2, { telematicsProvider: 'john-deere' });
+    const flagged = { disputed: true, disputeReason: 'John Deere reported 2 927.2 h at 27 Oct 2026, 12:09.' };
+    const ledger = () => [
+      reading('before', day(24, 17), 2900, { role: 'departure' }),
+      deere,
+      reading('arrival', day(27, 15), 2906.7, { role: 'arrival', ...flagged }),
+      reading('departure', day(27, 15, 1), 2914.1, { role: 'departure', ...flagged }),
+    ];
+    const [, , arrival, departure] = ledger() as [
+      AmendableReading,
+      AmendableReading,
+      AmendableReading,
+      AmendableReading,
+    ];
+    const stints = [
+      { assignmentId: 'earlier', arrivalId: 'first', departureId: 'before' },
+      { assignmentId: 'stint', arrivalId: 'arrival', departureId: 'departure' },
+    ];
+
+    it('settles both readings of a stint moved before the report in one call', () => {
+      expect(
+        resolve(
+          ledger(),
+          [amend(arrival, { capturedAt: day(26, 8) }), amend(departure, { capturedAt: day(26, 16) })],
+          stints,
+        ),
+      ).toEqual({ ok: true, changes: [settled('arrival'), settled('departure')] });
+    });
+
+    it('settles a departure moved behind the report it contradicted', () => {
+      const readings = [
+        ...ledger().slice(0, 2),
+        { ...arrival, disputed: false, disputeReason: null, capturedAt: day(26, 8) },
+        departure,
+      ];
+      expect(resolve(readings, [amend(departure, { capturedAt: day(26, 16) })], stints)).toEqual({
+        ok: true,
+        changes: [settled('departure')],
+      });
+    });
+
+    it('is refused below its new previous reading', () => {
+      expect(resolve(ledger(), [amend(departure, { capturedAt: day(27, 12) })], stints)).toMatchObject({
+        ok: false,
+        reason: 'out_of_range',
+        id: 'departure',
+      });
+    });
+
+    it('is refused when its engine hours outrun the clock against a neighbour', () => {
+      const arrived = reading('arrival', day(27, 16, 17), 1232.8, { role: 'arrival' });
+      const departed = reading('departure', day(28, 9), 1258.2, { role: 'departure' });
+      expect(resolve([arrived, departed], [amend(departed, { capturedAt: day(27, 16, 19) })])).toEqual({
+        ok: false,
+        reason: 'outruns_clock',
+        id: 'departure',
+        message: `25.4 h of engine time cannot pass in 0.0 h of clock time since the arrival reading of 1 232.8 h at ${formatDate(day(27, 16, 17), 'medium')}.`,
+      });
+    });
+
+    it('is refused where it would contradict a Telematics Reading a disputed reading hides', () => {
+      const hidden = [
+        reading('moved', day(25, 8), 95),
+        reading('report', day(26, 8), 100, { telematicsProvider: 'john-deere' }),
+        reading('lower', day(27, 8), 90, { disputed: true, disputeReason: 'John Deere reported 100.0 h.' }),
+      ];
+      expect(resolve(hidden, [amend(hidden[0] as AmendableReading, { capturedAt: day(28, 8) })])).toEqual({
+        ok: false,
+        reason: 'out_of_range',
+        id: 'moved',
+        message: `John Deere reported 100.0 h at ${formatDate(day(26, 8), 'medium')}. Check the time or the value.`,
+      });
+    });
+
+    it('is refused in the future', () => {
+      expect(resolve(ledger(), [amend(departure, { capturedAt: new Date(NOW.getTime() + 1) })])).toMatchObject({
+        ok: false,
+        reason: 'future_read_at',
+        message: 'Read At cannot be in the future.',
+      });
+    });
+
+    it('keeps stints in time order', () => {
+      // A departure before its own arrival, at the same hours an idle machine reads.
+      const idle = [
+        reading('arrival', day(26, 8), 2906.7, { role: 'arrival' }),
+        reading('departure', day(26, 16), 2906.7, { role: 'departure' }),
+      ];
+      expect(resolve(idle, [amend(idle[1] as AmendableReading, { capturedAt: day(26, 7) })], stints)).toMatchObject({
+        ok: false,
+        reason: 'out_of_order',
+        id: 'departure',
+      });
+      // An arrival before the Machine's previous departure.
+      const earlier = [
+        reading('first', day(23, 8), 2895, { role: 'arrival' }),
+        reading('before', day(24, 17), 2900, { role: 'departure' }),
+        reading('arrival', day(26, 8), 2900, { role: 'arrival' }),
+      ];
+      expect(resolve(earlier, [amend(earlier[2] as AmendableReading, { capturedAt: day(24, 16) })], stints)).toEqual({
+        ok: false,
+        reason: 'out_of_order',
+        id: 'arrival',
+        message:
+          "Stints stay in time order: an arrival after the Machine's previous departure, a departure after its own arrival and before the next arrival.",
+      });
     });
   });
 });

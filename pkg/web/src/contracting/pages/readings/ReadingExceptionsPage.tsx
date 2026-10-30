@@ -49,8 +49,8 @@ export function ReadingExceptionsPage() {
         ),
       },
       {
-        id: 'capture',
-        header: 'Capture',
+        id: 'readAt',
+        header: 'Read At',
         cell: ({ row }) => formatDate(row.original.capturedAt, 'medium'),
       },
       { accessorKey: 'role', header: 'Reading type', cell: ({ row }) => toSentenceCase(row.original.role) },
@@ -187,7 +187,7 @@ export function ReadingExceptionsPage() {
         onClose={() => setSelectedId(null)}
         // The route admits only those who may amend readings.
         amendReadings
-        amendDescription="Check the photo and both disputed readings. Confirm or correct the value and give a reason. This acknowledges the current evidence warning."
+        amendDescription="Check the photo and both disputed readings. Confirm or correct the value and Read At, and give a reason. This acknowledges the current evidence warning."
       />
       <MeterPhotoPreview
         photo={previewReading ? { readingId: previewReading.id, machineCode: previewReading.machineCode } : null}

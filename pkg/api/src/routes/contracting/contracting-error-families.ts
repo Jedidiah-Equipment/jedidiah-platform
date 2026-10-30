@@ -64,6 +64,7 @@ export const readingErrorFamily = defineCoreErrorFamily<ReadingError>({
     'reading.machine_on_site': 'CONFLICT',
     'reading.no_photo': 'BAD_REQUEST',
     'reading.not_found': 'NOT_FOUND',
+    'reading.outruns_clock': 'CONFLICT',
     'reading.previous_changed': 'CONFLICT',
     'reading.retired_machine': 'CONFLICT',
     'reading.verification_failed': 'SERVICE_UNAVAILABLE',

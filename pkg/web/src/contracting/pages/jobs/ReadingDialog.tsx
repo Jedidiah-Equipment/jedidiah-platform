@@ -1,5 +1,5 @@
-import { formatHours, getFirstName, statusBadgeColorClassNames } from '@pkg/domain';
-import { amendmentSettledFinding, assignmentAttentionLevelColorClassNames } from '@pkg/domain/contracting';
+import { formatDate, formatHours, getFirstName, statusBadgeColorClassNames } from '@pkg/domain';
+import { amendmentSettledFinding, assignmentAttentionLevelColorClassNames, isBackdated } from '@pkg/domain/contracting';
 import type { JobReading } from '@pkg/schema/contracting';
 import { IconAlertTriangle, IconChevronRight, IconPencil, IconRefresh } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
@@ -125,7 +125,7 @@ export function ReadingDialog({
             <DialogTitle>
               <MachineDialogTitle machine={selected?.machine ?? null}>{reading?.role ?? 'Reading'}</MachineDialogTitle>
             </DialogTitle>
-            <DialogDescription>Hours and gaps recompute from the amended value.</DialogDescription>
+            <DialogDescription>Hours and gaps recompute from the amended value and time.</DialogDescription>
           </DialogHeader>
           {reading ? (
             <>
@@ -139,12 +139,18 @@ export function ReadingDialog({
                       <div className="text-xs font-medium text-muted-foreground">Hour meter value</div>
                       <div className="my-1 text-4xl font-semibold tracking-tight">{formatHours(reading.value)}</div>
                       <div className="text-sm text-muted-foreground">
-                        Captured <DateDisplay date={reading.capturedAt} format="medium" />
+                        Read At {formatDate(reading.capturedAt, 'medium')}
                         <br />
                         by{' '}
                         <span className="font-medium text-foreground">
                           {reading.capturedByName ? getFirstName(reading.capturedByName) : 'Unknown'}
                         </span>
+                        {isBackdated(new Date(reading.capturedAt), new Date(reading.createdAt)) ? (
+                          <>
+                            <br />
+                            saved {formatDate(reading.createdAt, 'medium')}
+                          </>
+                        ) : null}
                       </div>
                       {reading.comment ? (
                         <div className="mt-4 border-l-2 pl-2.5 text-xs text-muted-foreground">
@@ -207,7 +213,7 @@ export function ReadingDialog({
                       {reading.amendmentReason ? (
                         <blockquote className="mt-3 border-l-2 pl-2.5 text-sm">{reading.amendmentReason}</blockquote>
                       ) : null}
-                      {settled ? (
+                      {settled && reading.photoBacked ? (
                         <p className="mt-3 text-xs text-muted-foreground">
                           This amendment acknowledged the AI assessment below.
                         </p>
@@ -215,89 +221,93 @@ export function ReadingDialog({
                     </div>
                   </section>
                 ) : null}
-                <Collapsible
-                  key={`${reading.id}:${settled}`}
-                  defaultOpen={!settled}
-                  render={<section aria-labelledby="ai-assessment-heading" className="border-t pt-4" />}
-                >
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    {settled ? (
-                      <CollapsibleTrigger
-                        className="group/ai flex min-w-0 items-center gap-2 text-left"
-                        render={<button type="button" />}
-                      >
-                        <IconChevronRight
-                          aria-hidden
-                          className="size-4 shrink-0 transition-transform group-data-[panel-open]/ai:rotate-90"
-                        />
+                {reading.photoBacked ? (
+                  <Collapsible
+                    key={`${reading.id}:${settled}`}
+                    defaultOpen={!settled}
+                    render={<section aria-labelledby="ai-assessment-heading" className="border-t pt-4" />}
+                  >
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      {settled ? (
+                        <CollapsibleTrigger
+                          className="group/ai flex min-w-0 items-center gap-2 text-left"
+                          render={<button type="button" />}
+                        >
+                          <IconChevronRight
+                            aria-hidden
+                            className="size-4 shrink-0 transition-transform group-data-[panel-open]/ai:rotate-90"
+                          />
+                          <h3 className="text-sm font-semibold" id="ai-assessment-heading">
+                            AI assessment of the photo
+                          </h3>
+                          <span className="truncate text-xs text-muted-foreground">
+                            {evidence?.badge} · acknowledged
+                          </span>
+                        </CollapsibleTrigger>
+                      ) : (
                         <h3 className="text-sm font-semibold" id="ai-assessment-heading">
                           AI assessment of the photo
                         </h3>
-                        <span className="truncate text-xs text-muted-foreground">{evidence?.badge} · acknowledged</span>
-                      </CollapsibleTrigger>
-                    ) : (
-                      <h3 className="text-sm font-semibold" id="ai-assessment-heading">
-                        AI assessment of the photo
-                      </h3>
-                    )}
-                    {amendReadings && reading.photoBacked ? (
-                      <Tooltip>
-                        <TooltipTrigger
-                          render={
-                            <Button
-                              aria-label="Re-verify photo"
-                              disabled={reverify.isPending}
-                              onClick={() => reverify.mutate({ id: reading.id })}
-                              size="icon-sm"
-                              variant="outline"
-                            />
-                          }
-                        >
-                          <IconRefresh aria-hidden />
-                        </TooltipTrigger>
-                        <TooltipContent>Re-verify photo</TooltipContent>
-                      </Tooltip>
-                    ) : null}
-                  </div>
-                  <CollapsibleContent>
-                    <div className="grid gap-5 rounded-lg border bg-muted/50 p-4 sm:grid-cols-[minmax(0,1fr)_minmax(200px,240px)]">
-                      <div>
-                        <Badge className={tone.badge} variant="outline">
-                          {evidence?.badge}
-                        </Badge>
-                        <h4 className="mt-2 text-base font-semibold">{evidence?.title}</h4>
-                        <p className="mt-1 text-sm text-muted-foreground">{evidence?.description}</p>
-                        {reading.aiHint ? (
-                          <p className="mt-3 border-l-2 border-warning pl-2.5 text-xs text-muted-foreground">
-                            <span className="font-medium text-foreground">AI hint</span> · {reading.aiHint}
-                          </p>
-                        ) : null}
-                        {reading.evidenceReviewedAt ? (
-                          <p className="mt-3 border-l-2 pl-2.5 text-xs text-muted-foreground">
-                            <span className="font-medium text-foreground">Review acknowledged</span> · The AI result is
-                            retained for context.
-                          </p>
-                        ) : null}
-                      </div>
-                      <div className="border-t pt-4 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-5">
-                        <div className="text-xs font-medium text-muted-foreground">AI result</div>
-                        <div className={`my-1 text-lg font-semibold ${tone.result}`}>{evidence?.result}</div>
-                        <div className="mt-3 border-t pt-3">
-                          <div aria-hidden className="mb-2 flex gap-1">
-                            {confidenceSegments.map((segment) => (
-                              <span
-                                className={`h-1.5 w-4 rounded-sm ${reading.aiConfidence !== null && segment < Math.max(1, Math.round(reading.aiConfidence * 5)) ? tone.segment : 'bg-foreground/15'}`}
-                                key={segment}
+                      )}
+                      {amendReadings ? (
+                        <Tooltip>
+                          <TooltipTrigger
+                            render={
+                              <Button
+                                aria-label="Re-verify photo"
+                                disabled={reverify.isPending}
+                                onClick={() => reverify.mutate({ id: reading.id })}
+                                size="icon-sm"
+                                variant="outline"
                               />
-                            ))}
+                            }
+                          >
+                            <IconRefresh aria-hidden />
+                          </TooltipTrigger>
+                          <TooltipContent>Re-verify photo</TooltipContent>
+                        </Tooltip>
+                      ) : null}
+                    </div>
+                    <CollapsibleContent>
+                      <div className="grid gap-5 rounded-lg border bg-muted/50 p-4 sm:grid-cols-[minmax(0,1fr)_minmax(200px,240px)]">
+                        <div>
+                          <Badge className={tone.badge} variant="outline">
+                            {evidence?.badge}
+                          </Badge>
+                          <h4 className="mt-2 text-base font-semibold">{evidence?.title}</h4>
+                          <p className="mt-1 text-sm text-muted-foreground">{evidence?.description}</p>
+                          {reading.aiHint ? (
+                            <p className="mt-3 border-l-2 border-warning pl-2.5 text-xs text-muted-foreground">
+                              <span className="font-medium text-foreground">AI hint</span> · {reading.aiHint}
+                            </p>
+                          ) : null}
+                          {reading.evidenceReviewedAt ? (
+                            <p className="mt-3 border-l-2 pl-2.5 text-xs text-muted-foreground">
+                              <span className="font-medium text-foreground">Review acknowledged</span> · The AI result
+                              is retained for context.
+                            </p>
+                          ) : null}
+                        </div>
+                        <div className="border-t pt-4 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-5">
+                          <div className="text-xs font-medium text-muted-foreground">AI result</div>
+                          <div className={`my-1 text-lg font-semibold ${tone.result}`}>{evidence?.result}</div>
+                          <div className="mt-3 border-t pt-3">
+                            <div aria-hidden className="mb-2 flex gap-1">
+                              {confidenceSegments.map((segment) => (
+                                <span
+                                  className={`h-1.5 w-4 rounded-sm ${reading.aiConfidence !== null && segment < Math.max(1, Math.round(reading.aiConfidence * 5)) ? tone.segment : 'bg-foreground/15'}`}
+                                  key={segment}
+                                />
+                              ))}
+                            </div>
+                            <span className="text-xs text-muted-foreground">{evidence?.confidenceCaption}</span>
                           </div>
-                          <span className="text-xs text-muted-foreground">{evidence?.confidenceCaption}</span>
                         </div>
                       </div>
-                    </div>
-                  </CollapsibleContent>
-                  <ErrorMessage error={reverify.error} fallbackMessage="Unable to re-verify reading." />
-                </Collapsible>
+                    </CollapsibleContent>
+                    <ErrorMessage error={reverify.error} fallbackMessage="Unable to re-verify reading." />
+                  </Collapsible>
+                ) : null}
               </div>
               {reading.amendedAt ? (
                 <DialogFooter>

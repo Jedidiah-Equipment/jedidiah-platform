@@ -12,6 +12,7 @@ import {
   createRate,
   createWorkType,
   getJob,
+  getReading,
   isBreakdownError,
   isReadingError,
   markPriced,
@@ -230,10 +231,15 @@ const attempts: Record<
   price: (caller, { job }) => caller.contractingJobs.pricing.setDiscount({ jobId: job.id, discount: null }),
   stampInvoice: (caller, { job }) =>
     caller.contractingJobs.invoicing.stamp({ id: job.id, invoiceNumber: 'INV-1', expectedTotal: 0.01 }),
-  amendReadings: (caller, { arrivalReadingId }) =>
+  amendReadings: (caller, { arrivalReadingId }, { db }) =>
     arrivalReadingId === null
       ? null
-      : caller.contractingReadings.amend({ id: arrivalReadingId, value: 100, reason: 'Checked the photo' }),
+      : getReading({ db, id: arrivalReadingId }).then(({ capturedAt }) =>
+          caller.contractingReadings.amend({
+            amendments: [{ id: arrivalReadingId, value: 100, capturedAt: capturedAt.toISOString() }],
+            reason: 'Checked the photo',
+          }),
+        ),
   // Capture arrives over multipart HTTP, so it is judged where that route hands over: the core capture.
   capture: (_caller, { stint }, { db }, role) =>
     captureReading({

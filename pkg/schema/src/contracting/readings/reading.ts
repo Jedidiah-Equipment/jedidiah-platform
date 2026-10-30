@@ -90,7 +90,14 @@ export const ReadingCaptureMultipart = z.preprocess((fields) => {
   return record;
 }, ReadingCaptureInput);
 
-export const ReadingAmendInput = z.object({ id: UUID, value: ReadingValue, reason: ReadingReason }).strict();
+export const ReadingAmendment = z
+  .object({ id: UUID, value: ReadingValue, capturedAt: z.iso.datetime({ offset: true }) })
+  .strict();
+export type ReadingAmendment = z.infer<typeof ReadingAmendment>;
+/** One reason over a set, so the Job page (one reading) and a Dispute (several) amend by one rule. */
+export const ReadingAmendInput = z
+  .object({ amendments: ReadingAmendment.array().min(1).max(8), reason: ReadingReason })
+  .strict();
 export type ReadingAmendInput = z.infer<typeof ReadingAmendInput>;
 export const ReadingIdInput = z.object({ id: UUID });
 export const ReadingMachineInput = z.object({ machineId: UUID });
@@ -104,6 +111,8 @@ export const HourReading = z.object({
   role: z.enum(readingRoles),
   value: ReadingValue,
   capturedAt: DateIso,
+  /** Acceptance: when the server saved it, which never moves. */
+  createdAt: DateIso,
   /** Null for a Telematics Reading: nobody captured it. */
   capturedByUserId: AuthId.nullable(),
   method: z.enum(readingMethods),

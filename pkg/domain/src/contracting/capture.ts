@@ -474,14 +474,10 @@ export type CaptureWhen = 'today' | 'earlier';
 /** The date the person vouched for, tied to the hours it was vouched for: either changing re-asks. */
 export type CaptureDateConfirmation = { value: number; readAt: Date | null };
 
-export type CaptureDraft = {
-  role: Exclude<ReadingRole, 'baseline'>;
+/** The wizard's own answers, which each client holds beside the hours and the details. */
+export type CaptureSteps = {
   /** Step 1: null until the person chooses. */
   when: CaptureWhen | null;
-  /** Step 2: the value as typed. */
-  value: string;
-  /** The server's estimate for `value`; undefined while it is in flight or `value` is not a reading. */
-  estimate: WireReadAtEstimate | undefined;
   /** Step 3: the date the person picked, if any; null means the estimate (or now) stands. */
   pickedReadAt: Date | null;
   /** The reading the person said is wrong, or null. */
@@ -490,16 +486,18 @@ export type CaptureDraft = {
   dateConfirmed: CaptureDateConfirmation | null;
   /** Under Today, the person tapped the date to change it; Earlier opens it from the start. */
   dateOpened: boolean;
+};
+
+export type CaptureDraft = CaptureSteps & {
+  role: Exclude<ReadingRole, 'baseline'>;
+  /** Step 2: the value as typed. */
+  value: string;
+  /** The server's estimate for `value`; undefined while it is in flight or `value` is not a reading. */
+  estimate: WireReadAtEstimate | undefined;
   /** Step 4. */
   comment: string;
   stintOverrides: ReadingCaptureInput['stintOverrides'];
 };
-
-/** The wizard's own answers, which each client holds beside the hours and the details. */
-export type CaptureSteps = Pick<
-  CaptureDraft,
-  'when' | 'pickedReadAt' | 'disputedReadingId' | 'dateConfirmed' | 'dateOpened'
->;
 
 export const CAPTURE_STEPS_START: CaptureSteps = {
   when: null,
@@ -509,36 +507,70 @@ export const CAPTURE_STEPS_START: CaptureSteps = {
   dateOpened: false,
 };
 
-/** A changed Today or Earlier keeps the hours and asks for the date again. */
-export const stepsAfterWhen = (steps: CaptureSteps, when: CaptureWhen): CaptureSteps => ({
-  ...steps,
-  when,
-  dateConfirmed: null,
-});
+/** Refusals that mean the ledger moved under the form: its latest must be read again, and a dispute of the old one dropped. */
+const LEDGER_MOVED = new Set<string>([
+  'reading.below_latest',
+  'reading.above_next',
+  'reading.previous_changed',
+] satisfies ReadingErrorCode[]);
 
-/** A changed number re-asks for the date: a pick, a dispute and a confirmation all belong to the hours they were for. */
-export const stepsAfterValueEdit = (steps: CaptureSteps): CaptureSteps => ({
-  ...steps,
-  pickedReadAt: null,
-  disputedReadingId: null,
-  dateConfirmed: null,
-  dateOpened: false,
-});
+export const ledgerMoved = (code: string | undefined): boolean => code !== undefined && LEDGER_MOVED.has(code);
 
-/** Read earlier, from the dispute fork: the estimate's date when the ledger names one, else the picker opens. */
-export const stepsAfterReadEarlier = (steps: CaptureSteps, estimate: WireReadAtEstimate | undefined): CaptureSteps =>
-  estimate && namesReadAt(estimate)
-    ? { ...steps, pickedReadAt: new Date(estimate.readAt) }
-    : { ...steps, dateOpened: true };
+/** Everything that moves the wizard's steps: the person's answers, and a refusal from the server. */
+export type CaptureStepAction =
+  /** Today or Earlier chosen: the hours stay, the date is asked again. */
+  | { type: 'when'; when: CaptureWhen }
+  /** The hours changed: a pick, a dispute and a confirmation all belonged to the hours they were for. */
+  | { type: 'value-edited' }
+  /** Under Today, the date line tapped, so its picker shows. */
+  | { type: 'date-opened' }
+  /** A date picked, or cleared so the estimate stands again. */
+  | { type: 'date-picked'; readAt: Date | null }
+  /** The picker shows a date it cannot name yet: Date looks good must be pressed again. */
+  | { type: 'date-unconfirmed' }
+  /** Date looks good, over the verdict on screen. */
+  | { type: 'date-confirmed'; verdict: CaptureFormVerdict }
+  /** Read earlier, from the dispute fork: the estimate's date when the ledger names one, else the picker opens. */
+  | { type: 'read-earlier'; estimate: WireReadAtEstimate | undefined }
+  | { type: 'dispute'; readingId: string | null }
+  /** The server refused: a proposed Read At reopens the date step on it, and a moved ledger drops the dispute. */
+  | { type: 'refused'; code: string | undefined; proposal: WireReadAtEstimate | null | undefined }
+  /** The form closed or saved: every step is asked again. */
+  | { type: 'reset' };
 
-/** A refusal that proposes a Read At reopens the date step on it; nothing is saved until the next Save. */
-export const stepsAfterRefusal = (
-  steps: CaptureSteps,
-  proposal: WireReadAtEstimate | null | undefined,
-): CaptureSteps =>
-  proposal && namesReadAt(proposal)
-    ? { ...steps, pickedReadAt: new Date(proposal.readAt), dateConfirmed: null }
-    : steps;
+/** The one table of step changes; both clients hold `CaptureSteps` under it and nothing else. */
+export function captureStepsReducer(steps: CaptureSteps, action: CaptureStepAction): CaptureSteps {
+  switch (action.type) {
+    case 'when':
+      return { ...steps, when: action.when, dateConfirmed: null };
+    case 'value-edited':
+      return { ...steps, pickedReadAt: null, disputedReadingId: null, dateConfirmed: null, dateOpened: false };
+    case 'date-opened':
+      return { ...steps, dateOpened: true };
+    case 'date-picked':
+      return { ...steps, pickedReadAt: action.readAt };
+    case 'date-unconfirmed':
+      return { ...steps, dateConfirmed: null };
+    case 'date-confirmed':
+      return { ...steps, dateConfirmed: confirmCaptureDate(action.verdict) };
+    case 'read-earlier':
+      return action.estimate && namesReadAt(action.estimate)
+        ? { ...steps, pickedReadAt: new Date(action.estimate.readAt) }
+        : { ...steps, dateOpened: true };
+    case 'dispute':
+      return { ...steps, disputedReadingId: action.readingId };
+    case 'refused':
+      return {
+        ...steps,
+        ...(ledgerMoved(action.code) ? { disputedReadingId: null } : {}),
+        ...(action.proposal && namesReadAt(action.proposal)
+          ? { pickedReadAt: new Date(action.proposal.readAt), dateConfirmed: null }
+          : {}),
+      };
+    case 'reset':
+      return CAPTURE_STEPS_START;
+  }
+}
 
 /** The request fields a form posts; the client adds where it lands and when. */
 export type CaptureRequest = Pick<
@@ -548,49 +580,46 @@ export type CaptureRequest = Pick<
 
 export type CaptureStep = 'when' | 'hours' | 'date' | 'details';
 
-export type CaptureDateWarning = 'outside-today' | 'over-a-week';
-
 /** The fork over a human latest the hours fall below, while it is offered or the dispute is confirmed. */
 export type CaptureDispute = { sentence: string; readingId: string; confirmed: boolean };
 
 /** Where the date step's date came from: a pick only when it differs from the estimate. */
 export type CaptureDateSource = 'now' | 'estimate' | 'picked';
 
+/** What the person answered along the way, as the phone's `reading captured` records it. */
+export type CaptureAnswers = { when: CaptureWhen; estimateKind: WireReadAtEstimate['kind']; dateEdited: boolean };
+
+/** Step 3, once the estimate allows it. */
+export type CaptureDateStep = {
+  /** The date the form will post: the pick, else the estimate, else now (null). */
+  readAt: Date | null;
+  source: CaptureDateSource;
+  /** The date as the step shows it: "Read on … per John Deere", "Read about …", "Read on …", "Read now". */
+  line: string;
+  locked: boolean;
+  /** The picker shows: never on a locked date, from the start under Earlier, once tapped under Today. */
+  open: boolean;
+  /** Under Today no date shows yet: the fork decides it, unless the picker is open. */
+  awaitsFork: boolean;
+  /** One sentence per warning: outside today only under Today, over a week ago whichever was chosen. */
+  warningLines: string[];
+  /** Below a human latest: the fork, until the person reads earlier; confirmed once they dispute. */
+  dispute: CaptureDispute | null;
+  futureReadAt: boolean;
+  /** Date looks good may be pressed: no fork waits and the date is not still to come. */
+  confirmable: boolean;
+};
+
 export type CaptureFormVerdict = {
   step: CaptureStep;
   parsed: number | null;
   /** The line under the hours input, once there is an estimate: its sentence, or the impossible sentence. */
   estimateLine: string | null;
-  /** Step 3, once the estimate allows it. */
-  date: {
-    /** The date the form will post: the pick, else the estimate, else now (null). */
-    readAt: Date | null;
-    source: CaptureDateSource;
-    /** The date as the step shows it: "Read on … per John Deere", "Read about …", "Read on …", "Read now". */
-    line: string;
-    locked: boolean;
-    /** The picker shows: never on a locked date, from the start under Earlier, once tapped under Today. */
-    open: boolean;
-    /** Under Today no date shows yet: the fork decides it, unless the picker is open. */
-    awaitsFork: boolean;
-    warnings: CaptureDateWarning[];
-    /** Each warning's sentence, in the same order. */
-    warningLines: string[];
-    /** Below a human latest: the person must pick Read earlier or dispute. */
-    disputeOffered: boolean;
-    dispute: CaptureDispute | null;
-    /** Date looks good may be pressed: no dispute waits and the date is not still to come. */
-    confirmable: boolean;
-  } | null;
-  below: boolean;
-  /** Below a human latest, which the person may dispute; below a Telematics Reading only Read At can fix it. */
-  disputable: boolean;
-  disputeConfirmed: boolean;
-  futureReadAt: boolean;
-  /** Save waits on the person: every step before the details. */
-  awaitingPerson: boolean;
+  date: CaptureDateStep | null;
   /** Null until the details step; then the request the client posts. */
   request: CaptureRequest | null;
+  /** Null exactly when `request` is. */
+  answers: CaptureAnswers | null;
 };
 
 export const CAPTURE_VALUE_INVALID = 'Enter a non-negative value with at most one decimal place.';
@@ -601,107 +630,122 @@ export function parseCaptureValue(typed: string): number | null {
   return value?.success ? value.data : null;
 }
 
-/**
- * The value half of a capture form: whether it is below the latest, whether that latest may be disputed, and whether
- * the dispute is confirmed. A Read At before the latest's is never judged here: only the server knows its neighbours,
- * so the form posts and shows its sentence.
- */
-function captureValueVerdict(
-  latest: CaptureFormWorld['latest'],
-  parsed: number | null,
-  disputedReadingId: string | null,
-  readAt: Date | null,
-) {
-  const backdated = !!latest && readAt !== null && readAt.getTime() < Date.parse(latest.capturedAt);
-  const below = parsed !== null && !backdated && captureIsBelowLatest(parsed, latest ?? null);
-  // A Telematics Reading is beyond dispute: below one, the only fix is Read At.
-  const disputable = below && !latest?.telematicsProvider;
-  return { below, disputable, disputeConfirmed: disputable && disputedReadingId === latest?.id };
-}
-
 const sameInstant = (left: Date | null, right: Date | null) => (left?.getTime() ?? null) === (right?.getTime() ?? null);
 
 /**
+ * The date step for a reading of `parsed` hours with its `estimate`. Below a human latest the guess waits for the person
+ * to say the meter was read earlier or that the latest is wrong; below a Telematics Reading only a Read At can fix it,
+ * so the guess stands. A date before the latest's Read At answers to its neighbours, which only the server knows, so no
+ * dispute is offered on one.
+ */
+function captureDateStep(
+  world: CaptureFormWorld,
+  draft: CaptureDraft,
+  parsed: number,
+  estimate: Exclude<WireReadAtEstimate, { kind: 'impossible' }>,
+): { date: CaptureDateStep; disputeConfirmed: boolean } {
+  const latest = world.latest ?? null;
+  const estimated = namesReadAt(estimate) ? new Date(estimate.readAt) : null;
+  const locked = estimate.kind === 'telematics';
+  const belowHuman = latest !== null && !latest.telematicsProvider && parsed < latest.value;
+  const readAt = locked ? estimated : (draft.pickedReadAt ?? (belowHuman ? null : estimated));
+  const backdated = latest !== null && readAt !== null && readAt.getTime() < Date.parse(latest.capturedAt);
+  const disputing = belowHuman && !backdated;
+  const disputeConfirmed = disputing && draft.disputedReadingId === latest.id;
+  const disputeOffered = disputing && !disputeConfirmed;
+  const source: CaptureDateSource = readAt === null ? 'now' : sameInstant(readAt, estimated) ? 'estimate' : 'picked';
+  const open = !locked && (draft.when === 'earlier' || draft.dateOpened);
+  const futureReadAt = readAt !== null && isFutureReadAt(readAt, world.now);
+  return {
+    date: {
+      readAt,
+      source,
+      line:
+        readAt === null
+          ? 'Read now'
+          : source === 'estimate'
+            ? estimateSentence(estimate)
+            : `Read on ${formatDate(readAt, 'medium')}`,
+      locked,
+      open,
+      awaitsFork: disputeOffered && !open,
+      warningLines: [
+        ...(readAt && draft.when === 'today' && toPlantDateOnly(readAt) !== toPlantDateOnly(world.now)
+          ? [outsideTodaySentence(readAt)]
+          : []),
+        ...(readAt && isOverAWeekAgo(readAt, world.now) ? [overAWeekSentence(readAt)] : []),
+      ],
+      dispute: disputing
+        ? { sentence: belowLatestSentence(latest), readingId: latest.id, confirmed: disputeConfirmed }
+        : null,
+      futureReadAt,
+      confirmable: !disputeOffered && !futureReadAt,
+    },
+    disputeConfirmed,
+  };
+}
+
+/**
  * The capture wizard: which step it is on, what the date step shows, and the request it posts once the person has
- * vouched for the date. Below a human latest the guess waits for the person to say the meter was read earlier or
- * that the latest is wrong. The server's `judgeCapture` stays the safety net.
+ * vouched for the date. The server's `judgeCapture` stays the safety net.
  */
 export function deriveCaptureForm(world: CaptureFormWorld, draft: CaptureDraft): CaptureFormVerdict {
   const parsed = parseCaptureValue(draft.value);
-  const latest = world.latest ?? null;
   const estimate = parsed === null ? undefined : draft.estimate;
-  const estimated = estimate && namesReadAt(estimate) ? new Date(estimate.readAt) : null;
-  const locked = estimate?.kind === 'telematics';
-  const belowHumanLatest = parsed !== null && !!latest && !latest.telematicsProvider && parsed < latest.value;
-  const readAt = locked ? estimated : (draft.pickedReadAt ?? (belowHumanLatest ? null : estimated));
-  const { below, disputable, disputeConfirmed } = captureValueVerdict(latest, parsed, draft.disputedReadingId, readAt);
-  const futureReadAt = readAt !== null && isFutureReadAt(readAt, world.now);
-  const disputeOffered = below && disputable && !disputeConfirmed;
-  const warnings: CaptureDateWarning[] = [
-    ...(draft.when === 'today' && toPlantDateOnly(readAt ?? world.now) !== toPlantDateOnly(world.now)
-      ? (['outside-today'] as const)
-      : []),
-    ...(readAt && isOverAWeekAgo(readAt, world.now) ? (['over-a-week'] as const) : []),
-  ];
-  const source: CaptureDateSource = readAt === null ? 'now' : sameInstant(readAt, estimated) ? 'estimate' : 'picked';
-  const open = !locked && (draft.when === 'earlier' || draft.dateOpened);
-  const date =
-    draft.when !== null && estimate !== undefined && estimate.kind !== 'impossible'
-      ? {
-          readAt,
-          source,
-          line:
-            readAt === null
-              ? 'Read now'
-              : source === 'estimate'
-                ? estimateSentence(estimate)
-                : `Read on ${formatDate(readAt, 'medium')}`,
-          locked,
-          open,
-          awaitsFork: disputeOffered && !open,
-          warnings,
-          warningLines: warnings.map((warning) =>
-            warning === 'outside-today'
-              ? outsideTodaySentence(readAt ?? world.now)
-              : overAWeekSentence(readAt ?? world.now),
-          ),
-          disputeOffered,
-          dispute:
-            latest && (disputeOffered || disputeConfirmed)
-              ? { sentence: belowLatestSentence(latest), readingId: latest.id, confirmed: disputeConfirmed }
-              : null,
-          confirmable: !disputeOffered && !futureReadAt,
-        }
+  const asked =
+    draft.when !== null && parsed !== null && estimate !== undefined && estimate.kind !== 'impossible'
+      ? { when: draft.when, parsed, estimate }
       : null;
+  const dated = asked ? captureDateStep(world, draft, asked.parsed, asked.estimate) : null;
   const confirmed =
-    parsed !== null && draft.dateConfirmed?.value === parsed && sameInstant(draft.dateConfirmed.readAt, readAt);
+    parsed !== null &&
+    draft.dateConfirmed?.value === parsed &&
+    sameInstant(draft.dateConfirmed.readAt, dated?.date.readAt ?? null);
   const step: CaptureStep =
-    draft.when === null ? 'when' : !date ? 'hours' : date.confirmable && confirmed ? 'details' : 'date';
+    draft.when === null ? 'when' : !dated ? 'hours' : dated.date.confirmable && confirmed ? 'details' : 'date';
+  const ready = step === 'details' && asked && dated ? { ...asked, ...dated } : null;
   return {
     step,
     parsed,
     estimateLine: estimate ? estimateSentence(estimate) : null,
-    date,
-    below,
-    disputable,
-    disputeConfirmed,
-    futureReadAt,
-    awaitingPerson: step !== 'details',
-    request:
-      step === 'details' && parsed !== null
-        ? {
-            role: draft.role,
-            value: parsed,
-            comment: draft.comment.trim() || null,
-            disputePrevious: disputeConfirmed,
-            // Name the latest only once it is known; the server then refuses a capture judged against an older one.
-            ...(world.latest !== undefined ? { expectedPreviousId: latest?.id ?? null } : {}),
-            ...(draft.stintOverrides ? { stintOverrides: draft.stintOverrides } : {}),
-          }
-        : null,
+    date: dated?.date ?? null,
+    request: ready
+      ? {
+          role: draft.role,
+          value: ready.parsed,
+          comment: draft.comment.trim() || null,
+          disputePrevious: ready.disputeConfirmed,
+          // Name the latest only once it is known; the server then refuses a capture judged against an older one.
+          ...(world.latest !== undefined ? { expectedPreviousId: world.latest?.id ?? null } : {}),
+          ...(draft.stintOverrides ? { stintOverrides: draft.stintOverrides } : {}),
+        }
+      : null,
+    answers: ready
+      ? { when: ready.when, estimateKind: ready.estimate.kind, dateEdited: ready.date.source === 'picked' }
+      : null,
   };
 }
 
 /** Date looks good: the hours and the date the form shows, vouched for together. */
 export const confirmCaptureDate = (verdict: CaptureFormVerdict): CaptureDateConfirmation | null =>
   verdict.parsed !== null && verdict.date?.confirmable ? { value: verdict.parsed, readAt: verdict.date.readAt } : null;
+
+export const ESTIMATE_DEBOUNCE_MS = 300;
+export const ESTIMATE_STALE_MS = 30_000;
+
+/**
+ * The estimate a form shows for the hours on screen: the answer only once it is for `value`, which `asked` reached
+ * when typing stopped, so a value still being typed never borrows the last one's date.
+ */
+export function estimateOnScreen<TError>(
+  value: number | null,
+  asked: number | null,
+  answer: { estimate: WireReadAtEstimate | undefined; fetching: boolean; error: TError | null },
+) {
+  const current = value !== null && asked === value;
+  return {
+    estimate: current ? answer.estimate : undefined,
+    working: value !== null && (!current || answer.fetching),
+    error: current ? answer.error : null,
+  };
+}

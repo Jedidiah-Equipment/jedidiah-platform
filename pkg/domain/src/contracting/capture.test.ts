@@ -13,6 +13,7 @@ import {
   captureCrossesServiceDueSoon,
   captureIsBelowLatest,
   captureRefusals,
+  captureStepsReducer,
   confirmCaptureDate,
   deriveCaptureForm,
   type EstimateFacts,
@@ -22,10 +23,6 @@ import {
   estimateSentence,
   judgeCapture,
   proposesReadAt,
-  stepsAfterReadEarlier,
-  stepsAfterRefusal,
-  stepsAfterValueEdit,
-  stepsAfterWhen,
 } from './capture.js';
 import { FUTURE_READ_AT_TOLERANCE_MS, isFutureReadAt } from './read-at.js';
 
@@ -579,13 +576,12 @@ describe('deriveCaptureForm', () => {
     expect(deriveCaptureForm(formWorld(), draft())).toMatchObject({
       step: 'date',
       estimateLine: 'Read now',
-      date: { readAt: null, locked: false, warnings: [], confirmable: true },
-      awaitingPerson: true,
+      date: { readAt: null, locked: false, warningLines: [], confirmable: true },
       request: null,
+      answers: null,
     });
     expect(deriveCaptureForm(formWorld(), confirmed(draft({ comment: '  Gate open  ' })))).toMatchObject({
       step: 'details',
-      awaitingPerson: false,
       request: {
         role: 'arrival',
         value: 120,
@@ -593,6 +589,7 @@ describe('deriveCaptureForm', () => {
         disputePrevious: false,
         expectedPreviousId: 'latest',
       },
+      answers: { when: 'today', estimateKind: 'now', dateEdited: false },
     });
   });
 
@@ -609,16 +606,20 @@ describe('deriveCaptureForm', () => {
   test('re-asks for the date when the hours or Today / Earlier change', () => {
     const done = confirmed(draft());
     expect(deriveCaptureForm(formWorld(), { ...done, value: '121' }).step).toBe('date');
-    expect(deriveCaptureForm(formWorld(), { ...done, ...stepsAfterWhen(done, 'earlier') }).step).toBe('date');
+    expect(
+      deriveCaptureForm(formWorld(), { ...done, ...captureStepsReducer(done, { type: 'when', when: 'earlier' }) }).step,
+    ).toBe('date');
     const picked = confirmed(draft({ value: '90', pickedReadAt: aDayAgo, disputedReadingId: 'latest' }));
-    expect(stepsAfterValueEdit(picked)).toMatchObject({ ...CAPTURE_STEPS_START, when: 'today' });
+    expect(captureStepsReducer(picked, { type: 'value-edited' })).toMatchObject({
+      ...CAPTURE_STEPS_START,
+      when: 'today',
+    });
   });
 
   test('locks a John Deere date, ignoring a pick, and posts it once confirmed', () => {
     const given = draft({ value: '90', estimate: deere(aDayAgo), pickedReadAt: anHourAgo });
     expect(deriveCaptureForm(formWorld(), given)).toMatchObject({
-      date: { readAt: aDayAgo, locked: true, open: false, disputeOffered: false, dispute: null },
-      below: false,
+      date: { readAt: aDayAgo, locked: true, open: false, dispute: null },
     });
     expect(deriveCaptureForm(formWorld(), { ...given, when: 'earlier' }).date?.open).toBe(false);
     expect(deriveCaptureForm(formWorld(), confirmed(given))).toMatchObject({ step: 'details', request: { value: 90 } });
@@ -653,20 +654,21 @@ describe('deriveCaptureForm', () => {
       date: {
         readAt: null,
         line: 'Read now',
-        disputeOffered: true,
         awaitsFork: true,
         dispute: { readingId: 'latest', confirmed: false },
         confirmable: false,
       },
     });
-    const readEarlier = { ...below, ...stepsAfterReadEarlier(below, below.estimate) };
+    const readEarlier = { ...below, ...captureStepsReducer(below, { type: 'read-earlier', estimate: below.estimate }) };
     expect(deriveCaptureForm(formWorld(), readEarlier).date).toMatchObject({
       readAt: aDayAgo,
       source: 'estimate',
-      disputeOffered: false,
       dispute: null,
     });
-    expect(stepsAfterReadEarlier(below, { kind: 'none' })).toMatchObject({ pickedReadAt: null, dateOpened: true });
+    expect(captureStepsReducer(below, { type: 'read-earlier', estimate: { kind: 'none' } })).toMatchObject({
+      pickedReadAt: null,
+      dateOpened: true,
+    });
     const disputed = confirmed({ ...below, disputedReadingId: 'latest' });
     expect(deriveCaptureForm(formWorld(), disputed)).toMatchObject({
       step: 'details',
@@ -681,30 +683,43 @@ describe('deriveCaptureForm', () => {
     const deereLatest = formWorld({
       latest: { id: 'deere', value: 100, capturedAt: anHourAgo.toISOString(), telematicsProvider: 'john-deere' },
     });
-    expect(deriveCaptureForm(deereLatest, yesterday).date).toMatchObject({
-      warnings: ['outside-today'],
-      warningLines: [`This reading looks like it was read on ${formatDate(aDayAgo, 'short')}, not today.`],
-    });
-    expect(deriveCaptureForm(deereLatest, { ...yesterday, when: 'earlier' }).date?.warnings).toEqual([]);
+    expect(deriveCaptureForm(deereLatest, yesterday).date?.warningLines).toEqual([
+      `This reading looks like it was read on ${formatDate(aDayAgo, 'short')}, not today.`,
+    ]);
+    expect(deriveCaptureForm(deereLatest, { ...yesterday, when: 'earlier' }).date?.warningLines).toEqual([]);
     const lastMonth = new Date('2026-09-09T08:00:00Z');
     expect(
-      deriveCaptureForm(deereLatest, { ...yesterday, when: 'earlier', pickedReadAt: lastMonth }).date?.warnings,
-    ).toEqual(['over-a-week']);
+      deriveCaptureForm(deereLatest, { ...yesterday, when: 'earlier', pickedReadAt: lastMonth }).date?.warningLines,
+    ).toEqual([
+      `Please check the hours: this reading would be from ${formatDate(lastMonth, 'medium')}, over a week ago.`,
+    ]);
   });
 
   test('holds Date looks good on a date still to come', () => {
     const future = draft({ pickedReadAt: new Date('2026-10-09T08:00:01Z') });
-    expect(deriveCaptureForm(formWorld(), future)).toMatchObject({
-      futureReadAt: true,
-      date: { confirmable: false },
-    });
+    expect(deriveCaptureForm(formWorld(), future).date).toMatchObject({ futureReadAt: true, confirmable: false });
     expect(confirmCaptureDate(deriveCaptureForm(formWorld(), future))).toBeNull();
   });
 
-  test('reopens the date on a refusal that proposes a Read At, and on nothing else', () => {
+  test('reopens the date on a refusal that proposes a Read At, and drops the dispute when the ledger moved', () => {
+    const done = confirmed(draft({ disputedReadingId: 'latest' }));
+    expect(
+      captureStepsReducer(done, { type: 'refused', code: 'reading.below_latest', proposal: guess(aDayAgo) }),
+    ).toMatchObject({ pickedReadAt: aDayAgo, dateConfirmed: null, disputedReadingId: null });
+    expect(captureStepsReducer(done, { type: 'refused', code: 'reading.forbidden', proposal: undefined })).toEqual(
+      done,
+    );
+  });
+
+  test('withdraws Date looks good while the picker names no date, and takes it again from the verdict', () => {
     const done = confirmed(draft());
-    expect(stepsAfterRefusal(done, guess(aDayAgo))).toMatchObject({ pickedReadAt: aDayAgo, dateConfirmed: null });
-    expect(stepsAfterRefusal(done, undefined)).toBe(done);
+    const withdrawn = captureStepsReducer(done, { type: 'date-unconfirmed' });
+    expect(deriveCaptureForm(formWorld(), { ...done, ...withdrawn }).step).toBe('date');
+    const again = captureStepsReducer(withdrawn, {
+      type: 'date-confirmed',
+      verdict: deriveCaptureForm(formWorld(), { ...done, ...withdrawn }),
+    });
+    expect(again.dateConfirmed).toEqual(done.dateConfirmed);
   });
 
   test('names the latest only once it is known, and an empty ledger as null', () => {

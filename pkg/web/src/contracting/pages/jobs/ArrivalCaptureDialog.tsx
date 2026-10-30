@@ -48,9 +48,7 @@ export function ArrivalCaptureDialog({ stint, onClose }: { stint: Assignment | n
         }
       }}
       title={<MachineDialogTitle machine={stint}>Capture arrival</MachineDialogTitle>}
-      contentClassName="sm:max-w-md"
-      submitLabel="Save reading"
-      showSubmit={capture.verdict.step === 'details'}
+      {...capture.dialogProps}
       defaultValues={{
         comment: '',
         implementId: opened?.implementId ?? '',
@@ -59,73 +57,65 @@ export function ArrivalCaptureDialog({ stint, onClose }: { stint: Assignment | n
       validator={ArrivalValues}
       canSubmit={canCapture}
       onBeforeCreate={canCapture}
-      onCreate={async (values) => {
-        await capture.submit(values);
-        return true;
-      }}
       onCreated={() => {
         capture.reset();
         onClose();
       }}
     >
       {(form) => (
-        <>
-          <CaptureWizard capture={capture}>
-            <form.AppField name="comment">
-              {(field) => <field.TextareaField label="Comment (optional)" />}
-            </form.AppField>
-            <form.Subscribe
-              selector={(state) => ({ implementId: state.values.implementId, driverUserId: state.values.driverUserId })}
-            >
-              {({ implementId, driverUserId }) => {
-                const selectedImplement = options.implementOptions.find((entry) => entry.value === implementId);
-                const implementLabel = selectedImplement?.label ?? 'No implement';
-                const driverLabel =
-                  options.driverOptions.find((entry) => entry.value === driverUserId)?.label ?? 'No driver';
-                return (
-                  <Card className="bg-muted/30" size="sm">
-                    <CardHeader>
-                      <CardTitle>Starting assignment</CardTitle>
-                      <CardAction>
-                        {stint ? (
-                          <AssignmentEditorDialog
-                            stint={{ ...stint, implementId: implementId || null, driverUserId: driverUserId || null }}
-                            implementOptions={options.implementOptions}
-                            driverOptions={options.driverOptions}
-                            canSave={options.ready}
-                            error={options.error}
-                            submitLabel="Apply"
-                            onSave={async (draft) => {
-                              form.setFieldValue('implementId', draft.implementId);
-                              form.setFieldValue('driverUserId', draft.driverUserId);
-                            }}
-                          />
-                        ) : null}
-                      </CardAction>
-                    </CardHeader>
-                    <CardContent className="grid grid-cols-2 gap-3">
-                      <div className="min-w-0 space-y-2">
-                        <span className="block text-xs text-muted-foreground">Implement</span>
-                        <span className="flex min-h-6 items-center gap-2">
-                          {selectedImplement?.icon}
-                          <span className="truncate" title={implementLabel}>
-                            {implementLabel}
-                          </span>
+        <CaptureWizard capture={capture}>
+          <form.AppField name="comment">{(field) => <field.TextareaField label="Comment (optional)" />}</form.AppField>
+          <form.Subscribe
+            selector={(state) => ({ implementId: state.values.implementId, driverUserId: state.values.driverUserId })}
+          >
+            {({ implementId, driverUserId }) => {
+              const selectedImplement = options.implementOptions.find((entry) => entry.value === implementId);
+              const implementLabel = selectedImplement?.label ?? 'No implement';
+              const driverLabel =
+                options.driverOptions.find((entry) => entry.value === driverUserId)?.label ?? 'No driver';
+              return (
+                <Card className="bg-muted/30" size="sm">
+                  <CardHeader>
+                    <CardTitle>Starting assignment</CardTitle>
+                    <CardAction>
+                      {stint ? (
+                        <AssignmentEditorDialog
+                          stint={{ ...stint, implementId: implementId || null, driverUserId: driverUserId || null }}
+                          implementOptions={options.implementOptions}
+                          driverOptions={options.driverOptions}
+                          canSave={options.ready}
+                          error={options.error}
+                          submitLabel="Apply"
+                          onSave={async (draft) => {
+                            form.setFieldValue('implementId', draft.implementId);
+                            form.setFieldValue('driverUserId', draft.driverUserId);
+                          }}
+                        />
+                      ) : null}
+                    </CardAction>
+                  </CardHeader>
+                  <CardContent className="grid grid-cols-2 gap-3">
+                    <div className="min-w-0 space-y-2">
+                      <span className="block text-xs text-muted-foreground">Implement</span>
+                      <span className="flex min-h-6 items-center gap-2">
+                        {selectedImplement?.icon}
+                        <span className="truncate" title={implementLabel}>
+                          {implementLabel}
                         </span>
-                      </div>
-                      <div className="min-w-0 space-y-2">
-                        <span className="block text-xs text-muted-foreground">Driver</span>
-                        <span className="flex min-h-6 items-center truncate" title={driverLabel}>
-                          {driverLabel}
-                        </span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              }}
-            </form.Subscribe>
-          </CaptureWizard>
-        </>
+                      </span>
+                    </div>
+                    <div className="min-w-0 space-y-2">
+                      <span className="block text-xs text-muted-foreground">Driver</span>
+                      <span className="flex min-h-6 items-center truncate" title={driverLabel}>
+                        {driverLabel}
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            }}
+          </form.Subscribe>
+        </CaptureWizard>
       )}
     </CreateEntityDialog>
   );

@@ -42,7 +42,7 @@ import {
   ReadingAmendInput,
   ReadingCaptureInput,
 } from '@pkg/schema/contracting';
-import { and, asc, eq, getTableColumns, gt, inArray, isNotNull, lte, or, sql } from 'drizzle-orm';
+import { and, asc, eq, getTableColumns, gt, inArray, isNotNull, lte, or } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { recordAuditCreate } from '../../audit/audit-writer.js';
 import { reopenPricingWithin } from '../jobs/pricing-service.js';
@@ -56,7 +56,7 @@ import {
   ReadingError,
   withCaptureConstraints,
 } from './reading-errors.js';
-import { newestFirst, oldestFirst } from './reading-sql.js';
+import { afterInLedger, newestFirst, oldestFirst } from './reading-sql.js';
 import { readingToWire } from './reading-wire.js';
 
 const isTelematics = eq(contractingHourReadings.method, 'telematics');
@@ -200,7 +200,10 @@ export async function captureReading({
         // Only a value refusal proposes a Read At, so only one reads the readings bracketing the value.
         const estimate = proposesReadAt(judgement.rule)
           ? estimateReadAt(input.value, {
-              ...(await estimateFacts(tx, input, earliestReadAtFor(input.role, world))),
+              ...(await estimateFacts(tx, input, {
+                latest: latest ? toNeighbour(latest) : null,
+                notBefore: earliestReadAtFor(input.role, world),
+              })),
               now,
             })
           : null;
@@ -271,73 +274,80 @@ export async function estimateReadAtFor({
 
 /**
  * What the estimate reads for one value: the latest, the last reading at or below the value with the first after it,
- * and the Read At stint order keeps the value after, unless a capture under the lock already knows it.
+ * and the Read At stint order keeps the value after. A capture under the lock already holds the first and the last.
  */
 async function estimateFacts(
   db: Db | DatabaseTransaction,
   input: Pick<ReadingCaptureInput, 'machineId' | 'role' | 'assignmentId' | 'value'>,
-  knownNotBefore?: Date | null,
+  known?: Pick<EstimateFacts, 'latest' | 'notBefore'>,
 ): Promise<Omit<EstimateFacts, 'now'>> {
   const onMachine = eq(contractingHourReadings.machineId, input.machineId);
-  const [[latest], [floor], [notBefore]] = await Promise.all([
-    db
-      .select()
-      .from(contractingHourReadings)
-      .where(onMachine)
-      .orderBy(...newestFirst)
-      .limit(1),
+  const [[latest], [floor], notBefore] = await Promise.all([
+    known
+      ? []
+      : db
+          .select()
+          .from(contractingHourReadings)
+          .where(onMachine)
+          .orderBy(...newestFirst)
+          .limit(1),
     db
       .select()
       .from(contractingHourReadings)
       .where(and(onMachine, lte(contractingHourReadings.value, input.value)))
       .orderBy(...newestFirst)
       .limit(1),
-    knownNotBefore !== undefined
-      ? [{ capturedAt: knownNotBefore }]
-      : input.role === 'arrival'
-        ? db
-            .select({ capturedAt: contractingHourReadings.capturedAt })
-            .from(contractingHourReadings)
-            .where(and(onMachine, eq(contractingHourReadings.role, 'departure')))
-            .orderBy(...newestFirst)
-            .limit(1)
-        : input.role === 'departure' && input.assignmentId
-          ? db
-              .select({ capturedAt: contractingHourReadings.capturedAt })
-              .from(contractingMachineAssignments)
-              .innerJoin(
-                contractingHourReadings,
-                eq(contractingHourReadings.id, contractingMachineAssignments.arrivalReadingId),
-              )
-              .where(
-                and(
-                  eq(contractingMachineAssignments.id, input.assignmentId),
-                  eq(contractingMachineAssignments.machineId, input.machineId),
-                ),
-              )
-          : [],
+    known ? known.notBefore : notBeforeFor(db, input),
   ]);
   const [ceiling] =
     floor && floor.value !== input.value
       ? await db
           .select()
           .from(contractingHourReadings)
-          .where(
-            and(
-              onMachine,
-              sql`(${contractingHourReadings.capturedAt}, ${contractingHourReadings.sequence}) > (${floor.capturedAt.toISOString()}::timestamptz, ${floor.sequence})`,
-            ),
-          )
+          .where(and(onMachine, afterInLedger(floor)))
           .orderBy(...oldestFirst)
           .limit(1)
       : [];
   return {
     role: input.role,
-    latest: latest ? toNeighbour(latest) : null,
+    latest: known ? known.latest : latest ? toNeighbour(latest) : null,
     floor: floor ? toEstimateNeighbour(floor) : null,
     ceiling: ceiling ? toEstimateNeighbour(ceiling) : null,
-    notBefore: notBefore?.capturedAt ?? null,
+    notBefore,
   };
+}
+
+/** The earliest Read At stint order allows: a departure's arrival, an arrival's last departure, null for a spot. */
+async function notBeforeFor(
+  db: Db | DatabaseTransaction,
+  input: Pick<ReadingCaptureInput, 'machineId' | 'role' | 'assignmentId'>,
+): Promise<Date | null> {
+  if (input.role === 'arrival') {
+    const [departure] = await db
+      .select({ capturedAt: contractingHourReadings.capturedAt })
+      .from(contractingHourReadings)
+      .where(and(eq(contractingHourReadings.machineId, input.machineId), eq(contractingHourReadings.role, 'departure')))
+      .orderBy(...newestFirst)
+      .limit(1);
+    return departure?.capturedAt ?? null;
+  }
+  if (input.role === 'departure' && input.assignmentId) {
+    const [arrival] = await db
+      .select({ capturedAt: contractingHourReadings.capturedAt })
+      .from(contractingMachineAssignments)
+      .innerJoin(
+        contractingHourReadings,
+        eq(contractingHourReadings.id, contractingMachineAssignments.arrivalReadingId),
+      )
+      .where(
+        and(
+          eq(contractingMachineAssignments.id, input.assignmentId),
+          eq(contractingMachineAssignments.machineId, input.machineId),
+        ),
+      );
+    return arrival?.capturedAt ?? null;
+  }
+  return null;
 }
 
 const toEstimateNeighbour = (row: Row) => ({ ...toNeighbour(row), createdAt: row.createdAt });

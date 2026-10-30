@@ -9,10 +9,7 @@ const DepartureValues = z.object({ comment: z.union([z.string().trim().length(0)
 type DepartureValues = z.infer<typeof DepartureValues>;
 
 export function DepartureCaptureDialog({ stint, onClose }: { stint: Assignment | null; onClose: () => void }) {
-  const capture = useReadingCapture({ role: 'departure', stint }, (values: DepartureValues) => ({
-    ...values,
-    stintOverrides: undefined,
-  }));
+  const capture = useReadingCapture<DepartureValues>({ role: 'departure', stint });
   const close = () => {
     capture.reset();
     onClose();
@@ -25,27 +22,15 @@ export function DepartureCaptureDialog({ stint, onClose }: { stint: Assignment |
         if (!open) close();
       }}
       title={<MachineDialogTitle machine={stint}>Capture departure</MachineDialogTitle>}
-      contentClassName="sm:max-w-md"
-      submitLabel="Save reading"
-      showSubmit={capture.verdict.step === 'details'}
+      {...capture.dialogProps}
       defaultValues={{ comment: '' }}
       validator={DepartureValues}
-      canSubmit={capture.canSubmit}
-      onBeforeCreate={capture.canSubmit}
-      onCreate={async (values) => {
-        await capture.submit(values);
-        return true;
-      }}
       onCreated={close}
     >
       {(form) => (
-        <>
-          <CaptureWizard capture={capture}>
-            <form.AppField name="comment">
-              {(field) => <field.TextareaField label="Comment (optional)" />}
-            </form.AppField>
-          </CaptureWizard>
-        </>
+        <CaptureWizard capture={capture}>
+          <form.AppField name="comment">{(field) => <field.TextareaField label="Comment (optional)" />}</form.AppField>
+        </CaptureWizard>
       )}
     </CreateEntityDialog>
   );

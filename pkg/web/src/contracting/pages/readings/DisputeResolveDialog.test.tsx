@@ -109,7 +109,7 @@ async function enter(name: string, value: string) {
   });
 }
 
-it('shows what John Deere reported and posts every reading of the Dispute under one reason', async () => {
+it('shows what John Deere reported and posts each reading it contradicted under one reason', async () => {
   const { onResolve, onResolved } = await mount();
   expect(document.body.textContent).toContain('John Deere reported 2 927.2 h at 27 Oct 2026, 10:09.');
   await enter('readings[0].readAt-time', '07:30');
@@ -131,7 +131,7 @@ it('marks the card the refusal names and shows its sentence', async () => {
   const sentence = '7.4 h of engine time cannot pass in 0.0 h of clock time since the arrival reading.';
   await mount({ message: sentence, data: { metadata: { readingId: departure.id } } });
   expect(document.body.textContent).toContain(sentence);
-  expect(
-    [...document.querySelectorAll('section[data-refused]')].map((card) => card.getAttribute('aria-label')),
-  ).toEqual(['Departure reading']);
+  expect([...document.querySelectorAll('[data-refused]')].map((card) => card.getAttribute('aria-label'))).toEqual([
+    'Departure reading',
+  ]);
 });

@@ -388,8 +388,13 @@ export function amendedLedger<T extends SequencedReading>(
     .sort(ledgerOrder);
 }
 
-/** Readings disputed on their own, with no pair: a Telematics Reading contradicted them. */
-function standaloneDisputes(readings: readonly AmendableReading[]): Set<string> {
+/**
+ * Readings disputed on their own, with no pair: a Telematics Reading contradicted them. An amendment clears one only
+ * when it names it, moved or not, so a Dispute's resolve always carries these.
+ */
+export function standaloneDisputes(
+  readings: readonly Pick<AmendableReading, 'id' | 'disputed' | 'disputedPreviousId'>[],
+): Set<string> {
   const disputedTargets = new Set(readings.flatMap((reading) => reading.disputedPreviousId ?? []));
   return new Set(
     readings

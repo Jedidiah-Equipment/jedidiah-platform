@@ -11,6 +11,7 @@ import { useState } from 'react';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
 import { Badge } from '@/components/ui/badge.js';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
 import { MeterPhotoPreview } from '@/contracting/components/MeterPhotoPreview.js';
 import { MeterPhoto, ReadingAiAssessment } from '@/contracting/components/readings/ReadingAiAssessment.js';
@@ -20,7 +21,13 @@ import {
   ReadingValueField,
 } from '@/contracting/components/readings/ReadingCaptureFields.js';
 import { cn } from '@/lib/utils.js';
-import { DisputeResolveValues, disputeResolveDefaults, refusedReadingId, toReadingAmendInput } from './types.js';
+import {
+  DisputeResolveValues,
+  disputeResolveDefaults,
+  refusedReadingId,
+  toReadingAmendInput,
+  unpostableReason,
+} from './types.js';
 
 const noDispute = { readings: [] };
 
@@ -53,6 +60,7 @@ export function DisputeResolveDialog({
         submitLabel="Resolve"
         defaultValues={disputeResolveDefaults(dispute ?? noDispute)}
         validator={DisputeResolveValues}
+        canSubmit={(values) => !!dispute && unpostableReason(values, dispute) === null}
         onCreate={(values) => (dispute ? onResolve(toReadingAmendInput(values, dispute)) : Promise.resolve())}
         onCreated={onResolved}
       >
@@ -69,69 +77,77 @@ export function DisputeResolveDialog({
               </p>
             ) : null}
             {dispute?.readings.map((reading, index) => (
-              <section
+              <Card
                 aria-label={`${readingRoleLabels[reading.role]} reading`}
-                className={cn(
-                  'space-y-2 rounded-lg border p-3',
-                  reading.id === refusedId && 'border-destructive ring-1 ring-destructive/40',
-                )}
+                className={cn(reading.id === refusedId && 'border-destructive ring-1 ring-destructive/40')}
                 data-refused={reading.id === refusedId || undefined}
                 key={reading.id}
+                role="group"
+                size="sm"
               >
-                <h3 className="flex flex-wrap items-center gap-x-1.5 text-sm">
-                  <span className="font-semibold">{readingRoleLabels[reading.role]}</span>
-                  {reading.stint ? (
-                    <>
-                      <span aria-hidden>·</span>
-                      <Link
-                        className="font-mono font-semibold hover:underline"
-                        params={{ code: reading.stint.jobNumber }}
-                        to="/contracting/jobs/$code"
+                <CardHeader>
+                  <CardTitle className="flex flex-wrap items-center gap-x-1.5">
+                    <span className="font-semibold">{readingRoleLabels[reading.role]}</span>
+                    {reading.stint ? (
+                      <>
+                        <span aria-hidden>·</span>
+                        <Link
+                          className="font-mono font-semibold hover:underline"
+                          params={{ code: reading.stint.jobNumber }}
+                          to="/contracting/jobs/$code"
+                        >
+                          {reading.stint.jobNumber}
+                        </Link>
+                        <span aria-hidden>·</span>
+                        <span className="text-muted-foreground">{stintWindowLabel(reading.stint)}</span>
+                      </>
+                    ) : null}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <ReadingCaptureCard
+                    previousLabel="Recorded reading"
+                    previousValue={reading.value}
+                    rows={
+                      <ReadingCaptureRow
+                        label="Recorded Read At"
+                        recorded={<span className="text-sm">{formatDate(reading.capturedAt, 'medium')}</span>}
                       >
-                        {reading.stint.jobNumber}
-                      </Link>
-                      <span aria-hidden>·</span>
-                      <span className="text-muted-foreground">{stintWindowLabel(reading.stint)}</span>
+                        <form.AppField name={`readings[${index}].readAt`}>
+                          {(field) => (
+                            <field.DateTimePickerField label="Corrected Read At" maxValue={getPlantDateNow()} />
+                          )}
+                        </form.AppField>
+                      </ReadingCaptureRow>
+                    }
+                  >
+                    <form.AppField name={`readings[${index}].value`}>
+                      {() => <ReadingValueField label="Corrected reading" />}
+                    </form.AppField>
+                  </ReadingCaptureCard>
+                  {reading.comment ? (
+                    <p className="border-l-2 pl-2.5 text-xs text-muted-foreground">
+                      <span className="font-medium text-foreground">Capture comment</span> · {reading.comment}
+                    </p>
+                  ) : null}
+                  {reading.photoBacked ? (
+                    <>
+                      <MeterPhoto className="h-40" onExpand={() => setPreviewId(reading.id)} reading={reading} />
+                      <ReadingAiAssessment canReverify reading={reading} />
                     </>
                   ) : null}
-                </h3>
-                <ReadingCaptureCard
-                  previousLabel="Recorded reading"
-                  previousValue={reading.value}
-                  rows={
-                    <ReadingCaptureRow
-                      label="Recorded Read At"
-                      recorded={<span className="text-sm">{formatDate(reading.capturedAt, 'medium')}</span>}
-                    >
-                      <form.AppField name={`readings[${index}].readAt`}>
-                        {(field) => (
-                          <field.DateTimePickerField label="Corrected Read At" maxValue={getPlantDateNow()} />
-                        )}
-                      </form.AppField>
-                    </ReadingCaptureRow>
-                  }
-                >
-                  <form.AppField name={`readings[${index}].value`}>
-                    {() => <ReadingValueField label="Corrected reading" />}
-                  </form.AppField>
-                </ReadingCaptureCard>
-                {reading.comment ? (
-                  <p className="border-l-2 pl-2.5 text-xs text-muted-foreground">
-                    <span className="font-medium text-foreground">Capture comment</span> · {reading.comment}
-                  </p>
-                ) : null}
-                {reading.photoBacked ? (
-                  <>
-                    <MeterPhoto className="h-40" onExpand={() => setPreviewId(reading.id)} reading={reading} />
-                    <ReadingAiAssessment canReverify reading={reading} />
-                  </>
-                ) : null}
-              </section>
+                </CardContent>
+              </Card>
             ))}
             <div className="space-y-4 border-t pt-4">
               <form.AppField name="reason">
                 {(field) => <field.TextareaField label="Resolution reason" />}
               </form.AppField>
+              {dispute ? (
+                <form.Subscribe selector={(state) => unpostableReason(state.values, dispute)}>
+                  {(reason) => (reason ? <p className="text-sm text-muted-foreground">{reason}</p> : null)}
+                </form.Subscribe>
+              ) : null}
               <ErrorMessage error={error} fallbackMessage="Unable to resolve the Dispute." />
             </div>
           </>

@@ -94,9 +94,11 @@ export const ReadingAmendment = z
   .object({ id: UUID, value: ReadingValue, capturedAt: z.iso.datetime({ offset: true }) })
   .strict();
 export type ReadingAmendment = z.infer<typeof ReadingAmendment>;
+/** The most readings one amend carries: the set is judged and written under the Machine lock. */
+export const READING_AMENDMENTS_MAX = 8;
 /** One reason over a set, so the Job page (one reading) and a Dispute (several) amend by one rule. */
 export const ReadingAmendInput = z
-  .object({ amendments: ReadingAmendment.array().min(1).max(8), reason: ReadingReason })
+  .object({ amendments: ReadingAmendment.array().min(1).max(READING_AMENDMENTS_MAX), reason: ReadingReason })
   .strict();
 export type ReadingAmendInput = z.infer<typeof ReadingAmendInput>;
 export const ReadingIdInput = z.object({ id: UUID });

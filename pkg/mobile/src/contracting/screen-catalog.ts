@@ -39,6 +39,10 @@ export const CONTRACTING_SCREEN_CATALOG = {
     name: '/contracting/workshop/report',
   },
   '(protected)/contracting/(tabs)/services/index.tsx': { business: 'contracting', name: '/contracting/services' },
+  '(protected)/contracting/(tabs)/services/[serviceId].tsx': {
+    business: 'contracting',
+    name: '/contracting/services/[serviceId]',
+  },
   '(protected)/contracting/(tabs)/services/machine/[machineId].tsx': {
     business: 'contracting',
     name: '/contracting/services/machine/[machineId]',

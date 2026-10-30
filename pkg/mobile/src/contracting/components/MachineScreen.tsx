@@ -1,14 +1,5 @@
 import { formatHours, getFirstName } from '@pkg/domain';
-import {
-  hoursToServiceLabel,
-  machineBusyWith,
-  machineServiceBadge,
-  readingProviderSuffix,
-  readingRoleLabels,
-  readingSourceLabel,
-  serviceDueNeedsAttention,
-  serviceDueStatusColorClassNames,
-} from '@pkg/domain/contracting';
+import { machineBusyWith, readingProviderSuffix, readingRoleLabels, readingSourceLabel } from '@pkg/domain/contracting';
 import type { FieldMachine, FieldReading } from '@pkg/schema/contracting';
 
 type BusyWith = { job: NonNullable<FieldMachine['busyOnJob']> | null; jobNumber: string };
@@ -25,19 +16,20 @@ import { SecondaryToolbar } from '@/components/TopToolbar';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { RefreshControl } from '@/components/ui/refresh-control';
-import { StatusBadge } from '@/components/ui/status-badge';
 import { Text } from '@/components/ui/text';
 import { useCanReadJobs } from '@/contracting/jobs/use-jobs';
 import { contractingStorageKey } from '@/contracting/lib/contracting-storage';
 import { useFleet, useMachineReadingPages } from '@/contracting/readings/use-fleet';
 import { BookServiceSheet } from '@/contracting/services/BookServiceSheet';
+import { MachineServiceCard } from '@/contracting/services/MachineServiceCard';
+import { serviceRecordHref } from '@/contracting/services/service-routes';
+import { useMachineOpenServices } from '@/contracting/services/use-services';
 import { BreakdownRow } from '@/contracting/workshop/BreakdownRow';
 import { useMachineBreakdowns } from '@/contracting/workshop/use-breakdowns';
 import { useSessionPermission } from '@/lib/auth-session';
 import { usePersistedState } from '@/lib/use-persisted-state';
 import { BreakdownIcon } from './BreakdownSubjectIcons';
 import { CategoryIcon } from './CategoryIcon';
-import { DetailRow } from './DetailRow';
 
 type MachineTab = 'details' | 'readings';
 const MACHINE_TABS: readonly SubTabOption<MachineTab>[] = [
@@ -54,54 +46,21 @@ function SectionTitle({ children }: { children: string }) {
   );
 }
 
-/**
- * Where the Machine stands against its dash sticker: the due status, the due point, what is left, and the interval,
- * then its Service history for whoever reads Service Records.
- */
-function ServiceCard({ machine }: { machine: FieldMachine }) {
-  const canReadServices = useSessionPermission('contracting_service:read');
-  const colours = serviceDueStatusColorClassNames[machine.serviceDueStatus];
-  const badge = machineServiceBadge(machine);
-  const remaining = machine.hoursToService;
-  const flagged = serviceDueNeedsAttention(machine.serviceDueStatus);
+/** The Machine's Service history, for whoever reads Service Records. */
+function ServiceHistoryLink({ machineId }: { machineId: string }) {
+  if (!useSessionPermission('contracting_service:read')) return null;
   return (
-    <View className="gap-3 rounded-xl border border-border bg-surface p-4">
-      <View className="flex-row">
-        <StatusBadge classNames={badge.colours} label={badge.label} />
-      </View>
-      <DetailRow label="Next service due">
-        <Text className="text-foreground" weight="semibold">
-          {machine.nextServiceDueHours === null ? 'Not set' : formatHours(machine.nextServiceDueHours)}
-        </Text>
-      </DetailRow>
-      {remaining !== null ? (
-        <DetailRow label="To service">
-          <Text className={flagged ? colours.text : 'text-foreground'} weight="semibold">
-            {hoursToServiceLabel(remaining)}
-          </Text>
-        </DetailRow>
-      ) : null}
-      <DetailRow label="Service interval">
-        <Text className="text-foreground" weight="semibold">
-          {machine.serviceIntervalHours === null ? 'Not set' : formatHours(machine.serviceIntervalHours)}
-        </Text>
-      </DetailRow>
-      {canReadServices ? (
-        <Pressable
-          accessibilityHint="Opens the Machine's services"
-          accessibilityRole="button"
-          className="flex-row items-center justify-between gap-3 border-t border-border pt-3 active:opacity-70"
-          onPress={() =>
-            router.push({ pathname: '/contracting/services/machine/[machineId]', params: { machineId: machine.id } })
-          }
-        >
-          <Text className="text-foreground" weight="semibold">
-            Service history
-          </Text>
-          <Icon className="text-muted-foreground" icon={IconChevronRight} size={16} />
-        </Pressable>
-      ) : null}
-    </View>
+    <Pressable
+      accessibilityHint="Opens the Machine's services"
+      accessibilityRole="button"
+      className="flex-row items-center justify-between gap-3 border-t border-border pt-3 active:opacity-70"
+      onPress={() => router.push({ pathname: '/contracting/services/machine/[machineId]', params: { machineId } })}
+    >
+      <Text className="text-foreground" weight="semibold">
+        Service history
+      </Text>
+      <Icon className="text-muted-foreground" icon={IconChevronRight} size={16} />
+    </Pressable>
   );
 }
 
@@ -203,6 +162,8 @@ export default function MachineScreen() {
   const canReport = useSessionPermission('contracting_breakdown:report');
   const canBook = useSessionPermission('contracting_service:update');
   const [booking, setBooking] = useState(false);
+  // Two open records on one Machine are not refused on the server; the newest start is the one in the workshop.
+  const bookedIn = useMachineOpenServices(machine).data?.items[0];
   const canReadBreakdowns = useSessionPermission('contracting_breakdown:read');
   const breakdowns = useMachineBreakdowns(id);
   const canOpenJobs = useCanReadJobs();
@@ -286,12 +247,17 @@ export default function MachineScreen() {
               ) : null}
               {canBook ? (
                 <View className="flex-1">
-                  <Button
-                    icon={IconCalendarPlus}
-                    title={machine.serviceBookedIn ? 'Booked in' : 'Book a service'}
-                    disabled={machine.serviceBookedIn}
-                    onPress={() => setBooking(true)}
-                  />
+                  {machine.serviceBookedIn ? (
+                    <Button
+                      icon={IconCalendarPlus}
+                      title="Booked in"
+                      trailingIcon={IconChevronRight}
+                      disabled={!bookedIn}
+                      onPress={() => bookedIn && router.push(serviceRecordHref(bookedIn.id))}
+                    />
+                  ) : (
+                    <Button icon={IconCalendarPlus} title="Book a service" onPress={() => setBooking(true)} />
+                  )}
                 </View>
               ) : null}
             </View>
@@ -299,7 +265,9 @@ export default function MachineScreen() {
           {machine ? (
             <>
               <SectionTitle>Service</SectionTitle>
-              <ServiceCard machine={machine} />
+              <MachineServiceCard machine={machine}>
+                <ServiceHistoryLink machineId={machine.id} />
+              </MachineServiceCard>
               {busy ? (
                 <>
                   <SectionTitle>Busy with</SectionTitle>

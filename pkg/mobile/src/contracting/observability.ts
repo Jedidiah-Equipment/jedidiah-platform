@@ -79,6 +79,14 @@ export const CONTRACTING_MUTATION_EVENTS = {
     event: 'service booked',
     properties: (variables) => pickRecordIds(variables, ['machineId', 'primaryMechanicUserId']),
   },
+  'contractingServices.patch': {
+    event: 'service updated',
+    properties: (variables) => pickRecordIds(variables, ['id', 'primaryMechanicUserId']),
+  },
+  'contractingServices.close': {
+    event: 'service closed',
+    properties: (variables) => pickRecordIds(variables, ['id', 'primaryMechanicUserId']),
+  },
 } satisfies MutationEventCatalog;
 
 /** Field Note events carry counts and flags only: a note's words and photos never reach analytics. */

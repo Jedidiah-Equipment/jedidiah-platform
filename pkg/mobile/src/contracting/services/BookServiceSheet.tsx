@@ -11,10 +11,9 @@ import { useAppForm } from '@/components/form';
 import { ModalSheet, SheetSubmitButton } from '@/components/ModalSheet';
 import { Text } from '@/components/ui/text';
 import { useAppToast } from '@/components/ui/toast';
-import { useMechanics } from '@/contracting/lib/use-mechanics';
 import { useFleet } from '@/contracting/readings/use-fleet';
 import { useBusyAction } from '@/lib/use-busy-action';
-import { useBookService } from './use-services';
+import { useServiceMechanicOptions, useServiceMutation } from './use-services';
 
 const BOOK_FAILED = 'Could not book the service. Check your connection and try again.';
 
@@ -31,9 +30,9 @@ export function BookServiceSheet({
   onBooked?: (record: ServiceRecord) => void;
   onClose: () => void;
 }) {
-  const mechanics = useMechanics('service');
+  const mechanicOptions = useServiceMechanicOptions();
   const fleet = useFleet();
-  const book = useBookService();
+  const book = useServiceMutation((services) => services.open);
   const showToast = useAppToast();
   const { busy, error, run } = useBusyAction();
   const bookable = (fleet.data ?? []).filter((machine) => !machine.serviceBookedIn);
@@ -58,7 +57,7 @@ export function BookServiceSheet({
   return (
     <ModalSheet
       title="Book a service"
-      subtitle="Book the Machine in. Close the service when it leaves the workshop."
+      subtitle="Book the Machine in. Close the service here when it leaves the workshop."
       error={error}
       footer={<SheetSubmitButton isSubmitting={busy} label="Book service" onPress={() => void form.handleSubmit()} />}
       // Held open until the booking and its refetch settle, so a reopened sheet cannot book the Machine in twice.
@@ -93,10 +92,7 @@ export function BookServiceSheet({
             placeholder="No Mechanic yet"
             searchPlaceholder="Search mechanics…"
             emptyMessage="No mechanics match."
-            options={[
-              { label: 'No Mechanic yet', value: '' },
-              ...(mechanics.data ?? []).map((mechanic) => ({ label: mechanic.name, value: mechanic.id })),
-            ]}
+            options={mechanicOptions}
           />
         )}
       </form.AppField>

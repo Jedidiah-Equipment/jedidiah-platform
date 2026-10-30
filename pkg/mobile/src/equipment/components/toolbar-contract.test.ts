@@ -30,6 +30,7 @@ const SIGNED_IN_ROUTE_TOOLBARS = {
   'contracting/(tabs)/machines/[id]/capture.tsx': toolbar('secondary', 'src/contracting/components/CaptureScreen.tsx'),
   'contracting/(tabs)/workshop/index.tsx': toolbar('main', 'src/contracting/workshop/WorkshopScreen.tsx'),
   'contracting/(tabs)/services/index.tsx': toolbar('main', 'src/contracting/services/ServicesScreen.tsx'),
+  'contracting/(tabs)/services/[serviceId].tsx': toolbar('secondary', 'src/contracting/services/ServiceScreen.tsx'),
   'contracting/(tabs)/services/machine/[machineId].tsx': toolbar(
     'secondary',
     'src/contracting/services/MachineServicesScreen.tsx',

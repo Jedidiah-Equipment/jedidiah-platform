@@ -1,11 +1,5 @@
 import { getPlantDateNow } from '@pkg/domain';
-import {
-  CAPTURE_VALUE_INVALID,
-  type CaptureDispute,
-  captureRefusals,
-  readAtFromPicker,
-  readAtInputValue,
-} from '@pkg/domain/contracting';
+import { CAPTURE_VALUE_INVALID, captureRefusals, readAtFromPicker, readAtInputValue } from '@pkg/domain/contracting';
 import type React from 'react';
 import { useId, useState } from 'react';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
@@ -16,15 +10,13 @@ import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from '@/
 import { ReadingCaptureCard } from './ReadingCaptureFields.js';
 import type { ReadingCapture } from './use-reading-capture.js';
 
-type WizardCapture = ReadingCapture<never>;
-
 const warningCard = 'space-y-3 rounded-lg border border-warning/45 bg-warning/10 p-3';
 
 /**
  * A capture as four steps, each shown once the one before it is answered: when the meter was read, the hours with the
  * date the ledger puts them at, that date to vouch for, and the dialog's own details. The server still judges Save.
  */
-export function CaptureWizard({ capture, children }: { capture: WizardCapture; children: React.ReactNode }) {
+export function CaptureWizard({ capture, children }: { capture: ReadingCapture; children: React.ReactNode }) {
   const { verdict } = capture;
   return (
     <div className="grid min-w-0 gap-4">
@@ -45,7 +37,7 @@ export function CaptureWizard({ capture, children }: { capture: WizardCapture; c
   );
 }
 
-function WhenButtons({ capture }: { capture: WizardCapture }) {
+function WhenButtons({ capture }: { capture: ReadingCapture }) {
   const heading = useId();
   const { when } = capture.steps;
   return (
@@ -71,7 +63,7 @@ function WhenButtons({ capture }: { capture: WizardCapture }) {
   );
 }
 
-function HoursStep({ capture }: { capture: WizardCapture }) {
+function HoursStep({ capture }: { capture: ReadingCapture }) {
   const id = useId();
   const { latest, latestQuery, estimateQuery, verdict } = capture;
   const invalid = capture.value.trim() !== '' && verdict.parsed === null;
@@ -118,7 +110,7 @@ function HoursStep({ capture }: { capture: WizardCapture }) {
   );
 }
 
-function DateStep({ capture }: { capture: WizardCapture }) {
+function DateStep({ capture }: { capture: ReadingCapture }) {
   const { verdict } = capture;
   const date = verdict.date;
   // What the picker shows while it names no whole time, so a half-typed time stays on screen.
@@ -126,7 +118,7 @@ function DateStep({ capture }: { capture: WizardCapture }) {
   if (!date) return null;
   return (
     <div className="space-y-3">
-      {date.awaitsFork ? null : date.locked ? (
+      {date.locked ? (
         <p className="text-sm font-medium">{date.line}</p>
       ) : date.open ? (
         <DateTimeInput
@@ -164,7 +156,6 @@ function DateStep({ capture }: { capture: WizardCapture }) {
           ))}
         </div>
       ) : null}
-      {date.dispute ? <DisputeFork capture={capture} dispute={date.dispute} /> : null}
       {verdict.step === 'date' ? (
         <Button
           className="w-full"
@@ -175,47 +166,6 @@ function DateStep({ capture }: { capture: WizardCapture }) {
           Date looks good
         </Button>
       ) : null}
-    </div>
-  );
-}
-
-function DisputeFork({ capture, dispute }: { capture: WizardCapture; dispute: CaptureDispute }) {
-  const wrapping = 'h-auto min-h-9 whitespace-normal';
-  return (
-    <div className={warningCard}>
-      <p className="text-sm">{dispute.sentence}</p>
-      {dispute.confirmed ? (
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-sm font-medium">Previous reading disputed</span>
-          <Button
-            onClick={() => capture.dispatch({ type: 'dispute', readingId: null })}
-            size="sm"
-            type="button"
-            variant="outline"
-          >
-            Undo
-          </Button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 gap-2">
-          <Button
-            className={wrapping}
-            onClick={() => capture.dispatch({ type: 'read-earlier', estimate: capture.estimateQuery.estimate })}
-            type="button"
-            variant="outline"
-          >
-            Read earlier
-          </Button>
-          <Button
-            className={wrapping}
-            onClick={() => capture.dispatch({ type: 'dispute', readingId: dispute.readingId })}
-            type="button"
-            variant="outline"
-          >
-            The previous reading is wrong
-          </Button>
-        </div>
-      )}
     </div>
   );
 }

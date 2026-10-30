@@ -1,34 +1,14 @@
 import { type DatabaseTransaction, type Db, user, withPagination } from '@pkg/db';
+import { contractingHourReadings, contractingMachines } from '@pkg/db/contracting';
 import {
-  contractingCategories,
-  contractingHourReadings,
-  contractingJobs,
-  contractingMachineAssignments,
-  contractingMachines,
-} from '@pkg/db/contracting';
-import { groupBy, hasPermission } from '@pkg/domain';
-import {
-  amendmentJobs,
-  assignmentState,
-  type CaptureAttempt,
   type CaptureNeighbour,
   type CaptureWorld,
-  captureCrossesServiceDueSoon,
-  contradictingTelematics,
-  disputeGroupReason,
   type EstimateFacts,
-  earliestReadAtFor,
-  effectiveServiceAlertHours,
   estimateReadAt,
   FUTURE_READ_AT_TOLERANCE_MS,
-  formatJobNumber,
-  groupDisputes,
   type JobActor,
   judgeCapture,
-  ledgerOrder,
-  NEXT_CAPTURE_DISPUTES,
   namesReadAt,
-  PREVIOUS_READING_WRONG,
   proposesReadAt,
   resolveReadingAmendments,
 } from '@pkg/domain/contracting';
@@ -42,20 +22,11 @@ import {
   ReadingAmendInput,
   ReadingCaptureInput,
 } from '@pkg/schema/contracting';
-import { and, asc, eq, getTableColumns, gt, inArray, isNotNull, lte, or } from 'drizzle-orm';
-import { alias } from 'drizzle-orm/pg-core';
+import { and, eq, getTableColumns, gt, inArray, lte } from 'drizzle-orm';
 import { recordAuditCreate } from '../../audit/audit-writer.js';
-import { reopenPricingWithin } from '../jobs/pricing-service.js';
-import { getContractingSettings } from '../settings/settings-service.js';
-import { attachReadingToStint, resolveCaptureStint } from './capture-stint.js';
+import { serviceDueSoonEdge } from '../fleet/machine-service.js';
 import { type ReadingRow as Row, readingDescriptor, updateAudited } from './reading-audit.js';
-import {
-  amendmentRefused,
-  assertAmendReadings,
-  readingNotFound as notFound,
-  ReadingError,
-  withCaptureConstraints,
-} from './reading-errors.js';
+import { amendmentRefused, readingNotFound as notFound, ReadingError } from './reading-errors.js';
 import { afterInLedger, newestFirst, oldestFirst } from './reading-sql.js';
 import { readingToWire } from './reading-wire.js';
 
@@ -99,7 +70,6 @@ export async function captureReading({
     if (
       row.capturedByUserId !== actorUserId ||
       row.machineId !== input.machineId ||
-      row.role !== input.role ||
       row.capturedAt.getTime() !== Date.parse(input.capturedAt)
     )
       throw new ReadingError('reading.capture_id_conflict', 'This capture identifier has already been used.');
@@ -107,155 +77,89 @@ export async function captureReading({
   }
   const delivered = await replay(db);
   if (delivered) return delivered;
-  return withCaptureConstraints(() =>
-    db.transaction(async (tx): Promise<ReadingCapture> => {
-      const [machine] = await tx
+  return db.transaction(async (tx): Promise<ReadingCapture> => {
+    const [machine] = await tx
+      .select()
+      .from(contractingMachines)
+      .where(eq(contractingMachines.id, input.machineId))
+      .for('update');
+    if (!machine) throw new ReadingError('reading.not_found', 'Machine not found.');
+    const delivered = await replay(tx);
+    if (delivered) return delivered;
+    const readAt = new Date(input.capturedAt);
+    const onMachine = eq(contractingHourReadings.machineId, input.machineId);
+    const [[latest], [previous], [next], [previousTelematics], [nextTelematics], edge] = await Promise.all([
+      tx
         .select()
-        .from(contractingMachines)
-        .where(eq(contractingMachines.id, input.machineId))
-        .for('update');
-      if (!machine) throw new ReadingError('reading.not_found', 'Machine not found.');
-      const delivered = await replay(tx);
-      if (delivered) return delivered;
-      const stint = await resolveCaptureStint(tx, { actor, input });
-      const readAt = new Date(input.capturedAt);
-      const onMachine = eq(contractingHourReadings.machineId, input.machineId);
-      const arrivalReadingId = input.role === 'departure' ? (stint?.stint.arrivalReadingId ?? null) : null;
-      const [[latest], [previous], [next], [previousTelematics], [nextTelematics], [lastDeparture], [stintArrival]] =
-        await Promise.all([
-          tx
-            .select()
-            .from(contractingHourReadings)
-            .where(onMachine)
-            .orderBy(...newestFirst)
-            .limit(1),
-          tx
-            .select()
-            .from(contractingHourReadings)
-            .where(and(onMachine, lte(contractingHourReadings.capturedAt, readAt)))
-            .orderBy(...newestFirst)
-            .limit(1),
-          tx
-            .select()
-            .from(contractingHourReadings)
-            .where(and(onMachine, gt(contractingHourReadings.capturedAt, readAt)))
-            .orderBy(...oldestFirst)
-            .limit(1),
-          tx
-            .select()
-            .from(contractingHourReadings)
-            .where(and(onMachine, isTelematics, lte(contractingHourReadings.capturedAt, readAt)))
-            .orderBy(...newestFirst)
-            .limit(1),
-          tx
-            .select()
-            .from(contractingHourReadings)
-            .where(and(onMachine, isTelematics, gt(contractingHourReadings.capturedAt, readAt)))
-            .orderBy(...oldestFirst)
-            .limit(1),
-          input.role === 'arrival'
-            ? tx
-                .select({ capturedAt: contractingHourReadings.capturedAt })
-                .from(contractingHourReadings)
-                .where(and(onMachine, eq(contractingHourReadings.role, 'departure')))
-                .orderBy(...newestFirst)
-                .limit(1)
-            : [],
-          arrivalReadingId
-            ? tx
-                .select({ capturedAt: contractingHourReadings.capturedAt })
-                .from(contractingHourReadings)
-                .where(eq(contractingHourReadings.id, arrivalReadingId))
-            : [],
-        ]);
-      const neighbours: Pick<CaptureWorld, 'latest' | 'previous' | 'next' | 'previousTelematics' | 'nextTelematics'> = {
-        latest: latest ? { id: latest.id, value: latest.value } : null,
-        previous: previous ? toNeighbour(previous) : null,
-        next: next ? toNeighbour(next) : null,
-        previousTelematics: previousTelematics ? toNeighbour(previousTelematics) : null,
-        nextTelematics: nextTelematics ? toNeighbour(nextTelematics) : null,
-      };
-      const world: CaptureWorld = {
-        ...neighbours,
-        stint: stint ? assignmentState(stint.stint) : null,
-        stintArrivedAt: stintArrival?.capturedAt ?? null,
-        lastDepartedAt: lastDeparture?.capturedAt ?? null,
-        jobVerdict: stint?.jobVerdict ?? null,
-        mayBaseline: hasPermission(actor, 'contracting_reading:capture-baseline'),
-        machineRetired: machine.retiredAt !== null,
-        implementValid: stint?.implementValid ?? true,
-        driverValid: stint?.driverValid ?? true,
-        now,
-        futureToleranceMs: FUTURE_READ_AT_TOLERANCE_MS,
-      };
-      const attempt: CaptureAttempt = {
-        role: input.role,
+        .from(contractingHourReadings)
+        .where(onMachine)
+        .orderBy(...newestFirst)
+        .limit(1),
+      tx
+        .select()
+        .from(contractingHourReadings)
+        .where(and(onMachine, lte(contractingHourReadings.capturedAt, readAt)))
+        .orderBy(...newestFirst)
+        .limit(1),
+      tx
+        .select()
+        .from(contractingHourReadings)
+        .where(and(onMachine, gt(contractingHourReadings.capturedAt, readAt)))
+        .orderBy(...oldestFirst)
+        .limit(1),
+      tx
+        .select()
+        .from(contractingHourReadings)
+        .where(and(onMachine, isTelematics, lte(contractingHourReadings.capturedAt, readAt)))
+        .orderBy(...newestFirst)
+        .limit(1),
+      tx
+        .select()
+        .from(contractingHourReadings)
+        .where(and(onMachine, isTelematics, gt(contractingHourReadings.capturedAt, readAt)))
+        .orderBy(...oldestFirst)
+        .limit(1),
+      serviceDueSoonEdge(tx, machine),
+    ]);
+    const world: CaptureWorld = {
+      latest: latest ? { id: latest.id, value: latest.value } : null,
+      previous: previous ? toNeighbour(previous) : null,
+      next: next ? toNeighbour(next) : null,
+      previousTelematics: previousTelematics ? toNeighbour(previousTelematics) : null,
+      nextTelematics: nextTelematics ? toNeighbour(nextTelematics) : null,
+      machineRetired: machine.retiredAt !== null,
+      now,
+      futureToleranceMs: FUTURE_READ_AT_TOLERANCE_MS,
+    };
+    const judgement = judgeCapture(world, { value: input.value, readAt });
+    if (!judgement.ok) {
+      // Only a value refusal proposes a Read At, so only one reads the readings bracketing the value.
+      const estimate = proposesReadAt(judgement.rule)
+        ? estimateReadAt(input.value, {
+            ...(await estimateFacts(tx, input, latest ? toNeighbour(latest) : null)),
+            now,
+          })
+        : null;
+      throw new ReadingError(judgement.reason, judgement.message, {
+        suggestedReadAt: estimate && namesReadAt(estimate) ? ReadAtEstimate.parse(estimate) : undefined,
+      });
+    }
+    const [row] = await tx
+      .insert(contractingHourReadings)
+      .values({
+        ...(input.localId ? { id: input.localId } : {}),
+        machineId: input.machineId,
         value: input.value,
-        readAt,
-        disputePrevious: input.disputePrevious,
-        expectedPreviousId: input.expectedPreviousId,
-      };
-      const judgement = judgeCapture(world, attempt);
-      if (!judgement.ok) {
-        // Only a value refusal proposes a Read At, so only one reads the readings bracketing the value.
-        const estimate = proposesReadAt(judgement.rule)
-          ? estimateReadAt(input.value, {
-              ...(await estimateFacts(tx, input, {
-                latest: latest ? toNeighbour(latest) : null,
-                notBefore: earliestReadAtFor(input.role, world),
-              })),
-              now,
-            })
-          : null;
-        throw new ReadingError(judgement.reason, judgement.message, {
-          refused: judgement.refused,
-          suggestedReadAt: estimate && namesReadAt(estimate) ? ReadAtEstimate.parse(estimate) : undefined,
-        });
-      }
-      const disputed = judgement.disputes !== null;
-      if (disputed && latest)
-        await updateAudited(tx, actorUserId, latest, {
-          disputed: true,
-          disputeReason: NEXT_CAPTURE_DISPUTES,
-        });
-      const { serviceDueSoonThresholdHours } = await getContractingSettings({ db: tx });
-      const [row] = await tx
-        .insert(contractingHourReadings)
-        .values({
-          ...(input.localId ? { id: input.localId } : {}),
-          machineId: input.machineId,
-          role: input.role,
-          value: input.value,
-          capturedAt: readAt,
-          capturedByUserId: actorUserId,
-          method: 'manual',
-          comment: input.comment ?? null,
-          disputed,
-          disputedPreviousId: judgement.disputes,
-          disputeReason: disputed ? PREVIOUS_READING_WRONG : null,
-        })
-        .returning();
-      if (!row) throw new Error('Reading insert returned no row');
-      await recordAuditCreate({ db: tx, actorUserId, descriptor: readingDescriptor, input: row });
-      if (stint)
-        await attachReadingToStint(tx, {
-          ...stint,
-          actor,
-          machineCode: machine.code,
-          input,
-          readingId: row.id,
-          acceptedAt: row.createdAt,
-        });
-      return {
-        reading: row,
-        serviceDueSoonCrossed: captureCrossesServiceDueSoon(neighbours, {
-          newHours: row.value,
-          nextServiceDueHours: machine.nextServiceDueHours,
-          threshold: effectiveServiceAlertHours(machine, serviceDueSoonThresholdHours),
-        }),
-      };
-    }),
-  );
+        capturedAt: readAt,
+        capturedByUserId: actorUserId,
+        method: 'manual',
+        comment: input.comment ?? null,
+      })
+      .returning();
+    if (!row) throw new Error('Reading insert returned no row');
+    await recordAuditCreate({ db: tx, actorUserId, descriptor: readingDescriptor, input: row });
+    return { reading: row, serviceDueSoonCrossed: await edge.crossed() };
+  });
 }
 
 /** When the ledger says `value` was on the Machine's meter, as the capture form asks before it posts. */
@@ -273,17 +177,17 @@ export async function estimateReadAtFor({
 }
 
 /**
- * What the estimate reads for one value: the latest, the last reading at or below the value with the first after it,
- * and the Read At stint order keeps the value after. A capture under the lock already holds the first and the last.
+ * What the estimate reads for one value: the latest, and the last reading at or below the value with the first after
+ * it. A capture under the lock already holds the latest.
  */
 async function estimateFacts(
   db: Db | DatabaseTransaction,
-  input: Pick<ReadingCaptureInput, 'machineId' | 'role' | 'assignmentId' | 'value'>,
-  known?: Pick<EstimateFacts, 'latest' | 'notBefore'>,
+  input: Pick<ReadingCaptureInput, 'machineId' | 'value'>,
+  known?: EstimateFacts['latest'],
 ): Promise<Omit<EstimateFacts, 'now'>> {
   const onMachine = eq(contractingHourReadings.machineId, input.machineId);
-  const [[latest], [floor], notBefore] = await Promise.all([
-    known
+  const [[latest], [floor]] = await Promise.all([
+    known !== undefined
       ? []
       : db
           .select()
@@ -297,7 +201,6 @@ async function estimateFacts(
       .where(and(onMachine, lte(contractingHourReadings.value, input.value)))
       .orderBy(...newestFirst)
       .limit(1),
-    known ? known.notBefore : notBeforeFor(db, input),
   ]);
   const [ceiling] =
     floor && floor.value !== input.value
@@ -309,142 +212,20 @@ async function estimateFacts(
           .limit(1)
       : [];
   return {
-    role: input.role,
-    latest: known ? known.latest : latest ? toNeighbour(latest) : null,
+    latest: known !== undefined ? known : latest ? toNeighbour(latest) : null,
     floor: floor ? toEstimateNeighbour(floor) : null,
     ceiling: ceiling ? toEstimateNeighbour(ceiling) : null,
-    notBefore,
   };
-}
-
-/** The earliest Read At stint order allows: a departure's arrival, an arrival's last departure, null for a spot. */
-async function notBeforeFor(
-  db: Db | DatabaseTransaction,
-  input: Pick<ReadingCaptureInput, 'machineId' | 'role' | 'assignmentId'>,
-): Promise<Date | null> {
-  if (input.role === 'arrival') {
-    const [departure] = await db
-      .select({ capturedAt: contractingHourReadings.capturedAt })
-      .from(contractingHourReadings)
-      .where(and(eq(contractingHourReadings.machineId, input.machineId), eq(contractingHourReadings.role, 'departure')))
-      .orderBy(...newestFirst)
-      .limit(1);
-    return departure?.capturedAt ?? null;
-  }
-  if (input.role === 'departure' && input.assignmentId) {
-    const [arrival] = await db
-      .select({ capturedAt: contractingHourReadings.capturedAt })
-      .from(contractingMachineAssignments)
-      .innerJoin(
-        contractingHourReadings,
-        eq(contractingHourReadings.id, contractingMachineAssignments.arrivalReadingId),
-      )
-      .where(
-        and(
-          eq(contractingMachineAssignments.id, input.assignmentId),
-          eq(contractingMachineAssignments.machineId, input.machineId),
-        ),
-      );
-    return arrival?.capturedAt ?? null;
-  }
-  return null;
 }
 
 const toEstimateNeighbour = (row: Row) => ({ ...toNeighbour(row), createdAt: row.createdAt });
 
-const toNeighbour = ({ id, role, value, capturedAt, telematicsProvider }: Row): CaptureNeighbour => ({
+const toNeighbour = ({ id, value, capturedAt, telematicsProvider }: Row): CaptureNeighbour => ({
   id,
-  role,
   value,
   capturedAt,
   telematicsProvider,
 });
-
-const capturer = alias(user, 'dispute_capturer');
-const stintAssignment = alias(contractingMachineAssignments, 'dispute_stint');
-const stintArrival = alias(contractingHourReadings, 'dispute_stint_arrival');
-const stintDeparture = alias(contractingHourReadings, 'dispute_stint_departure');
-
-/**
- * Disputes, newest first: each a connected group of Disputed readings on one Machine, with the Telematics Reading it
- * contradicts.
- */
-export async function listDisputes({ db }: { db: Db }) {
-  const rows = await db
-    .select({
-      ...getTableColumns(contractingHourReadings),
-      machineCode: contractingMachines.code,
-      categoryIcon: contractingCategories.icon,
-      categoryColour: contractingCategories.colour,
-      capturedByName: capturer.name,
-      assignmentId: stintAssignment.id,
-      jobId: contractingJobs.id,
-      jobCode: contractingJobs.code,
-      arrivedAt: stintArrival.capturedAt,
-      departedAt: stintDeparture.capturedAt,
-    })
-    .from(contractingHourReadings)
-    .innerJoin(contractingMachines, eq(contractingMachines.id, contractingHourReadings.machineId))
-    .innerJoin(contractingCategories, eq(contractingCategories.id, contractingMachines.categoryId))
-    .leftJoin(capturer, eq(capturer.id, contractingHourReadings.capturedByUserId))
-    .leftJoin(
-      stintAssignment,
-      or(
-        eq(stintAssignment.arrivalReadingId, contractingHourReadings.id),
-        eq(stintAssignment.departureReadingId, contractingHourReadings.id),
-      ),
-    )
-    .leftJoin(contractingJobs, eq(contractingJobs.id, stintAssignment.jobId))
-    .leftJoin(stintArrival, eq(stintArrival.id, stintAssignment.arrivalReadingId))
-    .leftJoin(stintDeparture, eq(stintDeparture.id, stintAssignment.departureReadingId))
-    .where(eq(contractingHourReadings.disputed, true))
-    .orderBy(...newestFirst);
-  const disputedByMachine = groupBy(
-    rows.map(({ jobId, jobCode, arrivedAt, departedAt, ...row }) => ({
-      ...row,
-      stint:
-        row.assignmentId && jobId && jobCode !== null
-          ? { assignmentId: row.assignmentId, jobId, jobNumber: formatJobNumber(jobCode), arrivedAt, departedAt }
-          : null,
-    })),
-    (row) => row.machineId,
-  );
-  // A Dispute's report is the nearest Telematics Reading it contradicts, so only reports are read.
-  const reports = disputedByMachine.size
-    ? await db
-        .select({
-          id: contractingHourReadings.id,
-          machineId: contractingHourReadings.machineId,
-          value: contractingHourReadings.value,
-          capturedAt: contractingHourReadings.capturedAt,
-          sequence: contractingHourReadings.sequence,
-          telematicsProvider: contractingHourReadings.telematicsProvider,
-        })
-        .from(contractingHourReadings)
-        .where(and(inArray(contractingHourReadings.machineId, [...disputedByMachine.keys()]), isTelematics))
-    : [];
-  const reportsByMachine = groupBy(reports, (report) => report.machineId);
-  const disputes = [...disputedByMachine].flatMap(([machineId, disputed]) =>
-    groupDisputes(disputed).map((group) => {
-      const [first] = group;
-      const reported = contradictingTelematics(
-        [...(reportsByMachine.get(machineId) ?? []), ...group],
-        group.map((reading) => reading.id),
-      );
-      return {
-        id: first.id,
-        machineId,
-        machineCode: first.machineCode,
-        categoryIcon: first.categoryIcon,
-        categoryColour: first.categoryColour,
-        readings: group,
-        reported,
-        reason: disputeGroupReason(group, reported),
-      };
-    }),
-  );
-  return disputes.sort((left, right) => ledgerOrder(right.readings[0], left.readings[0]));
-}
 
 export async function amendReadings({ db, actor, input: raw }: { db: Db; actor: JobActor; input: ReadingAmendInput }) {
   const actorUserId = actor.userId;
@@ -473,47 +254,26 @@ export async function amendReadings({ db, actor, input: raw }: { db: Db; actor: 
       .where(eq(contractingMachines.id, machineId))
       .for('update');
     if (!machine) throw notFound();
-    const [rows, stints] = await Promise.all([
-      tx
-        .select()
-        .from(contractingHourReadings)
-        .where(eq(contractingHourReadings.machineId, machineId))
-        .orderBy(...oldestFirst),
-      stintsOf(tx, machineId),
-    ]);
-    const jobs = amendmentJobs(rows, amendments, stints);
-    const affected = await lockJobs(tx, jobs.bound);
-    for (const job of affected) assertAmendReadings(job, actor);
-    const resolution = resolveReadingAmendments(rows, amendments, stints, new Date());
-    if (!resolution.ok) throw amendmentRefused(resolution);
+    const rows = await tx
+      .select()
+      .from(contractingHourReadings)
+      .where(eq(contractingHourReadings.machineId, machineId))
+      .orderBy(...oldestFirst);
     const now = new Date();
+    const resolution = resolveReadingAmendments(rows, amendments, now);
+    if (!resolution.ok) throw amendmentRefused(resolution);
     const before = new Map(rows.map((row) => [row.id, row]));
-    const amendmentOf = new Map(amendments.map((amendment) => [amendment.id, amendment]));
-    for (const { id, ...dispute } of resolution.changes) {
-      const row = before.get(id);
+    for (const amendment of amendments) {
+      const row = before.get(amendment.id);
       if (!row) continue;
-      const amendment = amendmentOf.get(id);
       await updateAudited(tx, actorUserId, row, {
-        ...dispute,
-        ...(amendment
-          ? {
-              value: amendment.value,
-              capturedAt: amendment.capturedAt,
-              amendedBy: actorUserId,
-              amendedAt: now,
-              amendmentReason: input.reason,
-            }
-          : {}),
+        value: amendment.value,
+        capturedAt: amendment.capturedAt,
+        amendedBy: actorUserId,
+        amendedAt: now,
+        amendmentReason: input.reason,
       });
     }
-    // Only a Job whose hours moved returns to Completed: a settled Dispute moves none.
-    for (const job of affected.filter((candidate) => candidate.status === 'priced' && jobs.moved.has(candidate.id)))
-      await reopenPricingWithin(
-        tx,
-        actorUserId,
-        job.id,
-        `Hour Reading amended on ${machine.code} — amounts recomputed.`,
-      );
     const amended = await tx
       .select()
       .from(contractingHourReadings)
@@ -523,43 +283,13 @@ export async function amendReadings({ db, actor, input: raw }: { db: Db; actor: 
   });
 }
 
-/** A Machine's stints with an arrival, as the readings bound them, with the Job each belongs to. */
-async function stintsOf(tx: DatabaseTransaction, machineId: string) {
-  const rows = await tx
-    .select({
-      assignmentId: contractingMachineAssignments.id,
-      jobId: contractingMachineAssignments.jobId,
-      arrivalId: contractingMachineAssignments.arrivalReadingId,
-      departureId: contractingMachineAssignments.departureReadingId,
-    })
-    .from(contractingMachineAssignments)
-    .where(
-      and(
-        eq(contractingMachineAssignments.machineId, machineId),
-        isNotNull(contractingMachineAssignments.arrivalReadingId),
-      ),
-    );
-  return rows.flatMap(({ arrivalId, ...stint }) => (arrivalId ? [{ ...stint, arrivalId }] : []));
-}
-
-/** The Jobs an amendment touches, locked after the Machine in id order. */
-async function lockJobs(tx: DatabaseTransaction, jobIds: ReadonlySet<string>) {
-  if (!jobIds.size) return [];
-  return tx
-    .select({ id: contractingJobs.id, status: contractingJobs.status, foremanUserId: contractingJobs.foremanUserId })
-    .from(contractingJobs)
-    .where(inArray(contractingJobs.id, [...jobIds]))
-    .orderBy(asc(contractingJobs.id))
-    .for('update');
-}
-
 export async function getReading({ db, id }: { db: Db | DatabaseTransaction; id: string }) {
   const row = await db.query.contractingHourReadings.findFirst({ where: eq(contractingHourReadings.id, id) });
   if (!row) throw notFound();
   return row;
 }
 
-/** The Machine's latest reading by Read At, the one a dispute names; null while the ledger is empty. */
+/** The Machine's latest ledger reading by Read At, the floor a spot capture is held to; null while the ledger is empty. */
 export async function latestReading({ db, machineId }: { db: Db; machineId: string }) {
   const [row] = await db
     .select()
@@ -570,7 +300,7 @@ export async function latestReading({ db, machineId }: { db: Db; machineId: stri
   return row ? LatestReading.parse(readingToWire(row)) : null;
 }
 
-/** A page of a Machine's Hour Readings, newest first. */
+/** A page of a Machine's ledger, spot and Telematics Readings, newest first. */
 export async function listFieldReadingsPage({ db, input }: { db: Db; input: FieldReadingPageInput }) {
   const onMachine = eq(contractingHourReadings.machineId, input.machineId);
   const query = db

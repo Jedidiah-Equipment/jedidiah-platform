@@ -1,27 +1,26 @@
 import { randomUUID } from 'node:crypto';
-import { auditEvents, user } from '@pkg/db';
+import { auditEvents, type Db, user } from '@pkg/db';
 import { contractingMachineAssignments, contractingMeasures } from '@pkg/db/contracting';
+import type { JobActor } from '@pkg/domain/contracting';
 import { accessForRole } from '@pkg/domain/testing';
 import { DateOnlyIso } from '@pkg/schema';
-import { JobListInput, type JobQueue, MachineCreateInput } from '@pkg/schema/contracting';
+import { MachineCreateInput } from '@pkg/schema/contracting';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
 import { createCustomer } from '../customers/customer-service.js';
 import { createFarm } from '../customers/farm-service.js';
 import { createCategory } from '../fleet/category-service.js';
-import { createImplement, retireImplement } from '../fleet/implement-service.js';
+import { createImplement } from '../fleet/implement-service.js';
 import { createMachine } from '../fleet/machine-service.js';
 import { createMeasureType, removeMeasureType } from '../rate-card/measure-type-service.js';
 import { createRate, removeRate } from '../rate-card/rate-service.js';
-import { captureReading } from '../readings/reading-service.js';
 import { plannedStint } from '../test/job-fixtures.js';
 import { createWorkType } from '../work-types/work-type-service.js';
-import { resolveGap } from './assignment-service.js';
-import { listJobs } from './job-queues.js';
-import { getJob, getReadableJob } from './job-read.js';
-import { cancelJob, completeJob, createJob, patchJob } from './job-service.js';
+import { getJob } from './job-read.js';
+import { completeJob, createJob, patchJob } from './job-service.js';
 import { setMeasure } from './measure-service.js';
+import { captureStintHours } from './stint-hours-service.js';
 
 const managerId = 'job-manager';
 const foremanId = 'job-foreman';
@@ -123,6 +122,9 @@ const test = createTester(async ({ db }) => {
   return { customer, farm, implement, machine, otherCustomer, otherFarm, workType };
 });
 
+const captureHours = (db: Db, actor: JobActor, assignmentId: string, role: 'arrival' | 'departure', hours: number) =>
+  captureStintHours({ db, actor, input: { assignmentId, role, hours } });
+
 const jobInput = (context: { customer: { id: string }; farm: { id: string }; workType: { id: string } }) => ({
   customerId: context.customer.id,
   farmId: context.farm.id,
@@ -189,268 +191,6 @@ describe('Job setup', () => {
   });
 });
 
-describe('Machine Assignment lifecycle', () => {
-  test('rejects retired Implements and device Drivers when an arrival starts a stint', async ({ context }) => {
-    const job = await createJob({ db: context.db, actor: manager, input: jobInput(context) });
-    const planned = await plannedStint(context.db, manager, {
-      jobId: job.id,
-      machineId: context.machine.id,
-      implementId: null,
-    });
-    await retireImplement({
-      db: context.db,
-      actorUserId: managerId,
-      input: { id: context.implement.id, reason: 'Sold' },
-    });
-    await expect(
-      captureReading({
-        db: context.db,
-        actor: foreman,
-        input: {
-          machineId: context.machine.id,
-          assignmentId: planned.id,
-          stintOverrides: { implementId: context.implement.id },
-          role: 'arrival',
-          value: 100,
-          capturedAt: '2026-09-01T08:00:00+02:00',
-          disputePrevious: false,
-        },
-      }),
-    ).rejects.toMatchObject({
-      code: 'reading.invalid_role',
-      message: 'The selected Implement is no longer available.',
-    });
-    await expect(
-      captureReading({
-        db: context.db,
-        actor: foreman,
-        input: {
-          machineId: context.machine.id,
-          assignmentId: planned.id,
-          stintOverrides: { driverUserId: deviceDriverId },
-          role: 'arrival',
-          value: 100,
-          capturedAt: '2026-09-01T08:00:00+02:00',
-          disputePrevious: false,
-        },
-      }),
-    ).rejects.toMatchObject({
-      code: 'reading.invalid_role',
-      message: 'Select a person with the Contracting driver role.',
-    });
-  });
-
-  test('replays a retried arrival and applies planned-stint overrides', async ({ context }) => {
-    const job = await createJob({ db: context.db, actor: manager, input: jobInput(context) });
-    const otherJob = await createJob({
-      db: context.db,
-      actor: manager,
-      input: { ...jobInput(context), foremanUserId: otherForemanId },
-    });
-    const planned = await plannedStint(context.db, manager, {
-      jobId: job.id,
-      machineId: context.machine.id,
-      implementId: null,
-    });
-    const foreign = await plannedStint(context.db, manager, {
-      jobId: otherJob.id,
-      machineId: context.machine.id,
-      implementId: null,
-    });
-    const input = {
-      localId: '5f1c2d3e-0001-4a00-8000-000000000011',
-      machineId: context.machine.id,
-      assignmentId: planned.id,
-      stintOverrides: { driverUserId: null },
-      role: 'arrival' as const,
-      value: 100,
-      capturedAt: '2026-09-01T08:00:00+02:00',
-      disputePrevious: false,
-    };
-
-    const { reading: first } = await captureReading({ db: context.db, actor: foreman, input });
-    expect((await getJob({ db: context.db, id: job.id })).assignments).toMatchObject([
-      { id: planned.id, driverUserId: null, state: 'on-site', arrival: { id: first.id } },
-    ]);
-    expect((await captureReading({ db: context.db, actor: foreman, input })).reading.id).toBe(first.id);
-
-    await expect(
-      captureReading({
-        db: context.db,
-        actor: foreman,
-        input: {
-          ...input,
-          localId: '5f1c2d3e-0001-4a00-8000-000000000014',
-          assignmentId: foreign.id,
-          value: 112,
-        },
-      }),
-    ).rejects.toMatchObject({ code: 'reading.forbidden' });
-  });
-
-  test("opens a Foreman's Jobs with their stints and readings", async ({ context }) => {
-    const first = await createJob({ db: context.db, actor: manager, input: jobInput(context) });
-    const second = await createJob({ db: context.db, actor: manager, input: jobInput(context) });
-    const planned = await plannedStint(context.db, manager, {
-      jobId: second.id,
-      machineId: context.machine.id,
-      implementId: null,
-    });
-    const { reading: arrival } = await captureReading({
-      db: context.db,
-      actor: foreman,
-      input: {
-        machineId: context.machine.id,
-        assignmentId: planned.id,
-        role: 'arrival',
-        value: 100,
-        capturedAt: '2026-09-01T08:00:00+02:00',
-        disputePrevious: false,
-      },
-    });
-
-    const jobs = await Promise.all(
-      [first, second].map((job) => getReadableJob({ db: context.db, actor: foreman, id: job.id })),
-    );
-    expect(jobs.map((job) => job.jobNumber)).toEqual([first.jobNumber, second.jobNumber]);
-    expect(jobs[0]?.assignments).toEqual([]);
-    expect(jobs[1]?.assignments).toMatchObject([{ id: planned.id, state: 'on-site' }]);
-    expect(jobs[1]?.assignments[0]?.arrival).toMatchObject({
-      id: arrival.id,
-      role: 'arrival',
-      value: 100,
-      capturedAt: '2026-09-01T06:00:00.000Z',
-      disputed: false,
-    });
-  });
-
-  test('activates on first arrival, refuses overlapping on-site stints, and allows a repeat stint after departure', async ({
-    context,
-  }) => {
-    const firstJob = await createJob({ db: context.db, actor: manager, input: jobInput(context) });
-    const secondJob = await createJob({ db: context.db, actor: manager, input: jobInput(context) });
-    const first = await plannedStint(context.db, manager, {
-      jobId: firstJob.id,
-      machineId: context.machine.id,
-      implementId: null,
-    });
-    const second = await plannedStint(context.db, manager, {
-      jobId: secondJob.id,
-      machineId: context.machine.id,
-      implementId: null,
-    });
-    expect(
-      (await context.db.select().from(auditEvents)).some(
-        (event) => event.entityType === 'contracting_assignment' && event.summary.includes('CAT320-1'),
-      ),
-    ).toBe(true);
-
-    await expect(
-      captureReading({
-        db: context.db,
-        actor: foreman,
-        input: {
-          machineId: context.machine.id,
-          assignmentId: second.id,
-          role: 'departure',
-          value: 99,
-          capturedAt: '2026-09-01T07:00:00+02:00',
-          disputePrevious: false,
-          comment: 'Management departure',
-        },
-      }),
-    ).rejects.toMatchObject({ code: 'reading.invalid_role' });
-
-    await captureReading({
-      db: context.db,
-      actor: foreman,
-      input: {
-        machineId: context.machine.id,
-        assignmentId: first.id,
-        role: 'arrival',
-        value: 100,
-        capturedAt: '2026-09-01T08:00:00+02:00',
-        disputePrevious: false,
-      },
-    });
-    expect((await getJob({ db: context.db, id: firstJob.id })).status).toBe('active');
-    await expect(
-      cancelJob({
-        db: context.db,
-        actor: manager,
-        input: { id: firstJob.id, reason: 'Customer cancelled' },
-      }),
-    ).rejects.toMatchObject({ code: 'contracting_job.has_on_site_stints' });
-    await expect(
-      captureReading({
-        db: context.db,
-        actor: foreman,
-        input: {
-          machineId: context.machine.id,
-          assignmentId: second.id,
-          role: 'arrival',
-          value: 101,
-          capturedAt: '2026-09-01T09:00:00+02:00',
-          disputePrevious: false,
-        },
-      }),
-    ).rejects.toMatchObject({ code: 'reading.machine_on_site' });
-    await captureReading({
-      db: context.db,
-      actor: foreman,
-      input: {
-        machineId: context.machine.id,
-        assignmentId: first.id,
-        role: 'departure',
-        value: 110,
-        capturedAt: '2026-09-01T17:00:00+02:00',
-        disputePrevious: false,
-      },
-    });
-    await captureReading({
-      db: context.db,
-      actor: foreman,
-      input: {
-        machineId: context.machine.id,
-        assignmentId: second.id,
-        role: 'arrival',
-        value: 112,
-        capturedAt: '2026-09-02T08:00:00+02:00',
-        disputePrevious: false,
-      },
-    });
-    expect((await getJob({ db: context.db, id: secondJob.id })).status).toBe('active');
-    const listed = async (queue: JobQueue) =>
-      (
-        await listJobs({
-          db: context.db,
-          actor: accessForRole('contracting-admin', 'reader'),
-          input: JobListInput.parse({ queues: [queue] }),
-        })
-      ).items.map((job) => job.id);
-    expect(await listed('looks-finished')).toEqual([firstJob.id]);
-    expect(await listed('active')).toEqual([secondJob.id]);
-
-    await captureReading({
-      db: context.db,
-      actor: foreman,
-      input: {
-        machineId: context.machine.id,
-        assignmentId: second.id,
-        role: 'departure',
-        value: 111,
-        capturedAt: '2026-09-02T17:00:00+02:00',
-        disputePrevious: true,
-        comment: 'Meter reading needs review',
-      },
-    });
-    expect((await getJob({ db: context.db, id: secondJob.id })).assignments[0]).toMatchObject({
-      workHours: null,
-      billableHours: null,
-    });
-  });
-});
-
 describe('Completion and billable facts', () => {
   test('upserts Measures, guards Completion, deletes confirmed planned stints, and locks used rate-card rows', async ({
     context,
@@ -461,18 +201,7 @@ describe('Completion and billable facts', () => {
       machineId: context.machine.id,
       implementId: null,
     });
-    await captureReading({
-      db: context.db,
-      actor: foreman,
-      input: {
-        machineId: context.machine.id,
-        assignmentId: arrived.id,
-        role: 'arrival',
-        value: 200,
-        capturedAt: '2026-09-03T08:00:00+02:00',
-        disputePrevious: false,
-      },
-    });
+    await captureHours(context.db, foreman, arrived.id, 'arrival', 200);
     await expect(
       completeJob({
         db: context.db,
@@ -487,18 +216,7 @@ describe('Completion and billable facts', () => {
         },
       }),
     ).rejects.toMatchObject({ code: 'contracting_job.has_on_site_stints' });
-    await captureReading({
-      db: context.db,
-      actor: foreman,
-      input: {
-        machineId: context.machine.id,
-        assignmentId: arrived.id,
-        role: 'departure',
-        value: 210,
-        capturedAt: '2026-09-03T17:00:00+02:00',
-        disputePrevious: false,
-      },
-    });
+    await captureHours(context.db, foreman, arrived.id, 'departure', 210);
     const measureType = await createMeasureType({ db: context.db, actorUserId: managerId, input: { name: 'Loads' } });
     await setMeasure({
       db: context.db,
@@ -585,128 +303,48 @@ describe('Completion and billable facts', () => {
     );
   });
 
-  test('requires a resolved split when a sequential stint opens a Gap Flag', async ({ context }) => {
-    // Another Foreman's Job, so this test's Foreman cannot open it.
-    const firstJob = await createJob({
-      db: context.db,
-      actor: manager,
-      input: { ...jobInput(context), foremanUserId: otherForemanId },
-    });
-    const first = await plannedStint(context.db, manager, {
-      jobId: firstJob.id,
+  test('completes with Travel over the threshold: only a Machine still on site blocks Completion', async ({
+    context,
+  }) => {
+    const first = await createJob({ db: context.db, actor: manager, input: jobInput(context) });
+    const earlier = await plannedStint(context.db, manager, {
+      jobId: first.id,
       machineId: context.machine.id,
       implementId: null,
     });
-    await captureReading({
-      db: context.db,
-      actor: manager,
-      input: {
-        machineId: context.machine.id,
-        assignmentId: first.id,
-        role: 'arrival',
-        value: 300,
-        capturedAt: '2026-09-04T08:00:00+02:00',
-        disputePrevious: false,
-      },
-    });
-    await captureReading({
-      db: context.db,
-      actor: manager,
-      input: {
-        machineId: context.machine.id,
-        assignmentId: first.id,
-        role: 'departure',
-        value: 310,
-        capturedAt: '2026-09-04T17:00:00+02:00',
-        disputePrevious: false,
-      },
-    });
-    const secondJob = await createJob({ db: context.db, actor: manager, input: jobInput(context) });
-    const second = await plannedStint(context.db, manager, {
-      jobId: secondJob.id,
+    await captureHours(context.db, foreman, earlier.id, 'arrival', 300);
+    await captureHours(context.db, foreman, earlier.id, 'departure', 310);
+    const job = await createJob({ db: context.db, actor: manager, input: jobInput(context) });
+    const travelled = await plannedStint(context.db, manager, {
+      jobId: job.id,
       machineId: context.machine.id,
       implementId: null,
     });
-    await captureReading({
-      db: context.db,
-      actor: foreman,
-      input: {
-        machineId: context.machine.id,
-        assignmentId: second.id,
-        role: 'arrival',
-        value: 320,
-        capturedAt: '2026-09-05T08:00:00+02:00',
-        disputePrevious: false,
-      },
-    });
-    await captureReading({
-      db: context.db,
-      actor: foreman,
-      input: {
-        machineId: context.machine.id,
-        assignmentId: second.id,
-        role: 'departure',
-        value: 325,
-        capturedAt: '2026-09-05T17:00:00+02:00',
-        disputePrevious: false,
-      },
-    });
-    const [gapped] = (await getJob({ db: context.db, id: secondJob.id })).assignments;
-    expect(gapped).toMatchObject({
-      gapFlag: true,
-      gapHours: 10,
-      previousDeparture: {
-        value: 310,
-        capturedAt: new Date('2026-09-04T17:00:00+02:00').toISOString(),
-        job: null,
-      },
-    });
-    expect((await getJob({ db: context.db, id: firstJob.id })).assignments[0]?.previousDeparture).toBeNull();
-    expect(
-      (await getReadableJob({ db: context.db, actor: manager, id: secondJob.id })).assignments[0]?.previousDeparture,
-    ).toMatchObject({ value: 310, job: { jobNumber: firstJob.jobNumber } });
-    // The Job the Machine left is named only to a reader who could open it.
-    expect(
-      (await getReadableJob({ db: context.db, actor: foreman, id: secondJob.id })).assignments[0]?.previousDeparture,
-    ).toMatchObject({ value: 310, job: null });
-    await expect(
+    await captureHours(context.db, foreman, travelled.id, 'arrival', 320);
+    const complete = () =>
       completeJob({
         db: context.db,
         actor: manager,
         input: {
-          id: secondJob.id,
+          id: job.id,
           startDate: DateOnlyIso.parse('2026-09-05'),
           endDate: DateOnlyIso.parse('2026-09-05'),
           dieselLitres: 0,
           notes: null,
           removePlannedAssignmentIds: [],
         },
-      }),
-    ).rejects.toMatchObject({ code: 'contracting_job.open_gap_flags' });
-    await expect(
-      resolveGap({
-        db: context.db,
-        actor: manager,
-        input: { id: second.id, travelHours: 2, unaccountedHours: 7, reason: 'Wrong total' },
-      }),
-    ).rejects.toMatchObject({ code: 'contracting_job.invalid_reference' });
-    await resolveGap({
-      db: context.db,
-      actor: manager,
-      input: { id: second.id, travelHours: 2.5, unaccountedHours: 7.5, reason: 'Yard work' },
+      });
+    await expect(complete()).rejects.toMatchObject({
+      code: 'contracting_job.has_on_site_stints',
     });
-    await completeJob({
-      db: context.db,
-      actor: manager,
-      input: {
-        id: secondJob.id,
-        startDate: DateOnlyIso.parse('2026-09-05'),
-        endDate: DateOnlyIso.parse('2026-09-05'),
-        dieselLitres: 0,
-        notes: null,
-        removePlannedAssignmentIds: [],
-      },
+    await captureHours(context.db, foreman, travelled.id, 'departure', 325);
+    expect((await getJob({ db: context.db, id: job.id })).assignments[0]).toMatchObject({
+      travelHours: 10,
+      workHours: 5,
+      billableHours: 15,
+      attention: ['travel-over-threshold'],
     });
-    expect((await getJob({ db: context.db, id: secondJob.id })).status).toBe('completed');
+    await complete();
+    expect((await getJob({ db: context.db, id: job.id })).status).toBe('completed');
   });
 });

@@ -40,7 +40,7 @@ function stint(id: string, machineId: string, state: AssignmentState, arrivedAt:
     machineId,
     state,
     createdAt,
-    arrival: arrivedAt ? { capturedAt: arrivedAt } : null,
+    arrival: arrivedAt ? { at: arrivedAt } : null,
     actions: Object.fromEntries(assignmentActionNames.map((name) => [name, allowed])),
   } as unknown as AssignmentDetail;
 }

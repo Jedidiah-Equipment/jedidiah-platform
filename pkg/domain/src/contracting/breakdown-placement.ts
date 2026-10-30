@@ -6,15 +6,13 @@ export type PlacedStint = {
   machineId: string;
   implementId: string | null;
   createdAt: string;
-  arrival: { capturedAt: string } | null;
-  departure: { capturedAt: string } | null;
+  arrival: { at: string } | null;
+  departure: { at: string } | null;
 };
 export type PlacedBreakdown = { subject: { kind: BreakdownSubjectKind; id: string }; reportedAt: string };
 
 const onSiteAt = (stint: PlacedStint, at: string) =>
-  stint.arrival !== null &&
-  stint.arrival.capturedAt <= at &&
-  (stint.departure === null || at < stint.departure.capturedAt);
+  stint.arrival !== null && stint.arrival.at <= at && (stint.departure === null || at < stint.departure.at);
 
 /**
  * Each stint's Breakdowns on one Job. A Breakdown names its Machine or Implement and the Job, not a stint, so it goes
@@ -32,8 +30,8 @@ export function breakdownsByStint<TBreakdown extends PlacedBreakdown>(
     const { kind, id } = breakdown.subject;
     const candidates = stints.filter((stint) => (kind === 'machine' ? stint.machineId : stint.implementId) === id);
     const arrivedBefore = candidates
-      .filter((stint) => stint.arrival !== null && stint.arrival.capturedAt <= breakdown.reportedAt)
-      .sort((left, right) => (left.arrival?.capturedAt ?? '').localeCompare(right.arrival?.capturedAt ?? ''));
+      .filter((stint) => stint.arrival !== null && stint.arrival.at <= breakdown.reportedAt)
+      .sort((left, right) => (left.arrival?.at ?? '').localeCompare(right.arrival?.at ?? ''));
     const stint =
       candidates.find((candidate) => onSiteAt(candidate, breakdown.reportedAt)) ??
       arrivedBefore.at(-1) ??
@@ -50,8 +48,8 @@ export function breakdownPhases<TBreakdown extends Pick<PlacedBreakdown, 'report
   breakdowns: readonly TBreakdown[],
 ) {
   const sorted = [...breakdowns].sort((left, right) => left.reportedAt.localeCompare(right.reportedAt));
-  const arrivedAt = stint.arrival?.capturedAt ?? null;
-  const departedAt = stint.departure?.capturedAt ?? null;
+  const arrivedAt = stint.arrival?.at ?? null;
+  const departedAt = stint.departure?.at ?? null;
   return {
     beforeArrival: sorted.filter(({ reportedAt }) => arrivedAt === null || reportedAt < arrivedAt),
     onSite: sorted.filter(

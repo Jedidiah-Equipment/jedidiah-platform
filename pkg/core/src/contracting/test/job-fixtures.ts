@@ -14,9 +14,10 @@ import { createChargeLine } from '../jobs/charge-line-service.js';
 import { getJob } from '../jobs/job-read.js';
 import { completeJob, createJob } from '../jobs/job-service.js';
 import { markPriced, setStintRate } from '../jobs/pricing-service.js';
+import { captureStintHours, editStintHours } from '../jobs/stint-hours-service.js';
 import { createMeasureType } from '../rate-card/measure-type-service.js';
 import { createRate } from '../rate-card/rate-service.js';
-import { amendReadings, captureReading, getReading, listDisputes } from '../readings/reading-service.js';
+import { amendReadings, getReading } from '../readings/reading-service.js';
 import { createWorkType } from '../work-types/work-type-service.js';
 
 export const adminId = 'fixture-admin';
@@ -77,12 +78,6 @@ export async function seedJobFixtures(db: Db) {
 
 export type JobFixtures = Awaited<ReturnType<typeof seedJobFixtures>> & { db: Db };
 
-let clock = Date.parse('2026-09-01T06:00:00+02:00');
-const nextCapture = (hours = 1) => {
-  clock += hours * 60 * 60 * 1000;
-  return new Date(clock).toISOString();
-};
-
 /** Plans a stint and returns it as the Job read shows it: a write returns nothing. */
 export async function plannedStint(db: Db, actor: JobActor, input: AssignmentPlanInput) {
   const before = new Set((await getJob({ db, id: input.jobId })).assignments.map((assignment) => assignment.id));
@@ -101,34 +96,29 @@ export async function addedChargeLine(db: Db, actor: JobActor, input: ChargeLine
   return added;
 }
 
-const lastDepartureOn = new Map<string, number>();
+/** Captures a stint's arrival or departure hours as its Foreman would. */
+export const captureHours = (db: Db, assignmentId: string, role: 'arrival' | 'departure', hours: number) =>
+  captureStintHours({ db, actor: foreman, input: { assignmentId, role, hours } });
 
-/** A planned stint that arrived and left, with its readings. */
+/** Edits a stint's Job Hours as management would, with a reason. */
+export const editHours = (
+  db: Db,
+  assignmentId: string,
+  hours: { arrival: number; departure: number | null },
+  reason = 'Misread',
+) =>
+  editStintHours({
+    db,
+    actor: admin,
+    input: { assignmentId, arrivalHours: hours.arrival, departureHours: hours.departure, reason },
+  });
+
+/** A planned stint that arrived and left. */
 export async function leftStint(db: Db, jobId: string, machineId: string, arrival: number, departure: number) {
   const planned = await plannedStint(db, admin, { jobId, machineId, implementId: null });
-  const capture = (role: 'arrival' | 'departure', value: number) =>
-    captureReading({
-      db,
-      actor: foreman,
-      input: {
-        machineId,
-        assignmentId: planned.id,
-        role,
-        value,
-        // Each reading as many hours after the last as the meter moved, so the meter never outruns the clock.
-        capturedAt: nextCapture(
-          Math.max(
-            1,
-            role === 'departure' ? departure - arrival : arrival - (lastDepartureOn.get(machineId) ?? arrival),
-          ),
-        ),
-        disputePrevious: false,
-      },
-    });
-  const { reading: arrived } = await capture('arrival', arrival);
-  const { reading: departed } = await capture('departure', departure);
-  lastDepartureOn.set(machineId, departure);
-  return { id: planned.id, arrivalReadingId: arrived.id, departureReadingId: departed.id };
+  await captureHours(db, planned.id, 'arrival', arrival);
+  await captureHours(db, planned.id, 'departure', departure);
+  return { id: planned.id };
 }
 
 export async function completedJob(
@@ -179,7 +169,7 @@ export async function pricedJob(
   return { ...completed, total };
 }
 
-/** Amends a reading's hours at the Read At it already has. */
+/** Amends a spot reading's hours at the Read At it already has. */
 export async function amendHours(db: Db, actor: JobActor, id: string, value: number, reason = 'Misread') {
   const { capturedAt } = await getReading({ db, id });
   const [amended] = await amendReadings({
@@ -188,9 +178,4 @@ export async function amendHours(db: Db, actor: JobActor, id: string, value: num
     input: { amendments: [{ id, value, capturedAt: capturedAt.toISOString() }], reason },
   });
   return amended;
-}
-
-/** The readings Disputes lists: each Dispute's readings in ledger order, then the next Dispute's. */
-export async function disputedReadings(db: Db) {
-  return (await listDisputes({ db })).flatMap((dispute) => dispute.readings);
 }

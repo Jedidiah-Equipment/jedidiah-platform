@@ -62,7 +62,7 @@ function StintHoursCell({ row }: { row: MachinePricingRow }) {
     <div>
       <span>{formatHours(stint.billableHours)}</span>
       <span className="block text-muted-foreground text-xs">
-        work {formatHours(stint.workHours ?? 0)} + travel {formatHours(stint.travelHours)}
+        work {formatHours(stint.workHours ?? 0)} + travel {formatHours(stint.travelHours ?? 0)}
       </span>
     </div>
   ) : null;

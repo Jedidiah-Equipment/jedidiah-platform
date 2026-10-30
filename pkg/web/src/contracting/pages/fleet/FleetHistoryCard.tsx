@@ -3,9 +3,9 @@ import { fleetHistoryKindLabels } from '@pkg/domain/contracting';
 import {
   type BreakdownSubjectRef,
   type FleetHistoryListInput,
+  type FleetHistoryReadingRole,
   type FleetHistoryRow,
   fleetHistoryKinds,
-  type ReadingRole,
 } from '@pkg/schema/contracting';
 import { IconGauge, IconTool, type TablerIcon } from '@tabler/icons-react';
 import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query';
@@ -45,7 +45,7 @@ export function historyListFilters(columnFilters: ColumnFiltersState) {
   } satisfies Partial<FleetHistoryListInput>;
 }
 
-const readingTiles: Partial<Record<ReadingRole, { icon: TablerIcon; tone: StatusBadgeColor }>> = {
+const readingTiles: Partial<Record<FleetHistoryReadingRole, { icon: TablerIcon; tone: StatusBadgeColor }>> = {
   arrival: { icon: ACTIVITY_EVENT_ICONS['machine-arrived'], tone: 'blue' },
   departure: { icon: ACTIVITY_EVENT_ICONS['machine-left'], tone: 'gray' },
 };
@@ -159,7 +159,7 @@ export function FleetHistoryCard({
     columns,
     data: items,
     enableSortingRemoval: false,
-    getRowId: (row) => `${row.kind}-${row.id}`,
+    getRowId: (row) => `${row.kind}-${row.readingRole ?? ''}-${row.id}`,
     manualFiltering: true,
     manualSorting: true,
     onColumnFiltersChange: tableController.setColumnFilters,

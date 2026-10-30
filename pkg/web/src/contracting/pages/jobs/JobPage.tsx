@@ -71,7 +71,7 @@ export function JobPage({ code }: { code: string }) {
                   ) : null}
                 </div>
                 <div className="min-w-0 space-y-5">
-                  <HoursHeatMapCard end={jobHoursEnd(job.assignments)} jobIds={[job.id]} />
+                  <HoursHeatMapCard end={jobHoursEnd(job)} jobIds={[job.id]} />
                   <ActivityCard
                     thread={{ kind: 'job', id: job.id, code: job.jobNumber }}
                     addNote={sheet.action('addNote')}

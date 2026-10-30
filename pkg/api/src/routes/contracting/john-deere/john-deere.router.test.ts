@@ -217,7 +217,10 @@ test('Refresh now runs the poll and answers what it did', async ({
   });
   await caller.contractingJohnDeere.links.create({ machineId: machine.id, equipmentId: 'eq-1' });
   // The Link read its hours as it was made, so the first Refresh now finds nothing new.
-  expect(await caller.contractingFleet.machines.get({ id: machine.id })).toMatchObject({ latestReadingHours: 812.3 });
+  expect(await caller.contractingFleet.machines.get({ id: machine.id })).toMatchObject({
+    knownHours: 812.3,
+    knownHoursSource: 'telematics',
+  });
   expect(await caller.contractingJohnDeere.poll.now()).toMatchObject({
     polled: 1,
     stored: 0,
@@ -225,7 +228,8 @@ test('Refresh now runs the poll and answers what it did', async ({
     endedBy: null,
   });
   expect(await caller.contractingFleet.machines.get({ id: machine.id })).toMatchObject({
-    latestReadingHours: 812.3,
+    knownHours: 812.3,
+    knownHoursSource: 'telematics',
     johnDeere: { lastValue: 812.3, lastReportTime: '2026-10-26T06:00:00+00:00' },
   });
 });

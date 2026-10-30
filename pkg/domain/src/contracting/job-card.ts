@@ -6,13 +6,12 @@ import {
   hasJobStatus,
   type JobCardModel,
   type JobCardReading,
-  type JobCardReadingMarker,
   type JobCardStintLine,
   type JobCardVariant,
   type JobDetail,
-  type JobReading,
   type JobStatus,
   type StintPricing,
+  type StintReading,
 } from '@pkg/schema/contracting';
 import { formatPercent } from '../formatting/number.js';
 import { round1 } from './hours.js';
@@ -27,19 +26,15 @@ export const jobCardPath = (jobNumber: string, variant: JobCardVariant) =>
 
 export const jobCardFilename = (jobNumber: string, variant: JobCardVariant) => `${jobNumber}-job-card-${variant}.pdf`;
 
-function readingMarker(reading: JobReading): JobCardReadingMarker | null {
-  if (reading.disputed) return 'disputed';
-  return reading.amendedAt ? 'amended' : null;
-}
-
-function cardReading(reading: JobReading | null, internal: boolean): JobCardReading | null {
+/** Each reading on the card; the internal copy adds when and by whom, the comment, and the amended marker. */
+function cardReading(reading: StintReading | null, internal: boolean, amended: boolean): JobCardReading | null {
   if (!reading) return null;
   return {
-    value: reading.value,
-    capturedAt: reading.capturedAt,
-    marker: internal ? readingMarker(reading) : null,
+    hours: reading.hours,
+    at: internal ? reading.at : null,
+    marker: internal && amended ? 'amended' : null,
     comment: internal ? reading.comment : null,
-    capturedByName: internal ? reading.capturedByName : null,
+    byName: internal ? reading.byName : null,
   };
 }
 
@@ -59,15 +54,14 @@ function stintLine(stint: Assignment, internal: boolean, priced: boolean): JobCa
     categoryName: stint.categoryName,
     implementCode: stint.implementCode,
     driverName: internal ? stint.driverName : null,
-    arrival: cardReading(stint.arrival, internal),
-    departure: cardReading(stint.departure, internal),
+    arrival: cardReading(stint.arrival, internal, stint.amendment !== null),
+    departure: cardReading(stint.departure, internal, stint.amendment !== null),
     hours: internal
       ? {
           variant: 'internal',
           work: stint.workHours,
-          travel: stint.travelHours,
-          unaccounted: stint.unaccountedHours,
-          gapReason: stint.gapReason,
+          travel: stint.travelHours ?? 0,
+          travelClamped: stint.travelClamped,
         }
       : { variant: 'customer', total: stint.billableHours },
     measures: stint.measures.map((measure) => ({ name: measure.measureTypeName, quantity: measure.quantity })),

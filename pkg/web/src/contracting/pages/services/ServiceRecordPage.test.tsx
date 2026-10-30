@@ -24,7 +24,7 @@ const machine = buildMachine({
   id: '00000000-0000-4000-8000-000000000002',
   code: 'JD110-1',
   serviceBookedIn: true,
-  latestReadingProvider: 'john-deere',
+  knownHoursSource: 'telematics',
 });
 const openRecord = buildServiceRecord({ primaryMechanicUserId: 'thabo', mechanicName: 'Thabo Nkosi' });
 const closedRecord = buildServiceRecord({

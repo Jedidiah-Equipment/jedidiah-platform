@@ -4,12 +4,16 @@ import { createCursorQueryResult, createSearchedSortedCursorQueryInput } from '.
 import { UUID } from '../../common/uuid.js';
 import { BreakdownSubjectRef } from '../breakdowns/breakdown.js';
 import { breakdownStatuses, breakdownUrgencies } from '../breakdowns/breakdown-enums.js';
-import { readingRoles } from '../readings/reading-enums.js';
+import { stintReadingRoles } from '../jobs/stint-hours.js';
+
+/** A History row's hours: a spot or Telematics Reading from the ledger, or one of a stint's Job Hours. */
+export const fleetHistoryReadingRoles = ['spot', ...stintReadingRoles] as const;
+export type FleetHistoryReadingRole = (typeof fleetHistoryReadingRoles)[number];
 
 export const fleetHistoryKinds = ['reading', 'breakdown', 'service'] as const;
 export type FleetHistoryKind = (typeof fleetHistoryKinds)[number];
 
-/** One Machine's or Implement's History: its readings, Breakdowns and services as one newest-first timeline. */
+/** One Machine's or Implement's History: its readings and Job Hours, Breakdowns and services, newest first. */
 export const FleetHistoryListInput = createSearchedSortedCursorQueryInput({
   defaultSortDirection: 'desc',
   shape: {
@@ -33,7 +37,7 @@ export const FleetHistoryRow = z.object({
   detail: z.string().nullable(),
   /** Where a reading's hours came from: the telematics provider, or the capturer's first name. */
   source: z.string().nullable(),
-  readingRole: z.enum(readingRoles).nullable(),
+  readingRole: z.enum(fleetHistoryReadingRoles).nullable(),
   breakdown: z.object({ urgency: z.enum(breakdownUrgencies), status: z.enum(breakdownStatuses) }).nullable(),
   opens: z
     .discriminatedUnion('to', [

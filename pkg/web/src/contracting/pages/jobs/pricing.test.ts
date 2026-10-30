@@ -24,7 +24,7 @@ const priced = (
     machineCode: machineId.toUpperCase(),
     createdAt: capturedAt,
     state: 'left',
-    arrival: { capturedAt },
+    arrival: { at: capturedAt },
     workHours: 8,
     travelHours: 0,
     measures: [],

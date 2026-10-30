@@ -1,6 +1,6 @@
 import { fieldJobAccessMode, jobReadMode, openJobQueues, readableJobQueues } from '@pkg/domain/contracting';
 import type { JobListInput, JobQueue } from '@pkg/schema/contracting';
-import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { fieldQuery } from '@/contracting/lib/field-query';
 import { useSessionAccessSummary, useSessionPermission } from '@/lib/auth-session';
 import { useTRPC } from '@/lib/trpc';
@@ -96,4 +96,21 @@ export function useDrivers() {
     canRead,
     useQuery(trpc.contractingJobs.field.drivers.queryOptions(undefined, { enabled: canRead })),
   );
+}
+
+/** A stint's Job Hours writes; each refreshes the Job and what reads Known Hours. */
+export function useStintHoursWrites() {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const onSuccess = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: trpc.contractingJobs.pathKey() }),
+      queryClient.invalidateQueries({ queryKey: trpc.contractingReadings.pathKey() }),
+      queryClient.invalidateQueries({ queryKey: trpc.contractingServices.pathKey() }),
+    ]);
+  };
+  return {
+    capture: useMutation(trpc.contractingJobs.assignments.captureHours.mutationOptions({ onSuccess })),
+    edit: useMutation(trpc.contractingJobs.assignments.editHours.mutationOptions({ onSuccess })),
+  };
 }

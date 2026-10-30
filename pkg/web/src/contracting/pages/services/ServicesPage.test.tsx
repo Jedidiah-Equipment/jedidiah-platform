@@ -129,8 +129,8 @@ test('pins the Machines Due for Service above every Service Record, painted, boo
   expect(document.querySelector('[role="dialog"]')).toBeNull();
 });
 
-test('shows the John Deere mark on a Machine whose latest reading its telematics reported', async () => {
-  const { rows } = await mount({ ...machine, latestReadingProvider: 'john-deere' });
+test('shows the John Deere mark on a Machine whose Known Hours its telematics reported', async () => {
+  const { rows } = await mount({ ...machine, knownHoursSource: 'telematics' });
 
   const [pinned, booked] = rows();
   expect(pinned?.textContent).toContain('John Deere');

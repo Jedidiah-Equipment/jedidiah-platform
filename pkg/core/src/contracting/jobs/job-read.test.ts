@@ -1,12 +1,11 @@
 import type { Db } from '@pkg/db';
-import { contractingHourReadings, contractingJobs } from '@pkg/db/contracting';
+import { contractingJobs, contractingMachineAssignments } from '@pkg/db/contracting';
 import { JobListInput } from '@pkg/schema/contracting';
 import { eq } from 'drizzle-orm';
 import { expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
 import { createCustomer } from '../customers/customer-service.js';
 import { createFarm } from '../customers/farm-service.js';
-import { captureReading } from '../readings/reading-service.js';
 import { getContractingSettings, updateContractingSettings } from '../settings/settings-service.js';
 import { admin, adminId, foreman, foremanId, leftStint, plannedStint, seedJobFixtures } from '../test/job-fixtures.js';
 import { listJobs, summarizeJobQueues } from './job-queues.js';
@@ -15,220 +14,115 @@ import { createJob } from './job-service.js';
 
 const test = createTester(async ({ db }) => ({ ...(await seedJobFixtures(db)), db }));
 
-test('judges an open Hour Gap against the current Gap Flag threshold on every read, in the detail and the queues alike', async ({
+const newJob = (context: { db: Db } & Awaited<ReturnType<typeof seedJobFixtures>>) =>
+  createJob({
+    db: context.db,
+    actor: admin,
+    input: {
+      customerId: context.customer.id,
+      farmId: context.farm.id,
+      workTypeId: context.workType.id,
+      description: null,
+      foremanUserId: foremanId,
+    },
+  });
+
+test('judges Travel against the current Travel Flag threshold on every read, in the detail and the queues alike', async ({
   context,
 }) => {
   const { db, excavator } = context;
-  const job = async () =>
-    createJob({
-      db,
-      actor: admin,
-      input: {
-        customerId: context.customer.id,
-        farmId: context.farm.id,
-        workTypeId: context.workType.id,
-        description: null,
-        foremanUserId: foremanId,
-      },
-    });
-  const first = await job();
+  const first = await newJob(context);
   await leftStint(db, first.id, excavator.id, 100, 110);
-  const second = await job();
-  // A 3 h gap: inside the default 4 h threshold, outside a 2 h one.
+  const second = await newJob(context);
+  // 3 h of Travel: inside the default 4 h threshold, outside a 2 h one.
   await leftStint(db, second.id, excavator.id, 113, 120);
 
   const detail = async () => {
     const read = await getJob({ db, id: second.id });
-    return { flagged: read.assignments[0]?.gapFlag, open: read.openGapFlags, threshold: read.gapFlagThresholdHours };
+    return {
+      attention: read.assignments[0]?.attention,
+      count: read.assignmentAttention,
+      threshold: read.travelFlagThresholdHours,
+    };
   };
   const queue = async () => {
     const [summary] = (
       await listJobs({ db, actor: admin, input: JobListInput.parse({ queues: ['looks-finished'] }) })
     ).items.filter((item) => item.id === second.id);
     const totals = await summarizeJobQueues({ db, actor: admin });
-    return { open: summary?.openGapFlags, attention: totals.attention['looks-finished'] };
+    return { count: summary?.assignmentAttention, attention: totals.attention['looks-finished'] };
   };
-  expect(await detail()).toEqual({ flagged: false, open: 0, threshold: 4 });
-  expect(await queue()).toEqual({ open: 0, attention: null });
-
-  await updateContractingSettings({
-    db,
-    actorUserId: adminId,
-    input: { ...(await getContractingSettings({ db })), gapFlagThresholdHours: 2 },
-  });
-  expect(await detail()).toEqual({ flagged: true, open: 1, threshold: 2 });
-  expect(await queue()).toMatchObject({ open: 1 });
-  expect((await queue()).attention).not.toBeNull();
-
-  await updateContractingSettings({
-    db,
-    actorUserId: adminId,
-    input: { ...(await getContractingSettings({ db })), gapFlagThresholdHours: 3 },
-  });
-  // Equal to the threshold is not over it.
-  expect(await detail()).toEqual({ flagged: false, open: 0, threshold: 3 });
-  expect(await queue()).toEqual({ open: 0, attention: null });
-});
-
-const stintOn = async (
-  { db, excavator, customer, farm, workType }: { db: Db } & Awaited<ReturnType<typeof seedJobFixtures>>,
-  readings: ReadonlyArray<[number, string]>,
-) => {
-  const job = await createJob({
-    db,
-    actor: admin,
-    input: {
-      customerId: customer.id,
-      farmId: farm.id,
-      workTypeId: workType.id,
-      description: null,
-      foremanUserId: foremanId,
-    },
-  });
-  const planned = await plannedStint(db, admin, { jobId: job.id, machineId: excavator.id, implementId: null });
-  const readingIds: string[] = [];
-  for (const [index, [value, capturedAt]] of readings.entries()) {
-    const { reading } = await captureReading({
+  const threshold = async (travelFlagThresholdHours: number) =>
+    updateContractingSettings({
       db,
-      actor: admin,
-      input: {
-        machineId: excavator.id,
-        assignmentId: planned.id,
-        role: index === 0 ? 'arrival' : 'departure',
-        value,
-        capturedAt,
-        disputePrevious: false,
-      },
+      actorUserId: adminId,
+      input: { ...(await getContractingSettings({ db })), travelFlagThresholdHours },
     });
-    readingIds.push(reading.id);
-  }
-  return { job, readingIds };
-};
+  expect(await detail()).toEqual({ attention: [], count: 0, threshold: 4 });
+  expect(await queue()).toEqual({ count: 0, attention: null });
 
-const gapOf = async (db: Db, jobId: string) => {
-  const [stint] = (await getJob({ db, id: jobId })).assignments;
-  return { from: stint?.previousDeparture?.value, gapHours: stint?.gapHours, gapFlag: stint?.gapFlag };
-};
+  await threshold(2);
+  expect(await detail()).toEqual({ attention: ['travel-over-threshold'], count: 1, threshold: 2 });
+  expect(await queue()).toEqual({ count: 1, attention: 'needs-a-look' });
 
-test('refuses to backfill a stint behind another Job’s, so no Hour Gap moves', async ({ context }) => {
-  const { db } = context;
-  await stintOn(context, [
-    [100, '2026-09-01T08:00:00Z'],
-    [110, '2026-09-01T18:00:00Z'],
-  ]);
-  const { job: later } = await stintOn(context, [
-    [130, '2026-09-03T08:00:00Z'],
-    [140, '2026-09-03T18:00:00Z'],
-  ]);
-  await expect(stintOn(context, [[115, '2026-09-02T08:00:00Z']])).rejects.toMatchObject({
-    code: 'reading.invalid_role',
-    message: "An arrival cannot be read before the Machine's last departure. Check the time.",
-  });
-  expect(await gapOf(db, later.id)).toEqual({ from: 110, gapHours: 20, gapFlag: true });
-  await expect(
-    stintOn(context, [
-      [140, '2026-09-04T08:00:00Z'],
-      [140, '2026-09-04T07:00:00Z'],
-    ]),
-  ).rejects.toMatchObject({ message: 'A departure cannot be read before its arrival. Check the time.' });
+  // Equal to the threshold is not over it.
+  await threshold(3);
+  expect(await detail()).toEqual({ attention: [], count: 0, threshold: 3 });
+  expect(await queue()).toEqual({ count: 0, attention: null });
 });
 
-/** Readings from before Read At ordered the ledger may sit out of insertion order; the gap reads them in time. */
-test('starts an Hour Gap at the departure before the arrival’s Read At, whatever order the rows arrived in', async ({
+test('lists only the Jobs needing a look when asked, the SQL agreeing with the domain on every kind', async ({
   context,
 }) => {
-  const { db } = context;
-  await stintOn(context, [
-    [100, '2026-09-01T08:00:00Z'],
-    [110, '2026-09-01T18:00:00Z'],
-  ]);
-  const { job: later } = await stintOn(context, [
-    [130, '2026-09-03T08:00:00Z'],
-    [140, '2026-09-03T18:00:00Z'],
-  ]);
-  const { job: late, readingIds } = await stintOn(context, [
-    [150, '2026-09-04T08:00:00Z'],
-    [160, '2026-09-04T18:00:00Z'],
-  ]);
-  for (const [id, value, capturedAt] of [
-    [readingIds[0], 115, '2026-09-02T08:00:00Z'],
-    [readingIds[1], 127, '2026-09-02T15:00:00Z'],
-  ] as const)
-    await db
-      .update(contractingHourReadings)
-      .set({ value, capturedAt: new Date(capturedAt) })
-      .where(eq(contractingHourReadings.id, id ?? ''));
-
-  expect(await gapOf(db, later.id)).toEqual({ from: 127, gapHours: 3, gapFlag: false });
-  expect(await gapOf(db, late.id)).toEqual({ from: 110, gapHours: 5, gapFlag: true });
-  const openGapFlags = async (jobId: string) =>
-    (await listJobs({ db, actor: admin, input: JobListInput.parse({ queues: ['looks-finished'] }) })).items.find(
-      (item) => item.id === jobId,
-    )?.openGapFlags;
-  expect(await openGapFlags(later.id)).toBe(0);
-  expect(await openGapFlags(late.id)).toBe(1);
-});
-
-test('lists only the Jobs needing a look when asked: an open Gap Flag or a Disputed reading', async ({ context }) => {
   const { db, excavator, tipper } = context;
-  const job = async () =>
-    createJob({
-      db,
-      actor: admin,
-      input: {
-        customerId: context.customer.id,
-        farmId: context.farm.id,
-        workTypeId: context.workType.id,
-        description: null,
-        foremanUserId: foremanId,
-      },
-    });
-  const clean = await job();
+  const clean = await newJob(context);
   await leftStint(db, clean.id, excavator.id, 100, 110);
-  const gapped = await job();
-  // A 10 h gap after the clean Job's departure: over the default 4 h threshold.
-  await leftStint(db, gapped.id, excavator.id, 120, 125);
-  const unconfirmed = await job();
-  const stint = await leftStint(db, unconfirmed.id, tipper.id, 50, 60);
+  const over = await newJob(context);
+  // 10 h of Travel after the clean Job's departure: over the default 4 h threshold.
+  await leftStint(db, over.id, excavator.id, 120, 125);
+  const clamped = await newJob(context);
+  // Captured out of order: an arrival below the Machine's last departure stores 0 h, clamped.
+  await leftStint(db, clamped.id, excavator.id, 115, 118);
+  const deere = await newJob(context);
+  const { id: deereStint } = await leftStint(db, deere.id, tipper.id, 50, 60);
   await db
-    .update(contractingHourReadings)
-    .set({ disputed: true, disputeReason: 'The previous reading is wrong.' })
-    .where(eq(contractingHourReadings.id, stint.departureReadingId));
-  await db.update(contractingJobs).set({ foremanUserId: null }).where(eq(contractingJobs.id, unconfirmed.id));
+    .update(contractingMachineAssignments)
+    .set({ arrivalTelematicsHours: 30, arrivalTelematicsAt: new Date('2026-09-01T06:00:00Z') })
+    .where(eq(contractingMachineAssignments.id, deereStint));
+  await db.update(contractingJobs).set({ foremanUserId: null }).where(eq(contractingJobs.id, deere.id));
+
+  const kinds = async (jobId: string) => (await getJob({ db, id: jobId })).assignments.flatMap((a) => a.attention);
+  expect(await kinds(clean.id)).toEqual([]);
+  expect(await kinds(over.id)).toEqual(['travel-over-threshold']);
+  expect(await kinds(clamped.id)).toEqual(['travel-clamped']);
+  expect(await kinds(deere.id)).toEqual(['john-deere-difference']);
 
   const listed = async (actor: typeof admin) =>
     (
       await listJobs({ db, actor, input: JobListInput.parse({ queues: ['looks-finished'], needsALook: true }) })
     ).items.map((item) => item.id);
-  expect(new Set(await listed(admin))).toEqual(new Set([gapped.id, unconfirmed.id]));
+  expect(new Set(await listed(admin))).toEqual(new Set([over.id, clamped.id, deere.id]));
   // Still reader-scoped: the Foreman's own Jobs only.
-  expect(await listed(foreman)).toEqual([gapped.id]);
+  expect(new Set(await listed(foreman))).toEqual(new Set([over.id, clamped.id]));
 
-  // Judged against the current threshold: a 10 h gap is not over 12 h.
+  // Judged against the current thresholds: 10 h of Travel is not over 12 h, nor a 20 h difference over 25 h.
   await updateContractingSettings({
     db,
     actorUserId: adminId,
-    input: { ...(await getContractingSettings({ db })), gapFlagThresholdHours: 12 },
+    input: {
+      ...(await getContractingSettings({ db })),
+      travelFlagThresholdHours: 12,
+      johnDeereDifferenceThresholdHours: 25,
+    },
   });
-  expect(await listed(admin)).toEqual([unconfirmed.id]);
+  expect(await listed(admin)).toEqual([clamped.id]);
 });
 
 test('lists only the Jobs a Machine has an Assignment on when asked, in any state and any queue', async ({
   context,
 }) => {
   const { db, excavator, tipper } = context;
-  const job = async () =>
-    createJob({
-      db,
-      actor: admin,
-      input: {
-        customerId: context.customer.id,
-        farmId: context.farm.id,
-        workTypeId: context.workType.id,
-        description: null,
-        foremanUserId: foremanId,
-      },
-    });
+  const job = () => newJob(context);
   const planned = await job();
   await plannedStint(db, admin, { jobId: planned.id, machineId: excavator.id, implementId: null });
   const left = await job();

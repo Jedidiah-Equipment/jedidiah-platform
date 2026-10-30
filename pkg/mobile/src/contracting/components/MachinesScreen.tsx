@@ -67,7 +67,7 @@ function MachineCard({ machine }: { machine: FieldMachine }) {
         ) : undefined
       }
       mainText={machine.code}
-      monoText={machine.latestReadingHours === null ? 'No reading' : formatHours(machine.latestReadingHours)}
+      monoText={machine.knownHours === null ? 'No known hours' : formatHours(machine.knownHours)}
       onPress={() => router.push(`/contracting/machines/${machine.id}`)}
       subText={`${machine.make} ${machine.model} · ${machine.categoryName}`}
       trailing={<BusyWith machine={machine} />}

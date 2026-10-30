@@ -4,11 +4,12 @@ import { type BadgeColorClassNames, statusBadgeColorClassNames } from '../theme/
 import { round1 } from './hours.js';
 import { round2 } from './pricing.js';
 
-export type ServiceDueFacts = { latestReadingHours: number | null; nextServiceDueHours: number | null };
+/** What a Machine's service status is read off: its Known Hours and its Next Service Due. */
+export type ServiceDueFacts = { knownHours: number | null; nextServiceDueHours: number | null };
 
 /** Hours left on the meter before Next Service Due; negative once it has passed. */
-export const hoursToService = ({ latestReadingHours, nextServiceDueHours }: ServiceDueFacts) =>
-  latestReadingHours === null || nextServiceDueHours === null ? null : round1(nextServiceDueHours - latestReadingHours);
+export const hoursToService = ({ knownHours, nextServiceDueHours }: ServiceDueFacts) =>
+  knownHours === null || nextServiceDueHours === null ? null : round1(nextServiceDueHours - knownHours);
 
 /** The threshold a Machine is judged with: its own Service Alert Hours, else the Service Due Soon threshold in Settings. */
 export const effectiveServiceAlertHours = (machine: { serviceAlertHours: number | null }, settingsThreshold: number) =>
@@ -23,22 +24,21 @@ export function serviceDueStatus(facts: ServiceDueFacts, threshold: number): Ser
 }
 
 /**
- * The Service Due Soon edge one capture can cross: the new latest reading needs attention while the one before it
- * (or no reading at all) did not. A second reading still inside does not cross it; a higher Next Service Due re-arms it.
+ * The Service Due Soon edge a capture can cross: Known Hours after it need attention while Known Hours before it (or
+ * none at all) did not. Spot readings, Telematics Readings and Job Hours all move Known Hours, so all three ask this.
+ * A second capture still inside does not cross it; a higher Next Service Due re-arms it.
  */
-export const serviceDueSoonCrossed = ({
-  previousHours,
-  newHours,
-  nextServiceDueHours,
-  threshold,
-}: {
-  previousHours: number | null;
-  newHours: number;
-  nextServiceDueHours: number | null;
-  threshold: number;
-}) =>
-  serviceDueNeedsAttention(serviceDueStatus({ latestReadingHours: newHours, nextServiceDueHours }, threshold)) &&
-  !serviceDueNeedsAttention(serviceDueStatus({ latestReadingHours: previousHours, nextServiceDueHours }, threshold));
+export function knownHoursCrossServiceDueSoon(
+  before: number | null,
+  after: number | null,
+  machine: { nextServiceDueHours: number | null; serviceAlertHours: number | null },
+  settingsThreshold: number,
+): boolean {
+  const threshold = effectiveServiceAlertHours(machine, settingsThreshold);
+  const status = (knownHours: number | null) =>
+    serviceDueStatus({ knownHours, nextServiceDueHours: machine.nextServiceDueHours }, threshold);
+  return serviceDueNeedsAttention(status(after)) && !serviceDueNeedsAttention(status(before));
+}
 
 /** Pre-fill for the sticker: the reading at service plus the interval, when the Machine has one. */
 export const suggestedNextServiceDue = (readingAtServiceHours: number, serviceIntervalHours: number | null) =>

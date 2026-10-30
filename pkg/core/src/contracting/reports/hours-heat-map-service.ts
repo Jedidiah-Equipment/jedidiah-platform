@@ -1,24 +1,19 @@
 import type { Db } from '@pkg/db';
 import { contractingHourReadings, contractingMachineAssignments, contractingMachines } from '@pkg/db/contracting';
-import {
-  addDateOnlyDays,
-  getPlantDateNow,
-  groupBy,
-  JOHANNESBURG_TIME_ZONE,
-  zonedDateStartToUtcInstant,
-} from '@pkg/domain';
+import { addDateOnlyDays, getPlantDateNow, JOHANNESBURG_TIME_ZONE, zonedDateStartToUtcInstant } from '@pkg/domain';
 import {
   allocateDailyHours,
+  jobWorkSegments,
   type MeterSegment,
   meterSegments,
   resolveHoursHeatMapRange,
-  stintWorkSegments,
 } from '@pkg/domain/contracting';
 import type { DateOnlyIso } from '@pkg/schema';
 import { HoursHeatMap, type HoursHeatMapInput, isValidHoursHeatMapRange } from '@pkg/schema/contracting';
-import { and, asc, eq, gte, inArray, isNotNull, lt, sql } from 'drizzle-orm';
+import { and, asc, eq, gte, inArray, lt, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { oldestFirst } from '../readings/reading-sql.js';
+import { loadDatedJobs } from './dated-jobs.js';
 import { reportInvalidRange } from './report-errors.js';
 
 const neighbourName = 'heat_map_neighbour';
@@ -26,27 +21,16 @@ const neighbour = alias(contractingHourReadings, neighbourName);
 
 type LedgerPoint = { id: string; machineId: string; sequence: number; value: number; capturedAt: Date };
 
-/** The started stints of the given Jobs (on the given Machines, when named), by Machine. */
-async function loadStints(db: Db, jobIds: string[], machineIds: string[] | undefined) {
-  const rows = await db
-    .select({
-      machineId: contractingMachineAssignments.machineId,
-      arrivalReadingId: contractingMachineAssignments.arrivalReadingId,
-      departureReadingId: contractingMachineAssignments.departureReadingId,
-    })
-    .from(contractingMachineAssignments)
-    .where(
-      and(
-        inArray(contractingMachineAssignments.jobId, jobIds),
-        isNotNull(contractingMachineAssignments.arrivalReadingId),
-        machineIds ? inArray(contractingMachineAssignments.machineId, machineIds) : undefined,
-      ),
-    );
-  return groupBy(
-    rows.flatMap(({ machineId, arrivalReadingId, departureReadingId }) =>
-      arrivalReadingId ? [{ machineId, stint: { arrivalReadingId, departureReadingId } }] : [],
-    ),
-    (row) => row.machineId,
+/** The given Jobs' Work hours (on the given Machines, when named), each stint's spread over its Job's effective dates. */
+async function loadJobWorkSegments(
+  db: Db,
+  jobIds: string[],
+  machineIds: string[] | undefined,
+  today: DateOnlyIso,
+): Promise<MeterSegment[]> {
+  const jobs = await loadDatedJobs(db, today, inArray(contractingMachineAssignments.jobId, jobIds));
+  return jobs.flatMap(({ dates, stints }) =>
+    jobWorkSegments(machineIds ? stints.filter((stint) => machineIds.includes(stint.machineId)) : stints, dates),
   );
 }
 
@@ -65,12 +49,7 @@ const nearestReadingId = (side: 'before' | 'after', instant: Date) => {
  * The readings inside the range plus, per Machine, the one just before it and the one just after it: the neighbours
  * the first and last segments run to. Nothing reads a whole ledger.
  */
-async function loadLedgers(
-  db: Db,
-  range: { from: Date; to: Date },
-  machineIds: string[] | undefined,
-  stintReadingIds: string[],
-) {
+async function loadLedgers(db: Db, range: { from: Date; to: Date }, machineIds: string[] | undefined) {
   const columns = {
     id: contractingHourReadings.id,
     sequence: contractingHourReadings.sequence,
@@ -87,7 +66,7 @@ async function loadLedgers(
         eq(contractingHourReadings.id, nearestReadingId(side, side === 'before' ? range.from : range.to)),
       )
       .where(machineIds ? inArray(contractingMachines.id, machineIds) : undefined);
-  const [before, inside, after, stintReadings] = await Promise.all([
+  const [before, inside, after] = await Promise.all([
     nearest('before'),
     db
       .select(columns)
@@ -101,13 +80,9 @@ async function loadLedgers(
       )
       .orderBy(asc(contractingHourReadings.machineId), ...oldestFirst),
     nearest('after'),
-    // A Job's stints are walked by their arrival and departure readings, so those are in the ledger wherever they fall.
-    stintReadingIds.length > 0
-      ? db.select(columns).from(contractingHourReadings).where(inArray(contractingHourReadings.id, stintReadingIds))
-      : [],
   ]);
   const ledgers = new Map<string, Map<string, LedgerPoint>>();
-  for (const point of [...before, ...inside, ...after, ...stintReadings]) {
+  for (const point of [...before, ...inside, ...after]) {
     const ledger = ledgers.get(point.machineId) ?? new Map<string, LedgerPoint>();
     ledger.set(point.id, point);
     ledgers.set(point.machineId, ledger);
@@ -122,9 +97,14 @@ async function loadLedgers(
 }
 
 /**
- * Daily Hours across the selected Machines, summed per plant day. Unfiltered or per Machine every meter delta counts;
- * under Jobs only the Work hours inside those Jobs' stints do.
+ * Daily Hours across the selected Machines, summed per plant day. Unfiltered or per Machine every ledger delta counts;
+ * under Jobs each stint's Work hours spread evenly over its Job's dates, every day estimated.
  */
+const rangeInstants = (range: { start: DateOnlyIso; end: DateOnlyIso }) => ({
+  from: zonedDateStartToUtcInstant(range.start, JOHANNESBURG_TIME_ZONE),
+  to: zonedDateStartToUtcInstant(addDateOnlyDays(range.end, 1), JOHANNESBURG_TIME_ZONE),
+});
+
 export async function getHoursHeatMap({
   db,
   input,
@@ -142,34 +122,10 @@ export async function getHoursHeatMap({
   }
   const machineIds = input.machineIds?.length ? input.machineIds : undefined;
   const jobIds = input.jobIds?.length ? input.jobIds : undefined;
-  const stintsByMachine = jobIds ? await loadStints(db, jobIds, machineIds) : null;
-  const stintReadingIds = [...(stintsByMachine?.values() ?? [])].flatMap((rows) =>
-    rows.flatMap(({ stint }) => [
-      stint.arrivalReadingId,
-      ...(stint.departureReadingId ? [stint.departureReadingId] : []),
-    ]),
-  );
-  const scopedMachineIds = stintsByMachine ? [...stintsByMachine.keys()] : machineIds;
-  const segments: MeterSegment[] = [];
-  if (!scopedMachineIds || scopedMachineIds.length > 0) {
-    const ledgers = await loadLedgers(
-      db,
-      {
-        from: zonedDateStartToUtcInstant(range.start, JOHANNESBURG_TIME_ZONE),
-        to: zonedDateStartToUtcInstant(addDateOnlyDays(range.end, 1), JOHANNESBURG_TIME_ZONE),
-      },
-      scopedMachineIds,
-      stintReadingIds,
-    );
-    for (const [machineId, ledger] of ledgers) {
-      const readings = ledger.map((point) => ({
-        id: point.id,
-        value: point.value,
-        capturedAt: point.capturedAt.toISOString(),
-      }));
-      const stints = stintsByMachine?.get(machineId)?.map((row) => row.stint);
-      segments.push(...(stints ? stintWorkSegments(readings, stints) : meterSegments(readings)));
-    }
-  }
+  const segments = jobIds
+    ? await loadJobWorkSegments(db, jobIds, machineIds, today)
+    : [...(await loadLedgers(db, rangeInstants(range), machineIds)).values()].flatMap((ledger) =>
+        meterSegments(ledger.map((point) => ({ value: point.value, capturedAt: point.capturedAt.toISOString() }))),
+      );
   return HoursHeatMap.parse({ ...range, days: allocateDailyHours(segments, range.start, range.end) });
 }

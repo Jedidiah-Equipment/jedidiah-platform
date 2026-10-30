@@ -1,19 +1,29 @@
 import type { DatabaseTransaction, Db } from '@pkg/db';
 import { contractingHourReadings, contractingJohnDeereLinks, contractingMachines } from '@pkg/db/contracting';
-import {
-  effectiveServiceAlertHours,
-  FUTURE_READ_AT_TOLERANCE_MS,
-  floorToTenth,
-  readingsContradictedBy,
-  serviceDueSoonCrossed,
-  telematicsDisputeReason,
-} from '@pkg/domain/contracting';
+import { FUTURE_READ_AT_TOLERANCE_MS, floorToTenth } from '@pkg/domain/contracting';
 import type { TelematicsProvider } from '@pkg/schema/contracting';
 import { and, eq, isNull } from 'drizzle-orm';
 import { recordAuditCreate } from '../../audit/audit-writer.js';
-import { getContractingSettings } from '../settings/settings-service.js';
+import { serviceDueSoonEdge } from '../fleet/machine-service.js';
 import { type ReadingRow, readingDescriptor, updateAudited } from './reading-audit.js';
-import { oldestFirst } from './reading-sql.js';
+import { newestFirst, oldestFirst } from './reading-sql.js';
+
+/** John Deere's latest report for a Machine; null for an unlinked Machine. */
+export async function latestTelematicsReading(db: Db | DatabaseTransaction, machineId: string) {
+  const [latest] = await db
+    .select({ hours: contractingHourReadings.value, at: contractingHourReadings.capturedAt })
+    .from(contractingHourReadings)
+    .where(and(eq(contractingHourReadings.machineId, machineId), eq(contractingHourReadings.method, 'telematics')))
+    .orderBy(...newestFirst)
+    .limit(1);
+  return latest ?? null;
+}
+
+/** John Deere's latest report for the Machine, as a capture screen shows it beside the hours; null when unlinked. */
+export async function latestTelematics({ db, machineId }: { db: Db; machineId: string }) {
+  const latest = await latestTelematicsReading(db, machineId);
+  return latest ? { hours: latest.hours, at: latest.at.toISOString() } : null;
+}
 
 export type TelematicsReadingResult =
   | {
@@ -25,14 +35,12 @@ export type TelematicsReadingResult =
       reading: ReadingRow;
       /** True when this write took the Machine into Service Due Soon; the caller schedules the push after commit. */
       serviceDueSoonCrossed: boolean;
-      /** Captured readings the Telematics Reading contradicts, now Disputed for management. */
-      disputedReadingIds: string[];
     };
 
 /**
  * Writes what a Machine's telematics reported into its ledger: a new Telematics Reading, or the last one's Read At
- * moved forward when the same value is reported again and nothing else was read in between. A captured reading the
- * report leaves out of sequence becomes Disputed for management; the report itself is beyond dispute.
+ * moved forward when the same value is reported again and nothing else was read in between. It marks nothing: it joins
+ * the ledger and moves Known Hours.
  */
 export async function recordTelematicsReading({
   db,
@@ -75,7 +83,6 @@ export async function recordTelematicsReading({
       .from(contractingHourReadings)
       .where(eq(contractingHourReadings.machineId, machineId))
       .orderBy(...oldestFirst);
-    const latest = ledger.at(-1) ?? null;
     const last = ledger.findLast((row) => row.method === 'telematics') ?? null;
     if (last && reportTime.getTime() <= last.capturedAt.getTime()) return { outcome: 'unchanged', reason: 'not-newer' };
 
@@ -86,39 +93,12 @@ export async function recordTelematicsReading({
           row.capturedAt.getTime() > since.capturedAt.getTime() && row.capturedAt.getTime() <= reportTime.getTime(),
       );
     const moving = last && last.value === value && !readSince(last) ? last : null;
+    const edge = await serviceDueSoonEdge(tx, machine);
     const reading = moving
       ? await updateAudited(tx, null, moving, { capturedAt: reportTime }, 'Report time moved')
       : await insertTelematicsReading(tx, { machineId, linkId, provider, value, reportTime });
 
-    const after: ReadingRow[] = moving
-      ? ledger.map((row) => (row.id === moving.id ? { ...row, capturedAt: reportTime } : row))
-      : [...ledger, reading];
-    const contradicted = readingsContradictedBy(after, reading.id).filter((row) => !row.disputed);
-    for (const row of contradicted)
-      await updateAudited(tx, null, row, {
-        disputed: true,
-        disputeReason: telematicsDisputeReason({ telematicsProvider: provider, value, capturedAt: reportTime }),
-      });
-
-    // Only a report that becomes the Machine's latest reading can bring it into Service Due Soon.
-    const becameLatest = !latest || reportTime.getTime() >= latest.capturedAt.getTime();
-    const crossed =
-      becameLatest &&
-      serviceDueSoonCrossed({
-        previousHours: latest?.value ?? null,
-        newHours: value,
-        nextServiceDueHours: machine.nextServiceDueHours,
-        threshold: effectiveServiceAlertHours(
-          machine,
-          (await getContractingSettings({ db: tx })).serviceDueSoonThresholdHours,
-        ),
-      });
-    return {
-      outcome: moving ? 'moved' : 'stored',
-      reading,
-      serviceDueSoonCrossed: crossed,
-      disputedReadingIds: contradicted.map((row) => row.id),
-    };
+    return { outcome: moving ? 'moved' : 'stored', reading, serviceDueSoonCrossed: await edge.crossed() };
   });
 }
 
@@ -136,7 +116,6 @@ async function insertTelematicsReading(
     .insert(contractingHourReadings)
     .values({
       machineId,
-      role: 'spot',
       value,
       capturedAt: reportTime,
       capturedByUserId: null,

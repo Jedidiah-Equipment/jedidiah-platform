@@ -2,7 +2,7 @@ import { expect, test } from 'vitest';
 import { orderJobsNeedingALook, orderUnsolvedBreakdowns } from './dashboard.js';
 
 test('orders Jobs needing a look first, then by Job Number', () => {
-  const job = (jobNumber: string, critical: number) => ({ jobNumber, assignmentAttention: { critical } });
+  const job = (jobNumber: string, assignmentAttention: number) => ({ jobNumber, assignmentAttention });
   const ordered = orderJobsNeedingALook([job('CJOB-00003', 0), job('CJOB-00010', 1), job('CJOB-00002', 3)]);
   expect(ordered.map((entry) => entry.jobNumber)).toEqual(['CJOB-00002', 'CJOB-00010', 'CJOB-00003']);
 });

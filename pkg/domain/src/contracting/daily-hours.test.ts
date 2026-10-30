@@ -4,10 +4,10 @@ import {
   allocateDailyHours,
   busiestDailyHours,
   dailyHoursLevel,
+  jobWorkSegments,
   type MeterSegment,
   meterSegments,
   resolveHoursHeatMapRange,
-  stintWorkSegments,
 } from './daily-hours.js';
 
 const date = (value: string) => value as DateOnlyIso;
@@ -115,39 +115,16 @@ describe('allocateDailyHours', () => {
   });
 });
 
-describe('stintWorkSegments', () => {
-  const ledger = [
-    { id: 'a', ...reading(100, '2026-06-01T08:00:00+02:00') },
-    { id: 'b', ...reading(102, '2026-06-01T10:00:00+02:00') },
-    { id: 'c', ...reading(105, '2026-06-01T14:00:00+02:00') },
-    { id: 'd', ...reading(109, '2026-06-02T08:00:00+02:00') },
-  ];
-  const hours = (stints: Parameters<typeof stintWorkSegments>[1]) =>
-    stintWorkSegments(ledger, stints).map((segment) => segment.hours);
-
-  test('keeps the segments from a stint’s arrival reading to its departure reading', () => {
-    expect(hours([{ arrivalReadingId: 'b', departureReadingId: 'c' }])).toEqual([3]);
-  });
-
-  test('runs an open stint through to the latest reading', () => {
-    expect(hours([{ arrivalReadingId: 'b', departureReadingId: null }])).toEqual([3, 4]);
-  });
-
-  test('keeps nothing for a stint whose readings are not in the ledger', () => {
-    expect(hours([{ arrivalReadingId: 'z', departureReadingId: null }])).toEqual([]);
-  });
-
-  test('leaves out a pair sharing the arrival’s Read At that was accepted before it', () => {
-    // The previous Job's departure and this Job's arrival were both read at 10:00; only the arrival opens the stint.
-    const tied = [
-      { id: 'x', ...reading(10, '2026-06-01T08:00:00+02:00') },
-      { id: 'departure', ...reading(12, '2026-06-01T10:00:00+02:00') },
-      { id: 'arrival', ...reading(15, '2026-06-01T10:00:00+02:00') },
-      { id: 'next', ...reading(18, '2026-06-01T12:00:00+02:00') },
-    ];
-    expect(
-      stintWorkSegments(tied, [{ arrivalReadingId: 'arrival', departureReadingId: null }]).map((s) => s.hours),
-    ).toEqual([3]);
+describe('jobWorkSegments', () => {
+  test('spreads each stint’s Work hours over the Job’s dates, so a multi-day Job is estimated', () => {
+    const dates = { startDate: date('2026-06-01'), endDate: date('2026-06-02') };
+    const segments = jobWorkSegments([{ workHours: 10 }, { workHours: null }, { workHours: 6 }], dates);
+    expect(segments.map((s) => s.hours)).toEqual([10, 6]);
+    const days = allocateDailyHours(segments, date('2026-06-01'), date('2026-06-02'));
+    expect(days).toEqual([
+      { date: '2026-06-01', hours: 8, estimated: true },
+      { date: '2026-06-02', hours: 8, estimated: true },
+    ]);
   });
 });
 

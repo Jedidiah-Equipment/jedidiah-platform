@@ -2,7 +2,7 @@
 
 1. Open a Completed, Priced or Invoiced Job and choose **Job card**.
 2. Choose **Customer copy** to give the customer: one hours figure per Machine line, Measures, Rates and amounts, Diesel (VAT-exempt), any Discount, and the **Total ex VAT**. It is a works summary, not an invoice.
-3. Choose **Internal copy** for the office: the same lines with the work and travel split, Unaccounted Intervals and their reasons, which readings are Disputed or amended and who captured each, the Foreman's capture comments, and the sign-off notes.
+3. Choose **Internal copy** for the office: the same lines with the work and travel split, which hours were amended, who captured each and when, the capture comments, and the sign-off notes.
 4. Print or save the PDF from the browser tab it opens in, or choose **Preview customer copy** or **Preview internal copy** to check it beside the Job first.
 5. From **Invoicing**, **Job card** on a row previews the customer copy beside the list, where you can download it.
 6. On the phone, management filters the Jobs tab to the Job's stage, such as **Awaiting invoice**, opens it, and chooses **Share Job Card** to send the customer copy through any installed app, or **Share internal copy**.

@@ -1,5 +1,5 @@
 import type { DatabaseTransaction, Db } from '@pkg/db';
-import { contractingHourReadings, contractingJobs, contractingMachineAssignments } from '@pkg/db/contracting';
+import { contractingJobs, contractingMachineAssignments } from '@pkg/db/contracting';
 import type { BreakdownSubjectRef } from '@pkg/schema/contracting';
 import { and, eq } from 'drizzle-orm';
 import { stintOnSite } from '../jobs/job-sql.js';
@@ -30,12 +30,11 @@ export async function onSiteAssignment({
       jobId: contractingJobs.id,
       jobCode: contractingJobs.code,
       foremanUserId: contractingJobs.foremanUserId,
-      arrivedAt: contractingHourReadings.capturedAt,
+      arrivedAt: contractingMachineAssignments.arrivalAt,
     })
     .from(contractingMachineAssignments)
     .innerJoin(contractingJobs, eq(contractingJobs.id, contractingMachineAssignments.jobId))
-    .innerJoin(contractingHourReadings, eq(contractingHourReadings.id, contractingMachineAssignments.arrivalReadingId))
     .where(and(eq(stintSubjectColumn(subject.kind), subject.id), stintOnSite(contractingMachineAssignments)))
     .limit(1);
-  return row ?? null;
+  return row?.arrivedAt ? { ...row, arrivedAt: row.arrivedAt } : null;
 }

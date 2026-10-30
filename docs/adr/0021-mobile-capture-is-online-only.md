@@ -11,7 +11,7 @@ A Foreman captures an Hour Reading as one request to the server, which judges it
 
 - Every Contracting screen except Field Notes sits behind the app's offline cover, the same cover Equipment uses.
 - A Field Note is never read back into a Job or Machine by the app; the Foreman transcribes it.
-- An Hour Reading's Read At time is the Foreman's word, defaulted from the capture moment or set earlier by the Foreman; the server refuses only a future time and orders the ledger by Read At, judging each capture against its time neighbours (ADR 0025).
-- Server-side idempotent replay by the phone's capture id and the dispute handshake remain for retried and racing online requests.
+- A spot reading's Read At time is the Foreman's word, defaulted from the capture moment or set earlier by the Foreman; the server refuses only a future time and orders the ledger by Read At, judging each capture against its time neighbours. Job Hours carry no Read At and never join the ledger (ADR 0027).
+- Server-side idempotent replay by the phone's capture id remains for retried and racing online requests.
 - Builds from before this decision kept a reading queue, its meter photos and copies of the fleet and Jobs on
   the phone. The app deletes them, unread, at start; that purge is itself deleted from 1 January 2027.

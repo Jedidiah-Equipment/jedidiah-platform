@@ -1,5 +1,5 @@
 import {
-  captureReading,
+  captureStintHours,
   createAssignment,
   createCategory,
   createCustomer,
@@ -135,18 +135,7 @@ test('serves where a report files and what is open, naming the Job only for a re
   await createAssignment({ db, actor: admin, input: { jobId: job.id, machineId: machine.id, implementId: null } });
   const [stint] = (await getJob({ db, id: job.id })).assignments;
   if (!stint) throw new Error('Expected Machine Assignment');
-  await captureReading({
-    db,
-    actor: admin,
-    input: {
-      machineId: machine.id,
-      assignmentId: stint.id,
-      role: 'arrival',
-      value: 100,
-      capturedAt: '2026-09-01T06:00:00Z',
-      disputePrevious: false,
-    },
-  });
+  await captureStintHours({ db, actor: admin, input: { assignmentId: stint.id, role: 'arrival', hours: 100 } });
 
   const names = { id: job.id, customerName: 'Rowley', farmName: 'Rooikraal', workTypeName: 'Dam building' };
   expect((await asSipho.reportContext(subject)).defaultJob).toEqual({ jobNumber: job.jobNumber, job: names });

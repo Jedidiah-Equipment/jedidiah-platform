@@ -18,26 +18,52 @@ export async function lockJobFor(tx: DatabaseTransaction, id: string, action: Jo
   return job;
 }
 
-/** Locks a Machine Assignment's Job, then the Assignment: the job → stint order every writer keeps. */
-export async function lockAssignment(
-  tx: DatabaseTransaction,
-  id: string,
-  notFound: () => Error = () => jobNotFound('Machine Assignment'),
-) {
+const assignmentNotFound = () => jobNotFound('Machine Assignment');
+
+async function assignmentReference(tx: DatabaseTransaction, id: string) {
   const [reference] = await tx
-    .select({ jobId: contractingMachineAssignments.jobId, machineCode: contractingMachines.code })
+    .select({
+      jobId: contractingMachineAssignments.jobId,
+      machineId: contractingMachineAssignments.machineId,
+      machineCode: contractingMachines.code,
+    })
     .from(contractingMachineAssignments)
     .innerJoin(contractingMachines, eq(contractingMachines.id, contractingMachineAssignments.machineId))
     .where(eq(contractingMachineAssignments.id, id));
-  if (!reference) throw notFound();
+  if (!reference) throw assignmentNotFound();
+  return reference;
+}
+
+async function lockReferencedAssignment(
+  tx: DatabaseTransaction,
+  id: string,
+  reference: Awaited<ReturnType<typeof assignmentReference>>,
+) {
   const job = await lockJob(tx, reference.jobId);
   const [stint] = await tx
     .select()
     .from(contractingMachineAssignments)
     .where(eq(contractingMachineAssignments.id, id))
     .for('update');
-  if (!stint) throw notFound();
+  if (!stint) throw assignmentNotFound();
   return { job, stint, machineCode: reference.machineCode };
+}
+
+/** Locks a Machine Assignment's Job, then the Assignment: the job → stint order every writer keeps. */
+export async function lockAssignment(tx: DatabaseTransaction, id: string) {
+  return lockReferencedAssignment(tx, id, await assignmentReference(tx, id));
+}
+
+/** Locks the Assignment's Machine first, then its Job and the Assignment: the machine → job → stint order. */
+export async function lockAssignmentWithMachine(tx: DatabaseTransaction, id: string) {
+  const reference = await assignmentReference(tx, id);
+  const [machine] = await tx
+    .select()
+    .from(contractingMachines)
+    .where(eq(contractingMachines.id, reference.machineId))
+    .for('update');
+  if (!machine) throw jobNotFound('Machine');
+  return { ...(await lockReferencedAssignment(tx, id, reference)), machine };
 }
 
 /** Locks a Machine Assignment and its Job, and refuses unless this actor may take this Assignment Action on it now. */

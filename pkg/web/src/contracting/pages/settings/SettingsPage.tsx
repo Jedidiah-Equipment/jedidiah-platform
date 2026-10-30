@@ -50,7 +50,7 @@ function SettingsContent() {
   return <SettingsForm settings={query.data} />;
 }
 
-/** Explicit Save, never autosave: a half-typed threshold must not flip Gap Flags mid-keystroke. */
+/** Explicit Save, never autosave: a half-typed threshold must not flip what needs a look mid-keystroke. */
 function SettingsForm({ settings }: { settings: ContractingSettings }) {
   const trpc = useTRPC();
   const { invalidateSettings } = useQueryInvalidation();
@@ -68,13 +68,23 @@ function SettingsForm({ settings }: { settings: ContractingSettings }) {
         <Card>
           <CardContent>
             <fieldset disabled={save.isPending} className="grid gap-6">
-              <form.AppField name="gapFlagThresholdHours">
+              <form.AppField name="travelFlagThresholdHours">
                 {(field) => (
                   <field.NumberField
-                    label="Gap Flag threshold (hours)"
+                    label="Travel Flag threshold (hours)"
                     unit="hours"
                     decimals={1}
-                    description="An Hour Gap longer than this is flagged at sign-off. Applies to every open gap at once; resolved gaps keep their split."
+                    description="Travel Hours above this mark the stint as needing a look; nothing is blocked."
+                  />
+                )}
+              </form.AppField>
+              <form.AppField name="johnDeereDifferenceThresholdHours">
+                {(field) => (
+                  <field.NumberField
+                    label="John Deere difference threshold (hours)"
+                    unit="hours"
+                    decimals={1}
+                    description="Job hours this far from John Deere's last reading warn the person capturing and mark the stint."
                   />
                 )}
               </form.AppField>

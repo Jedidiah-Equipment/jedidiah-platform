@@ -1,24 +1,22 @@
 import { type Db, user } from '@pkg/db';
-import { type contractingHourReadings, contractingJobs } from '@pkg/db/contracting';
+import { contractingJobs } from '@pkg/db/contracting';
 import {
+  type AttentionThresholds,
   deriveAssignmentActions,
   deriveJobActions,
   deriveStintHours,
   formatJobNumber,
   type JobActor,
-  jobAssignmentAttentionCounts,
+  jobNeedsALookCount,
   jobReadSeesMoney,
   looksFinished,
   parseJobNumber,
   priceJob,
-  readingAttentionKinds,
-  readingNeedsALookLevel,
   type StoredStintPricing,
-  tallyAssignmentAttention,
+  stintAttentionKinds,
 } from '@pkg/domain/contracting';
 import { type Assignment, FieldDriver, type JobDetail, JobFacts } from '@pkg/schema/contracting';
 import { and, asc, eq } from 'drizzle-orm';
-import { readingToWire } from '../readings/reading-wire.js';
 import { getContractingSettings } from '../settings/settings-service.js';
 import { assertOwner, jobNotFound } from './job-errors.js';
 import {
@@ -27,8 +25,6 @@ import {
   type LoadedStint,
   loadChargeLines,
   loadMeasures,
-  loadPreviousDepartures,
-  loadPreviousJobs,
   loadStints,
   selectJobs,
   stintNames,
@@ -36,18 +32,46 @@ import {
 import { assertReadableStatus, readerFor } from './job-readers.js';
 
 export type JobLookup = { id: string } | { code: string };
-type LoadedReading = typeof contractingHourReadings.$inferSelect;
+type StintRow = LoadedStint['stint'];
 
-function mapJobReading(row: LoadedReading | null, capturedByName: string | null, amendedByName: string | null) {
-  return row
-    ? {
-        ...readingToWire(row),
-        capturedByName,
-        amendedByName,
-        attention: readingAttentionKinds(row),
-      }
-    : null;
+/** One of a stint's Job Hours as the wire carries it, or null before it was captured. */
+function stintReading(
+  captured: { hours: number | null; at: Date | null; byUserId: string | null; comment: string | null },
+  telematics: { hours: number | null; at: Date | null },
+  byName: string | null,
+) {
+  if (captured.hours === null || captured.at === null || captured.byUserId === null) return null;
+  return {
+    hours: captured.hours,
+    at: captured.at.toISOString(),
+    byUserId: captured.byUserId,
+    byName: byName ?? '',
+    comment: captured.comment,
+    telematics:
+      telematics.hours !== null && telematics.at !== null
+        ? { hours: telematics.hours, at: telematics.at.toISOString() }
+        : null,
+  };
 }
+
+const arrivalOf = (stint: StintRow, byName: string | null) =>
+  stintReading(
+    { hours: stint.arrivalHours, at: stint.arrivalAt, byUserId: stint.arrivalByUserId, comment: stint.arrivalComment },
+    { hours: stint.arrivalTelematicsHours, at: stint.arrivalTelematicsAt },
+    byName,
+  );
+
+const departureOf = (stint: StintRow, byName: string | null) =>
+  stintReading(
+    {
+      hours: stint.departureHours,
+      at: stint.departureAt,
+      byUserId: stint.departureByUserId,
+      comment: stint.departureComment,
+    },
+    { hours: stint.departureTelematicsHours, at: stint.departureTelematicsAt },
+    byName,
+  );
 
 /** The stored Rate snapshot: no Rate amount is un-priced, no Rate id is No charge. */
 function storedPricing(row: LoadedStint): StoredStintPricing | null {
@@ -68,49 +92,33 @@ function storedPricing(row: LoadedStint): StoredStintPricing | null {
   };
 }
 
-function mapAssignment(
-  row: LoadedStint,
-  measures: readonly LoadedMeasure[],
-  previousDepartures: Awaited<ReturnType<typeof loadPreviousDepartures>>,
-  gapFlagThresholdHours: number,
-) {
+function mapAssignment(row: LoadedStint, measures: readonly LoadedMeasure[], thresholds: AttentionThresholds) {
   const { stint } = row;
-  const arrival = mapJobReading(row.arrival, row.arrivalCapturedByName, row.arrivalAmendedByName);
-  const departure = mapJobReading(row.departure, row.departureCapturedByName, row.departureAmendedByName);
-  const gapResolved = stint.gapResolvedAt !== null;
-  const previousDeparture = previousDepartures.get(stint.id);
-  const derived = deriveStintHours(
-    {
-      arrival,
-      departure,
-      previousDeparture: previousDeparture ?? null,
-      travelIncluded: stint.travelIncluded,
-      gap: gapResolved
-        ? { travelHours: stint.gapTravelHours ?? 0, unaccountedHours: stint.gapUnaccountedHours ?? 0 }
-        : null,
-    },
-    gapFlagThresholdHours,
-  );
+  const arrival = arrivalOf(stint, row.arrivalByName);
+  const departure = departureOf(stint, row.departureByName);
+  const { arrivalHours, departureHours, travelHours, travelClamped } = stint;
   return {
     ...stint,
     ...stintNames(row),
     createdAt: stint.createdAt.toISOString(),
     arrival,
     departure,
-    previousDeparture: previousDeparture
-      ? {
-          value: previousDeparture.value,
-          capturedAt: previousDeparture.capturedAt.toISOString(),
-          job: null,
-        }
-      : null,
-    ...derived,
-    gapResolved,
+    travelSetByName: stint.travelSetAt ? row.travelSetByName : null,
+    ...deriveStintHours({ arrivalHours, departureHours, travelHours }),
+    attention: stintAttentionKinds({ travelHours, travelClamped, arrival, departure }, thresholds),
+    amendment:
+      stint.hoursAmendedAt && stint.hoursAmendmentReason
+        ? {
+            at: stint.hoursAmendedAt.toISOString(),
+            byName: row.hoursAmendedByName ?? '',
+            reason: stint.hoursAmendmentReason,
+          }
+        : null,
     measures,
   };
 }
 
-const arrivalOrder = (row: LoadedStint) => row.arrival?.capturedAt.getTime() ?? Number.POSITIVE_INFINITY;
+const arrivalOrder = (row: LoadedStint) => row.stint.arrivalAt?.getTime() ?? Number.POSITIVE_INFINITY;
 
 export async function getJob({ db, ...lookup }: { db: DbOrTx } & JobLookup): Promise<JobFacts> {
   const [header] = await selectJobs(db).where(
@@ -118,9 +126,8 @@ export async function getJob({ db, ...lookup }: { db: DbOrTx } & JobLookup): Pro
   );
   if (!header) throw jobNotFound();
   const { job, ...names } = header;
-  const [rows, previousDepartures, measures, chargeLines, settings] = await Promise.all([
+  const [rows, measures, chargeLines, settings] = await Promise.all([
     loadStints(db, [job.id]),
-    loadPreviousDepartures(db, job.id),
     loadMeasures(db, job.id),
     loadChargeLines(db, job.id),
     getContractingSettings({ db }),
@@ -133,8 +140,7 @@ export async function getJob({ db, ...lookup }: { db: DbOrTx } & JobLookup): Pro
     assignment: mapAssignment(
       row,
       measures.filter((measure) => measure.assignmentId === row.stint.id),
-      previousDepartures,
-      settings.gapFlagThresholdHours,
+      settings,
     ),
     stored: storedPricing(row),
   }));
@@ -160,15 +166,6 @@ export async function getJob({ db, ...lookup }: { db: DbOrTx } & JobLookup): Pro
   });
   const assignments = stints.map(({ assignment }, index) => ({ ...assignment, pricing: priced.stints[index] }));
   const states = assignments.map((assignment) => assignment.state);
-  const openGapFlags = assignments.filter((assignment) => assignment.gapFlag).length;
-  const flaggedReadings = tallyAssignmentAttention(
-    assignments
-      .flatMap((assignment) => [assignment.arrival, assignment.departure])
-      .flatMap((reading) => {
-        const level = reading ? readingNeedsALookLevel(reading) : null;
-        return level ? [level] : [];
-      }),
-  );
   return JobFacts.parse({
     ...job,
     ...names,
@@ -177,8 +174,7 @@ export async function getJob({ db, ...lookup }: { db: DbOrTx } & JobLookup): Pro
     onSiteStints: states.filter((state) => state === 'on-site').length,
     leftStints: states.filter((state) => state === 'left').length,
     looksFinished: looksFinished(job, states),
-    openGapFlags,
-    assignmentAttention: jobAssignmentAttentionCounts(openGapFlags, flaggedReadings),
+    assignmentAttention: jobNeedsALookCount(assignments),
     createdAt: job.createdAt.toISOString(),
     updatedAt: job.updatedAt.toISOString(),
     completedAt: job.completedAt?.toISOString() ?? null,
@@ -190,7 +186,8 @@ export async function getJob({ db, ...lookup }: { db: DbOrTx } & JobLookup): Pro
     pricing: priced.pricing,
     assignments,
     chargeLines,
-    gapFlagThresholdHours: settings.gapFlagThresholdHours,
+    travelFlagThresholdHours: settings.travelFlagThresholdHours,
+    johnDeereDifferenceThresholdHours: settings.johnDeereDifferenceThresholdHours,
   });
 }
 
@@ -222,22 +219,7 @@ export async function getReadableJob({
       actions: deriveAssignmentActions(actions, assignment),
     })),
   };
-  const named = withPreviousJobs(read, await loadPreviousJobs(db, job.id, reader));
-  return seesMoney ? named : redactMoney(named);
-}
-
-/** Names the Job each Machine left before arriving, where the reader could open it. */
-function withPreviousJobs(job: JobDetail, previousJobs: Awaited<ReturnType<typeof loadPreviousJobs>>): JobDetail {
-  return {
-    ...job,
-    assignments: job.assignments.map((assignment) => {
-      const previous = previousJobs.get(assignment.id);
-      if (!assignment.previousDeparture || !previous) return assignment;
-      const { code, ...names } = previous;
-      const previousJob = { ...names, jobNumber: formatJobNumber(code) };
-      return { ...assignment, previousDeparture: { ...assignment.previousDeparture, job: previousJob } };
-    }),
-  };
+  return seesMoney ? read : redactMoney(read);
 }
 
 export function redactMoney(job: JobDetail): JobDetail {

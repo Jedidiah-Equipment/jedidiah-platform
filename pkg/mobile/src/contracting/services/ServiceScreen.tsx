@@ -1,5 +1,5 @@
 import { formatDate, formatHours, getFirstName } from '@pkg/domain';
-import { readingProviderSuffix, serviceRecordBadge } from '@pkg/domain/contracting';
+import { knownHoursSourceSuffix, serviceRecordBadge } from '@pkg/domain/contracting';
 import { type FieldMachine, OpenServiceValues, openServiceFields, type ServiceRecord } from '@pkg/schema/contracting';
 import { IconChevronRight, IconPencil } from '@tabler/icons-react-native';
 import { revalidateLogic } from '@tanstack/react-form';
@@ -104,12 +104,13 @@ function MachineCard({ record, machine }: { record: ServiceRecord; machine: Fiel
             <Icon className="text-muted-foreground" icon={IconChevronRight} size={16} />
           </MachineIdentity>
           <Text className="text-3xl text-foreground" weight="bold">
-            {machine.latestReadingHours === null ? 'No known reading' : formatHours(machine.latestReadingHours)}
+            {machine.knownHours === null ? 'No known hours' : formatHours(machine.knownHours)}
           </Text>
-          {machine.latestReadingAt ? (
+          {machine.knownHoursAt ? (
             <Text className="text-sm text-muted-foreground">
-              Read <DateText className="text-sm text-muted-foreground" date={machine.latestReadingAt} format="medium" />
-              {readingProviderSuffix(machine.latestReadingProvider)}
+              Known hours at{' '}
+              <DateText className="text-sm text-muted-foreground" date={machine.knownHoursAt} format="medium" />
+              {knownHoursSourceSuffix(machine.knownHoursSource)}
             </Text>
           ) : null}
         </Pressable>

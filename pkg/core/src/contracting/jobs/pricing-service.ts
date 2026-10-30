@@ -233,10 +233,10 @@ export async function markPriced({
 }
 
 /**
- * Returns a Priced Job to Completed after a reading amendment moved its hours. Rates, unit amounts, the
+ * Returns a Priced Job to Completed after an edit moved its Job Hours or Travel Hours. Rates, unit amounts, the
  * Diesel price, the Discount and Charge Line amounts stay; every stint amount is derived again from the
- * amended hours and amount overrides are discarded. Runs inside the amendment's transaction, after the
- * machine lock and the reading writes, so the lock order stays machine → job → stint.
+ * edited hours and amount overrides are discarded. Runs inside the edit's transaction, after the stint
+ * write, so the lock order stays machine → job → stint.
  */
 export async function reopenPricingWithin(tx: DatabaseTransaction, actorUserId: AuthId, jobId: string, reason: string) {
   const job = await lockJob(tx, jobId);

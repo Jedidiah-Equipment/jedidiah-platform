@@ -1,4 +1,4 @@
-import { contractingHourReadings, contractingJobs, contractingMachineAssignments } from '@pkg/db/contracting';
+import { contractingJobs, contractingMachineAssignments } from '@pkg/db/contracting';
 import { JOB_NUMBER_DIGITS, JOB_NUMBER_PREFIX } from '@pkg/domain/contracting';
 import type { AssignmentState } from '@pkg/schema/contracting';
 import { type SQL, type SQLWrapper, sql } from 'drizzle-orm';
@@ -6,41 +6,21 @@ import { alias } from 'drizzle-orm/pg-core';
 
 /**
  * The Job read model's derived facts, in SQL for the queues. Each mirrors a domain rule the detail read
- * computes in TypeScript (`assignmentState`, `deriveStintHours`, `looksFinished`, `readingNeedsALookLevel`), so a
- * rule changes here and there together.
+ * computes in TypeScript (`assignmentState`, `stintAttentionKinds`, `looksFinished`), so a rule changes here and
+ * there together.
  */
 
-/** An arrival's place in its Machine's ledger: Read At, then acceptance. */
-type LedgerPosition = { capturedAt: SQLWrapper; sequence: SQLWrapper };
-
-/** The Machine's last departure before an arrival's Read At, as one column of it: where the stint's Hour Gap starts. */
-const previousDeparture = (column: 'id' | 'value', machineId: SQLWrapper, arrival: LedgerPosition) => sql`(
-  select ${sql.raw(`previous.${column}`)}
-  from contracting.hour_reading previous
-  where previous.machine_id = ${machineId}
-    and previous.role = 'departure'
-    and (previous.captured_at, previous.sequence) < (${arrival.capturedAt}, ${arrival.sequence})
-  order by previous.captured_at desc, previous.sequence desc
-  limit 1
-)`;
-
-export const previousDepartureValue = (machineId: SQLWrapper, arrival: LedgerPosition) =>
-  previousDeparture('value', machineId, arrival);
-
-export const previousDepartureId = (machineId: SQLWrapper, arrival: LedgerPosition) =>
-  previousDeparture('id', machineId, arrival);
-
-/** A Machine Assignment's reading columns, on the table or on an alias of it. */
-type StintColumns = { arrivalReadingId: SQLWrapper; departureReadingId: SQLWrapper };
+/** A Machine Assignment's Job Hours columns, on the table or on an alias of it. */
+type StintColumns = { arrivalHours: SQLWrapper; departureHours: SQLWrapper };
 
 /** The on-site Assignment: arrival captured, no departure yet. The partial unique indexes allow one per subject. */
 export const stintOnSite = (stint: StintColumns): SQL =>
-  sql`${stint.arrivalReadingId} is not null and ${stint.departureReadingId} is null`;
+  sql`${stint.arrivalHours} is not null and ${stint.departureHours} is null`;
 
 const assignmentInState: Record<AssignmentState, (stint: StintColumns) => SQL> = {
-  planned: (stint) => sql`${stint.arrivalReadingId} is null`,
+  planned: (stint) => sql`${stint.arrivalHours} is null`,
   'on-site': stintOnSite,
-  left: (stint) => sql`${stint.departureReadingId} is not null`,
+  left: (stint) => sql`${stint.departureHours} is not null`,
 };
 
 const summaryAssignment = alias(contractingMachineAssignments, 'summary_assignment');
@@ -52,36 +32,27 @@ export const stintCount = (state: AssignmentState) => sql<number>`(
     and ${assignmentInState[state](summaryAssignment)}
 )`;
 
-/** Open Gap Flags against the Gap Flag threshold as Settings holds it now: the SQL twin of `deriveStintHours`. */
-export const openGapFlags = sql<number>`(
+/**
+ * The Job's stints that need a look against the thresholds as Settings holds them now: the SQL twin of
+ * `stintAttentionKinds`.
+ */
+export const assignmentAttention = sql<number>`(
   select count(*)::integer
   from contracting.machine_assignment summary_assignment
-  join contracting.hour_reading summary_arrival
-    on summary_arrival.id = summary_assignment.arrival_reading_id
   cross join contracting.settings
   where summary_assignment.job_id = ${contractingJobs.id}
-    and summary_assignment.gap_resolved_at is null
-    and summary_arrival.value - ${previousDepartureValue(sql`summary_assignment.machine_id`, { capturedAt: sql`summary_arrival.captured_at`, sequence: sql`summary_arrival.sequence` })} > contracting.settings.gap_flag_threshold_hours
+    and (
+      summary_assignment.travel_hours > contracting.settings.travel_flag_threshold_hours
+      or summary_assignment.travel_clamped
+      or abs(summary_assignment.arrival_hours - summary_assignment.arrival_telematics_hours)
+        > contracting.settings.john_deere_difference_threshold_hours
+      or abs(summary_assignment.departure_hours - summary_assignment.departure_telematics_hours)
+        > contracting.settings.john_deere_difference_threshold_hours
+    )
 )`;
 
-const summaryReading = alias(contractingHourReadings, 'summary_reading');
-
-/** The Job's Disputed arrival and departure readings. */
-export const disputedReadings = sql<number>`(
-  select count(*)::integer
-  from contracting.machine_assignment summary_assignment
-  join contracting.hour_reading summary_reading
-    on summary_reading.id = summary_assignment.arrival_reading_id
-    or summary_reading.id = summary_assignment.departure_reading_id
-  where summary_assignment.job_id = ${contractingJobs.id}
-    and ${summaryReading.disputed}
-)`;
-
-/** The Job has Machine Assignment attention that needs a look: an open Gap Flag, or a Disputed reading. */
-export const needsALook = sql<boolean>`(
-  ${openGapFlags} > 0
-  or ${disputedReadings} > 0
-)`;
+/** The Job has a Machine Assignment that needs a look. */
+export const needsALook = sql<boolean>`(${assignmentAttention} > 0)`;
 
 /** The Machine has an Assignment on the Job, in any state. */
 export const hasMachine = (machineId: string) => sql<boolean>`exists (

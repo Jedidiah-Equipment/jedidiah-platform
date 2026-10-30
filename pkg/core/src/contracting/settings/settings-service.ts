@@ -14,8 +14,14 @@ const descriptor = defineAuditDescriptor<typeof contractingSettings.$inferSelect
   primaryLabelField: 'label',
   entityId: () => CONTRACTING_SETTINGS_ID,
   label: () => 'Contracting Settings',
-  toRecord: ({ gapFlagThresholdHours, serviceDueSoonThresholdHours, utilisationTargetPercent }) => ({
-    gapFlagThresholdHours,
+  toRecord: ({
+    travelFlagThresholdHours,
+    johnDeereDifferenceThresholdHours,
+    serviceDueSoonThresholdHours,
+    utilisationTargetPercent,
+  }) => ({
+    travelFlagThresholdHours,
+    johnDeereDifferenceThresholdHours,
     serviceDueSoonThresholdHours,
     utilisationTargetPercent,
   }),
@@ -26,7 +32,8 @@ const notInitialized = () => new Error('Contracting Settings are not initialized
 
 const toSettings = (row: typeof contractingSettings.$inferSelect): ContractingSettings =>
   ContractingSettings.parse({
-    gapFlagThresholdHours: row.gapFlagThresholdHours,
+    travelFlagThresholdHours: row.travelFlagThresholdHours,
+    johnDeereDifferenceThresholdHours: row.johnDeereDifferenceThresholdHours,
     serviceDueSoonThresholdHours: row.serviceDueSoonThresholdHours,
     utilisationTargetPercent: row.utilisationTargetPercent,
     updatedAt: row.updatedAt.toISOString(),

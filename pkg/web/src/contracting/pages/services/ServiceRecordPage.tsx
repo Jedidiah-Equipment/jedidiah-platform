@@ -1,5 +1,5 @@
 import { formatDate, getFirstName } from '@pkg/domain';
-import { machineServiceBadge, readingProviderSuffix, serviceRecordBadge } from '@pkg/domain/contracting';
+import { knownHoursSourceSuffix, machineServiceBadge, serviceRecordBadge } from '@pkg/domain/contracting';
 import type { Machine, ServiceRecord } from '@pkg/schema/contracting';
 import { type UseQueryResult, useQuery } from '@tanstack/react-query';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
@@ -89,10 +89,8 @@ function MachineCard({ machineId, query }: { machineId: string; query: UseQueryR
           {(machine) => (
             <dl className="grid gap-4 text-sm sm:grid-cols-3">
               <div className="space-y-1">
-                <dt className="text-muted-foreground">
-                  Current hours{readingProviderSuffix(machine.latestReadingProvider)}
-                </dt>
-                <dd>{hoursOrDash(machine.latestReadingHours)}</dd>
+                <dt className="text-muted-foreground">Known hours{knownHoursSourceSuffix(machine.knownHoursSource)}</dt>
+                <dd>{hoursOrDash(machine.knownHours)}</dd>
               </div>
               <div className="space-y-1">
                 <dt className="text-muted-foreground">Next service due</dt>

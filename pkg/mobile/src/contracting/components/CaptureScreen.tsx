@@ -14,7 +14,7 @@ import {
   parseCaptureValue,
   readingProviderSuffix,
 } from '@pkg/domain/contracting';
-import { ReadingComment, type ReadingRole, readingRefusalOf } from '@pkg/schema/contracting';
+import { ReadingComment, readingRefusalOf } from '@pkg/schema/contracting';
 import { useQueryClient } from '@tanstack/react-query';
 import { type Href, router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { type Dispatch, type RefObject, useReducer, useRef, useState } from 'react';
@@ -28,7 +28,6 @@ import { TextInput } from '@/components/ui/text-input';
 import { useVoiceSession } from '@/components/voice/use-voice-session';
 import { VoiceTextArea } from '@/components/voice/VoiceTextArea';
 import { ReadAtField, type ReadAtFieldHandle } from '@/contracting/components/ReadAtField';
-import { type PlannedStint, StintOverrideCard, useStintOverrides } from '@/contracting/components/StintOverrideCard';
 import { recordReadingCaptured } from '@/contracting/observability';
 import { type AttemptIdentity, captureAttempt, captureAttemptPayload } from '@/contracting/readings/capture-attempt';
 import { CAPTURE_FAILED, captureReading } from '@/contracting/readings/reading-upload';
@@ -38,62 +37,10 @@ import { UploadRefusedError } from '@/lib/multipart-upload';
 import { useTRPC } from '@/lib/trpc';
 import { useBusyAction } from '@/lib/use-busy-action';
 
-type CaptureTarget =
-  | { kind: 'machine'; machineId: string }
-  | {
-      kind: 'stint';
-      machineId: string;
-      jobId: string;
-      assignmentId: string;
-      role: 'arrival' | 'departure';
-      planned: PlannedStint;
-    };
-
-/** `/contracting/machines/[id]/capture`: a spot reading from the Machine screen. */
+/** `/contracting/machines/[id]/capture`: a spot reading from the Machine screen. Job Hours are captured from the Job. */
 export default function MachineCaptureScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
-  return <CaptureForm target={{ kind: 'machine', machineId: id }} />;
-}
-
-/** `/contracting/jobs/[jobId]/capture`: a stint's arrival or departure from the Job screen. */
-export function JobCaptureScreen() {
-  const params = useLocalSearchParams<{
-    jobId: string;
-    machineId: string;
-    assignmentId: string;
-    role?: string;
-    overrideImplementId?: string;
-    overrideDriverUserId?: string;
-    implementCode?: string;
-    driverName?: string;
-  }>();
-  return (
-    <CaptureForm
-      target={{
-        kind: 'stint',
-        machineId: params.machineId,
-        jobId: params.jobId,
-        assignmentId: params.assignmentId,
-        role: params.role === 'departure' ? 'departure' : 'arrival',
-        planned: {
-          implementId: params.overrideImplementId || null,
-          driverUserId: params.overrideDriverUserId || null,
-          implementCode: params.implementCode || null,
-          driverName: params.driverName || null,
-        },
-      }}
-    />
-  );
-}
-
-function CaptureForm({ target }: { target: CaptureTarget }) {
-  const machineId = target.machineId;
-  const role: Exclude<ReadingRole, 'baseline'> = target.kind === 'stint' ? target.role : 'spot';
-  const assignmentId = target.kind === 'stint' ? target.assignmentId : null;
-  const returnTo = (
-    target.kind === 'stint' ? `/contracting/jobs/${target.jobId}` : `/contracting/machines/${machineId}`
-  ) as Href;
-  const leave = () => router.dismissTo(returnTo);
+  const { id: machineId } = useLocalSearchParams<{ id: string }>();
+  const leave = () => router.dismissTo(`/contracting/machines/${machineId}` as Href);
   const navigation = useNavigation();
   const fleet = useFleet();
   const machine = fleet.data?.find((row) => row.id === machineId);
@@ -109,55 +56,25 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
   const [valueFocused, setValueFocused] = useState(false);
   const [comment, setComment] = useState('');
   const voice = useVoiceSession({ business: 'contracting', purpose: 'capture comment' });
-  const overrides = useStintOverrides(target.kind === 'stint' ? target.planned : null);
   const { busy, error, run } = useBusyAction();
   const attempt = useRef<AttemptIdentity | null>(null);
-  const estimateQuery = useReadAtEstimate({ machineId, role, assignmentId }, parseCaptureValue(value));
+  const estimateQuery = useReadAtEstimate(machineId, parseCaptureValue(value));
   const { estimate } = estimateQuery;
-  // Undefined while it loads: the request then names no latest, and the server judges against its own.
   const latest = latestQuery.canRead ? latestQuery.data : undefined;
-  const stintOverrides = target.kind === 'stint' && target.role === 'arrival' ? overrides.value : undefined;
-  const form = deriveCaptureForm(
-    { latest, now: new Date() },
-    { role, value, estimate, ...steps, comment, stintOverrides },
-  );
+  const form = deriveCaptureForm({ now: new Date() }, { value, estimate, ...steps, comment });
   const { parsed, date, request, answers } = form;
   const readAt = date?.readAt ?? null;
-  const readEarlier = () => {
-    const action: CaptureStepAction = { type: 'read-earlier', estimate };
-    // No date to read at: the picker opens on its own once it shows.
-    const opens = !steps.dateOpened && captureStepsReducer(steps, action).dateOpened;
-    dispatch(action);
-    if (opens) requestAnimationFrame(() => readAtField.current?.open());
-  };
   const canSave = request !== null && canCapture && !!machine;
   function save() {
     if (!canSave || voice.busy || !request || !answers) return;
     // Only what the Foreman entered: a reconnect refetches the latest, and a retry after it must still replay.
-    attempt.current = captureAttempt(
-      attempt.current,
-      captureAttemptPayload({
-        role,
-        assignmentId,
-        value: request.value,
-        comment,
-        disputedReadingId: steps.disputedReadingId,
-        stintOverrides: stintOverrides ?? null,
-        readAt,
-      }),
-    );
+    attempt.current = captureAttempt(attempt.current, captureAttemptPayload({ value: request.value, comment, readAt }));
     const { localId, attemptedAt } = attempt.current;
     const capturedAt = capturedAtFor(readAt, attemptedAt);
-    const captured = { role, backdated: isBackdated(readAt, attemptedAt), ...answers };
+    const captured = { backdated: isBackdated(readAt, attemptedAt), ...answers };
     return run(async () => {
       try {
-        await captureReading({
-          localId,
-          machineId,
-          ...(assignmentId ? { assignmentId } : {}),
-          ...request,
-          capturedAt,
-        });
+        await captureReading({ localId, machineId, ...request, capturedAt });
       } catch (error) {
         // The busy action shows a refusal's sentence and reports anything else; the ledger's own refusals also refetch.
         if (error instanceof UploadRefusedError) {
@@ -186,11 +103,9 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
     <FormPage
       toolbar={
         <SecondaryToolbar
-          title={
-            role === 'arrival' ? 'Capture arrival' : role === 'departure' ? 'Capture departure' : 'Capture reading'
-          }
+          title="Capture reading"
           subtitle={machine?.code ?? 'CONTRACTING'}
-          parentLabel={target.kind === 'stint' ? 'Job' : 'Machine'}
+          parentLabel="Machine"
           onBack={() => {
             if (!busy) leave();
           }}
@@ -262,27 +177,20 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
           />
         </FieldShell>
       ) : null}
-      {date ? (
-        <DateStep form={form} busy={busy} readAtField={readAtField} dispatch={dispatch} onReadEarlier={readEarlier} />
-      ) : null}
+      {date ? <DateStep form={form} busy={busy} readAtField={readAtField} dispatch={dispatch} /> : null}
       {form.step === 'details' ? (
-        <>
-          <FieldShell label={COMMENT_LABEL}>
-            <VoiceTextArea
-              accessibilityLabel={COMMENT_LABEL}
-              placeholder="Anything management should know about this reading"
-              editable={!busy}
-              rows={COMMENT_ROWS}
-              value={comment}
-              onChangeText={setComment}
-              maxLength={ReadingComment.maxLength ?? undefined}
-              voice={voice}
-            />
-          </FieldShell>
-          {target.kind === 'stint' && target.role === 'arrival' ? (
-            <StintOverrideCard planned={target.planned} overrides={overrides} />
-          ) : null}
-        </>
+        <FieldShell label={COMMENT_LABEL}>
+          <VoiceTextArea
+            accessibilityLabel={COMMENT_LABEL}
+            placeholder="Anything management should know about this reading"
+            editable={!busy}
+            rows={COMMENT_ROWS}
+            value={comment}
+            onChangeText={setComment}
+            maxLength={ReadingComment.maxLength ?? undefined}
+            voice={voice}
+          />
+        </FieldShell>
       ) : null}
     </FormPage>
   );
@@ -345,26 +253,23 @@ function EstimateLine({
   return <Text className={impossible ? 'text-sm text-danger' : 'text-xs text-muted-foreground'}>{line}</Text>;
 }
 
-/** Step 3: the date to vouch for, its warnings, and below a human latest the fork between reading earlier and disputing. */
+/** Step 3: the date to vouch for and its warnings. */
 function DateStep({
   form,
   busy,
   readAtField,
   dispatch,
-  onReadEarlier,
 }: {
   form: CaptureFormVerdict;
   busy: boolean;
   readAtField: RefObject<ReadAtFieldHandle | null>;
   dispatch: Dispatch<CaptureStepAction>;
-  /** Read earlier also opens the picker when the ledger names no date, so the screen owns it. */
-  onReadEarlier: () => void;
 }) {
   const { date } = form;
   if (!date) return null;
   return (
     <FieldShell label="Date" errors={date.futureReadAt ? [{ message: captureRefusals['future-read-at'].message }] : []}>
-      {date.awaitsFork ? null : date.locked ? (
+      {date.locked ? (
         <Text className="text-foreground" weight="semibold">
           {date.line}
         </Text>
@@ -385,27 +290,6 @@ function DateStep({
               {line}
             </Text>
           ))}
-        </View>
-      ) : null}
-      {date.dispute ? (
-        <View className="gap-3 rounded-xl border border-danger p-4">
-          <Text className="text-foreground">{date.dispute.sentence}</Text>
-          {date.dispute.confirmed ? (
-            <Button
-              title="Previous reading disputed · undo"
-              onPress={() => dispatch({ type: 'dispute', readingId: null })}
-              disabled={busy}
-            />
-          ) : (
-            <>
-              <Button title="Read earlier" onPress={onReadEarlier} disabled={busy} />
-              <Button
-                title="The previous reading is wrong"
-                onPress={() => dispatch({ type: 'dispute', readingId: date.dispute?.readingId ?? null })}
-                disabled={busy}
-              />
-            </>
-          )}
         </View>
       ) : null}
     </FieldShell>

@@ -50,15 +50,18 @@ export function breakdownPushMessage(
 export function serviceDueSoonPushMessage(machine: {
   id: string;
   code: string;
+  knownHours: number;
   hoursToService: number;
 }): ContractingPushContent {
   // A capture that jumps the whole window lands overdue, and says so.
   const overdue = machine.hoursToService < 0;
   return {
     title: `${serviceDueStatusLabels[overdue ? 'overdue' : 'due-soon']} · ${machine.code}`,
-    body: overdue
-      ? `Overdue by ${formatHours(-machine.hoursToService)}.`
-      : `${formatHours(machine.hoursToService)} to next service.`,
+    body: `Known hours ${formatHours(machine.knownHours)} · ${
+      overdue
+        ? `overdue by ${formatHours(-machine.hoursToService)}.`
+        : `${formatHours(machine.hoursToService)} to next service.`
+    }`,
     data: { business: 'contracting', kind: 'machine', id: machine.id, path: `/contracting/machines/${machine.id}` },
     ...pushAlert(SERVICE_DUE_SOON_PUSH_KIND),
   };

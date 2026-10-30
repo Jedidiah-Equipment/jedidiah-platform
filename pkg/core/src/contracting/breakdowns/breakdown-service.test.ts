@@ -14,9 +14,17 @@ import { listJobs } from '../jobs/job-queues.js';
 import { createJob } from '../jobs/job-service.js';
 import { listMechanics } from '../mechanics.js';
 import { addNote } from '../notes/note-service.js';
-import { captureReading } from '../readings/reading-service.js';
 import { openServiceRecord } from '../services/service-record-service.js';
-import { admin, adminId, foreman, foremanId, invoicing, plannedStint, seedJobFixtures } from '../test/job-fixtures.js';
+import {
+  admin,
+  adminId,
+  captureHours,
+  foreman,
+  foremanId,
+  invoicing,
+  plannedStint,
+  seedJobFixtures,
+} from '../test/job-fixtures.js';
 import {
   addBreakdownPhotos,
   assignMechanic,
@@ -75,18 +83,7 @@ async function arrive(
   implementId: string | null = null,
 ) {
   const stint = await plannedStint(db, admin, { jobId, machineId, implementId });
-  await captureReading({
-    db,
-    actor: foreman,
-    input: {
-      machineId,
-      assignmentId: stint.id,
-      role: 'arrival',
-      value: 100,
-      capturedAt: '2026-09-01T08:00:00+02:00',
-      disputePrevious: false,
-    },
-  });
+  await captureHours(db, stint.id, 'arrival', 100);
 }
 
 const reportNew = async (...args: Parameters<typeof reportBreakdown>) => (await reportBreakdown(...args)).breakdown;

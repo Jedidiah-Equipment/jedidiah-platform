@@ -1,71 +1,71 @@
-import type { AssignmentAttentionLevel, JobReadingAttentionKind, NeedsALookLevel } from '@pkg/schema/contracting';
+import type { AssignmentAttentionKind } from '@pkg/schema/contracting';
+import { formatHours } from '../formatting/number.js';
 import { type BadgeColorClassNames, statusBadgeColorClassNames } from '../theme/status-badge.js';
+import { isOverTravelFlag, johnDeereDifference } from './stint-hours.js';
 
 /*
- * Assignment Attention has one level, critical: the hours are wrong or contradictory, or it stops the Job moving on.
- * Critical needs a look: it is counted, filtered for, and borders the card.
+ * Assignment Attention has one level, needs a look: amber, counted and filtered for, and it blocks nothing.
  */
 
-/** Everything that can flag a Machine Assignment: its Gap Flag and each reading's attention kinds. */
-export type AssignmentAttentionKind = 'gap-flag' | JobReadingAttentionKind;
-
-export const assignmentAttentionKindLevels = {
-  'gap-flag': 'critical',
-  disputed: 'critical',
-} as const satisfies Record<AssignmentAttentionKind, AssignmentAttentionLevel>;
-
 export const assignmentAttentionKindLabels: Record<AssignmentAttentionKind, string> = {
-  'gap-flag': 'Gap flag',
-  disputed: 'Disputed',
+  'travel-over-threshold': 'Travel over threshold',
+  'travel-clamped': 'Travel set to 0 h',
+  'john-deere-difference': 'John Deere differs',
 };
 
-export type AssignmentAttentionCounts = Record<NeedsALookLevel, number>;
+export type AttentionThresholds = { travelFlagThresholdHours: number; johnDeereDifferenceThresholdHours: number };
 
-/** The loudest of these levels, or null when there are none. */
-export function loudestNeedingALook(levels: Iterable<AssignmentAttentionLevel>): NeedsALookLevel | null {
-  return new Set(levels).has('critical') ? 'critical' : null;
-}
+type AttentionReading = { hours: number; telematics: { hours: number; at: string } | null } | null;
 
-/** The level a count of items needing a look shows at, or null when nothing needs a look. */
-export const countedAssignmentAttentionLevel = (counts: AssignmentAttentionCounts): NeedsALookLevel | null =>
-  counts.critical > 0 ? 'critical' : null;
-
-export const tallyAssignmentAttention = (levels: Iterable<NeedsALookLevel>): AssignmentAttentionCounts => {
-  const counts = { critical: 0 };
-  for (const level of levels) counts[level] += 1;
-  return counts;
+/** What the kinds are read off: the stint's Travel and the John Deere snapshot beside each of its Job Hours. */
+export type AttentionStint = {
+  travelHours: number | null;
+  travelClamped: boolean;
+  arrival: AttentionReading;
+  departure: AttentionReading;
 };
 
-/** A Job's items needing a look: each open Gap Flag, and each flagged reading once. */
-export function jobAssignmentAttentionCounts(
-  openGapFlags: number,
-  readings: AssignmentAttentionCounts,
-): AssignmentAttentionCounts {
-  const gapLevel = assignmentAttentionKindLevels['gap-flag'];
-  return { ...readings, [gapLevel]: readings[gapLevel] + openGapFlags };
+/** The larger difference from John Deere over the threshold on either of the stint's Job Hours, or null. */
+export function johnDeereDifferenceOver(stint: AttentionStint, threshold: number): number | null {
+  const over = [stint.arrival, stint.departure].flatMap((reading) => {
+    const difference = reading ? johnDeereDifference(reading.hours, reading.telematics, threshold) : null;
+    return difference?.over ? [difference.hours] : [];
+  });
+  return over.length ? Math.max(...over) : null;
 }
 
-type AttentionReading = { attention: readonly JobReadingAttentionKind[] };
-
-export type AssignmentAttentionItem = { kind: AssignmentAttentionKind; level: AssignmentAttentionLevel };
-
-/** Every attention item on a Machine Assignment with its level: its Gap Flag, then each reading's kinds. */
-export function assignmentAttentionItems(assignment: {
-  gapFlag: boolean;
-  arrival: AttentionReading | null;
-  departure: AttentionReading | null;
-}): AssignmentAttentionItem[] {
-  const kinds: AssignmentAttentionKind[] = [
-    ...(assignment.gapFlag ? (['gap-flag'] as const) : []),
-    ...(assignment.arrival?.attention ?? []),
-    ...(assignment.departure?.attention ?? []),
+/** Every reason a Machine Assignment needs a look. */
+export function stintAttentionKinds(stint: AttentionStint, thresholds: AttentionThresholds): AssignmentAttentionKind[] {
+  return [
+    ...(stint.travelHours !== null && isOverTravelFlag(stint.travelHours, thresholds.travelFlagThresholdHours)
+      ? (['travel-over-threshold'] as const)
+      : []),
+    ...(stint.travelClamped ? (['travel-clamped'] as const) : []),
+    ...(johnDeereDifferenceOver(stint, thresholds.johnDeereDifferenceThresholdHours) !== null
+      ? (['john-deere-difference'] as const)
+      : []),
   ];
-  return kinds.map((kind) => ({ kind, level: assignmentAttentionKindLevels[kind] }));
 }
 
-/** The loudest level on a Machine Assignment that needs a look, or null when nothing does. */
-export const assignmentNeedsALookLevel = (assignment: Parameters<typeof assignmentAttentionItems>[0]) =>
-  loudestNeedingALook(assignmentAttentionItems(assignment).map((item) => item.level));
+/** The badge a kind shows on the stint, naming its hours: "John Deere differs by 32.0 h". */
+export function assignmentAttentionSentence(
+  kind: AssignmentAttentionKind,
+  stint: AttentionStint,
+  thresholds: AttentionThresholds,
+): string {
+  switch (kind) {
+    case 'travel-over-threshold':
+      return `Travel ${formatHours(stint.travelHours ?? 0)} is over the ${formatHours(thresholds.travelFlagThresholdHours)} threshold`;
+    case 'travel-clamped':
+      return `Travel set to 0 h: arrival ${formatHours(stint.arrival?.hours ?? 0)} is below the Machine's previous departure`;
+    case 'john-deere-difference':
+      return `John Deere differs by ${formatHours(johnDeereDifferenceOver(stint, thresholds.johnDeereDifferenceThresholdHours) ?? 0)}`;
+  }
+}
+
+/** How many of a Job's stints need a look. */
+export const jobNeedsALookCount = (stints: readonly { attention: readonly AssignmentAttentionKind[] }[]) =>
+  stints.filter((stint) => stint.attention.length > 0).length;
 
 /** Every class an attention surface paints with: chip, text, dot, a bare icon, a card border, and an icon button. */
 export type AssignmentAttentionColorClassNames = BadgeColorClassNames & {
@@ -75,16 +75,11 @@ export type AssignmentAttentionColorClassNames = BadgeColorClassNames & {
   button: string;
 };
 
-/** The one colour set for each level, shared by every contracting surface. */
-export const assignmentAttentionLevelColorClassNames: Record<
-  AssignmentAttentionLevel,
-  AssignmentAttentionColorClassNames
-> = {
-  critical: {
-    ...statusBadgeColorClassNames.red,
-    icon: 'text-red-500',
-    border: 'border-red-500/60',
-    button:
-      'border-red-500/50 bg-red-500/15 text-red-700 hover:bg-red-500/25 dark:border-red-500/50 dark:bg-red-500/15 dark:text-red-300 dark:hover:bg-red-500/25',
-  },
+/** The one amber set needs a look paints with, on every contracting surface. */
+export const needsALookColorClassNames: AssignmentAttentionColorClassNames = {
+  ...statusBadgeColorClassNames.orange,
+  icon: 'text-orange-500',
+  border: 'border-orange-500/60',
+  button:
+    'border-orange-500/50 bg-orange-500/15 text-orange-700 hover:bg-orange-500/25 dark:border-orange-500/50 dark:bg-orange-500/15 dark:text-orange-300 dark:hover:bg-orange-500/25',
 };

@@ -5,7 +5,7 @@ import {
   recordAuditUpdate,
   translatingConstraintViolations,
 } from '@pkg/core';
-import { latestReadingColumns, stampSerialNumber } from '@pkg/core/contracting';
+import { ledgerLatestColumns, stampSerialNumber } from '@pkg/core/contracting';
 import { and, asc, type Db, eq, isNull, ne, or, sql } from '@pkg/db';
 import { contractingCategories, contractingJohnDeereLinks, contractingMachines } from '@pkg/db/contracting';
 import type { AuthId } from '@pkg/schema';
@@ -119,7 +119,7 @@ export class JohnDeereLinkService {
 
   /** Every active Link beside its Machine, by Machine code. */
   async listLinks(): Promise<JohnDeereLinkView[]> {
-    const { latestReadingHours, latestReadingAt } = latestReadingColumns(contractingMachines);
+    const { latestReadingHours, latestReadingAt } = ledgerLatestColumns(contractingMachines);
     const rows = await this.config.db
       .select({
         link: contractingJohnDeereLinks,

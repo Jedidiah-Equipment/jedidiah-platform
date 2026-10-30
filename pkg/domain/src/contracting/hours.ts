@@ -1,114 +1,64 @@
+import type { DateOnlyIso } from '@pkg/schema';
 import type { AssignmentState } from '@pkg/schema/contracting';
 import { countPhrase } from '../formatting/count-phrase.js';
 import { toPlantDateOnly } from '../formatting/date.js';
-import { formatHours } from '../formatting/number.js';
-
-/** The gap is longer than the Gap Flag threshold in Settings, so it raises a Gap Flag until it is resolved. */
-export const isOverGapWindow = (gapHours: number, threshold: number) => gapHours > threshold;
-
-/** What an Hour Gap is and, naming the threshold, why it was or was not flagged, wherever someone splits it. */
-export const hourGapExplanation = (gapHours: number, threshold: number) =>
-  `The hour meter ran ${formatHours(gapHours)} between the Machine's departure from its previous Job and its arrival here. ${
-    isOverGapWindow(gapHours, threshold)
-      ? `Any gap over ${formatHours(threshold)} is flagged, because that is longer than a Machine normally spends travelling between Jobs.`
-      : `Gaps up to ${formatHours(threshold)} are not flagged and count as travel by default.`
-  }`;
-
-export type StintReadings = {
-  arrival: { value: number; capturedAt: string } | null;
-  departure: { value: number; capturedAt: string } | null;
-  previousDeparture: { value: number } | null;
-  travelIncluded: boolean;
-  gap: { travelHours: number; unaccountedHours: number } | null;
-};
-
-export type StintHours = {
-  state: AssignmentState;
-  workHours: number | null;
-  gapHours: number | null;
-  travelHours: number;
-  unaccountedHours: number;
-  gapFlag: boolean;
-  billableHours: number | null;
-};
 
 export const round1 = (value: number) => Math.round(value * 10) / 10;
 
 /** Hours as the dash shows them: tenths, truncated, never rounded up past what the meter has reached. */
 export const floorToTenth = (value: number) => Math.floor(value * 10) / 10;
 
-function nonnegativeDifference(later: number, earlier: number) {
-  const difference = round1(later - earlier);
-  return difference < 0 ? null : difference;
-}
+/** A stint's Job Hours and Travel Hours as the Machine Assignment row holds them. */
+export type StintHourColumns = {
+  arrivalHours: number | null;
+  departureHours: number | null;
+  travelHours: number | null;
+};
 
-const stateOf = (arrived: boolean, left: boolean): AssignmentState =>
-  !arrived ? 'planned' : left ? 'left' : 'on-site';
+export type StintHours = {
+  state: AssignmentState;
+  workHours: number | null;
+  billableHours: number | null;
+};
 
-export const assignmentState = (stint: {
-  arrivalReadingId: string | null;
-  departureReadingId: string | null;
-}): AssignmentState => stateOf(stint.arrivalReadingId !== null, stint.departureReadingId !== null);
+export const assignmentState = (stint: Pick<StintHourColumns, 'arrivalHours' | 'departureHours'>): AssignmentState =>
+  stint.arrivalHours === null ? 'planned' : stint.departureHours === null ? 'on-site' : 'left';
 
-export function deriveStintHours(stint: StintReadings, threshold: number): StintHours {
-  const state = stateOf(stint.arrival !== null, stint.departure !== null);
-  // A disputed reading may deliberately move the ledger backwards. Keep the Job readable while the
-  // Dispute is resolved, but do not present a negative duration as meaningful operational hours.
+/** Work is departure less arrival, never negative; billable is Work plus Travel. */
+export function deriveStintHours(stint: StintHourColumns): StintHours {
+  const state = assignmentState(stint);
   const workHours =
-    stint.arrival && stint.departure ? nonnegativeDifference(stint.departure.value, stint.arrival.value) : null;
-  const gapHours =
-    stint.arrival && stint.previousDeparture
-      ? nonnegativeDifference(stint.arrival.value, stint.previousDeparture.value)
+    stint.arrivalHours !== null && stint.departureHours !== null
+      ? Math.max(0, round1(stint.departureHours - stint.arrivalHours))
       : null;
-  const travelHours = stint.gap ? stint.gap.travelHours : stint.travelIncluded && gapHours !== null ? gapHours : 0;
-  const unaccountedHours = stint.gap?.unaccountedHours ?? 0;
   return {
     state,
     workHours,
-    gapHours,
-    travelHours,
-    unaccountedHours,
-    gapFlag: gapHours !== null && isOverGapWindow(gapHours, threshold) && stint.gap === null,
-    billableHours: workHours === null ? null : round1(workHours + travelHours),
+    billableHours: workHours === null ? null : round1(workHours + (stint.travelHours ?? 0)),
   };
 }
 
+/** Start and End dates to confirm at Completion: the days the first arrival and the last departure were captured. */
 export function suggestJobDates(
-  stints: readonly { arrival: { capturedAt: string } | null; departure: { capturedAt: string } | null }[],
-): { startDate: string | null; endDate: string | null } {
-  const arrivals = stints.flatMap((stint) => (stint.arrival ? [Date.parse(stint.arrival.capturedAt)] : []));
-  const departures = stints.flatMap((stint) => (stint.departure ? [Date.parse(stint.departure.capturedAt)] : []));
+  stints: readonly { arrival: { at: string } | null; departure: { at: string } | null }[],
+): { startDate: DateOnlyIso | null; endDate: DateOnlyIso | null } {
+  const arrivals = stints.flatMap((stint) => (stint.arrival ? [Date.parse(stint.arrival.at)] : []));
+  const departures = stints.flatMap((stint) => (stint.departure ? [Date.parse(stint.departure.at)] : []));
   return {
     startDate: arrivals.length ? toPlantDateOnly(new Date(Math.min(...arrivals))) : null,
     endDate: departures.length ? toPlantDateOnly(new Date(Math.max(...departures))) : null,
   };
 }
 
-export type CompletionGate = { ok: true } | { ok: false; onSite: number; openGapFlags: number };
+export type CompletionGate = { ok: true } | { ok: false; onSite: number };
 
-export function canComplete(stints: readonly StintHours[]): CompletionGate {
+/** The only Completion gate on hours: no Machine is still on site. */
+export function canComplete(stints: readonly { state: AssignmentState }[]): CompletionGate {
   const onSite = stints.filter((stint) => stint.state === 'on-site').length;
-  const openGapFlags = stints.filter((stint) => stint.gapFlag).length;
-  return onSite || openGapFlags ? { ok: false, onSite, openGapFlags } : { ok: true };
+  return onSite ? { ok: false, onSite } : { ok: true };
 }
 
-/** Why a Job cannot be completed yet, one sentence per unmet condition. */
+/** Why a Job cannot be completed yet: "2 machines are still on site." */
 export function completionGateReasons(gate: CompletionGate): string[] {
-  if (gate.ok) return [];
-  return [
-    ...(gate.onSite ? [`${countPhrase(gate.onSite, 'machine is', 'machines are')} still on site.`] : []),
-    ...(gate.openGapFlags ? [`${countPhrase(gate.openGapFlags, 'Gap Flag is', 'Gap Flags are')} open.`] : []),
-  ];
-}
-
-export type GapSplit = { travelHours: number; unaccountedHours: number };
-
-/** A resolved Hour Gap is wholly Travel Hours and Unaccounted Interval. */
-export const gapSplitTotals = (gapHours: number, split: GapSplit): boolean =>
-  round1(split.travelHours + split.unaccountedHours) === gapHours;
-
-/** The split that gives `travel` hours to Travel Hours, clamped to the gap, and the rest to the Unaccounted Interval. */
-export function splitGap(gapHours: number, travel: number): GapSplit {
-  const travelHours = round1(Math.max(0, Math.min(gapHours, travel)));
-  return { travelHours, unaccountedHours: round1(Math.max(0, gapHours - travelHours)) };
+  return gate.ok ? [] : [`${countPhrase(gate.onSite, 'machine is', 'machines are')} still on site.`];
 }

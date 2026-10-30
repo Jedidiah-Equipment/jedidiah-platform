@@ -38,14 +38,18 @@ describe('breakdownPushMessage', () => {
 
 describe('serviceDueSoonPushMessage', () => {
   test('says how far the next service is, or how far past it the Machine already is', () => {
-    expect(serviceDueSoonPushMessage({ id: 'm1', code: 'JD6140M-2', hoursToService: 51 })).toMatchObject({
+    expect(
+      serviceDueSoonPushMessage({ id: 'm1', code: 'JD6140M-2', knownHours: 1449, hoursToService: 51 }),
+    ).toMatchObject({
       title: 'Service due soon · JD6140M-2',
-      body: '51.0 h to next service.',
+      body: 'Known hours 1 449.0 h · 51.0 h to next service.',
       data: { kind: 'machine', path: '/contracting/machines/m1' },
     });
-    expect(serviceDueSoonPushMessage({ id: 'm1', code: 'JD6140M-2', hoursToService: -4 })).toMatchObject({
+    expect(
+      serviceDueSoonPushMessage({ id: 'm1', code: 'JD6140M-2', knownHours: 1504, hoursToService: -4 }),
+    ).toMatchObject({
       title: 'Service overdue · JD6140M-2',
-      body: 'Overdue by 4.0 h.',
+      body: 'Known hours 1 504.0 h · overdue by 4.0 h.',
     });
   });
 });

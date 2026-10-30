@@ -1,1 +1,1 @@
-export { JobCaptureScreen as default } from '@/contracting/components/CaptureScreen';
+export { default } from '@/contracting/jobs/StintHoursScreen';

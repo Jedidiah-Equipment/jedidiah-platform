@@ -1,20 +1,12 @@
 import type { Db } from '@pkg/db';
-import {
-  contractingCategories,
-  contractingHourReadings,
-  contractingMachineAssignments,
-  contractingMachines,
-} from '@pkg/db/contracting';
+import { contractingCategories, contractingMachineAssignments, contractingMachines } from '@pkg/db/contracting';
 import { getPlantDateNow, groupBy, toPlantDateOnly } from '@pkg/domain';
 import {
-  type ActiveSpan,
-  allocateHours,
+  type DatedStintHours,
   dayCounts,
-  hourSegments,
-  type LedgerReading,
-  type LedgerStint,
   resolveReportWindow,
   round1,
+  stintHourTotals,
   sumDayCounts,
   trailingMonthWindows,
   utilisationPercent,
@@ -30,13 +22,12 @@ import {
   type UtilisationTrendInput,
   type UtilisationTrendSubject,
 } from '@pkg/schema/contracting';
-import { asc, eq, isNotNull, type SQL } from 'drizzle-orm';
-import { alias } from 'drizzle-orm/pg-core';
-import { oldestFirst } from '../readings/reading-sql.js';
+import { asc, eq, inArray, type SQL } from 'drizzle-orm';
 import { getContractingSettings } from '../settings/settings-service.js';
+import { loadDatedJobs } from './dated-jobs.js';
 import { reportNotFound } from './report-errors.js';
 
-/** One Machine with its Category, its fleet span and its stints as plant dates: what the day counts read. */
+/** One Machine with its Category, its fleet span, and its stints over their Jobs' effective dates. */
 type FleetMachine = {
   id: string;
   code: string;
@@ -44,23 +35,12 @@ type FleetMachine = {
   category: Pick<CategoryUtilisation, 'name' | 'icon' | 'colour'>;
   createdDate: DateOnlyIso;
   retiredDate: DateOnlyIso | null;
-  spans: ActiveSpan[];
+  stints: DatedStintHours[];
 };
 
-/** One Machine's whole reading ledger in Read At order and the stints that phase it: what the hours read. */
-type Ledger = { readings: LedgerReading[]; stints: LedgerStint[] };
-
-const EMPTY_LEDGER: Ledger = { readings: [], stints: [] };
-
-const arrival = alias(contractingHourReadings, 'report_arrival');
-const departure = alias(contractingHourReadings, 'report_departure');
-
-/**
- * Two queries for the fleet `where` keeps, retired Machines included, and nothing per Machine: the Machines with
- * their Categories, and their stints as the plant dates of the arrival and departure readings.
- */
-async function loadFleetSpans(db: Db, where?: SQL): Promise<FleetMachine[]> {
-  const [machines, stints] = await Promise.all([
+/** The fleet `where` keeps, retired Machines included, each with its stints over their Jobs' effective dates. */
+async function loadFleetSpans(db: Db, today: DateOnlyIso, where?: SQL): Promise<FleetMachine[]> {
+  const [machines, jobs] = await Promise.all([
     db
       .select({
         id: contractingMachines.id,
@@ -76,94 +56,42 @@ async function loadFleetSpans(db: Db, where?: SQL): Promise<FleetMachine[]> {
       .innerJoin(contractingCategories, eq(contractingCategories.id, contractingMachines.categoryId))
       .where(where)
       .orderBy(asc(contractingCategories.name), asc(contractingMachines.code)),
-    db
-      .select({
-        machineId: contractingMachineAssignments.machineId,
-        arrivalAt: arrival.capturedAt,
-        departureAt: departure.capturedAt,
-      })
-      .from(contractingMachineAssignments)
-      .innerJoin(contractingMachines, eq(contractingMachines.id, contractingMachineAssignments.machineId))
-      .innerJoin(arrival, eq(arrival.id, contractingMachineAssignments.arrivalReadingId))
-      .leftJoin(departure, eq(departure.id, contractingMachineAssignments.departureReadingId))
-      .where(where),
+    // Only the Jobs a member Machine worked on; every arrived stint on those Jobs still dates them.
+    loadDatedJobs(
+      db,
+      today,
+      where
+        ? inArray(
+            contractingMachineAssignments.jobId,
+            db
+              .select({ jobId: contractingMachineAssignments.jobId })
+              .from(contractingMachineAssignments)
+              .innerJoin(contractingMachines, eq(contractingMachines.id, contractingMachineAssignments.machineId))
+              .where(where),
+          )
+        : undefined,
+    ),
   ]);
-  const stintsByMachine = groupBy(stints, (stint) => stint.machineId);
-  return machines.map((machine) => ({
-    id: machine.id,
-    code: machine.code,
-    categoryId: machine.categoryId,
-    category: { name: machine.name, icon: machine.icon, colour: machine.colour },
-    createdDate: toPlantDateOnly(machine.createdAt),
-    retiredDate: machine.retiredAt ? toPlantDateOnly(machine.retiredAt) : null,
-    spans: (stintsByMachine.get(machine.id) ?? []).map((stint) => ({
-      arrivalDate: toPlantDateOnly(stint.arrivalAt),
-      departureDate: stint.departureAt ? toPlantDateOnly(stint.departureAt) : null,
-    })),
-  }));
-}
-
-/**
- * Two queries for the whole fleet's ledger, grouped by Machine. The ledger walk needs the readings either side of a
- * window boundary, so the whole ledger is read; at ~80 Machines and a few readings a stint that is small. If it ever
- * grows, bound the reading load to the trend's twelve months plus one reading either side.
- */
-async function loadLedger(db: Db): Promise<Map<string, Ledger>> {
-  const [readings, stints] = await Promise.all([
-    db
-      .select({
-        id: contractingHourReadings.id,
-        machineId: contractingHourReadings.machineId,
-        role: contractingHourReadings.role,
-        value: contractingHourReadings.value,
-        capturedAt: contractingHourReadings.capturedAt,
-      })
-      .from(contractingHourReadings)
-      .orderBy(asc(contractingHourReadings.machineId), ...oldestFirst),
-    db
-      .select({
-        machineId: contractingMachineAssignments.machineId,
-        arrivalReadingId: contractingMachineAssignments.arrivalReadingId,
-        departureReadingId: contractingMachineAssignments.departureReadingId,
-        gapResolvedAt: contractingMachineAssignments.gapResolvedAt,
-        gapTravelHours: contractingMachineAssignments.gapTravelHours,
-        gapUnaccountedHours: contractingMachineAssignments.gapUnaccountedHours,
-      })
-      .from(contractingMachineAssignments)
-      // A planned stint has no arrival yet, so it phases nothing.
-      .where(isNotNull(contractingMachineAssignments.arrivalReadingId)),
-  ]);
-  const ledgers = new Map<string, Ledger>();
-  const ledgerOf = (machineId: string): Ledger => {
-    const ledger = ledgers.get(machineId) ?? { readings: [], stints: [] };
-    ledgers.set(machineId, ledger);
-    return ledger;
-  };
-  for (const { machineId, capturedAt, ...reading } of readings)
-    ledgerOf(machineId).readings.push({ ...reading, capturedAt: capturedAt.toISOString() });
-  for (const stint of stints) {
-    if (stint.arrivalReadingId === null) continue;
-    ledgerOf(stint.machineId).stints.push({
-      arrivalReadingId: stint.arrivalReadingId,
-      departureReadingId: stint.departureReadingId,
-      gap:
-        stint.gapResolvedAt === null
-          ? null
-          : { travelHours: stint.gapTravelHours ?? 0, unaccountedHours: stint.gapUnaccountedHours ?? 0 },
-    });
-  }
-  return ledgers;
+  const stintsByMachine = groupBy(
+    jobs.flatMap(({ dates, stints }) => stints.map((stint) => ({ ...stint, ...dates }))),
+    (stint) => stint.machineId,
+  );
+  return machines.map((machine) => {
+    return {
+      id: machine.id,
+      code: machine.code,
+      categoryId: machine.categoryId,
+      category: { name: machine.name, icon: machine.icon, colour: machine.colour },
+      createdDate: toPlantDateOnly(machine.createdAt),
+      retiredDate: machine.retiredAt ? toPlantDateOnly(machine.retiredAt) : null,
+      stints: stintsByMachine.get(machine.id) ?? [],
+    };
+  });
 }
 
 /** The Machine's day counts and hours by kind for the window; null when it was not in the fleet during it. */
-function machineRow(
-  machine: FleetMachine,
-  ledger: Ledger,
-  window: ReportWindow,
-  today: DateOnlyIso,
-  gapFlagThresholdHours: number,
-): MachineUtilisation | null {
-  const days = dayCounts(machine, window, today);
+function machineRow(machine: FleetMachine, window: ReportWindow): MachineUtilisation | null {
+  const days = dayCounts(machine, window);
   if (days.fleetDays === 0) return null;
   return {
     machineId: machine.id,
@@ -171,7 +99,7 @@ function machineRow(
     categoryId: machine.categoryId,
     retiredDate: machine.retiredDate,
     ...days,
-    ...allocateHours(hourSegments(ledger.readings, ledger.stints, gapFlagThresholdHours), window),
+    ...stintHourTotals(machine.stints, window),
   };
 }
 
@@ -184,8 +112,6 @@ function aggregate(rows: readonly MachineUtilisation[]) {
     activeMachineCount: rows.filter((row) => row.activeDays > 0).length,
     workHours: round1(sum((row) => row.workHours)),
     travelHours: round1(sum((row) => row.travelHours)),
-    unaccountedHours: round1(sum((row) => row.unaccountedHours)),
-    unresolvedHours: round1(sum((row) => row.unresolvedHours)),
   };
 }
 
@@ -198,19 +124,11 @@ export async function getUtilisationReport({
   input: ReportWindowInput;
   today?: DateOnlyIso;
 }): Promise<UtilisationReport> {
-  const [settings, fleet, ledgers] = await Promise.all([
-    getContractingSettings({ db }),
-    loadFleetSpans(db),
-    loadLedger(db),
-  ]);
+  const [settings, fleet] = await Promise.all([getContractingSettings({ db }), loadFleetSpans(db, today)]);
   const window = resolveReportWindow(input, today);
   // Machines arrive ordered by Category name then code, so the Categories and their rows keep that order.
   const categories = [...groupBy(fleet, (machine) => machine.categoryId)].flatMap(([categoryId, members]) => {
-    const machines = members.flatMap(
-      (machine) =>
-        machineRow(machine, ledgers.get(machine.id) ?? EMPTY_LEDGER, window, today, settings.gapFlagThresholdHours) ??
-        [],
-    );
+    const machines = members.flatMap((machine) => machineRow(machine, window) ?? []);
     if (machines.length === 0) return [];
     return [{ categoryId, ...members[0].category, ...aggregate(machines), machines }];
   });
@@ -254,7 +172,7 @@ function trendMembers(subject: UtilisationTrendSubject): SQL | undefined {
   }
 }
 
-/** Day counts only: the trend never walks the ledger, so a subject click costs the fleet span read and nothing more. */
+/** Day counts only: a subject click costs the fleet span read and nothing more. */
 export async function getUtilisationTrend({
   db,
   input,
@@ -267,12 +185,12 @@ export async function getUtilisationTrend({
   const { subject } = input;
   const [settings, members, label] = await Promise.all([
     getContractingSettings({ db }),
-    loadFleetSpans(db, trendMembers(subject)),
+    loadFleetSpans(db, today, trendMembers(subject)),
     trendLabel(db, subject),
   ]);
   const months = trailingMonthWindows(resolveReportWindow(input.window, today), today).map((window) => ({
     month: window.start,
-    ...sumDayCounts(members.map((machine) => dayCounts(machine, window, today))),
+    ...sumDayCounts(members.map((machine) => dayCounts(machine, window))),
   }));
   return UtilisationTrend.parse({
     subject,

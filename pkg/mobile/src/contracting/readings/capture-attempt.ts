@@ -8,23 +8,11 @@ export type AttemptIdentity = { localId: string; attemptedAt: Date; fingerprint:
 
 /** Everything the Foreman entered that the server's replay compares; Read At is part of it. */
 export function captureAttemptPayload(form: {
-  role: string;
-  assignmentId: string | null;
   value: number;
   comment: string;
-  disputedReadingId: string | null;
-  stintOverrides: unknown;
   readAt: Date | null;
 }): readonly unknown[] {
-  return [
-    form.role,
-    form.assignmentId,
-    form.value,
-    form.comment.trim(),
-    form.disputedReadingId,
-    form.stintOverrides,
-    form.readAt?.toISOString() ?? null,
-  ];
+  return [form.value, form.comment.trim(), form.readAt?.toISOString() ?? null];
 }
 
 /** The attempt to send: the current one while nothing in the payload changed, else a new identity. */

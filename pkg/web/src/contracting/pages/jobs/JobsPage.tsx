@@ -1,6 +1,5 @@
 import { countPhrase, formatCurrency, formatDate, formatNumber, getFirstName } from '@pkg/domain';
 import {
-  countedAssignmentAttentionLevel,
   jobQueueLabels,
   jobQueueOf,
   jobReadMode,
@@ -274,7 +273,7 @@ export function JobsTable({ scope }: { scope?: JobsScope }) {
       {
         id: ATTENTION_COLUMN_ID,
         // A column filters only with an accessor; the server owns the filtering itself.
-        accessorFn: (job) => (countedAssignmentAttentionLevel(job.assignmentAttention) ? NEEDS_A_LOOK : ''),
+        accessorFn: (job) => (job.assignmentAttention > 0 ? NEEDS_A_LOOK : ''),
         header: 'Needs a look',
         enableColumnFilter: true,
         enableSorting: false,

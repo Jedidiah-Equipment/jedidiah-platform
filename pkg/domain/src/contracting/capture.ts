@@ -1,17 +1,12 @@
 import {
-  type AssignmentState,
-  type JobActionBlockedReason,
-  type JobActionVerdict,
   type ReadingCaptureInput,
   type ReadingErrorCode,
-  type ReadingRole,
   ReadingValue,
   type TelematicsProvider,
   type ReadAtEstimate as WireReadAtEstimate,
 } from '@pkg/schema/contracting';
 import { formatDate, toPlantDateOnly } from '../formatting/date.js';
 import { formatHours } from '../formatting/number.js';
-import { assignmentActionRefusal, assignmentStateAllows } from './assignment-actions.js';
 import { FUTURE_READ_AT_REFUSAL, isFutureReadAt } from './read-at.js';
 import {
   hoursBetween,
@@ -19,15 +14,13 @@ import {
   outrunsClock,
   outrunsClockSentence,
   type TimedValue,
-  telematicsDisputeReason,
   telematicsProviderLabels,
+  telematicsReportedSentence,
 } from './readings.js';
-import { serviceDueSoonCrossed } from './service-due.js';
 
 /** A reading either side of a capture's Read At; `telematicsProvider` names who reported a Telematics Reading. */
 export type CaptureNeighbour = {
   id: string;
-  role: ReadingRole;
   value: number;
   capturedAt: Date;
   telematicsProvider: TelematicsProvider | null;
@@ -46,125 +39,46 @@ export type Placement = {
 };
 
 /**
- * What an Hour Reading capture is judged against: the server's rows under the Machine lock, gathered by core as
- * facts. Outside this table, and enforced elsewhere: a replayed capture id, a Machine or Assignment that does not
- * exist, and the two busy rules, which the database's unique constraints raise after the write.
+ * What a spot reading capture is judged against: the server's ledger rows under the Machine lock, gathered by core as
+ * facts. A replayed capture id and a Machine that does not exist are enforced outside this table.
  */
 export type CaptureWorld = Placement & {
   /** The Machine's latest reading by Read At, or null while its ledger is empty. */
   latest: { id: string; value: number } | null;
-  /** The stint the capture lands on; null for a spot or baseline reading. */
-  stint: AssignmentState | null;
-  /** A departure's stint arrival Read At; null otherwise. */
-  stintArrivedAt: Date | null;
-  /** The Machine's latest departure Read At, or null. */
-  lastDepartedAt: Date | null;
-  /** The Job's own verdict on `capture`; null when there is no stint. */
-  jobVerdict: JobActionVerdict | null;
-  /** May capture a Baseline Reading. */
-  mayBaseline: boolean;
   machineRetired: boolean;
-  /** An arrival's Implement as the stint plus overrides resolve it; true when none is named. */
-  implementValid: boolean;
-  /** An arrival's Driver as the stint plus overrides resolve them; true when none is named. */
-  driverValid: boolean;
   now: Date;
   /** Phone clocks drift; the server passes FUTURE_READ_AT_TOLERANCE_MS. */
   futureToleranceMs: number;
 };
 
-export type CaptureAttempt = {
-  role: ReadingRole;
-  value: number;
-  readAt: Date;
-  disputePrevious: boolean;
-  /** The reading the capturer believes is latest; a dispute must name the one that actually is. */
-  expectedPreviousId: string | null | undefined;
-};
+export type CaptureAttempt = { value: number; readAt: Date };
 
-/** Every way `judgeCapture` refuses a capture, in the order it judges them. */
+/** Every way `judgeCapture` refuses a spot reading, in the order it judges them. */
 export type CaptureRule =
-  | 'baseline-forbidden'
   | 'future-read-at'
   | 'retired-machine'
-  | 'job-refused'
-  | 'implement-invalid'
-  | 'driver-invalid'
-  | 'already-arrived'
-  | 'not-on-site'
-  | 'departs-before-arrival'
-  | 'arrives-before-departure'
-  | 'previous-changed'
   | 'above-next'
-  | 'contradicts-telematics'
   | 'below-previous'
   | 'outruns-clock'
-  | 'below-latest'
-  | 'baseline-exists';
+  | 'below-latest';
 
 /** The rules a reading answers to at its place in time, whether captured there or amended to it. */
-export type PlacementRule = 'above-next' | 'contradicts-telematics' | 'below-previous' | 'outruns-clock';
+export type PlacementRule = 'above-next' | 'below-previous' | 'outruns-clock';
 
-/** The refusals that bring their own sentence. */
-type SentencedRule = 'job-refused' | PlacementRule;
-
-/** The stint constraints' refusals: the database raises these after the write, so the table cannot judge them. */
-export type CaptureConstraintRule = 'machine-busy' | 'implement-busy';
-
-/** The wire code and the one sentence of each refusal; a Job refusal brings its own. */
+/** The wire code and the one sentence of each refusal that does not bring its own. */
 export const captureRefusals: Record<
-  Exclude<CaptureRule, SentencedRule> | CaptureConstraintRule,
+  Exclude<CaptureRule, PlacementRule>,
   { code: ReadingErrorCode; message: string }
 > = {
-  'baseline-forbidden': {
-    code: 'reading.forbidden',
-    message: 'Only a Contracting administrator can capture a Baseline Reading.',
-  },
   'future-read-at': { code: 'reading.future_read_at', message: FUTURE_READ_AT_REFUSAL },
   'retired-machine': { code: 'reading.retired_machine', message: 'Cannot capture readings for a retired Machine.' },
-  'implement-invalid': { code: 'reading.invalid_role', message: 'The selected Implement is no longer available.' },
-  'driver-invalid': { code: 'reading.invalid_role', message: 'Select a person with the Contracting driver role.' },
-  'already-arrived': { code: 'reading.invalid_role', message: assignmentActionRefusal('captureArrival') },
-  'not-on-site': { code: 'reading.invalid_role', message: assignmentActionRefusal('captureDeparture') },
-  'departs-before-arrival': {
-    code: 'reading.invalid_role',
-    message: 'A departure cannot be read before its arrival. Check the time.',
-  },
-  'arrives-before-departure': {
-    code: 'reading.invalid_role',
-    message: "An arrival cannot be read before the Machine's last departure. Check the time.",
-  },
-  'previous-changed': {
-    code: 'reading.previous_changed',
-    message: 'Another reading landed first. Review the latest reading before resubmitting a dispute.',
-  },
-  'below-latest': {
-    code: 'reading.below_latest',
-    message: 'Reading is below the latest reading. Retake it or assert that the previous reading is wrong.',
-  },
-  'baseline-exists': { code: 'reading.baseline_exists', message: 'A Baseline Reading must be the first reading.' },
-  'machine-busy': {
-    code: 'reading.machine_on_site',
-    message: 'This Machine is still on site on another Job — capture its departure there first.',
-  },
-  'implement-busy': {
-    code: 'reading.implement_on_site',
-    message: 'This Implement is still on site on another Job — capture its departure there first.',
-  },
+  'below-latest': { code: 'reading.below_latest', message: 'Reading is below the latest reading.' },
 };
 
-export type CaptureRefused = {
-  ok: false;
-  rule: CaptureRule;
-  reason: ReadingErrorCode;
-  message: string;
-  /** Set when the Job refused: the Job Action and its reason, as the server's refusal metadata carries them. */
-  refused?: { action: 'capture'; reason: JobActionBlockedReason };
-};
-/** `disputes` names the latest reading an accepted capture below it disputes. */
-export type CaptureVerdict = { ok: true; disputes: string | null } | CaptureRefused;
+export type CaptureRefused = { ok: false; rule: CaptureRule; reason: ReadingErrorCode; message: string };
+export type CaptureVerdict = { ok: true } | CaptureRefused;
 
-const refuse = (rule: Exclude<CaptureRule, SentencedRule>): CaptureRefused => ({
+const refuse = (rule: Exclude<CaptureRule, PlacementRule>): CaptureRefused => ({
   ok: false,
   rule,
   reason: captureRefusals[rule].code,
@@ -178,7 +92,7 @@ export type Misplacement = { rule: PlacementRule; neighbour: CaptureNeighbour; s
 const against = (rule: Exclude<PlacementRule, 'outruns-clock'>, neighbour: CaptureNeighbour): Misplacement => {
   const reading = `${formatHours(neighbour.value)} at ${formatDate(neighbour.capturedAt, 'medium')}`;
   const said = isReported(neighbour)
-    ? telematicsDisputeReason(neighbour)
+    ? telematicsReportedSentence(neighbour)
     : rule === 'above-next'
       ? `A later reading of ${reading} is lower.`
       : `A reading of ${reading} is higher.`;
@@ -186,10 +100,10 @@ const against = (rule: Exclude<PlacementRule, 'outruns-clock'>, neighbour: Captu
 };
 
 /**
- * Whether a reading may sit at its place in time: never contradicting the nearest Telematics Reading on either side,
- * never above the next reading or below the previous one, and never outrunning the clock against either. One judge for
- * a capture and an amendment alike; each words its own refusal. `latestId` names the latest reading a capture may
- * dispute rather than be refused below; an amendment disputes nothing, so it names none.
+ * Whether a reading may sit at its place in time: never below the nearest Telematics Reading before it or above the
+ * one after it, never above the next reading or below the previous one, and never outrunning the clock against either.
+ * One judge for a capture and an amendment alike; each words its own refusal. `latestId` names the latest reading,
+ * which a capture is refused below in its own words; an amendment names none.
  */
 export function judgePlacement(
   { previous, next, previousTelematics, nextTelematics }: Placement,
@@ -197,8 +111,7 @@ export function judgePlacement(
   latestId: string | null = null,
 ): Misplacement | null {
   if (nextTelematics && here.value > nextTelematics.value) return against('above-next', nextTelematics);
-  if (previousTelematics && here.value < previousTelematics.value)
-    return against('contradicts-telematics', previousTelematics);
+  if (previousTelematics && here.value < previousTelematics.value) return against('below-previous', previousTelematics);
   if (next && here.value > next.value) return against('above-next', next);
   if (previous && here.value < previous.value && previous.id !== latestId) return against('below-previous', previous);
   if (previous && outrunsClock(previous, here))
@@ -214,20 +127,17 @@ export function judgePlacement(
 
 const placementCodes: Record<PlacementRule, ReadingErrorCode> = {
   'above-next': 'reading.above_next',
-  'contradicts-telematics': 'reading.below_latest',
   'below-previous': 'reading.below_latest',
   'outruns-clock': 'reading.outruns_clock',
 };
 
-/** A misplaced capture refused; outrunning the clock is fixed by a Read At, on this reading or on that one from its Job. */
+/** A misplaced capture refused; outrunning the clock is fixed by a Read At, on this reading or that one. */
 const refuseMisplaced = ({ rule, sentence }: Misplacement): CaptureRefused => ({
   ok: false,
   rule,
   reason: placementCodes[rule],
   message:
-    rule === 'outruns-clock'
-      ? `${sentence} Check Read At on this reading, or correct that reading's Read At from its Job.`
-      : sentence,
+    rule === 'outruns-clock' ? `${sentence} Check Read At on this reading, or amend that reading's Read At.` : sentence,
 });
 
 /**
@@ -255,17 +165,13 @@ export function placementIn(ledger: readonly CaptureNeighbour[], index: number):
 /** A reading as the estimate sees it; `createdAt` is acceptance, used to find when a report's value was first seen. */
 export type EstimateNeighbour = CaptureNeighbour & { createdAt: Date };
 
-/** What core gathers for one typed value: the ledger's latest, the readings bracketing the value, and the stint's floor. */
+/** What core gathers for one typed value: the ledger's latest and the readings bracketing the value. */
 export type EstimateFacts = {
-  /** The capture's role, which names what `notBefore` is the Read At of. */
-  role: ReadingRole;
   latest: CaptureNeighbour | null;
   /** The last reading (any method) whose value is at or below the typed one, by Read At. */
   floor: EstimateNeighbour | null;
   /** The first reading after the floor by Read At. */
   ceiling: EstimateNeighbour | null;
-  /** The earliest Read At stint order allows: a departure's arrival, an arrival's last departure, null for a spot. */
-  notBefore: Date | null;
   now: Date;
 };
 
@@ -299,23 +205,13 @@ const firstSeenAt = ({ capturedAt, createdAt, telematicsProvider }: EstimateNeig
 export const cannotHaveReachedSentence = (value: number, latest: TimedValue) =>
   `The meter cannot have reached ${formatHours(value)} yet: ${formatHours(value - latest.value)} since ${formatHours(latest.value)} at ${formatDate(latest.capturedAt, 'medium')}. Check the hours.`;
 
-/** "John Deere puts 2 906.7 h before this stint's arrival at 27 Oct 2026, 15:00. Check the hours." */
-export const beforeStintSentence = (
-  value: number,
-  floor: Pick<CaptureNeighbour, 'telematicsProvider'>,
-  notBefore: Date,
-  role: ReadingRole,
-) =>
-  `${telematicsProviderLabels[floor.telematicsProvider ?? 'john-deere']} puts ${formatHours(value)} before ${role === 'arrival' ? "the Machine's last departure" : "this stint's arrival"} at ${formatDate(notBefore, 'medium')}. Check the hours.`;
-
 /**
  * When the ledger says a value was on the meter. At or above the latest the answer is now, or nothing when the meter
  * cannot have got there yet. Below it, the moment between the floor and the ceiling at which hours would have reached
- * the value; locked when both are reports, a guess otherwise. A moment before the stint's floor is impossible when
- * John Deere fixes it, and no estimate at all when only a guess does.
+ * the value; locked when both are reports, a guess otherwise.
  */
 export function estimateReadAt(value: number, facts: EstimateFacts): ReadAtEstimate {
-  const { role, latest, floor, ceiling, notBefore, now } = facts;
+  const { latest, floor, ceiling, now } = facts;
   if (!latest) return { kind: 'none' };
   if (value >= latest.value)
     return outrunsClock(latest, { value, capturedAt: now })
@@ -335,10 +231,6 @@ export function estimateReadAt(value: number, facts: EstimateFacts): ReadAtEstim
       )
     : floor.capturedAt;
   const locked = !!floor.telematicsProvider && (exact || !!upper?.telematicsProvider);
-  if (notBefore && readAt.getTime() < notBefore.getTime())
-    return locked
-      ? { kind: 'impossible', sentence: beforeStintSentence(value, floor, notBefore, role) }
-      : { kind: 'none' };
   return {
     kind: locked ? 'telematics' : 'human',
     readAt,
@@ -353,12 +245,6 @@ export const namesReadAt = <T extends { kind: string }>(
   estimate: T,
 ): estimate is Extract<T, { kind: 'telematics' | 'human' }> =>
   estimate.kind === 'telematics' || estimate.kind === 'human';
-
-/** The earliest Read At the stint order lets a proposal take: a departure's arrival, an arrival's last departure. */
-export const earliestReadAtFor = (
-  role: ReadingRole,
-  world: Pick<CaptureWorld, 'stintArrivedAt' | 'lastDepartedAt'>,
-): Date | null => (role === 'departure' ? world.stintArrivedAt : role === 'arrival' ? world.lastDepartedAt : null);
 
 /** The estimate line: "Read on 28 Oct 2026, 14:30 per John Deere" / "Read about 28 Oct 2026, 14:30" / "Read now". */
 export function estimateSentence(estimate: ReadAtEstimate | WireReadAtEstimate): string {
@@ -383,90 +269,29 @@ export const outsideTodaySentence = (readAt: Date) =>
 export const overAWeekSentence = (readAt: Date) =>
   `Please check the hours: this reading would be from ${formatDate(readAt, 'medium')}, over a week ago.`;
 
-/** Over the dispute fork: "This is below the latest reading of 4 728.4 h at 27 Oct 2026, 17:35." */
-export const belowLatestSentence = (latest: { value: number; capturedAt: Date | string }) =>
-  `This is below the latest reading of ${formatHours(latest.value)} at ${formatDate(latest.capturedAt, 'medium')}.`;
-
-/** A Job refusal in Reading terms: a permission or ownership refusal is forbidden, a status refusal wrong status. */
-export const readingCodeForJobRefusal = (
-  reason: JobActionBlockedReason,
-): 'reading.forbidden' | 'reading.wrong_status' =>
-  reason === 'no-permission' || reason === 'not-your-job' ? 'reading.forbidden' : 'reading.wrong_status';
-
-const refuseJob = (verdict: Extract<JobActionVerdict, { allowed: false }>): CaptureRefused => ({
-  ok: false,
-  rule: 'job-refused',
-  reason: readingCodeForJobRefusal(verdict.reason),
-  message: verdict.message,
-  refused: { action: 'capture', reason: verdict.reason },
-});
-
-/** A capture below the Machine's latest reading lands only as a dispute. */
-export const captureIsBelowLatest = (value: number, latest: { value: number } | null | undefined): boolean =>
-  !!latest && value < latest.value;
-
 /** The value refusals a proposed Read At can fix: the value was most likely read earlier. */
-export const proposesReadAt = (rule: CaptureRule) =>
-  rule === 'contradicts-telematics' || rule === 'below-previous' || rule === 'below-latest';
+export const proposesReadAt = (rule: CaptureRule) => rule === 'below-previous' || rule === 'below-latest';
 
 /**
- * Whether this capture may land on the Machine's ledger as the server holds it under the lock. A refusal the caller
- * may answer with a proposed Read At is one `proposesReadAt` names; `estimateReadAt` proposes it.
+ * Whether this spot reading may land on the Machine's ledger as the server holds it under the lock. A refusal the
+ * caller may answer with a proposed Read At is one `proposesReadAt` names; `estimateReadAt` proposes it.
  */
 export function judgeCapture(world: CaptureWorld, capture: CaptureAttempt): CaptureVerdict {
-  if (capture.role === 'baseline' && !world.mayBaseline) return refuse('baseline-forbidden');
   if (isFutureReadAt(capture.readAt, world.now, world.futureToleranceMs)) return refuse('future-read-at');
   if (world.machineRetired) return refuse('retired-machine');
-  if (world.jobVerdict && !world.jobVerdict.allowed) return refuseJob(world.jobVerdict);
-  if (!world.implementValid) return refuse('implement-invalid');
-  if (!world.driverValid) return refuse('driver-invalid');
-  // A null stint is a Machine arriving on a Job it was never planned on, which is still an arrival.
-  if (capture.role === 'arrival' && world.stint !== null && !assignmentStateAllows('captureArrival', world.stint))
-    return refuse('already-arrived');
-  if (capture.role === 'departure' && (world.stint === null || !assignmentStateAllows('captureDeparture', world.stint)))
-    return refuse('not-on-site');
-  // Stints stay in time order, so a backdated Read At moves no hour between Jobs.
-  const before = (at: Date | null) => at !== null && capture.readAt.getTime() < at.getTime();
-  if (capture.role === 'departure' && before(world.stintArrivedAt)) return refuse('departs-before-arrival');
-  if (capture.role === 'arrival' && before(world.lastDepartedAt)) return refuse('arrives-before-departure');
-  if (
-    capture.disputePrevious &&
-    capture.expectedPreviousId !== undefined &&
-    capture.expectedPreviousId !== (world.latest?.id ?? null)
-  )
-    return refuse('previous-changed');
   const misplaced = judgePlacement(
     world,
     { value: capture.value, capturedAt: capture.readAt },
     world.latest?.id ?? null,
   );
   if (misplaced) return refuseMisplaced(misplaced);
-  const { previous, next } = world;
   // Only a capture that becomes the latest is judged against it; one dated behind it answers to its neighbours.
-  const below = next === null && captureIsBelowLatest(capture.value, world.latest);
-  if (below && !capture.disputePrevious) return refuse('below-latest');
-  const beforeBaseline = previous === null && next?.role === 'baseline';
-  if (capture.role === 'baseline' ? world.latest : beforeBaseline) return refuse('baseline-exists');
-  return { ok: true, disputes: below && world.latest ? world.latest.id : null };
+  if (world.next === null && world.latest && capture.value < world.latest.value) return refuse('below-latest');
+  return { ok: true };
 }
 
-/**
- * Service Due Soon is crossed only by a capture that becomes the Machine's latest reading: one dated behind the latest
- * never crosses it.
- */
-export const captureCrossesServiceDueSoon = (
-  world: Pick<CaptureWorld, 'latest' | 'next'>,
-  service: { newHours: number; nextServiceDueHours: number | null; threshold: number },
-) => world.next === null && serviceDueSoonCrossed({ previousHours: world.latest?.value ?? null, ...service });
-
-/** What a capture form knows: the served latest, undefined while it loads. */
-export type CaptureFormWorld = {
-  latest:
-    | { id: string; value: number; capturedAt: string; telematicsProvider: TelematicsProvider | null }
-    | null
-    | undefined;
-  now: Date;
-};
+/** What a capture form knows beside the draft: the clock it warns against. */
+export type CaptureFormWorld = { now: Date };
 
 /** Step 1's answer: a declaration, not data. It decides only how the date step opens and what it warns of. */
 export type CaptureWhen = 'today' | 'earlier';
@@ -480,8 +305,6 @@ export type CaptureSteps = {
   when: CaptureWhen | null;
   /** Step 3: the date the person picked, if any; null means the estimate (or now) stands. */
   pickedReadAt: Date | null;
-  /** The reading the person said is wrong, or null. */
-  disputedReadingId: string | null;
   /** Step 3's Date looks good, for this value and date. */
   dateConfirmed: CaptureDateConfirmation | null;
   /** Under Today, the person tapped the date to change it; Earlier opens it from the start. */
@@ -489,30 +312,23 @@ export type CaptureSteps = {
 };
 
 export type CaptureDraft = CaptureSteps & {
-  role: Exclude<ReadingRole, 'baseline'>;
   /** Step 2: the value as typed. */
   value: string;
   /** The server's estimate for `value`; undefined while it is in flight or `value` is not a reading. */
   estimate: WireReadAtEstimate | undefined;
   /** Step 4. */
   comment: string;
-  stintOverrides: ReadingCaptureInput['stintOverrides'];
 };
 
 export const CAPTURE_STEPS_START: CaptureSteps = {
   when: null,
   pickedReadAt: null,
-  disputedReadingId: null,
   dateConfirmed: null,
   dateOpened: false,
 };
 
-/** Refusals that mean the ledger moved under the form: its latest must be read again, and a dispute of the old one dropped. */
-const LEDGER_MOVED = new Set<string>([
-  'reading.below_latest',
-  'reading.above_next',
-  'reading.previous_changed',
-] satisfies ReadingErrorCode[]);
+/** Refusals that mean the ledger moved under the form: its latest must be read again. */
+const LEDGER_MOVED = new Set<string>(['reading.below_latest', 'reading.above_next'] satisfies ReadingErrorCode[]);
 
 export const ledgerMoved = (code: string | undefined): boolean => code !== undefined && LEDGER_MOVED.has(code);
 
@@ -520,7 +336,7 @@ export const ledgerMoved = (code: string | undefined): boolean => code !== undef
 export type CaptureStepAction =
   /** Today or Earlier chosen: the hours stay, the date is asked again. */
   | { type: 'when'; when: CaptureWhen }
-  /** The hours changed: a pick, a dispute and a confirmation all belonged to the hours they were for. */
+  /** The hours changed: a pick and a confirmation both belonged to the hours they were for. */
   | { type: 'value-edited' }
   /** Under Today, the date line tapped, so its picker shows. */
   | { type: 'date-opened' }
@@ -530,10 +346,7 @@ export type CaptureStepAction =
   | { type: 'date-unconfirmed' }
   /** Date looks good, over the verdict on screen. */
   | { type: 'date-confirmed'; verdict: CaptureFormVerdict }
-  /** Read earlier, from the dispute fork: the estimate's date when the ledger names one, else the picker opens. */
-  | { type: 'read-earlier'; estimate: WireReadAtEstimate | undefined }
-  | { type: 'dispute'; readingId: string | null }
-  /** The server refused: a proposed Read At reopens the date step on it, and a moved ledger drops the dispute. */
+  /** The server refused: a proposed Read At reopens the date step on it. */
   | { type: 'refused'; code: string | undefined; proposal: WireReadAtEstimate | null | undefined }
   /** The form closed or saved: every step is asked again. */
   | { type: 'reset' };
@@ -544,7 +357,7 @@ export function captureStepsReducer(steps: CaptureSteps, action: CaptureStepActi
     case 'when':
       return { ...steps, when: action.when, dateConfirmed: null };
     case 'value-edited':
-      return { ...steps, pickedReadAt: null, disputedReadingId: null, dateConfirmed: null, dateOpened: false };
+      return { ...steps, pickedReadAt: null, dateConfirmed: null, dateOpened: false };
     case 'date-opened':
       return { ...steps, dateOpened: true };
     case 'date-picked':
@@ -553,35 +366,19 @@ export function captureStepsReducer(steps: CaptureSteps, action: CaptureStepActi
       return { ...steps, dateConfirmed: null };
     case 'date-confirmed':
       return { ...steps, dateConfirmed: confirmCaptureDate(action.verdict) };
-    case 'read-earlier':
-      return action.estimate && namesReadAt(action.estimate)
-        ? { ...steps, pickedReadAt: new Date(action.estimate.readAt) }
-        : { ...steps, dateOpened: true };
-    case 'dispute':
-      return { ...steps, disputedReadingId: action.readingId };
     case 'refused':
-      return {
-        ...steps,
-        ...(ledgerMoved(action.code) ? { disputedReadingId: null } : {}),
-        ...(action.proposal && namesReadAt(action.proposal)
-          ? { pickedReadAt: new Date(action.proposal.readAt), dateConfirmed: null }
-          : {}),
-      };
+      return action.proposal && namesReadAt(action.proposal)
+        ? { ...steps, pickedReadAt: new Date(action.proposal.readAt), dateConfirmed: null }
+        : steps;
     case 'reset':
       return CAPTURE_STEPS_START;
   }
 }
 
 /** The request fields a form posts; the client adds where it lands and when. */
-export type CaptureRequest = Pick<
-  ReadingCaptureInput,
-  'role' | 'value' | 'comment' | 'disputePrevious' | 'expectedPreviousId' | 'stintOverrides'
->;
+export type CaptureRequest = Pick<ReadingCaptureInput, 'value' | 'comment'>;
 
 export type CaptureStep = 'when' | 'hours' | 'date' | 'details';
-
-/** The fork over a human latest the hours fall below, while it is offered or the dispute is confirmed. */
-export type CaptureDispute = { sentence: string; readingId: string; confirmed: boolean };
 
 /** Where the date step's date came from: a pick only when it differs from the estimate. */
 export type CaptureDateSource = 'now' | 'estimate' | 'picked';
@@ -599,14 +396,10 @@ export type CaptureDateStep = {
   locked: boolean;
   /** The picker shows: never on a locked date, from the start under Earlier, once tapped under Today. */
   open: boolean;
-  /** Under Today no date shows yet: the fork decides it, unless the picker is open. */
-  awaitsFork: boolean;
   /** One sentence per warning: outside today only under Today, over a week ago whichever was chosen. */
   warningLines: string[];
-  /** Below a human latest: the fork, until the person reads earlier; confirmed once they dispute. */
-  dispute: CaptureDispute | null;
   futureReadAt: boolean;
-  /** Date looks good may be pressed: no fork waits and the date is not still to come. */
+  /** Date looks good may be pressed: the date is not still to come. */
   confirmable: boolean;
 };
 
@@ -632,56 +425,36 @@ export function parseCaptureValue(typed: string): number | null {
 
 const sameInstant = (left: Date | null, right: Date | null) => (left?.getTime() ?? null) === (right?.getTime() ?? null);
 
-/**
- * The date step for a reading of `parsed` hours with its `estimate`. Below a human latest the guess waits for the person
- * to say the meter was read earlier or that the latest is wrong; below a Telematics Reading only a Read At can fix it,
- * so the guess stands. A date before the latest's Read At answers to its neighbours, which only the server knows, so no
- * dispute is offered on one.
- */
+/** The date step for a reading of `parsed` hours with its `estimate`: the pick, else the estimate, else now. */
 function captureDateStep(
   world: CaptureFormWorld,
   draft: CaptureDraft,
-  parsed: number,
   estimate: Exclude<WireReadAtEstimate, { kind: 'impossible' }>,
-): { date: CaptureDateStep; disputeConfirmed: boolean } {
-  const latest = world.latest ?? null;
+): CaptureDateStep {
   const estimated = namesReadAt(estimate) ? new Date(estimate.readAt) : null;
   const locked = estimate.kind === 'telematics';
-  const belowHuman = latest !== null && !latest.telematicsProvider && parsed < latest.value;
-  const readAt = locked ? estimated : (draft.pickedReadAt ?? (belowHuman ? null : estimated));
-  const backdated = latest !== null && readAt !== null && readAt.getTime() < Date.parse(latest.capturedAt);
-  const disputing = belowHuman && !backdated;
-  const disputeConfirmed = disputing && draft.disputedReadingId === latest.id;
-  const disputeOffered = disputing && !disputeConfirmed;
+  const readAt = locked ? estimated : (draft.pickedReadAt ?? estimated);
   const source: CaptureDateSource = readAt === null ? 'now' : sameInstant(readAt, estimated) ? 'estimate' : 'picked';
-  const open = !locked && (draft.when === 'earlier' || draft.dateOpened);
   const futureReadAt = readAt !== null && isFutureReadAt(readAt, world.now);
   return {
-    date: {
-      readAt,
-      source,
-      line:
-        readAt === null
-          ? 'Read now'
-          : source === 'estimate'
-            ? estimateSentence(estimate)
-            : `Read on ${formatDate(readAt, 'medium')}`,
-      locked,
-      open,
-      awaitsFork: disputeOffered && !open,
-      warningLines: [
-        ...(readAt && draft.when === 'today' && toPlantDateOnly(readAt) !== toPlantDateOnly(world.now)
-          ? [outsideTodaySentence(readAt)]
-          : []),
-        ...(readAt && isOverAWeekAgo(readAt, world.now) ? [overAWeekSentence(readAt)] : []),
-      ],
-      dispute: disputing
-        ? { sentence: belowLatestSentence(latest), readingId: latest.id, confirmed: disputeConfirmed }
-        : null,
-      futureReadAt,
-      confirmable: !disputeOffered && !futureReadAt,
-    },
-    disputeConfirmed,
+    readAt,
+    source,
+    line:
+      readAt === null
+        ? 'Read now'
+        : source === 'estimate'
+          ? estimateSentence(estimate)
+          : `Read on ${formatDate(readAt, 'medium')}`,
+    locked,
+    open: !locked && (draft.when === 'earlier' || draft.dateOpened),
+    warningLines: [
+      ...(readAt && draft.when === 'today' && toPlantDateOnly(readAt) !== toPlantDateOnly(world.now)
+        ? [outsideTodaySentence(readAt)]
+        : []),
+      ...(readAt && isOverAWeekAgo(readAt, world.now) ? [overAWeekSentence(readAt)] : []),
+    ],
+    futureReadAt,
+    confirmable: !futureReadAt,
   };
 }
 
@@ -696,30 +469,20 @@ export function deriveCaptureForm(world: CaptureFormWorld, draft: CaptureDraft):
     draft.when !== null && parsed !== null && estimate !== undefined && estimate.kind !== 'impossible'
       ? { when: draft.when, parsed, estimate }
       : null;
-  const dated = asked ? captureDateStep(world, draft, asked.parsed, asked.estimate) : null;
+  const date = asked ? captureDateStep(world, draft, asked.estimate) : null;
   const confirmed =
     parsed !== null &&
     draft.dateConfirmed?.value === parsed &&
-    sameInstant(draft.dateConfirmed.readAt, dated?.date.readAt ?? null);
+    sameInstant(draft.dateConfirmed.readAt, date?.readAt ?? null);
   const step: CaptureStep =
-    draft.when === null ? 'when' : !dated ? 'hours' : dated.date.confirmable && confirmed ? 'details' : 'date';
-  const ready = step === 'details' && asked && dated ? { ...asked, ...dated } : null;
+    draft.when === null ? 'when' : !date ? 'hours' : date.confirmable && confirmed ? 'details' : 'date';
+  const ready = step === 'details' && asked && date ? { ...asked, date } : null;
   return {
     step,
     parsed,
     estimateLine: estimate ? estimateSentence(estimate) : null,
-    date: dated?.date ?? null,
-    request: ready
-      ? {
-          role: draft.role,
-          value: ready.parsed,
-          comment: draft.comment.trim() || null,
-          disputePrevious: ready.disputeConfirmed,
-          // Name the latest only once it is known; the server then refuses a capture judged against an older one.
-          ...(world.latest !== undefined ? { expectedPreviousId: world.latest?.id ?? null } : {}),
-          ...(draft.stintOverrides ? { stintOverrides: draft.stintOverrides } : {}),
-        }
-      : null,
+    date,
+    request: ready ? { value: ready.parsed, comment: draft.comment.trim() || null } : null,
     answers: ready
       ? { when: ready.when, estimateKind: ready.estimate.kind, dateEdited: ready.date.source === 'picked' }
       : null,

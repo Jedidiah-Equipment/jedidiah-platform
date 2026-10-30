@@ -3,21 +3,16 @@ import { JobCardModel, type JobCardVariant } from '@pkg/schema/contracting';
 /** Spec #1378 scenario 1 — Mr Rowley's dam, Priced at R 77 265.00 ex VAT — in either variant. */
 export function jobCardFixture(variant: JobCardVariant): JobCardModel {
   const internal = variant === 'internal';
-  const reading = (
-    value: number,
-    capturedAt: string,
-    marker: 'disputed' | 'amended' | null = null,
-    comment: string | null = null,
-  ) => ({
-    value,
-    capturedAt,
+  const reading = (hours: number, at: string, marker: 'amended' | null = null, comment: string | null = null) => ({
+    hours,
+    at: internal ? at : null,
     marker: internal ? marker : null,
     comment: internal ? comment : null,
-    capturedByName: internal ? 'Sipho' : null,
+    byName: internal ? 'Sipho' : null,
   });
-  const hours = (work: number, travel: number, unaccounted = 0, gapReason: string | null = null) =>
+  const hours = (work: number, travel: number, travelClamped = false) =>
     internal
-      ? { variant: 'internal' as const, work, travel, unaccounted, gapReason }
+      ? { variant: 'internal' as const, work, travel, travelClamped }
       : { variant: 'customer' as const, total: Math.round((work + travel) * 10) / 10 };
 
   return JobCardModel.parse({
@@ -41,7 +36,7 @@ export function jobCardFixture(variant: JobCardVariant): JobCardModel {
         driverName: internal ? 'Sipho' : null,
         arrival: reading(4002.6, '2026-09-01T07:00:00.000Z'),
         departure: reading(4051.2, '2026-09-06T16:00:00.000Z', 'amended'),
-        hours: hours(48.6, 0),
+        hours: hours(48.6, 0, true),
         measures: [],
         rate: { name: 'Excavator, supervised', unitAmount: 600, per: 'h' },
         noCharge: false,
@@ -54,8 +49,8 @@ export function jobCardFixture(variant: JobCardVariant): JobCardModel {
         implementCode: null,
         driverName: internal ? 'Thabo' : null,
         arrival: reading(7110, '2026-09-01T09:00:00.000Z', null, "Foreman's note: meter glass cracked"),
-        departure: reading(7152.4, '2026-09-06T15:00:00.000Z', 'disputed'),
-        hours: hours(42.4, 2.1, 7, 'yard work at Stony Brook'),
+        departure: reading(7152.4, '2026-09-06T15:00:00.000Z'),
+        hours: hours(42.4, 2.1),
         measures: [],
         rate: { name: 'Grader', unitAmount: 550, per: 'h' },
         noCharge: false,

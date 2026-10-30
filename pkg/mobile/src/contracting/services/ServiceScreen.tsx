@@ -136,10 +136,12 @@ function MachineIdentity({ record, title, children }: { record: ServiceRecord; t
 function OpenRecord({ record, serviceIntervalHours }: { record: ServiceRecord; serviceIntervalHours: number | null }) {
   const canUpdate = useSessionPermission('contracting_service:update');
   const [closing, setClosing] = useState(false);
+  // The editor stays open until its save has refetched; the close sheet starts from the saved record, not the edits.
+  const [editing, setEditing] = useState(false);
   return (
     <>
-      <DetailsCard record={record} canEdit={canUpdate} />
-      {canUpdate ? <Button primary title="Close service" onPress={() => setClosing(true)} /> : null}
+      <DetailsCard record={record} canEdit={canUpdate} editing={editing} onEditingChange={setEditing} />
+      {canUpdate ? <Button primary title="Close service" disabled={editing} onPress={() => setClosing(true)} /> : null}
       {closing ? (
         <CloseServiceSheet
           record={record}
@@ -152,19 +154,28 @@ function OpenRecord({ record, serviceIntervalHours }: { record: ServiceRecord; s
 }
 
 /** Start date, Mechanic and notes, read until the pencil opens them for an explicit Save. */
-function DetailsCard({ record, canEdit }: { record: ServiceRecord; canEdit: boolean }) {
-  const [editing, setEditing] = useState(false);
+function DetailsCard({
+  record,
+  canEdit,
+  editing,
+  onEditingChange,
+}: {
+  record: ServiceRecord;
+  canEdit: boolean;
+  editing: boolean;
+  onEditingChange: (editing: boolean) => void;
+}) {
   return (
     <Card
       title="Details"
       action={
         canEdit && !editing ? (
-          <CardIconAction icon={IconPencil} label="Edit details" onPress={() => setEditing(true)} />
+          <CardIconAction icon={IconPencil} label="Edit details" onPress={() => onEditingChange(true)} />
         ) : null
       }
     >
       {editing ? (
-        <DetailsForm record={record} onDone={() => setEditing(false)} />
+        <DetailsForm record={record} onDone={() => onEditingChange(false)} />
       ) : (
         <>
           <DetailRow label="Start date">

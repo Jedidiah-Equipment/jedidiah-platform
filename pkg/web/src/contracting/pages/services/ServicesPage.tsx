@@ -134,7 +134,9 @@ export function ServicesTable({ machineId }: { machineId?: string }) {
           getApiQueryErrorMessage(recordsQuery.error, 'Unable to load Service Records.') ??
           getApiQueryErrorMessage(dueQuery.error, 'Unable to load the Machines due for a service.')
         }
-        getRowAriaLabel={(row) => `Open the Machine ${row.machine.code}`}
+        getRowAriaLabel={(row) =>
+          row.pinned ? `Open the Machine ${row.machine.code}` : `Open the service on Machine ${row.machine.code}`
+        }
         getRowClassName={(row) => (row.pinned ? PRIORITY_ROW_CLASS_NAME : undefined)}
         globalFilterPlaceholder="Search Machines and Mechanics…"
         isLoading={recordsQuery.isPending}
@@ -145,7 +147,11 @@ export function ServicesTable({ machineId }: { machineId?: string }) {
           loadedCount: records.length,
           onLoadMore: () => void recordsQuery.fetchNextPage(),
         }}
-        onRowClick={(row) => void navigate({ to: '/contracting/fleet/$id/edit', params: { id: row.machine.id } })}
+        onRowClick={(row) =>
+          void (row.pinned
+            ? navigate({ to: '/contracting/fleet/$id/edit', params: { id: row.machine.id } })
+            : navigate({ to: '/contracting/services/$id', params: { id: row.recordId } }))
+        }
         table={table}
         total={total}
         totalLabel={(value) => countPhrase(value, 'Service Record', 'Service Records')}

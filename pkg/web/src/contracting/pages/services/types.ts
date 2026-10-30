@@ -22,8 +22,7 @@ export const STATUS_COLUMN_ID = 'status';
  * A Services table row as its columns show it. A Machine Due for Service is pinned above the records and can be
  * booked in from its row; a Service Record fills the columns a pinned Machine leaves empty.
  */
-export type ServicesTableRow = {
-  pinned: boolean;
+export type ServicesTableRow = ({ pinned: true; recordId: null } | { pinned: false; recordId: string }) & {
   machine: Pick<Machine, 'id' | 'code' | 'categoryName' | 'categoryIcon' | 'categoryColour'>;
   mechanic: { id: AuthId; name: string } | null;
   startDate: DateOnlyIso | null;
@@ -37,6 +36,7 @@ export type ServicesTableRow = {
 
 export const dueRow = (machine: Machine): ServicesTableRow => ({
   pinned: true,
+  recordId: null,
   machine,
   mechanic: null,
   startDate: null,
@@ -49,6 +49,7 @@ export const dueRow = (machine: Machine): ServicesTableRow => ({
 
 export const recordRow = (record: ServiceRecord): ServicesTableRow => ({
   pinned: false,
+  recordId: record.id,
   machine: {
     id: record.machineId,
     code: record.machineCode,

@@ -25,8 +25,12 @@ const helpTopicForRoute = createHelpTopicResolver(
   'contractingHome',
 );
 
-/** A Settings tab is a search param, not a route, so the John Deere tab names its own page here. */
+/**
+ * A Settings tab is a search param, not a route, so the John Deere tab names its own page here; a Service Record's
+ * page would otherwise inherit the Services list's.
+ */
 export function helpTopicForPath(pathname: string, search: { tab?: unknown } = {}): HelpTopic {
   if (pathname === '/contracting/settings' && search.tab === 'john-deere') return 'contractingJohnDeere';
+  if (/^\/contracting\/services\/[^/]+$/.test(pathname)) return 'contractingServiceRecord';
   return helpTopicForRoute(pathname);
 }

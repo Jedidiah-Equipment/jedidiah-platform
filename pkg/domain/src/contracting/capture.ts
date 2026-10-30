@@ -323,7 +323,9 @@ export function estimateReadAt(value: number, facts: EstimateFacts): ReadAtEstim
       : { kind: 'now' };
   if (!floor) return { kind: 'none' };
   const exact = value === floor.value;
-  const upper = !exact && ceiling ? { ...ceiling, capturedAt: firstSeenAt(ceiling) } : null;
+  // A captured floor can sit after the report first saw the ceiling's value; then only the report's Read At bounds it.
+  const ceilingAt = ceiling && (firstSeenAt(ceiling) > floor.capturedAt ? firstSeenAt(ceiling) : ceiling.capturedAt);
+  const upper = !exact && ceiling && ceilingAt ? { ...ceiling, capturedAt: ceilingAt } : null;
   if (!exact && !upper) return { kind: 'none' };
   const readAt = upper
     ? new Date(
@@ -590,6 +592,8 @@ export type CaptureFormVerdict = {
   /** Null until the details step; then the request the client posts. */
   request: CaptureRequest | null;
 };
+
+export const CAPTURE_VALUE_INVALID = 'Enter a non-negative value with at most one decimal place.';
 
 /** A reading as typed, read as hours; null until it is a valid reading. A comma counts as the decimal point. */
 export function parseCaptureValue(typed: string): number | null {

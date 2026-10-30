@@ -478,6 +478,15 @@ describe('estimateReadAt', () => {
     });
   });
 
+  test('keeps a moved report’s ceiling after a captured floor read since it was first seen', () => {
+    const moved = { ...neighbour('deere-ceiling', 1010, '15:00', 'john-deere'), createdAt: at('11:00') };
+    const humanFloor = neighbour('human-floor', 1009, '14:00');
+    expect(estimateReadAt(1009.5, facts({ floor: humanFloor, ceiling: moved }))).toMatchObject({
+      kind: 'human',
+      readAt: at('14:30'),
+    });
+  });
+
   test('guesses between readings of which one is human', () => {
     const human = neighbour('human', 1010, '11:00');
     expect(estimateReadAt(1005, facts({ ceiling: human }))).toMatchObject({ kind: 'human', readAt: at('10:30') });

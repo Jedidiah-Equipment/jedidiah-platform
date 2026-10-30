@@ -1,11 +1,17 @@
 import { getPlantDateNow } from '@pkg/domain';
-import { type CaptureDispute, captureRefusals, readAtFromPicker, readAtInputValue } from '@pkg/domain/contracting';
+import {
+  CAPTURE_VALUE_INVALID,
+  type CaptureDispute,
+  captureRefusals,
+  readAtFromPicker,
+  readAtInputValue,
+} from '@pkg/domain/contracting';
 import type React from 'react';
 import { useId, useState } from 'react';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { DateTimeInput } from '@/components/form/fields/DateTimePickerField.js';
 import { Button } from '@/components/ui/button.js';
-import { Field, FieldDescription, FieldLabel } from '@/components/ui/field.js';
+import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field.js';
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from '@/components/ui/input-group.js';
 import { ReadingCaptureCard } from './ReadingCaptureFields.js';
 import type { ReadingCapture } from './use-reading-capture.js';
@@ -68,18 +74,20 @@ function WhenButtons({ capture }: { capture: WizardCapture }) {
 function HoursStep({ capture }: { capture: WizardCapture }) {
   const id = useId();
   const { latest, latestQuery, estimateQuery, verdict } = capture;
+  const invalid = capture.value.trim() !== '' && verdict.parsed === null;
   return (
     <div className="space-y-2">
       <ReadingCaptureCard
         previousValue={latest === undefined ? undefined : (latest?.value ?? null)}
         loading={latestQuery.isPending}
       >
-        <Field>
+        <Field data-invalid={invalid}>
           <FieldLabel className="text-xs" htmlFor={id}>
             Hours on the meter
           </FieldLabel>
           <InputGroup>
             <InputGroupInput
+              aria-invalid={invalid}
               className="text-lg font-semibold md:text-lg"
               id={id}
               inputMode="decimal"
@@ -93,6 +101,7 @@ function HoursStep({ capture }: { capture: WizardCapture }) {
               <InputGroupText>hours</InputGroupText>
             </InputGroupAddon>
           </InputGroup>
+          {invalid ? <FieldError>{CAPTURE_VALUE_INVALID}</FieldError> : null}
         </Field>
       </ReadingCaptureCard>
       {estimateQuery.working ? (
@@ -128,6 +137,7 @@ function DateStep({ capture }: { capture: WizardCapture }) {
             const at = readAtFromPicker(value, date.readAt);
             setTyped(at ? '' : value);
             if (at) capture.pickReadAt(at);
+            else capture.unconfirmDate();
           }}
           value={typed || readAtInputValue(date.readAt ?? new Date())}
         />

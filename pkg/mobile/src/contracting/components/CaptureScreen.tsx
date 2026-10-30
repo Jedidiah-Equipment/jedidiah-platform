@@ -1,6 +1,7 @@
 import { formatHours } from '@pkg/domain';
 import {
   CAPTURE_STEPS_START,
+  CAPTURE_VALUE_INVALID,
   type CaptureFormVerdict,
   type CaptureSteps,
   type CaptureWhen,
@@ -258,11 +259,7 @@ function CaptureForm({ target }: { target: CaptureTarget }) {
               ) : null}
             </View>
           }
-          errors={
-            !valueFocused && value && parsed === null
-              ? [{ message: 'Enter a non-negative value with at most one decimal place.' }]
-              : []
-          }
+          errors={!valueFocused && value && parsed === null ? [{ message: CAPTURE_VALUE_INVALID }] : []}
         >
           <TextInput
             accessibilityLabel="Hours on the meter"

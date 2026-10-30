@@ -81,6 +81,8 @@ export function useReadingCapture<TValues>(target: CaptureTarget, toDetails: (va
       setSteps(stepsAfterValueEdit);
     },
     pickReadAt: (at: Date | null) => setSteps((current) => ({ ...current, pickedReadAt: at })),
+    /** The picker shows a date it cannot name yet: Date looks good must be pressed again. */
+    unconfirmDate: () => setSteps((current) => ({ ...current, dateConfirmed: null })),
     /** Under Today: the date line tapped, so its picker shows. */
     openDate: () => setSteps((current) => ({ ...current, dateOpened: true })),
     readEarlier: () => setSteps((current) => stepsAfterReadEarlier(current, estimateQuery.estimate)),

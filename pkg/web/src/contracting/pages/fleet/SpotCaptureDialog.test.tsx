@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 
 import { formatDate, formatHours } from '@pkg/domain';
-import { captureRefusals } from '@pkg/domain/contracting';
+import { CAPTURE_VALUE_INVALID, captureRefusals } from '@pkg/domain/contracting';
 import type { Machine, ReadAtEstimate } from '@pkg/schema/contracting';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
@@ -182,6 +182,26 @@ it('keeps a wrong time on screen and holds Date looks good until it is fixed', a
   await enterReadAt('2026-10-20', '25:00');
   expect(document.querySelector<HTMLInputElement>('[name="readAt-time"]')?.value).toBe('25:00');
   expect(document.body.textContent).toContain('Enter the time as HH:mm');
+  expect(button('Date looks good')?.disabled).toBe(true);
+});
+
+it('says why hours it cannot read go no further', async () => {
+  await mount();
+  await press('Today');
+  await enter('value', '1234.56');
+  expect(document.body.textContent).toContain(CAPTURE_VALUE_INVALID);
+  expect(button('Date looks good')).toBeUndefined();
+});
+
+it('withdraws Date looks good when the picker is edited to a time it cannot read', async () => {
+  await mount();
+  await press('Earlier');
+  await enter('value', '140');
+  await enterReadAt('2026-10-20', '09:30');
+  await press('Date looks good');
+  expect(button('Save reading')).toBeDefined();
+  await enterReadAt('2026-10-20', '25:00');
+  expect(button('Save reading')).toBeUndefined();
   expect(button('Date looks good')?.disabled).toBe(true);
 });
 

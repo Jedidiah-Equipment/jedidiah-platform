@@ -1,21 +1,17 @@
 import { formatDate } from '@pkg/domain';
 import { readAtFromInput, readAtInputValue } from '@pkg/domain/contracting';
-import { type ChangeEvent, type Ref, useImperativeHandle, useRef } from 'react';
+import { type ChangeEvent, useImperativeHandle, useRef } from 'react';
 import { View } from 'react-native';
 import { DateFieldTrigger } from '@/components/form/fields/DateFieldTrigger';
 import { SegmentedControl } from '@/components/SegmentedControl';
 import { Text } from '@/components/ui/text';
-import { READ_AT_CHOICES } from '@/contracting/components/read-at-choices';
+import {
+  READ_AT_CHOICES,
+  type ReadAtFieldHandle,
+  type ReadAtFieldProps,
+} from '@/contracting/components/read-at-field-shared';
 
-export type ReadAtFieldHandle = { open: () => void };
-
-export type ReadAtFieldProps = {
-  value: Date | null;
-  onChange: (value: Date | null) => void;
-  disabled?: boolean;
-  hint?: string | null;
-  ref?: Ref<ReadAtFieldHandle>;
-};
+export type { ReadAtFieldHandle, ReadAtFieldProps };
 
 /** The date-time picker package has no web build; the browser's own `datetime-local` input stands in. */
 export function ReadAtField({ value, onChange, disabled = false, hint = null, ref }: ReadAtFieldProps) {

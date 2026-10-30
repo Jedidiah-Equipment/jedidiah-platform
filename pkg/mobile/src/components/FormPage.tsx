@@ -21,7 +21,6 @@ export function FormPage({
   children: ReactNode;
   footer: ReactNode;
   error: string | null;
-  /** For a footer action that brings a field at the top back into view. */
   scrollRef?: Ref<ScrollViewInstance>;
 }) {
   const { bottom } = useSafeAreaInsets();

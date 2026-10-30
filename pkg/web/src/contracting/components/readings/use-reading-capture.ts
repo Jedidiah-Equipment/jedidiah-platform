@@ -59,7 +59,6 @@ export function useReadingCapture<TValues>(target: CaptureTarget, toDraft: (valu
   const [error, setError] = useState('');
   // Earlier with no time picked yet holds Save back; the form's blank Read At is still "now".
   const [earlier, setEarlier] = useState(false);
-  // Asks the Read At picker to take focus, each time the person chooses Earlier….
   const [readAtFocus, setReadAtFocus] = useState(0);
   const [suggestion, setSuggestion] = useState<ReadAtSuggestion | null>(null);
   const latest = latestQuery.isSuccess ? latestQuery.data : undefined;

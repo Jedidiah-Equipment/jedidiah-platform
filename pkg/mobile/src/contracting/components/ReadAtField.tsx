@@ -1,23 +1,17 @@
 import { formatDate } from '@pkg/domain';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
-import { type Ref, useImperativeHandle, useState } from 'react';
+import { useImperativeHandle, useState } from 'react';
 import { Platform, View } from 'react-native';
 import { DateFieldTrigger } from '@/components/form/fields/DateFieldTrigger';
 import { SegmentedControl } from '@/components/SegmentedControl';
 import { Text } from '@/components/ui/text';
-import { READ_AT_CHOICES } from '@/contracting/components/read-at-choices';
+import {
+  READ_AT_CHOICES,
+  type ReadAtFieldHandle,
+  type ReadAtFieldProps,
+} from '@/contracting/components/read-at-field-shared';
 
-/** `open` shows the picker, as Read earlier… does from the below-latest warning. */
-export type ReadAtFieldHandle = { open: () => void };
-
-export type ReadAtFieldProps = {
-  value: Date | null;
-  onChange: (value: Date | null) => void;
-  disabled?: boolean;
-  /** Under the picker: the reports a proposed Read At came from. */
-  hint?: string | null;
-  ref?: Ref<ReadAtFieldHandle>;
-};
+export type { ReadAtFieldHandle, ReadAtFieldProps };
 
 /** When the meter was read: Now, or Earlier… with a time; Android picks the date then the time, iOS both at once. */
 export function ReadAtField({ value, onChange, disabled = false, hint = null, ref }: ReadAtFieldProps) {
@@ -26,6 +20,8 @@ export function ReadAtField({ value, onChange, disabled = false, hint = null, re
 
   const openPicker = () => {
     if (Platform.OS !== 'android') {
+      // The inline picker shows a time from the start, so Save posts the time on screen.
+      if (value === null) onChange(new Date());
       setOpen(true);
       return;
     }

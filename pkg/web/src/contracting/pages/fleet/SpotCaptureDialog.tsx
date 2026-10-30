@@ -34,6 +34,7 @@ export function SpotCaptureDialog({
       title={<MachineDialogTitle machine={machineDialogSubject(machine)}>Capture hours</MachineDialogTitle>}
       contentClassName="sm:max-w-md"
       submitLabel="Save reading"
+      showSubmit={capture.verdict.step === 'details'}
       defaultValues={{ comment: '' }}
       validator={SpotValues}
       canSubmit={capture.canSubmit}

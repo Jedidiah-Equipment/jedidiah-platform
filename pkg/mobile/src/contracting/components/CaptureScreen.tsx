@@ -398,7 +398,7 @@ function DateStep({
   if (!date) return null;
   return (
     <FieldShell label="Date" errors={form.futureReadAt ? [{ message: captureRefusals['future-read-at'].message }] : []}>
-      {date.locked ? (
+      {date.awaitsFork ? null : date.locked ? (
         <Text className="text-foreground" weight="semibold">
           {date.line}
         </Text>

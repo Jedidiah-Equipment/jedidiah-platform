@@ -37,6 +37,8 @@ type CreateEntityDialogProps<TValues extends Record<string, unknown>, TResult> =
   open: boolean;
   /** Static label, or derive it from the live form values (e.g. a kind-dependent verb). */
   submitLabel?: string | ((values: TValues) => string);
+  /** False hides submit until the dialog's own steps reach it; Cancel always shows. */
+  showSubmit?: boolean;
   title: React.ReactNode;
   validator: z.ZodType<TValues, TValues>;
 };
@@ -71,6 +73,7 @@ export function CreateEntityDialog<TValues extends Record<string, unknown>, TRes
   onOpenChange,
   open,
   submitLabel = 'Save',
+  showSubmit = true,
   title,
   validator,
 }: CreateEntityDialogProps<TValues, TResult>) {
@@ -137,10 +140,12 @@ export function CreateEntityDialog<TValues extends Record<string, unknown>, TRes
                 <DialogClose render={<Button disabled={isSubmitting} type="button" variant="outline" />}>
                   Cancel
                 </DialogClose>
-                <Button disabled={isSubmitting || !formCanSubmit} type="submit">
-                  {isSubmitting ? <IconLoader2 data-icon="inline-start" className="animate-spin" /> : null}
-                  {label}
-                </Button>
+                {showSubmit ? (
+                  <Button disabled={isSubmitting || !formCanSubmit} type="submit">
+                    {isSubmitting ? <IconLoader2 data-icon="inline-start" className="animate-spin" /> : null}
+                    {label}
+                  </Button>
+                ) : null}
               </DialogFooter>
             )}
           </form.Subscribe>

@@ -1,5 +1,5 @@
 import { getPlantDateNow } from '@pkg/domain';
-import { captureRefusals, readAtFromPicker, readAtInputValue } from '@pkg/domain/contracting';
+import { type CaptureDispute, captureRefusals, readAtFromPicker, readAtInputValue } from '@pkg/domain/contracting';
 import type React from 'react';
 import { useId, useState } from 'react';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
@@ -117,7 +117,7 @@ function DateStep({ capture }: { capture: WizardCapture }) {
   if (!date) return null;
   return (
     <div className="space-y-3">
-      {date.locked ? (
+      {date.awaitsFork ? null : date.locked ? (
         <p className="text-sm font-medium">{date.line}</p>
       ) : date.open ? (
         <DateTimeInput
@@ -165,20 +165,14 @@ function DateStep({ capture }: { capture: WizardCapture }) {
   );
 }
 
-function DisputeFork({
-  capture,
-  dispute,
-}: {
-  capture: WizardCapture;
-  dispute: NonNullable<NonNullable<WizardCapture['verdict']['date']>['dispute']>;
-}) {
+function DisputeFork({ capture, dispute }: { capture: WizardCapture; dispute: CaptureDispute }) {
   const wrapping = 'h-auto min-h-9 whitespace-normal';
   return (
     <div className={warningCard}>
       <p className="text-sm">{dispute.sentence}</p>
       {dispute.confirmed ? (
         <div className="flex items-center justify-between gap-3">
-          <span className="text-sm font-medium">The previous reading is disputed.</span>
+          <span className="text-sm font-medium">Previous reading disputed</span>
           <Button onClick={() => capture.dispute(null)} size="sm" type="button" variant="outline">
             Undo
           </Button>

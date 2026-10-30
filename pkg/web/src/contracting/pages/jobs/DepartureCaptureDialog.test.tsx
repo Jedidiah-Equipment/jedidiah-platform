@@ -33,6 +33,7 @@ vi.mock('@/contracting/components/readings/use-read-at-estimate.js', () => ({
     estimate: value === null ? undefined : { kind: 'now' },
     working: false,
     error: null,
+    refetch: async () => undefined,
   }),
 }));
 vi.mock('@/contracting/hooks/use-query-invalidation.js', () => ({
@@ -68,9 +69,7 @@ async function mount() {
   roots.push(root);
   const onClose = vi.fn();
   await act(async () => root.render(<DepartureCaptureDialog stint={stint} onClose={onClose} />));
-  const save = button('Save reading');
-  if (!save) throw new Error('Save action missing');
-  return { save, onClose };
+  return { onClose };
 }
 
 const button = (label: string) =>
@@ -98,9 +97,9 @@ async function vouch(value: string) {
 }
 
 it('saves a departure without a comment', async () => {
-  const { save, onClose } = await mount();
+  const { onClose } = await mount();
   await vouch('131');
-  await act(async () => save.click());
+  await press('Save reading');
   expect(capture).toHaveBeenCalledWith(
     expect.objectContaining({ role: 'departure', assignmentId: stint.id, value: 131, comment: null }),
     'Unable to capture departure reading.',
@@ -110,9 +109,9 @@ it('saves a departure without a comment', async () => {
 
 it('shows a refused capture inside the dialog and stays open', async () => {
   capture.mockRejectedValueOnce(new Error('This Machine Assignment is not on site.'));
-  const { save, onClose } = await mount();
+  const { onClose } = await mount();
   await vouch('131');
-  await act(async () => save.click());
+  await press('Save reading');
   const alert = [...document.querySelectorAll('[role="alert"]')].find((item) =>
     item.textContent?.includes('This Machine Assignment is not on site.'),
   );
@@ -133,14 +132,14 @@ it('reopens the date on the Read At a refusal proposes, and posts it once confir
       suggestedReadAt: { kind: 'human', readAt: readAt.toISOString(), floor, ceiling: null, overAWeek: false },
     }),
   );
-  const { save, onClose } = await mount();
+  const { onClose } = await mount();
   await vouch('126');
-  await act(async () => save.click());
+  await press('Save reading');
   expect(onClose).not.toHaveBeenCalled();
   expect(document.querySelector('[name="comment"]')).toBeNull();
   expect(button(`Read on ${formatDate(readAt, 'medium')}`)).toBeDefined();
   await press('Date looks good');
-  await act(async () => save.click());
+  await press('Save reading');
   expect(capture).toHaveBeenLastCalledWith(
     expect.objectContaining({ value: 126, capturedAt: readAt.toISOString() }),
     'Unable to capture departure reading.',

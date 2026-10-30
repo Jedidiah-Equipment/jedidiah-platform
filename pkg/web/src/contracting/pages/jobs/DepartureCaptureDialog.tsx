@@ -27,6 +27,7 @@ export function DepartureCaptureDialog({ stint, onClose }: { stint: Assignment |
       title={<MachineDialogTitle machine={stint}>Capture departure</MachineDialogTitle>}
       contentClassName="sm:max-w-md"
       submitLabel="Save reading"
+      showSubmit={capture.verdict.step === 'details'}
       defaultValues={{ comment: '' }}
       validator={DepartureValues}
       canSubmit={capture.canSubmit}

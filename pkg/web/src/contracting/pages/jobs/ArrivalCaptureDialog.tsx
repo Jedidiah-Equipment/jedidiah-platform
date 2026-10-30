@@ -51,6 +51,7 @@ export function ArrivalCaptureDialog({ stint, onClose }: { stint: Assignment | n
       title={<MachineDialogTitle machine={stint}>Capture arrival</MachineDialogTitle>}
       contentClassName="sm:max-w-md"
       submitLabel="Save reading"
+      showSubmit={capture.verdict.step === 'details'}
       defaultValues={{
         comment: '',
         implementId: opened?.implementId ?? '',

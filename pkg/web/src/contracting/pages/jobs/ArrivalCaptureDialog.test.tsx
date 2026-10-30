@@ -23,6 +23,7 @@ vi.mock('@/contracting/components/readings/use-read-at-estimate.js', () => ({
     estimate: value === null ? undefined : { kind: 'now' },
     working: false,
     error: null,
+    refetch: async () => undefined,
   }),
 }));
 vi.mock('./use-assignment-options.js', () => ({
@@ -83,16 +84,14 @@ it('posts an arrival read before the latest reading, leaving its neighbours to t
   const root = createRoot(container);
   roots.push(root);
   await act(async () => root.render(<ArrivalCaptureDialog stint={stint} onClose={vi.fn()} />));
-  const save = button('Save reading');
-  if (!save) throw new Error('Save action missing');
-
+  expect(button('Save reading')).toBeUndefined();
   await act(async () => button('Earlier')?.click());
   await enter('value', '126');
   await enterReadAt('2026-09-16', '16:00');
   expect(document.body.textContent).not.toContain('This is below the latest reading');
   await act(async () => button('Date looks good')?.click());
   expect(document.body.textContent).toContain('Starting assignment');
-  await act(async () => save.click());
+  await act(async () => button('Save reading')?.click());
 
   expect(capture).toHaveBeenCalledWith(
     expect.objectContaining({

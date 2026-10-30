@@ -645,6 +645,7 @@ describe('deriveCaptureForm', () => {
         readAt: null,
         line: 'Read now',
         disputeOffered: true,
+        awaitsFork: true,
         dispute: { readingId: 'latest', confirmed: false },
         confirmable: false,
       },

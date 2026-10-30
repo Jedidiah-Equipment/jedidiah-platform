@@ -1,3 +1,4 @@
+import type { CaptureWhen } from '@pkg/domain/contracting';
 import type { BreakdownSubjectKind, BreakdownUrgency, ReadAtEstimate, ReadingRole } from '@pkg/schema/contracting';
 import { addBreadcrumb, captureEvent } from '@/lib/observability';
 import { type MutationEventCatalog, type ObservabilityProperties, pickRecordIds } from '@/lib/observability-contract';
@@ -7,7 +8,7 @@ export function recordReadingCaptured(properties: {
   role: Exclude<ReadingRole, 'baseline'>;
   backdated: boolean;
   refused: string | null;
-  when: 'today' | 'earlier';
+  when: CaptureWhen;
   estimateKind: ReadAtEstimate['kind'];
   dateEdited: boolean;
 }): void {

@@ -548,6 +548,9 @@ export type CaptureStep = 'when' | 'hours' | 'date' | 'details';
 
 export type CaptureDateWarning = 'outside-today' | 'over-a-week';
 
+/** The fork over a human latest the hours fall below, while it is offered or the dispute is confirmed. */
+export type CaptureDispute = { sentence: string; readingId: string; confirmed: boolean };
+
 /** Where the date step's date came from: a pick only when it differs from the estimate. */
 export type CaptureDateSource = 'now' | 'estimate' | 'picked';
 
@@ -566,13 +569,14 @@ export type CaptureFormVerdict = {
     locked: boolean;
     /** The picker shows: never on a locked date, from the start under Earlier, once tapped under Today. */
     open: boolean;
+    /** Under Today no date shows yet: the fork decides it, unless the picker is open. */
+    awaitsFork: boolean;
     warnings: CaptureDateWarning[];
     /** Each warning's sentence, in the same order. */
     warningLines: string[];
     /** Below a human latest: the person must pick Read earlier or dispute. */
     disputeOffered: boolean;
-    /** The fork over the latest, while it is offered or the dispute is confirmed. */
-    dispute: { sentence: string; readingId: string; confirmed: boolean } | null;
+    dispute: CaptureDispute | null;
     /** Date looks good may be pressed: no dispute waits and the date is not still to come. */
     confirmable: boolean;
   } | null;
@@ -636,6 +640,7 @@ export function deriveCaptureForm(world: CaptureFormWorld, draft: CaptureDraft):
     ...(readAt && isOverAWeekAgo(readAt, world.now) ? (['over-a-week'] as const) : []),
   ];
   const source: CaptureDateSource = readAt === null ? 'now' : sameInstant(readAt, estimated) ? 'estimate' : 'picked';
+  const open = !locked && (draft.when === 'earlier' || draft.dateOpened);
   const date =
     draft.when !== null && estimate !== undefined && estimate.kind !== 'impossible'
       ? {
@@ -648,7 +653,8 @@ export function deriveCaptureForm(world: CaptureFormWorld, draft: CaptureDraft):
                 ? estimateSentence(estimate)
                 : `Read on ${formatDate(readAt, 'medium')}`,
           locked,
-          open: !locked && (draft.when === 'earlier' || draft.dateOpened),
+          open,
+          awaitsFork: disputeOffered && !open,
           warnings,
           warningLines: warnings.map((warning) =>
             warning === 'outside-today'

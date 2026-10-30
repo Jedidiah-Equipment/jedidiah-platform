@@ -26,6 +26,7 @@ export * from './reports/mechanic-performance.js';
 export * from './reports/report-window.js';
 export * from './reports/utilisation.js';
 export * from './services/service-enums.js';
+export * from './services/service-open-form.js';
 export * from './services/service-record.js';
 export * from './settings/john-deere.js';
 export * from './settings/settings.js';

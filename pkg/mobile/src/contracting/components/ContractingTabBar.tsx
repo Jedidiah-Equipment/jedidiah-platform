@@ -1,4 +1,4 @@
-import { IconActivity, IconBriefcase2, IconNotes, IconTool, IconTractor } from '@tabler/icons-react-native';
+import { IconActivity, IconBriefcase2, IconEngine, IconNotes, IconTool, IconTractor } from '@tabler/icons-react-native';
 import { useSegments } from 'expo-router';
 import { TabBar } from '@/components/tab-bar/TabBar';
 import { useActivityUnread } from '@/contracting/activity/use-activity';
@@ -18,6 +18,7 @@ const ICONS = {
   jobs: IconBriefcase2,
   machines: IconTractor,
   workshop: IconTool,
+  services: IconEngine,
   'field-notes': IconNotes,
 } as const;
 

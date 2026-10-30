@@ -12,6 +12,7 @@ export const CATALOG_AVATAR_TILE = 44;
 
 export function CatalogListCard({
   accessibilityHint,
+  action,
   accessibilityLabel,
   avatarClassName = '',
   avatarFallback,
@@ -28,6 +29,8 @@ export function CatalogListCard({
 }: {
   accessibilityHint: string;
   accessibilityLabel: string;
+  /** A control that ends the row, after the tappable body, as `leading` starts it. */
+  action?: ReactNode;
   /** Tile styling that rides with `avatarFallback`, e.g. an offering kind's tint. */
   avatarClassName?: string;
   avatarFallback?: ReactNode;
@@ -84,6 +87,7 @@ export function CatalogListCard({
           <View className="shrink-0 items-end justify-center self-stretch">{trailing}</View>
         )}
       </Pressable>
+      {action === undefined ? null : <View className="pr-3">{action}</View>}
     </View>
   );
 }

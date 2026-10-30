@@ -33,6 +33,10 @@ export default function ContractingTabsLayout() {
         name="workshop"
         options={{ href: tabs.includes('workshop') ? undefined : null, title: CONTRACTING_TAB_LABEL.workshop }}
       />
+      <Tabs.Screen
+        name="services"
+        options={{ href: tabs.includes('services') ? undefined : null, title: CONTRACTING_TAB_LABEL.services }}
+      />
       <Tabs.Screen name="field-notes" options={{ title: CONTRACTING_TAB_LABEL['field-notes'] }} />
     </Tabs>
   );

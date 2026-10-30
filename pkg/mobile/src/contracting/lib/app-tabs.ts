@@ -3,13 +3,14 @@ import { canSeeActivity, fieldJobAccessMode } from '@pkg/domain/contracting';
 import type { UserAccessSummary } from '@pkg/schema';
 import type { Href } from 'expo-router';
 
-export type ContractingTab = 'activity' | 'jobs' | 'machines' | 'workshop' | 'field-notes';
+export type ContractingTab = 'activity' | 'jobs' | 'machines' | 'workshop' | 'services' | 'field-notes';
 
 const CONTRACTING_TABS = [
   'activity',
   'jobs',
   'machines',
   'workshop',
+  'services',
   'field-notes',
 ] as const satisfies readonly ContractingTab[];
 
@@ -22,6 +23,7 @@ export function visibleContractingTabs(access: UserAccessSummary | null | undefi
     tabs.push('machines');
   if (hasPermission(access, 'contracting_breakdown:read') || hasPermission(access, 'contracting_breakdown:report'))
     tabs.push('workshop');
+  if (hasPermission(access, 'contracting_service:read')) tabs.push('services');
   tabs.push('field-notes');
   return tabs;
 }
@@ -31,6 +33,7 @@ export const CONTRACTING_TAB_LABEL = {
   jobs: 'JOBS',
   machines: 'MACHINES',
   workshop: 'WORKSHOP',
+  services: 'SERVICES',
   'field-notes': 'FIELD NOTES',
 } as const satisfies Record<ContractingTab, string>;
 
@@ -39,6 +42,7 @@ export const CONTRACTING_TAB_HREF = {
   jobs: '/contracting/jobs' as Href,
   machines: '/contracting/machines' as Href,
   workshop: '/contracting/workshop' as Href,
+  services: '/contracting/services' as Href,
   'field-notes': '/contracting/field-notes' as Href,
 } as const satisfies Record<ContractingTab, Href>;
 

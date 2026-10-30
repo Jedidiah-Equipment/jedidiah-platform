@@ -38,6 +38,14 @@ const CATALOG_SURFACES = [
     route: 'app/(protected)/contracting/(tabs)/workshop/index.tsx',
   },
   {
+    component: 'src/contracting/services/ServiceRow.tsx',
+    route: 'app/(protected)/contracting/(tabs)/services/index.tsx',
+  },
+  {
+    component: 'src/contracting/services/DueMachineRow.tsx',
+    route: 'app/(protected)/contracting/(tabs)/services/index.tsx',
+  },
+  {
     component: 'src/contracting/field-notes/FieldNotesScreen.tsx',
     route: 'app/(protected)/contracting/(tabs)/field-notes/index.tsx',
   },

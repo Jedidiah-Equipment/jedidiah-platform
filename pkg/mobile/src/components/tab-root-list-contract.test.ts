@@ -17,6 +17,7 @@ const LIST_TAB_ROOTS = [
   'src/contracting/components/MachinesScreen.tsx',
   'src/contracting/field-notes/FieldNotesScreen.tsx',
   'src/contracting/jobs/JobsScreen.tsx',
+  'src/contracting/services/ServicesList.tsx',
   'src/contracting/workshop/WorkshopScreen.tsx',
 ] as const;
 

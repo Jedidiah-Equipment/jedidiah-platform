@@ -27,6 +27,7 @@ export const HELP_TOPICS = {
   contractingMobileWorkshop: '/contracting/report-a-breakdown',
   contractingMobileBreakdown: '/contracting/report-a-breakdown',
   contractingMobileReportBreakdown: '/contracting/report-a-breakdown',
+  contractingMobileServices: '/contracting/see-what-is-due-for-a-service',
   contractingWorkshop: '/contracting/run-the-workshop-queue',
   contractingBreakdown: '/contracting/run-the-workshop-queue',
   contractingMachineService: '/contracting/book-a-service',

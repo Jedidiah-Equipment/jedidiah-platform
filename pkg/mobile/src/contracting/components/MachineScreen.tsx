@@ -13,9 +13,9 @@ import type { FieldMachine, FieldReading } from '@pkg/schema/contracting';
 
 type BusyWith = { job: NonNullable<FieldMachine['busyOnJob']> | null; jobNumber: string };
 
-import { IconGauge } from '@tabler/icons-react-native';
+import { IconCalendarPlus, IconGauge } from '@tabler/icons-react-native';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FlatList, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { DateText } from '@/components/DateText';
@@ -29,6 +29,7 @@ import { Text } from '@/components/ui/text';
 import { useCanReadJobs } from '@/contracting/jobs/use-jobs';
 import { contractingStorageKey } from '@/contracting/lib/contracting-storage';
 import { useFleet, useMachineReadingPages } from '@/contracting/readings/use-fleet';
+import { BookServiceSheet } from '@/contracting/services/BookServiceSheet';
 import { BreakdownRow } from '@/contracting/workshop/BreakdownRow';
 import { useMachineBreakdowns } from '@/contracting/workshop/use-breakdowns';
 import { useSessionPermission } from '@/lib/auth-session';
@@ -181,6 +182,8 @@ export default function MachineScreen() {
   const machine = fleet.data?.find((row) => row.id === id);
   const canCapture = useSessionPermission('contracting_reading:capture');
   const canReport = useSessionPermission('contracting_breakdown:report');
+  const canBook = useSessionPermission('contracting_service:update');
+  const [booking, setBooking] = useState(false);
   const canReadBreakdowns = useSessionPermission('contracting_breakdown:read');
   const breakdowns = useMachineBreakdowns(id);
   const canOpenJobs = useCanReadJobs();
@@ -246,17 +249,33 @@ export default function MachineScreen() {
               }
             />
           ) : null}
-          {canReport && machine ? (
-            <Button
-              icon={BreakdownIcon}
-              title="Report a problem"
-              onPress={() =>
-                router.push({
-                  pathname: '/contracting/workshop/report',
-                  params: { subjectKind: 'machine', subjectId: id },
-                })
-              }
-            />
+          {(canReport || canBook) && machine ? (
+            <View className="flex-row gap-3">
+              {canReport ? (
+                <View className="flex-1">
+                  <Button
+                    icon={BreakdownIcon}
+                    title="Report a problem"
+                    onPress={() =>
+                      router.push({
+                        pathname: '/contracting/workshop/report',
+                        params: { subjectKind: 'machine', subjectId: id },
+                      })
+                    }
+                  />
+                </View>
+              ) : null}
+              {canBook ? (
+                <View className="flex-1">
+                  <Button
+                    icon={IconCalendarPlus}
+                    title={machine.serviceBookedIn ? 'Booked in' : 'Book a service'}
+                    disabled={machine.serviceBookedIn}
+                    onPress={() => setBooking(true)}
+                  />
+                </View>
+              ) : null}
+            </View>
           ) : null}
           {machine ? (
             <>
@@ -283,6 +302,7 @@ export default function MachineScreen() {
           ) : null}
         </ScrollView>
       )}
+      {booking ? <BookServiceSheet machineId={id} onClose={() => setBooking(false)} /> : null}
     </SafeAreaView>
   );
 }

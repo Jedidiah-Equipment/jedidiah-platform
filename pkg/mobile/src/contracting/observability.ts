@@ -74,6 +74,10 @@ export const CONTRACTING_MUTATION_EVENTS = {
     event: 'machine added to job',
     properties: (variables) => pickRecordIds(variables, ['jobId', 'machineId']),
   },
+  'contractingServices.open': {
+    event: 'service booked',
+    properties: (variables) => pickRecordIds(variables, ['machineId', 'primaryMechanicUserId']),
+  },
 } satisfies MutationEventCatalog;
 
 /** Field Note events carry counts and flags only: a note's words and photos never reach analytics. */

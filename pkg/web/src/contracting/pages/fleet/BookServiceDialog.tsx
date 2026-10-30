@@ -1,5 +1,5 @@
 import { getPlantDateNow } from '@pkg/domain';
-import type { Machine } from '@pkg/schema/contracting';
+import { type Machine, openServiceFields } from '@pkg/schema/contracting';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
@@ -11,7 +11,7 @@ import { mechanicFieldOptions } from '@/contracting/components/MechanicCombobox.
 import { useContractingWrite } from '@/contracting/hooks/use-contracting-write.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { BookServiceValues, openServiceFields } from './types.js';
+import { BookServiceValues } from './types.js';
 
 /**
  * Books one Machine in; mounted while it is being booked, so closing unmounts it. The Machine page's Services card and

@@ -3,6 +3,7 @@ import { AuthId } from '../../auth/auth-id.js';
 import { DateOnlyIso } from '../../common/date.js';
 import { emptyStringOr, requiredSelection } from '../../common/form.js';
 import { UUID } from '../../common/uuid.js';
+import type { ServiceRecord } from './service-record.js';
 
 /** Booking a Machine in as both the web and the phone hold it: no Mechanic yet is an empty string. */
 export const OpenServiceValues = z.object({
@@ -17,6 +18,15 @@ export const BookServiceValues = OpenServiceValues.extend({
   machineId: requiredSelection(UUID, 'Choose the Machine'),
 });
 export type BookServiceValues = z.input<typeof BookServiceValues>;
+
+/** An open record's details as the edit form starts from them. */
+export const openServiceValues = (
+  record: Pick<ServiceRecord, 'startDate' | 'primaryMechanicUserId' | 'notes'>,
+): OpenServiceValues => ({
+  startDate: record.startDate,
+  primaryMechanicUserId: record.primaryMechanicUserId ?? '',
+  notes: record.notes ?? '',
+});
 
 /** The open input's fields for valid form values, less the Machine. */
 export const openServiceFields = (values: OpenServiceValues) => ({

@@ -7,6 +7,8 @@ import { Text } from '@/components/ui/text';
 
 export type TabRootListSection<T> = {
   data: readonly T[];
+  /** Shown under the header when this section has no rows but another does; an all-empty list shows `emptyContent`. */
+  empty?: ReactNode;
   header?: ReactNode;
   key: string;
 };
@@ -34,6 +36,7 @@ export function infiniteQueryPagination(
 type TabRootListRow<T> =
   | { item: T; key: string; kind: 'item' }
   | { content: ReactNode; key: string; kind: 'section-header' }
+  | { content: ReactNode; key: string; kind: 'section-empty' }
   | { key: string; kind: 'section-separator' };
 
 /**
@@ -69,18 +72,21 @@ export function TabRootList<T>({
     if (!loadingMore) loadMoreRequestedRef.current = false;
   }, [loadingMore]);
 
+  const anyRows = sections.some((section) => section.data.length > 0);
   const rows = sections
-    .filter((section) => section.data.length > 0)
+    .filter((section) => section.data.length > 0 || (anyRows && section.empty !== undefined))
     .flatMap<TabRootListRow<T>>((section, sectionIndex) => [
       ...(sectionIndex === 0 ? [] : [{ key: `separator:${section.key}`, kind: 'section-separator' as const }]),
       ...(section.header === undefined
         ? []
         : [{ content: section.header, key: `section:${section.key}`, kind: 'section-header' as const }]),
-      ...section.data.map((item) => ({
-        item,
-        key: `item:${section.key}:${keyOf(item)}`,
-        kind: 'item' as const,
-      })),
+      ...(section.data.length === 0
+        ? [{ content: section.empty, key: `empty:${section.key}`, kind: 'section-empty' as const }]
+        : section.data.map((item) => ({
+            item,
+            key: `item:${section.key}:${keyOf(item)}`,
+            kind: 'item' as const,
+          }))),
     ]);
 
   const loadMore = () => {
@@ -116,6 +122,7 @@ export function TabRootList<T>({
       renderItem={({ item: row }) => {
         if (row.kind === 'section-separator') return <View className="h-2" />;
         if (row.kind === 'section-header') return <View className="mb-2.5 mt-1">{row.content}</View>;
+        if (row.kind === 'section-empty') return <ListRow>{row.content}</ListRow>;
         return <ListRow>{renderItem(row.item)}</ListRow>;
       }}
     />

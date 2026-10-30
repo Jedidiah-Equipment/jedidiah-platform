@@ -11,6 +11,7 @@ import {
   serviceDueSoonCrossed,
   serviceDueStatus,
   suggestedNextServiceDue,
+  suggestedNextServiceDueValue,
 } from './service-due.js';
 import { CONTRACTING_SETTINGS_DEFAULTS } from './settings.js';
 
@@ -44,6 +45,12 @@ describe('suggestedNextServiceDue', () => {
   test('adds the interval to the reading at service, or suggests nothing without one', () => {
     expect(suggestedNextServiceDue(1450.5, 250)).toBe(1700.5);
     expect(suggestedNextServiceDue(1450.5, null)).toBeNull();
+  });
+
+  test('stays blank in the form while the reading is blank or there is no interval', () => {
+    expect(suggestedNextServiceDueValue(1450.5, 250)).toBe(1700.5);
+    expect(suggestedNextServiceDueValue(Number.NaN, 250)).toBeNaN();
+    expect(suggestedNextServiceDueValue(1450.5, null)).toBeNaN();
   });
 });
 
@@ -92,30 +99,34 @@ describe('serviceDueSoonCrossed', () => {
 
 describe('isDueForService', () => {
   test('is due soon or overdue with no open Service Record', () => {
-    expect(isDueForService({ serviceDueStatus: 'due-soon', serviceBookedIn: false })).toBe(true);
-    expect(isDueForService({ serviceDueStatus: 'overdue', serviceBookedIn: false })).toBe(true);
-    expect(isDueForService({ serviceDueStatus: 'ok', serviceBookedIn: false })).toBe(false);
-    expect(isDueForService({ serviceDueStatus: 'unknown', serviceBookedIn: false })).toBe(false);
+    expect(isDueForService({ serviceDueStatus: 'due-soon', bookedInServiceId: null })).toBe(true);
+    expect(isDueForService({ serviceDueStatus: 'overdue', bookedInServiceId: null })).toBe(true);
+    expect(isDueForService({ serviceDueStatus: 'ok', bookedInServiceId: null })).toBe(false);
+    expect(isDueForService({ serviceDueStatus: 'unknown', bookedInServiceId: null })).toBe(false);
   });
 
   test('booking the Machine in takes it off before its hours change', () => {
-    expect(isDueForService({ serviceDueStatus: 'overdue', serviceBookedIn: true })).toBe(false);
+    expect(
+      isDueForService({ serviceDueStatus: 'overdue', bookedInServiceId: '00000000-0000-4000-8000-0000000000aa' }),
+    ).toBe(false);
   });
 });
 
 describe('machineServiceBadge', () => {
   test('names the status in its colour while nothing is booked in', () => {
-    expect(machineServiceBadge({ serviceDueStatus: 'overdue', serviceBookedIn: false })).toEqual({
+    expect(machineServiceBadge({ serviceDueStatus: 'overdue', bookedInServiceId: null })).toEqual({
       label: 'Service overdue',
       colours: statusBadgeColorClassNames.red,
     });
-    expect(machineServiceBadge({ serviceDueStatus: 'due-soon', serviceBookedIn: false }).label).toBe(
+    expect(machineServiceBadge({ serviceDueStatus: 'due-soon', bookedInServiceId: null }).label).toBe(
       'Service due soon',
     );
   });
 
   test('reads Booked in, in blue, whatever the hours say, while a Service Record is open', () => {
-    expect(machineServiceBadge({ serviceDueStatus: 'overdue', serviceBookedIn: true })).toEqual({
+    expect(
+      machineServiceBadge({ serviceDueStatus: 'overdue', bookedInServiceId: '00000000-0000-4000-8000-0000000000aa' }),
+    ).toEqual({
       label: 'Booked in',
       colours: statusBadgeColorClassNames.blue,
     });
@@ -138,8 +149,8 @@ test('keeps only Machines Due for Service, overdue first, then the fewest hours 
     code: string,
     serviceDueStatus: 'unknown' | 'ok' | 'due-soon' | 'overdue',
     hoursToService: number | null,
-    serviceBookedIn = false,
-  ) => ({ code, serviceDueStatus, hoursToService, serviceBookedIn });
+    bookedInServiceId: string | null = null,
+  ) => ({ code, serviceDueStatus, hoursToService, bookedInServiceId });
   const due = machinesDueForService([
     machine('TRAC-1', 'ok', 400),
     machine('TRAC-2', 'due-soon', 80),
@@ -147,7 +158,7 @@ test('keeps only Machines Due for Service, overdue first, then the fewest hours 
     machine('TRAC-4', 'overdue', -5),
     machine('TRAC-5', 'due-soon', 20),
     machine('TRAC-6', 'overdue', -40),
-    machine('TRAC-7', 'overdue', -90, true),
+    machine('TRAC-7', 'overdue', -90, '00000000-0000-4000-8000-0000000000aa'),
   ]);
   expect(due.map((entry) => entry.code)).toEqual(['TRAC-6', 'TRAC-4', 'TRAC-5', 'TRAC-2']);
 });

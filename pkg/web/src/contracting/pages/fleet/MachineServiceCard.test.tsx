@@ -20,7 +20,7 @@ vi.mock('@/components/help/index.js', () => ({ HelpLink: () => null }));
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 test('an open record reads as a Booked in since line linking to its page, with no form', async () => {
-  const machine = buildMachine({ serviceBookedIn: true });
+  const machine = buildMachine({ bookedInServiceId: '00000000-0000-4000-8000-0000000000aa' });
   const record = buildServiceRecord({
     machineId: machine.id,
     primaryMechanicUserId: 'thabo',

@@ -35,7 +35,7 @@ export function BookServiceSheet({
   const book = useServiceMutation((services) => services.open);
   const showToast = useAppToast();
   const { busy, error, run } = useBusyAction();
-  const bookable = (fleet.data ?? []).filter((machine) => !machine.serviceBookedIn);
+  const bookable = (fleet.data ?? []).filter((machine) => machine.bookedInServiceId === null);
   const defaultValues: BookServiceValues = {
     machineId: machineId ?? '',
     startDate: getPlantDateNow(),

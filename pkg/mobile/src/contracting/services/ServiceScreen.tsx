@@ -1,6 +1,12 @@
 import { formatDate, formatHours, getFirstName } from '@pkg/domain';
-import { readingProviderSuffix, serviceRecordBadge } from '@pkg/domain/contracting';
-import { type FieldMachine, OpenServiceValues, openServiceFields, type ServiceRecord } from '@pkg/schema/contracting';
+import { serviceRecordBadge } from '@pkg/domain/contracting';
+import {
+  type FieldMachine,
+  OpenServiceValues,
+  openServiceFields,
+  openServiceValues,
+  type ServiceRecord,
+} from '@pkg/schema/contracting';
 import { IconChevronRight, IconPencil } from '@tabler/icons-react-native';
 import { revalidateLogic } from '@tanstack/react-form';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
@@ -21,6 +27,7 @@ import { Text } from '@/components/ui/text';
 import { useAppToast } from '@/components/ui/toast';
 import { CategoryIcon } from '@/contracting/components/CategoryIcon';
 import { DetailRow } from '@/contracting/components/DetailRow';
+import { MachineLatestReading } from '@/contracting/components/MachineLatestReading';
 import { useFleet } from '@/contracting/readings/use-fleet';
 import { useSessionPermission } from '@/lib/auth-session';
 import { useBusyAction } from '@/lib/use-busy-action';
@@ -103,15 +110,7 @@ function MachineCard({ record, machine }: { record: ServiceRecord; machine: Fiel
           <MachineIdentity record={record} title={`${machine.make} ${machine.model}`}>
             <Icon className="text-muted-foreground" icon={IconChevronRight} size={16} />
           </MachineIdentity>
-          <Text className="text-3xl text-foreground" weight="bold">
-            {machine.latestReadingHours === null ? 'No known reading' : formatHours(machine.latestReadingHours)}
-          </Text>
-          {machine.latestReadingAt ? (
-            <Text className="text-sm text-muted-foreground">
-              Read <DateText className="text-sm text-muted-foreground" date={machine.latestReadingAt} format="medium" />
-              {readingProviderSuffix(machine.latestReadingProvider)}
-            </Text>
-          ) : null}
+          <MachineLatestReading machine={machine} />
         </Pressable>
       }
     />
@@ -196,13 +195,8 @@ function DetailsForm({ record, onDone }: { record: ServiceRecord; onDone: () => 
   const mechanicOptions = useServiceMechanicOptions(record);
   const showToast = useAppToast();
   const { busy, error, run } = useBusyAction();
-  const defaultValues: OpenServiceValues = {
-    startDate: record.startDate,
-    primaryMechanicUserId: record.primaryMechanicUserId ?? '',
-    notes: record.notes ?? '',
-  };
   const form = useAppForm({
-    defaultValues,
+    defaultValues: openServiceValues(record),
     validationLogic: revalidateLogic(),
     validators: { onDynamic: OpenServiceValues },
     onSubmit: ({ value }) =>

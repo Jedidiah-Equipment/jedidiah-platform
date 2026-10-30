@@ -1,7 +1,12 @@
 import { formatDate, getFirstName } from '@pkg/domain';
-import { machineServiceBadge, readingProviderSuffix, serviceRecordBadge } from '@pkg/domain/contracting';
-import type { Machine, ServiceRecord } from '@pkg/schema/contracting';
-import { type UseQueryResult, useQuery } from '@tanstack/react-query';
+import {
+  machineServiceBadge,
+  readingProviderSuffix,
+  serviceRecordBadge,
+  serviceRecordSummary,
+} from '@pkg/domain/contracting';
+import type { ServiceRecord } from '@pkg/schema/contracting';
+import { useQuery } from '@tanstack/react-query';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { PrimaryLink } from '@/components/common/PrimaryLink.js';
 import { QueryContent } from '@/components/common/QueryContent.js';
@@ -14,15 +19,6 @@ import { hoursOrDash, machineHoursToService, NextServiceDue } from '@/contractin
 import { StatusChip } from '@/contracting/components/StatusChip.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { OpenServiceForm } from './OpenServiceForm.js';
-
-const byFirstName = (name: string | null) => (name ? ` by ${getFirstName(name)}` : '');
-
-function serviceRecordSummary(record: ServiceRecord) {
-  if (record.status === 'closed')
-    return `Closed ${formatDate(record.closedAt, 'short')}${byFirstName(record.closedByName)}`;
-  const mechanic = record.mechanicName ? ` · ${getFirstName(record.mechanicName)}` : '';
-  return `Booked in ${formatDate(record.startDate, 'short')}${mechanic}`;
-}
 
 /** One Service Record: editable while the Machine is in the workshop, read-only once the service is closed. */
 export function ServiceRecordPage({ id }: { id: string }) {
@@ -58,13 +54,11 @@ export function ServiceRecordPage({ id }: { id: string }) {
 }
 
 function ServiceRecordContent({ record }: { record: ServiceRecord }) {
-  const trpc = useTRPC();
-  const machine = useQuery(trpc.contractingFleet.machines.get.queryOptions({ id: record.machineId }));
   return (
     <div className="space-y-5">
-      <MachineCard machineId={record.machineId} query={machine} />
+      <MachineCard machineId={record.machineId} />
       {record.status === 'open' ? (
-        <OpenServiceForm key={record.id} record={record} machineQuery={machine} />
+        <OpenServiceForm key={record.id} record={record} />
       ) : (
         <ClosedServiceCard record={record} />
       )}
@@ -73,7 +67,9 @@ function ServiceRecordContent({ record }: { record: ServiceRecord }) {
 }
 
 /** Where the Machine stands on service now, whatever this record says. */
-function MachineCard({ machineId, query }: { machineId: string; query: UseQueryResult<Machine, unknown> }) {
+function MachineCard({ machineId }: { machineId: string }) {
+  const trpc = useTRPC();
+  const query = useQuery(trpc.contractingFleet.machines.get.queryOptions({ id: machineId }));
   return (
     <Card>
       <CardHeader>
@@ -147,7 +143,7 @@ function ClosedServiceCard({ record }: { record: ServiceRecord }) {
         </EditFormGrid>
         <p className="text-muted-foreground text-sm">
           Closed <DateDisplay date={record.closedAt} format="medium" />
-          {byFirstName(record.closedByName)}
+          {record.closedByName ? ` by ${getFirstName(record.closedByName)}` : ''}
         </p>
       </CardContent>
     </Card>

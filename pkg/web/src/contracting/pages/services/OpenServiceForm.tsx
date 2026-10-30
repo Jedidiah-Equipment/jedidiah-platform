@@ -1,5 +1,5 @@
-import { type Machine, OpenServiceValues, openServiceFields, type ServiceRecord } from '@pkg/schema/contracting';
-import { type UseQueryResult, useMutation } from '@tanstack/react-query';
+import { OpenServiceValues, openServiceFields, openServiceValues, type ServiceRecord } from '@pkg/schema/contracting';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { AutosaveFormFields } from '@/components/form/AutosaveFormCard.js';
@@ -10,38 +10,28 @@ import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/componen
 import { mechanicFieldOptions } from '@/contracting/components/MechanicCombobox.js';
 import { useContractingWrite } from '@/contracting/hooks/use-contracting-write.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
-import { CloseServiceRecordDialog } from '@/contracting/pages/fleet/CloseServiceRecordDialog.js';
 import { useServiceMechanicOptions } from '@/contracting/pages/fleet/use-service-mechanic-options.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { CloseServiceRecordDialog } from './CloseServiceRecordDialog.js';
 
 /**
  * A service still in the workshop: its start date, Mechanic and notes autosave until it is closed. Closing waits for
  * the Machine read, because the dialog suggests the Next Service Due from its interval.
  */
-export function OpenServiceForm({
-  record,
-  machineQuery,
-}: {
-  record: ServiceRecord;
-  machineQuery: UseQueryResult<Machine, unknown>;
-}) {
-  const machine = machineQuery.data;
+export function OpenServiceForm({ record }: { record: ServiceRecord }) {
   const trpc = useTRPC();
+  const machineQuery = useQuery(trpc.contractingFleet.machines.get.queryOptions({ id: record.machineId }));
+  const machine = machineQuery.data;
   const canUpdate = useCan('contracting_service:update').can;
   const mechanics = useServiceMechanicOptions(canUpdate);
   const showError = useApiMutationErrorToast();
   const write = useContractingWrite(useQueryInvalidation().invalidateServices);
   const patch = useMutation(trpc.contractingServices.patch.mutationOptions({ onSuccess: write.invalidate }));
   const [closing, setClosing] = useState(false);
-  const defaultValues: OpenServiceValues = {
-    startDate: record.startDate,
-    primaryMechanicUserId: record.primaryMechanicUserId ?? '',
-    notes: record.notes ?? '',
-  };
   const { autosave, form, formProps } = useAutosaveForm({
-    defaultValues,
+    defaultValues: openServiceValues(record),
     failureMessage: 'Unable to update the service.',
     validator: OpenServiceValues,
     toInput: (values) => ({ id: record.id, ...openServiceFields(values) }),
@@ -93,8 +83,8 @@ export function OpenServiceForm({
       {closing && machine ? (
         <CloseServiceRecordDialog
           key={record.id}
-          machine={machine}
           record={record}
+          serviceIntervalHours={machine.serviceIntervalHours}
           mechanicOptions={mechanics.options}
           onClose={() => setClosing(false)}
         />

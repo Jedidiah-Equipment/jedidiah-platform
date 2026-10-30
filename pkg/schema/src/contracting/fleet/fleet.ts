@@ -121,8 +121,8 @@ export const Machine = MachineCreateInput.extend({
   /** The threshold the status was judged with: the Machine's Service Alert Hours, else the one in Settings. */
   effectiveServiceAlertHours: ServiceDueSoonThresholdHours,
   serviceDueStatus: z.enum(serviceDueStatuses),
-  /** Booked In: the Machine has an open Service Record. */
-  serviceBookedIn: z.boolean(),
+  /** Booked In: the Machine's open Service Record, or null when it has none. */
+  bookedInServiceId: UUID.nullable(),
   /** The PIN its John Deere Link wrote; read-only. */
   serialNumber: z.string().nullable(),
   /** The Machine's active John Deere Link, or null when it has none; read-only. */
@@ -194,7 +194,7 @@ export const FieldMachine = MachineListItem.pick({
   nextServiceDueHours: true,
   hoursToService: true,
   serviceDueStatus: true,
-  serviceBookedIn: true,
+  bookedInServiceId: true,
   busyOnJob: true,
   openBreakdowns: true,
 })

@@ -3,7 +3,11 @@ import { AuthId } from '../../auth/auth-id.js';
 import { DateOnlyIso } from '../../common/date.js';
 import { emptyStringOr, requiredSelection } from '../../common/form.js';
 import { FleetHours } from '../fleet/fleet.js';
-import { NEXT_SERVICE_DUE_BELOW_READING_MESSAGE, ServiceRecordCloseInput } from './service-record.js';
+import {
+  NEXT_SERVICE_DUE_BELOW_READING_MESSAGE,
+  type ServiceRecord,
+  ServiceRecordCloseInput,
+} from './service-record.js';
 
 const requiredHours = (message: string) => z.number({ error: message }).pipe(FleetHours);
 
@@ -21,6 +25,18 @@ export const CloseServiceValues = z
       ctx.addIssue({ code: 'custom', path: ['nextServiceDueHours'], message: NEXT_SERVICE_DUE_BELOW_READING_MESSAGE });
   });
 export type CloseServiceValues = z.input<typeof CloseServiceValues>;
+
+/** The close form for an open record: ending on `endDate`, keeping its Mechanic and notes, the hours still blank. */
+export const closeServiceDefaults = (
+  record: Pick<ServiceRecord, 'primaryMechanicUserId' | 'notes'>,
+  endDate: string,
+): CloseServiceValues => ({
+  endDate,
+  readingAtServiceHours: Number.NaN,
+  primaryMechanicUserId: record.primaryMechanicUserId ?? '',
+  notes: record.notes ?? '',
+  nextServiceDueHours: Number.NaN,
+});
 
 export function closeServiceInput(id: string, values: CloseServiceValues): ServiceRecordCloseInput {
   return ServiceRecordCloseInput.parse({

@@ -115,7 +115,7 @@ test('foremen can find active Machines and read field history without fleet mana
       nextServiceDueHours: null,
       hoursToService: null,
       serviceDueStatus: 'unknown',
-      serviceBookedIn: false,
+      bookedInServiceId: null,
       busyOnJob: null,
       openBreakdowns: [],
       onSiteJobNumber: null,

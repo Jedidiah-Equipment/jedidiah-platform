@@ -374,6 +374,22 @@ export const snapshotTableDefinitions = [
     seedRowDefaults: () => ({ serviceAlertHours: null, serialNumber: null }),
   },
   {
+    // Links travel without the Connection, whose refresh token stays in the source, so nothing polls locally.
+    fileName: 'contracting_john_deere_link.json',
+    tableName: 'contracting_john_deere_link',
+    timestampColumns: [
+      'createdAt',
+      'lastErrorAt',
+      'lastPolledAt',
+      'lastReportTime',
+      'linkedAt',
+      'lostAt',
+      'unlinkedAt',
+      'updatedAt',
+    ],
+    optionalReadTable: true,
+  },
+  {
     fileName: 'contracting_implement.json',
     tableName: 'contracting_implement',
     timestampColumns: ['createdAt', 'retiredAt', 'updatedAt'],
@@ -425,8 +441,6 @@ export const snapshotTableDefinitions = [
     timestampColumns: ['amendedAt', 'capturedAt', 'createdAt'],
     optionalReadTable: true,
     optionalReadColumns: ['telematicsLinkId', 'telematicsProvider', 'createdAt'],
-    // John Deere Links are not snapshotted, so a Telematics Reading, which names its Link, is left out.
-    unsnapshottedParentColumns: ['telematicsLinkId'],
     // A source that predates acceptance stamps accepted each reading at its Read At, as the migration did.
     seedRowDefaults: (row) => ({ createdAt: row.capturedAt }),
     // A source read before 0184 still holds photo readings, which the migration turned manual.
@@ -441,6 +455,7 @@ export const snapshotTableDefinitions = [
       'capturedByUserId',
       'method',
       'telematicsProvider',
+      'telematicsLinkId',
       'comment',
       'disputed',
       'disputeReason',

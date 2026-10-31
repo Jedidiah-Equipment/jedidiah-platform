@@ -4,9 +4,8 @@ Keep skills and their supporting files in `skills/<name>/`. Codex discovers this
 Claude Code uses the committed `.claude/skills -> ../.agents/skills` symlink. A fresh checkout includes
 the skills without a global installation.
 
-`../skills-lock.json` records snapshots of the personal global collection, including customised versions
-of upstream skills. Their source points back into this repo, so they can be maintained here without
-depending on a user's home directory.
+`../skills-lock.json` links every skill to its upstream GitHub source. `use-slot` is the exception: it is
+private to this repo, has no lock entry, and is edited here directly.
 
 Inspect the project installation with:
 
@@ -20,7 +19,13 @@ Add an upstream skill with:
 npx skills add owner/repo --skill skill-name --agent codex claude-code --yes
 ```
 
-Edit local snapshots directly. Review the diff after imports: installing an existing skill name
-replaces its local files.
+Update every linked skill with:
+
+```sh
+npx skills update -p -y
+```
+
+Change a linked skill upstream, not here: an update replaces its local files. Review the diff after
+every update or import.
 Keep supporting resources and license notices alongside imported skills; Matt Pocock's MIT notice is
 in `LICENSE-MATT-POCOCK.txt`.

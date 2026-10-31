@@ -1,7 +1,8 @@
 # AGENTS.md
 
 - Read the closest `pkg/*/AGENTS.md` before changing code in that package.
-- Use pnpm scripts. Normal verification is `pnpm verify` (lint + typecheck + build + test).
+- Use pnpm scripts. Normal verification is `pnpm verify` (lint + typecheck + build + test). Run it in the
+  foreground with a 10-minute Bash timeout; it takes about 2 minutes warm.
 - Keep `pnpm test` at `--concurrency=2` and every Vitest runner bounded (default four workers,
   `VITEST_MAX_WORKERS` override). More packages in flight oversubscribe the box until DB-backed tests time out.
 - Do not add CI, deployment, or production infrastructure unless explicitly asked.

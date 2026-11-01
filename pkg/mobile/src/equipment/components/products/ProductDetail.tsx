@@ -11,7 +11,7 @@ import { SECONDARY_PAGE_CONTENT_STYLE } from '@/components/page-frame';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { useAppToast } from '@/components/ui/toast';
-import { ProductImage } from '@/equipment/components/products/ProductImage';
+import { ProductImage, ProductImageViewer, productImageKey } from '@/equipment/components/products/ProductImage';
 import { useDocumentDownload } from '@/equipment/hooks/use-document-download';
 import { productBrochurePreviewPath, productDocumentDownloadPath } from '@/equipment/lib/equipment-http-paths';
 import { PRODUCT_BROCHURE_DOCUMENT_ID, productBrochureFilename } from '@/equipment/lib/product-brochure';
@@ -35,11 +35,22 @@ export function ProductDetail({ product }: { product: Product }) {
 }
 
 function ProductIdentity({ product }: { product: Product }) {
+  const imageKey = productImageKey(product);
+  const [viewing, setViewing] = useState(false);
   return (
     <View className="flex-row items-center gap-3.5 rounded-2xl border border-border bg-surface p-3.5">
-      <View className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-border bg-image-backdrop">
+      <Pressable
+        accessibilityLabel={imageKey ? `Open ${product.name} photo` : undefined}
+        accessibilityRole={imageKey ? 'imagebutton' : undefined}
+        className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-border bg-image-backdrop"
+        disabled={!imageKey}
+        onPress={() => setViewing(true)}
+      >
         <ProductImage product={product} />
-      </View>
+      </Pressable>
+      {viewing && imageKey ? (
+        <ProductImageViewer imageKey={imageKey} productName={product.name} onClose={() => setViewing(false)} />
+      ) : null}
       <View className="min-w-0 flex-1">
         <Text className="text-lg leading-6 text-surface-foreground" numberOfLines={2} weight="bold">
           {product.name}

@@ -34,7 +34,8 @@
 - A full-screen form sheet over the current page is a `src/components/ModalSheet.tsx` (title, subtitle, error, footer
   with `SheetSubmitButton`); a centred or drawer dialog is `src/components/ui/themed-modal.tsx`, and a centred
   decision's surface inside it is `src/components/ui/dialog-card.tsx` (title, body, error, actions). Do not hand-roll
-  a third Modal, safe-area and keyboard shell, or another dialog card. A page or sheet whose body scrolls under a voice field scrolls with
+  a third Modal, safe-area and keyboard shell, or another dialog card. A photo opens full screen only in
+  `src/components/ImageViewer.tsx`, which owns pinch, pan and double-tap zoom. A page or sheet whose body scrolls under a voice field scrolls with
   `ScrollLockScrollView` from `src/components/scroll-lock.tsx`, so a press-and-hold mic can hold it still.
 - Pull to refresh is only `RefreshControl` from `src/components/ui/refresh-control.tsx`, which invalidates every
   API query itself. Never pass `onRefresh`/`refreshing` or refetch a single query from a pull.

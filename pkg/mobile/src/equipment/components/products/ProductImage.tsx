@@ -4,6 +4,7 @@ import { IconPackage } from '@tabler/icons-react-native';
 import { useState } from 'react';
 import { Image, StyleSheet, View } from 'react-native';
 
+import { ImageViewer } from '@/components/ImageViewer';
 import { Icon } from '@/components/ui/icon';
 import type { ProductImageKey } from '@/equipment/lib/product-image-cache';
 import { useProductImageSource } from '@/equipment/lib/product-image-source';
@@ -20,12 +21,9 @@ type ProductImageProduct = Pick<Product, 'id' | 'images' | 'name'>;
 
 /** Shared authed Product image surface for catalog cards and future detail headers. */
 export function ProductImage({ product }: { product: ProductImageProduct }) {
-  const slot = MOBILE_CARD_IMAGE_SLOTS.find((candidate) => product.images[candidate] !== null);
-  const image = slot ? product.images[slot] : null;
+  const imageKey = productImageKey(product);
+  if (!imageKey) return <ProductImagePlaceholder />;
 
-  if (!slot || !image) return <ProductImagePlaceholder />;
-
-  const imageKey = { productId: product.id, slot, updatedAt: image.updatedAt } satisfies ProductImageKey;
   return (
     <ResolvedProductImage
       imageKey={imageKey}
@@ -33,6 +31,26 @@ export function ProductImage({ product }: { product: ProductImageProduct }) {
       productName={product.name}
     />
   );
+}
+
+/** The photo {@link ProductImage} shows, or `null` when the Product has none. */
+export function productImageKey(product: ProductImageProduct): ProductImageKey | null {
+  const slot = MOBILE_CARD_IMAGE_SLOTS.find((candidate) => product.images[candidate] !== null);
+  const image = slot ? product.images[slot] : null;
+  return slot && image ? { productId: product.id, slot, updatedAt: image.updatedAt } : null;
+}
+
+/** {@link ProductImage}'s photo in the full-screen viewer. */
+export function ProductImageViewer({
+  imageKey,
+  onClose,
+  productName,
+}: {
+  imageKey: ProductImageKey;
+  onClose: () => void;
+  productName: string;
+}) {
+  return <ImageViewer label={`${productName} photo`} source={useProductImageSource(imageKey)} onClose={onClose} />;
 }
 
 function ResolvedProductImage({ productName, imageKey }: { productName: string; imageKey: ProductImageKey }) {

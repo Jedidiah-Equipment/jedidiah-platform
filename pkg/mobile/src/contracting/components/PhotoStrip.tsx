@@ -1,6 +1,8 @@
 import { formatNumber } from '@pkg/domain';
 import { IconCamera, IconPhoto, IconX } from '@tabler/icons-react-native';
+import { useState } from 'react';
 import { Image, Pressable, View } from 'react-native';
+import { ImageViewer } from '@/components/ImageViewer';
 import { Button } from '@/components/ui/button';
 import { FadingScrollRow } from '@/components/ui/fading-scroll-row';
 import { Icon } from '@/components/ui/icon';
@@ -30,6 +32,8 @@ export function PhotoStrip({
   onRemove: (photoId: string) => void;
 }) {
   const full = photos.length >= limit;
+  const [viewing, setViewing] = useState<number | null>(null);
+  const viewed = viewing === null ? undefined : photos[viewing];
   return (
     <View className="gap-3">
       <View className="flex-row items-baseline justify-between">
@@ -44,12 +48,14 @@ export function PhotoStrip({
         <FadingScrollRow fadeClassName="text-background">
           {photos.map((photo, index) => (
             <View key={photo.id} className="h-28 w-28 overflow-hidden rounded-xl bg-image-backdrop">
-              <Image
-                accessibilityLabel={`${noun} ${formatNumber(index + 1)}`}
-                source={{ uri: photo.uri }}
+              <Pressable
+                accessibilityLabel={`Open ${noun} ${formatNumber(index + 1)}`}
+                accessibilityRole="imagebutton"
                 className="h-full w-full"
-                resizeMode="cover"
-              />
+                onPress={() => setViewing(index)}
+              >
+                <Image source={{ uri: photo.uri }} className="h-full w-full" resizeMode="cover" />
+              </Pressable>
               <Pressable
                 accessibilityLabel={`Remove photo ${formatNumber(index + 1)}`}
                 accessibilityRole="button"
@@ -66,6 +72,11 @@ export function PhotoStrip({
       {galleryHint ? <Text className="text-sm text-muted-foreground">{GALLERY_HINT}</Text> : null}
       <Button title="Take photo" icon={IconCamera} disabled={busy || full} onPress={onTake} />
       <Button title="Choose from gallery" icon={IconPhoto} disabled={busy || full} onPress={onChoose} />
+      <ImageViewer
+        label={`${noun} ${formatNumber((viewing ?? 0) + 1)}`}
+        source={viewed ? { kind: 'ready', uri: viewed.uri } : null}
+        onClose={() => setViewing(null)}
+      />
     </View>
   );
 }

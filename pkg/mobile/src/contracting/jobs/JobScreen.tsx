@@ -1,5 +1,6 @@
 import { formatHours, formatQuantity, getFirstName } from '@pkg/domain';
 import {
+  type AttentionBadge,
   type AttentionThresholds,
   assignmentAttentionSentence,
   assignmentStateColorClassNames,
@@ -11,12 +12,7 @@ import {
   mostUrgentBreakdown,
   needsALookColorClassNames,
 } from '@pkg/domain/contracting';
-import type {
-  AssignmentAttentionKind,
-  AssignmentDetail,
-  BreakdownSummary,
-  JobCardVariant,
-} from '@pkg/schema/contracting';
+import type { AssignmentDetail, BreakdownSummary, JobCardVariant } from '@pkg/schema/contracting';
 import { IconPencil, IconPlayerPlay, IconPlayerStop, IconPlus, IconRuler2 } from '@tabler/icons-react-native';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
@@ -205,22 +201,22 @@ function AttentionRows({
 }: {
   stint: AssignmentDetail;
   thresholds: AttentionThresholds;
-  onOpen: (kind: AssignmentAttentionKind) => void;
+  onOpen: (badge: AttentionBadge) => void;
 }) {
   const { resolved } = useColorMode();
   const badges = attentionBadges(stint);
   if (!badges.length) return null;
   return (
     <View className={`gap-1 rounded-xl border px-3 py-2 ${needsALookColorClassNames.chip}`}>
-      {badges.map(({ kind, dismissal }) => (
+      {badges.map((badge) => (
         <Pressable
           accessibilityRole="button"
-          className={dismissal ? 'opacity-30' : undefined}
-          key={kind}
-          onPress={() => onOpen(kind)}
+          className={badge.dismissal ? 'opacity-30' : undefined}
+          key={badge.kind}
+          onPress={() => onOpen(badge)}
         >
           <Text className={`text-sm ${needsALookColorClassNames.textByScheme[resolved]}`}>
-            {assignmentAttentionSentence(kind, stint, thresholds)}
+            {assignmentAttentionSentence(badge.kind, stint, thresholds)}
           </Text>
         </Pressable>
       ))}
@@ -250,7 +246,7 @@ function StintCard({
   onReport: () => void;
   thresholds: AttentionThresholds | undefined;
 }) {
-  const [openedKind, setOpenedKind] = useState<AssignmentAttentionKind | null>(null);
+  const [opened, setOpened] = useState<AttentionBadge | null>(null);
   return (
     <View className={`gap-2 rounded-xl border bg-surface p-4 ${breakdownBorder(breakdown) ?? 'border-border'}`}>
       <View className="flex-row items-center justify-between gap-2">
@@ -296,11 +292,11 @@ function StintCard({
       </View>
       {thresholds ? (
         <>
-          <AttentionRows onOpen={setOpenedKind} stint={stint} thresholds={thresholds} />
+          <AttentionRows onOpen={setOpened} stint={stint} thresholds={thresholds} />
           <AttentionDialog
+            badge={opened}
             canDismiss={stintSheet.can('dismissAttention')}
-            kind={openedKind}
-            onClose={() => setOpenedKind(null)}
+            onClose={() => setOpened(null)}
             stint={stint}
             thresholds={thresholds}
           />

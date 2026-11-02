@@ -167,7 +167,6 @@ export default function ReportBreakdownScreen() {
           title="Report a problem"
           subtitle={subjectRow?.code ?? 'CONTRACTING'}
           fallback={returnTo}
-          backDisabled={busy}
           helpTopic="contractingMobileReportBreakdown"
         />
       }

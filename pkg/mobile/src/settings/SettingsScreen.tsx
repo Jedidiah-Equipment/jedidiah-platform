@@ -1,7 +1,6 @@
 import { groupBy, PUSH_KINDS, statusBadgeColorClassNames } from '@pkg/domain';
 import type { PushKind, PushPreferences } from '@pkg/schema';
 import { useIsMutating, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { router } from 'expo-router';
 import { useMemo } from 'react';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -22,10 +21,6 @@ import { useTRPC } from '@/lib/trpc';
 import type { AppPermissionRow } from './app-permission-rows';
 import { useAppPermissions } from './use-app-permissions';
 
-// Opened from the profile menu over whichever screen the person was on, so Back returns there; a reload on mobile
-// web leaves no history, and the business home is the way out.
-const leave = () => (router.canGoBack() ? router.back() : router.replace('/'));
-
 /** App Settings: the OS permissions the app uses, and the Push Kinds this person can mute. Belongs to neither business. */
 export default function SettingsScreen() {
   const { user } = useAuthSession();
@@ -35,8 +30,9 @@ export default function SettingsScreen() {
       <SecondaryToolbar
         title="Settings"
         subtitle={user.email}
-        parentLabel="previous screen"
-        onBack={leave}
+        // Opened from the profile menu over whichever screen the person was on; a reload on mobile web leaves no
+        // history, and the business home is the way out.
+        fallback="/"
         helpTopic="appSettings"
       />
       <ScrollView

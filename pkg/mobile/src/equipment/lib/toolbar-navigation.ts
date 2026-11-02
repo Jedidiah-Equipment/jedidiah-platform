@@ -20,14 +20,9 @@ export function resolveAssistantParent(href: string | undefined): MainTabParent 
   return Object.values(MAIN_TAB_PARENTS).find((parent) => parent.href === href) ?? MAIN_TAB_PARENTS.jobs;
 }
 
-export function bayToolbarParentLabel(showingSlotDetail: boolean): 'Bay schedule' | 'Plan' {
-  return showingSlotDetail ? 'Bay schedule' : 'Plan';
-}
-
 export type DocumentParent = {
   id: string;
   kind: 'job' | 'product' | 'quote';
-  parentLabel: 'Job' | 'Product' | 'Quote';
   returnTo: Href;
 };
 
@@ -44,7 +39,6 @@ export function resolveDocumentParent({
     return {
       id: productId,
       kind: 'product',
-      parentLabel: 'Product',
       returnTo: { pathname: '/equipment/products/[productId]', params: { productId } },
     };
   }
@@ -52,7 +46,6 @@ export function resolveDocumentParent({
     return {
       id: jobId,
       kind: 'job',
-      parentLabel: 'Job',
       returnTo: { pathname: '/equipment/jobs/[jobId]', params: { jobId } },
     };
   }
@@ -60,24 +53,15 @@ export function resolveDocumentParent({
     return {
       id: quoteId,
       kind: 'quote',
-      parentLabel: 'Quote',
       returnTo: { pathname: '/equipment/quotes/[quoteId]', params: { quoteId } },
     };
   }
   return null;
 }
 
-export function resolveStoresMovementParent({ jobId, partCode }: { jobId?: string; partCode: string }): {
-  label: 'Close-out Job' | 'Part';
-  returnTo: Href;
-} {
+/** Where a stores movement returns: the close-out Job it was reached from, else its Part. */
+export function storesMovementReturnTo({ jobId, partCode }: { jobId?: string; partCode: string }): Href {
   return jobId
-    ? {
-        label: 'Close-out Job',
-        returnTo: { pathname: '/equipment/stores/close-out/[jobId]', params: { jobId } },
-      }
-    : {
-        label: 'Part',
-        returnTo: { pathname: '/equipment/stores/parts/[partCode]', params: { partCode } },
-      };
+    ? { pathname: '/equipment/stores/close-out/[jobId]', params: { jobId } }
+    : { pathname: '/equipment/stores/parts/[partCode]', params: { partCode } };
 }

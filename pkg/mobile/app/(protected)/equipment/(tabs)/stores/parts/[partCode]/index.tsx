@@ -27,12 +27,7 @@ export default function StoresPartRoute() {
 
   if (part.isPending) {
     return (
-      <StoresScreen
-        onBack={() => router.dismissTo('/equipment/stores')}
-        parentLabel="Stores"
-        subtitle={partCode}
-        title={partCode}
-      >
+      <StoresScreen fallback={'/equipment/stores'} subtitle={partCode} title={partCode}>
         <View className="items-center py-10">
           <ActivityIndicator accessibilityLabel="Loading Part" size="large" />
         </View>
@@ -42,12 +37,7 @@ export default function StoresPartRoute() {
 
   if (part.isError) {
     return (
-      <StoresScreen
-        onBack={() => router.dismissTo('/equipment/stores')}
-        parentLabel="Stores"
-        subtitle={partCode}
-        title={partCode}
-      >
+      <StoresScreen fallback={'/equipment/stores'} subtitle={partCode} title={partCode}>
         <Text className="py-10 text-center text-sm text-danger">
           Couldn’t load this Part. Pull down to retry, or scan it again.
         </Text>
@@ -60,12 +50,7 @@ export default function StoresPartRoute() {
   const actions = derivePartStockActions(row);
 
   return (
-    <StoresScreen
-      onBack={() => router.dismissTo('/equipment/stores')}
-      parentLabel="Stores"
-      subtitle={row.partCode}
-      title={row.partName}
-    >
+    <StoresScreen fallback={'/equipment/stores'} subtitle={row.partCode} title={row.partName}>
       <View className="gap-3 rounded-2xl border border-border bg-surface px-4 py-4">
         <View className="flex-row items-end gap-6">
           <Figure label="ON HAND" value={`${row.quantity} ${row.unitOfMeasure}`} />

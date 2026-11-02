@@ -6,7 +6,7 @@ import { expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
 import { admin, editHours, foreman, foremanId, leftStint, seedJobFixtures } from '../test/job-fixtures.js';
 import { dismissAttention } from './assignment-attention.js';
-import { listJobs, summarizeJobQueues } from './job-queues.js';
+import { listJobs } from './job-queues.js';
 import { getJob } from './job-read.js';
 import { createJob } from './job-service.js';
 
@@ -42,13 +42,11 @@ const read = async (db: Db, jobId: string) => {
     actor: admin,
     input: JobListInput.parse({ queues: ['looks-finished'], needsALook: true }),
   });
-  const queues = await summarizeJobQueues({ db, actor: admin });
   return {
     attention: stint?.attention,
     dismissed: stint?.dismissedAttention.map(({ kind, dismissedByName }) => ({ kind, dismissedByName })),
     count: job.assignmentAttention,
     listed: listed.items.some((item) => item.id === jobId),
-    queue: queues.attention['looks-finished'],
   };
 };
 
@@ -62,7 +60,6 @@ test('a dismissal takes the kind off needs a look for everyone: the Job read and
     dismissed: [],
     count: 1,
     listed: true,
-    queue: 'needs-a-look',
   });
 
   await dismissAttention({ db, actor: admin, input: { assignmentId: stintId, kind: 'travel-over-threshold' } });
@@ -72,7 +69,6 @@ test('a dismissal takes the kind off needs a look for everyone: the Job read and
     dismissed: [{ kind: 'travel-over-threshold', dismissedByName: 'Jed' }],
     count: 0,
     listed: false,
-    queue: null,
   });
 });
 

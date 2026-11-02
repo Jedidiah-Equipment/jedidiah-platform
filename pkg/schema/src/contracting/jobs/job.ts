@@ -9,14 +9,7 @@ import { CategoryColour, CategoryIconKey, FleetCode, FleetName } from '../fleet/
 import { RateBasis } from '../rate-card/rate-card.js';
 import { JohnDeereDifferenceThresholdHours, TravelFlagThresholdHours } from '../settings/settings.js';
 import { AssignmentActions, JobActions } from './job-actions.js';
-import {
-  assignmentAttentionKinds,
-  assignmentStates,
-  discountKinds,
-  jobQueues,
-  jobStatuses,
-  needsALookLevels,
-} from './job-enums.js';
+import { assignmentAttentionKinds, assignmentStates, discountKinds, jobQueues, jobStatuses } from './job-enums.js';
 import { JobHoursValue } from './stint-hours.js';
 
 export const Hours = z.number().nonnegative().max(999999999.9).multipleOf(0.1);
@@ -96,11 +89,8 @@ export const JobLookupInput = z.union([z.object({ id: UUID }).strict(), z.object
 export type JobLookupInput = z.infer<typeof JobLookupInput>;
 export const JobQueueCounts = z.record(z.enum(jobQueues), z.number().int().nonnegative());
 export type JobQueueCounts = z.infer<typeof JobQueueCounts>;
-/** Each queue's Job count, and the loudest Machine Assignment attention needing a look across its Jobs. */
-export const JobQueueSummary = z.object({
-  counts: JobQueueCounts,
-  attention: z.record(z.enum(jobQueues), z.enum(needsALookLevels).nullable()),
-});
+/** Each queue's Job count. */
+export const JobQueueSummary = z.object({ counts: JobQueueCounts });
 export type JobQueueSummary = z.infer<typeof JobQueueSummary>;
 
 export const AssignmentPlanInput = z

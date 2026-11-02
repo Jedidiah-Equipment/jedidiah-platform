@@ -17,7 +17,7 @@ import { foreman, invoicer, jobHeader } from './job-load.js';
 import { assertReadableStatus, readableBy, readerFor } from './job-readers.js';
 import * as jobSql from './job-sql.js';
 
-/** Each queue's Job count, and whether any of its Jobs has a Machine Assignment that needs a look. */
+/** Each queue's Job count. */
 export async function summarizeJobQueues({ db, actor }: { db: Db; actor: JobActor }): Promise<JobQueueSummary> {
   const reader = readerFor(actor);
   const rows = await db
@@ -25,25 +25,16 @@ export async function summarizeJobQueues({ db, actor }: { db: Db; actor: JobActo
       status: contractingJobs.status,
       looksFinished: jobSql.looksFinished,
       count: sql<number>`count(*)::integer`,
-      attention: sql<number>`sum(${assignmentAttention})::integer`,
     })
     .from(contractingJobs)
     .where(readableBy(reader))
     .groupBy(contractingJobs.status, jobSql.looksFinished);
-  const totals = new Map(jobQueues.map((queue) => [queue, { count: 0, attention: 0 }]));
-  for (const { attention, count, ...row } of rows) {
-    const total = totals.get(jobQueueOf(row));
-    if (!total) continue;
-    total.count += count;
-    total.attention += attention;
+  const counts = new Map(jobQueues.map((queue) => [queue, 0]));
+  for (const { count, ...row } of rows) {
+    const queue = jobQueueOf(row);
+    counts.set(queue, (counts.get(queue) ?? 0) + count);
   }
-  const queues = [...totals];
-  return JobQueueSummary.parse({
-    counts: Object.fromEntries(queues.map(([queue, { count }]) => [queue, count])),
-    attention: Object.fromEntries(
-      queues.map(([queue, total]) => [queue, total.attention > 0 ? ('needs-a-look' as const) : null]),
-    ),
-  });
+  return JobQueueSummary.parse({ counts: Object.fromEntries(counts) });
 }
 
 /** Looks finished is carved out of Active, so each Job matches exactly one queue. */

@@ -11,7 +11,7 @@ import { hasRequiredLength, parseQuantity, QuantityField } from '@/equipment/com
 import { NoActorNotice, StoresPartScreen } from '@/equipment/components/stores/StoresPartScreen';
 import { previewReceiptWarnings } from '@/equipment/lib/movement-preview';
 import { useMovementActorUserId } from '@/equipment/lib/stores-actor';
-import { resolveStoresMovementParent } from '@/equipment/lib/toolbar-navigation';
+import { storesMovementReturnTo } from '@/equipment/lib/toolbar-navigation';
 import { useMovementConfirm } from '@/equipment/lib/use-movement-confirm';
 import { useStoresPostOutcome } from '@/equipment/lib/use-stores-post';
 import { useTRPC } from '@/lib/trpc';
@@ -41,7 +41,7 @@ function ReceiveForm({ row }: { row: StockOnHandRow }) {
   const [keyedLengthMm, setKeyedLengthMm] = useState<string | null>(null);
 
   const outcome = useStoresPostOutcome({
-    returnTo: resolveStoresMovementParent({ partCode: row.partCode }).returnTo,
+    returnTo: storesMovementReturnTo({ partCode: row.partCode }),
     successMessage: 'Receipt posted',
   });
   const mutation = useMutation(

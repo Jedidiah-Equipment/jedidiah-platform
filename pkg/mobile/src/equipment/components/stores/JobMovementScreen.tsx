@@ -1,12 +1,13 @@
 import { getFirstName } from '@pkg/domain';
 import type { JobStockMovementType, StockOnHandRow } from '@pkg/schema/equipment';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import type { Href } from 'expo-router';
 import { type RefObject, useEffect, useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/ui/text-input';
 import { useStoresActor } from '@/equipment/lib/stores-actor';
-import { resolveStoresMovementParent } from '@/equipment/lib/toolbar-navigation';
+import { storesMovementReturnTo } from '@/equipment/lib/toolbar-navigation';
 import { useMovementConfirm } from '@/equipment/lib/use-movement-confirm';
 import { useStoresPostOutcome } from '@/equipment/lib/use-stores-post';
 import { useTRPC } from '@/lib/trpc';
@@ -46,13 +47,13 @@ const MODE_LABELS: Record<StoresMovementMode, string> = {
 export function JobMovementScreen({
   jobId,
   movementType,
-  parent,
+  fallback,
   partCode,
 }: {
   /** Pre-selects the Job when the return was reached from that Job's close-out. */
   jobId?: string;
   movementType: JobStockMovementType;
-  parent?: { label: string; onBack: () => void };
+  fallback?: Href;
   partCode: string;
 }) {
   const isCheckout = movementType === 'checkout';
@@ -61,7 +62,7 @@ export function JobMovementScreen({
   return (
     <StoresPartScreen
       onNearScrollEnd={() => jobPicker.current?.loadMore()}
-      parent={parent}
+      fallback={fallback}
       partCode={partCode}
       title={isCheckout ? 'Check out stock' : 'Return to store'}
     >
@@ -104,7 +105,7 @@ function JobMovementForm({
     setTarget((current) => syncDefaultRecipient({ actor, previousActorUserId: previousId, target: current }));
   }, [actor]);
 
-  const returnTo = resolveStoresMovementParent({ jobId: fixedJobId, partCode: row.partCode }).returnTo;
+  const returnTo = storesMovementReturnTo({ jobId: fixedJobId, partCode: row.partCode });
   const outcome = useStoresPostOutcome({
     returnTo,
     successMessage: isCheckout ? 'Stock checked out' : 'Stock returned to store',

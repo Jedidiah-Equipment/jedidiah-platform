@@ -1,5 +1,5 @@
 import type { StockOnHandRow } from '@pkg/schema/equipment';
-import { useRouter } from 'expo-router';
+import type { Href } from 'expo-router';
 import type React from 'react';
 import { View } from 'react-native';
 
@@ -19,28 +19,23 @@ import { StoresScreen } from './StoresScreen';
 export function StoresPartScreen({
   children,
   onNearScrollEnd,
-  parent,
+  fallback,
   partCode,
   title,
 }: {
   children: (row: StockOnHandRow) => React.ReactNode;
   onNearScrollEnd?: () => void;
-  parent?: { label: string; onBack: () => void };
+  /** Where back goes with nothing beneath; the Part by default. */
+  fallback?: Href;
   partCode: string;
   title: string;
 }) {
   const part = usePartByCode(partCode);
-  const router = useRouter();
-  const resolvedParent =
-    parent ??
-    ({
-      label: 'Part',
-      onBack: () => router.dismissTo({ pathname: '/equipment/stores/parts/[partCode]', params: { partCode } }),
-    } as const);
+  const back = fallback ?? ({ pathname: '/equipment/stores/parts/[partCode]', params: { partCode } } as const);
 
   if (part.isPending) {
     return (
-      <StoresScreen onBack={resolvedParent.onBack} parentLabel={resolvedParent.label} subtitle={partCode} title={title}>
+      <StoresScreen fallback={back} subtitle={partCode} title={title}>
         <View className="items-center py-10">
           <ActivityIndicator accessibilityLabel="Loading Part" size="large" />
         </View>
@@ -50,7 +45,7 @@ export function StoresPartScreen({
 
   if (part.isError) {
     return (
-      <StoresScreen onBack={resolvedParent.onBack} parentLabel={resolvedParent.label} subtitle={partCode} title={title}>
+      <StoresScreen fallback={back} subtitle={partCode} title={title}>
         <Text className="py-10 text-center text-sm text-danger">
           Couldn’t load this Part. Pull down to retry, or scan it again.
         </Text>
@@ -60,9 +55,8 @@ export function StoresPartScreen({
 
   return (
     <StoresScreen
-      onBack={resolvedParent.onBack}
+      fallback={back}
       onNearScrollEnd={onNearScrollEnd}
-      parentLabel={resolvedParent.label}
       subtitle={`${part.data.partCode} · ${part.data.partName}`}
       title={title}
     >

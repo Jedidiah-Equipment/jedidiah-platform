@@ -107,7 +107,6 @@ export default function MachineCaptureScreen() {
           title="Capture reading"
           subtitle={machine?.code ?? 'CONTRACTING'}
           fallback={`/contracting/machines/${machineId}` as Href}
-          backDisabled={busy}
           helpTopic="contractingMobileCapture"
         />
       }

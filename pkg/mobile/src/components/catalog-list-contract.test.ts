@@ -3,6 +3,9 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, test } from 'vitest';
 
+/** Every Contracting tab's stack is a copy of one folder. */
+const CONTRACTING_TABS = 'app/(protected)/contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)';
+
 const MOBILE_DIR = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const CATALOG_SURFACES = [
   {
@@ -27,32 +30,27 @@ const CATALOG_SURFACES = [
   },
   {
     component: 'src/contracting/jobs/JobsScreen.tsx',
-    route: 'app/(protected)/contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/jobs/index.tsx',
+    route: `${CONTRACTING_TABS}/jobs/index.tsx`,
   },
   {
     component: 'src/contracting/components/MachinesScreen.tsx',
-    route:
-      'app/(protected)/contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/machines/index.tsx',
+    route: `${CONTRACTING_TABS}/machines/index.tsx`,
   },
   {
     component: 'src/contracting/workshop/BreakdownRow.tsx',
-    route:
-      'app/(protected)/contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/workshop/index.tsx',
+    route: `${CONTRACTING_TABS}/workshop/index.tsx`,
   },
   {
     component: 'src/contracting/services/ServiceRow.tsx',
-    route:
-      'app/(protected)/contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/services/index.tsx',
+    route: `${CONTRACTING_TABS}/services/index.tsx`,
   },
   {
     component: 'src/contracting/services/DueMachineRow.tsx',
-    route:
-      'app/(protected)/contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/services/index.tsx',
+    route: `${CONTRACTING_TABS}/services/index.tsx`,
   },
   {
     component: 'src/contracting/field-notes/FieldNotesScreen.tsx',
-    route:
-      'app/(protected)/contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/field-notes/index.tsx',
+    route: `${CONTRACTING_TABS}/field-notes/index.tsx`,
   },
 ] as const;
 

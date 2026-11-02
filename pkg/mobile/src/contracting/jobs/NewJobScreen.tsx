@@ -1,7 +1,7 @@
 import { CustomerName, FarmName, JobCreateValues, toJobCreateInput, WorkTypeName } from '@pkg/schema/contracting';
 import type { QueryKey } from '@tanstack/react-query';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { type Href, router } from 'expo-router';
+import { type Href, router, useNavigation } from 'expo-router';
 import { useState } from 'react';
 import { FormPage } from '@/components/FormPage';
 import { FieldShell } from '@/components/form/fields/FieldShell';
@@ -22,6 +22,7 @@ const EMPTY_DRAFT: JobCreateValues = { customerId: '', farmId: '', workTypeId: '
 /** `/contracting/jobs/new`: the web's New job form for management, online only. */
 export default function NewJobScreen() {
   const trpc = useTRPC();
+  const navigation = useNavigation();
   const queryClient = useQueryClient();
   const canCreate = useCan('contracting_job:create').can;
   const canAssign = useCan('contracting_job:assign').can;
@@ -81,7 +82,8 @@ export default function NewJobScreen() {
       voice.reportSaved();
       // The Job screen reads its own Job, so the lists can refresh behind it.
       void queryClient.invalidateQueries({ queryKey: trpc.contractingJobs.pathKey() });
-      router.replace(`/contracting/jobs/${job.id}` as Href);
+      // Someone who backed out while it saved stays where they went.
+      if (navigation.isFocused()) router.replace(`/contracting/jobs/${job.id}` as Href);
     }, CREATE_FAILED);
   };
   const searchPlaceholder = (noun: string) => (canUpdateDirectory ? `Search or type a new ${noun}…` : 'Search…');
@@ -93,7 +95,6 @@ export default function NewJobScreen() {
           title="New job"
           subtitle="CONTRACTING"
           fallback={CONTRACTING_TAB_HREF.jobs}
-          backDisabled={busy}
           helpTopic="contractingMobileNewJob"
         />
       }

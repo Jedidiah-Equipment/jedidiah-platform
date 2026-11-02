@@ -366,8 +366,6 @@ test('counts queue tabs by read mode and exposes each stint’s attention on Job
     invoiced: 0,
   });
   expect((await invoicing.queues()).counts).toMatchObject({ upcoming: 0, active: 0, 'awaiting-pricing': 1 });
-  expect((await manager.queues()).attention).toMatchObject({ active: null, 'awaiting-pricing': null });
-  expect((await foreman.queues()).attention.active).toBeNull();
   expect(await manager.get({ id: context.otherJob.id })).toMatchObject({
     assignments: [{ arrival: { hours: 100, comment: null, byName: 'Other' }, attention: [] }],
   });
@@ -375,8 +373,6 @@ test('counts queue tabs by read mode and exposes each stint’s attention on Job
     .update(contractingMachineAssignments)
     .set({ travelHours: 9 })
     .where(eq(contractingMachineAssignments.id, context.otherStint.id));
-  expect((await manager.queues()).attention).toMatchObject({ active: 'needs-a-look', 'awaiting-pricing': null });
-  expect((await foreman.queues()).attention.active).toBeNull();
   expect(await manager.get({ id: context.otherJob.id })).toMatchObject({
     assignments: [{ attention: ['travel-over-threshold'] }],
   });

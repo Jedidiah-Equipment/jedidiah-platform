@@ -76,7 +76,6 @@ test('a Foreman lists only his own Breakdowns; the workshop manager lists and so
   expect(solved).toMatchObject({ status: 'solved', actions: { solve: { allowed: false, reason: 'solved' } } });
   expect(await connor.queueSummary()).toEqual({
     counts: { open: 1, 'in-progress': 0, solved: 1 },
-    codeRedUnsolved: 1,
   });
 });
 

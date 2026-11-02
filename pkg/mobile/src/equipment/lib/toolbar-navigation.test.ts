@@ -1,11 +1,10 @@
 import { describe, expect, test } from 'vitest';
 
 import {
-  bayToolbarParentLabel,
   MAIN_TAB_PARENTS,
   resolveAssistantParent,
   resolveDocumentParent,
-  resolveStoresMovementParent,
+  storesMovementReturnTo,
 } from './toolbar-navigation';
 
 describe('toolbar navigation', () => {
@@ -18,32 +17,27 @@ describe('toolbar navigation', () => {
   test('returns documents to their owning detail page', () => {
     expect(resolveDocumentParent({ productId: 'product-1' })).toMatchObject({
       kind: 'product',
-      parentLabel: 'Product',
       returnTo: { pathname: '/equipment/products/[productId]', params: { productId: 'product-1' } },
     });
     expect(resolveDocumentParent({ jobId: 'job-1' })).toMatchObject({
       kind: 'job',
-      parentLabel: 'Job',
       returnTo: { pathname: '/equipment/jobs/[jobId]', params: { jobId: 'job-1' } },
     });
     expect(resolveDocumentParent({ quoteId: 'quote-1' })).toMatchObject({
       kind: 'quote',
-      parentLabel: 'Quote',
       returnTo: { pathname: '/equipment/quotes/[quoteId]', params: { quoteId: 'quote-1' } },
     });
     expect(resolveDocumentParent({})).toBeNull();
   });
 
-  test('preserves nested Stores and Bay parents', () => {
-    expect(resolveStoresMovementParent({ jobId: 'job-1', partCode: 'P-1' })).toEqual({
-      label: 'Close-out Job',
-      returnTo: { pathname: '/equipment/stores/close-out/[jobId]', params: { jobId: 'job-1' } },
+  test('returns a stores movement to its close-out Job, else its Part', () => {
+    expect(storesMovementReturnTo({ jobId: 'job-1', partCode: 'P-1' })).toEqual({
+      pathname: '/equipment/stores/close-out/[jobId]',
+      params: { jobId: 'job-1' },
     });
-    expect(resolveStoresMovementParent({ partCode: 'P-1' })).toEqual({
-      label: 'Part',
-      returnTo: { pathname: '/equipment/stores/parts/[partCode]', params: { partCode: 'P-1' } },
+    expect(storesMovementReturnTo({ partCode: 'P-1' })).toEqual({
+      pathname: '/equipment/stores/parts/[partCode]',
+      params: { partCode: 'P-1' },
     });
-    expect(bayToolbarParentLabel(false)).toBe('Plan');
-    expect(bayToolbarParentLabel(true)).toBe('Bay schedule');
   });
 });

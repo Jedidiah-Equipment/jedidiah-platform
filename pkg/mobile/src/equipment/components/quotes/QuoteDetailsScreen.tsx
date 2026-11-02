@@ -10,7 +10,7 @@ import { type PriorityQuote, type QuoteDetail, QuoteStatus, type QuoteUpdateInpu
 import { IconLayoutSidebarRight } from '@tabler/icons-react-native';
 import { useStore } from '@tanstack/react-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
+import { usePreventRemove } from 'expo-router/react-navigation';
 import type React from 'react';
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
@@ -132,7 +132,6 @@ function QuoteEditor({
   priorityQuote: PriorityQuote | null;
   quote: QuoteDetail;
 }) {
-  const router = useRouter();
   const showToast = useAppToast();
   const [activeTab, setActiveTab] = useState<QuoteDetailTab>('details');
   const [summaryOpen, setSummaryOpen] = useState(false);
@@ -156,6 +155,16 @@ function QuoteEditor({
     toInput: (values) => toQuoteUpdateInput({ id: quote.id, kind: quote.kind, values }),
     validator,
   });
+  // Every way out saves the last edit first.
+  const [leaving, setLeaving] = useState(false);
+  usePreventRemove(
+    !leaving,
+    ({ repeat }) =>
+      void autosave.flush().finally(() => {
+        setLeaving(true);
+        repeat();
+      }),
+  );
   const values = useStore(form.store, (state) => state.values);
   const summary = useMemo(
     () => computeQuoteSummary({ quote, values: { ...values, workItems: values.workItems.map(toQuoteWorkItemInput) } }),
@@ -170,8 +179,7 @@ function QuoteEditor({
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
       <SecondaryPageToolbar
         badge={<QuoteStatusChip status={values.status} />}
-        onBack={() => void autosave.flush().finally(() => router.dismissTo('/equipment/quotes'))}
-        parentLabel="Quotes"
+        fallback="/equipment/quotes"
         subtitle={getQuoteOfferingName(quote)}
         title={quote.code}
       />
@@ -569,16 +577,9 @@ function CancellationReasonBanner({ cancellationReason }: { cancellationReason: 
 }
 
 function StateMessage({ loading = false, message }: { loading?: boolean; message: string }) {
-  const router = useRouter();
-
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
-      <SecondaryPageToolbar
-        onBack={() => router.dismissTo('/equipment/quotes')}
-        parentLabel="Quotes"
-        subtitle="QUOTE DETAIL"
-        title="Quote"
-      />
+      <SecondaryPageToolbar fallback={'/equipment/quotes'} subtitle="QUOTE DETAIL" title="Quote" />
       <View className="flex-1 items-center justify-center gap-3 p-6">
         {loading ? <ActivityIndicator size="small" /> : null}
         <Text className="text-center text-sm text-muted-foreground">{message}</Text>

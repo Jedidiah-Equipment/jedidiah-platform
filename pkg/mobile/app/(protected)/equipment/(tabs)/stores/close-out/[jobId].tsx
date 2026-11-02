@@ -46,8 +46,7 @@ export default function StoresJobCloseOutRoute() {
     return (
       <StoresScreen
         helpTopic="inventoryCloseOut"
-        onBack={() => router.dismissTo('/equipment/stores/close-out')}
-        parentLabel="Close-out queue"
+        fallback={'/equipment/stores/close-out'}
         subtitle="LOADING JOB STOCK"
         title="Close out"
       >
@@ -62,8 +61,7 @@ export default function StoresJobCloseOutRoute() {
     return (
       <StoresScreen
         helpTopic="inventoryCloseOut"
-        onBack={() => router.dismissTo('/equipment/stores/close-out')}
-        parentLabel="Close-out queue"
+        fallback={'/equipment/stores/close-out'}
         subtitle="JOB STOCK UNAVAILABLE"
         title="Close out"
       >
@@ -82,8 +80,7 @@ export default function StoresJobCloseOutRoute() {
   return (
     <StoresScreen
       helpTopic="inventoryCloseOut"
-      onBack={() => router.dismissTo('/equipment/stores/close-out')}
-      parentLabel="Close-out queue"
+      fallback={'/equipment/stores/close-out'}
       subtitle={job.code}
       title={job.displayName}
     >

@@ -199,11 +199,8 @@ export const BreakdownListResult = createCursorQueryResult(BreakdownSummary);
 export type BreakdownListResult = z.infer<typeof BreakdownListResult>;
 export const BreakdownStatusCounts = z.record(z.enum(breakdownStatuses), z.number().int().nonnegative());
 export type BreakdownStatusCounts = z.infer<typeof BreakdownStatusCounts>;
-/** Each status's Breakdown count, and the unsolved Code Reds the nav warns about. */
-export const BreakdownQueueSummary = z.object({
-  counts: BreakdownStatusCounts,
-  codeRedUnsolved: z.number().int().nonnegative(),
-});
+/** Each status's Breakdown count. */
+export const BreakdownQueueSummary = z.object({ counts: BreakdownStatusCounts });
 export type BreakdownQueueSummary = z.infer<typeof BreakdownQueueSummary>;
 /** What the Workshop table's column filters offer: only values some readable Breakdown carries. */
 export const BreakdownFilterOptions = z.object({

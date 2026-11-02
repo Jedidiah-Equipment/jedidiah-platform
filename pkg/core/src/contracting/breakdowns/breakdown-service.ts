@@ -45,7 +45,6 @@ import {
   type BreakdownSubjectRef,
   breakdownStatuses,
   openJobStatuses,
-  unsolvedBreakdownStatuses,
 } from '@pkg/schema/contracting';
 import { and, asc, desc, eq, inArray, ne, or, type SQL, sql } from 'drizzle-orm';
 import { recordAuditCreate } from '../../audit/audit-writer.js';
@@ -418,7 +417,6 @@ export async function summarizeBreakdownQueue({
     .select({
       status: contractingBreakdowns.status,
       count: sql<number>`count(*)::integer`,
-      codeRed: sql<number>`count(*) filter (where ${contractingBreakdowns.urgency} = 'code-red')::integer`,
     })
     .from(contractingBreakdowns)
     .where(breakdownReadableBy(actor))
@@ -426,7 +424,6 @@ export async function summarizeBreakdownQueue({
   const of = (status: BreakdownStatus) => rows.find((row) => row.status === status);
   return BreakdownQueueSummary.parse({
     counts: Object.fromEntries(breakdownStatuses.map((status) => [status, of(status)?.count ?? 0])),
-    codeRedUnsolved: unsolvedBreakdownStatuses.reduce((total, status) => total + (of(status)?.codeRed ?? 0), 0),
   });
 }
 

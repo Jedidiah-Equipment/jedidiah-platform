@@ -1,5 +1,6 @@
 import type { DocumentSummary } from '@pkg/schema/equipment';
 import { IconDownload, IconShare, type Icon as TablerIcon } from '@tabler/icons-react-native';
+import type { Href } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import { Icon } from '@/components/ui/icon';
@@ -20,15 +21,13 @@ export function DocumentViewer({
   downloadPath,
   document,
   context,
-  onBack,
-  parentLabel,
+  fallback,
 }: {
   downloadPath: string;
   document: Pick<DocumentSummary, 'contentType' | 'filename'>;
   /** Sub-label under the title, e.g. `JOB-00009 · Silage Grain 18 36`. */
   context: string;
-  onBack: () => void;
-  parentLabel: string;
+  fallback: Href;
 }) {
   const [busy, setBusy] = useState<null | 'save' | 'share'>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -56,7 +55,7 @@ export function DocumentViewer({
 
   return (
     <View className="flex-1 overflow-hidden bg-background">
-      <SecondaryPageToolbar onBack={onBack} parentLabel={parentLabel} subtitle={context} title={document.filename} />
+      <SecondaryPageToolbar fallback={fallback} subtitle={context} title={document.filename} />
       <View className="flex-row justify-end gap-2 px-4 py-3">
         <IconButton
           busy={busy === 'save'}

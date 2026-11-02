@@ -21,13 +21,17 @@
     there when permitted; Contracting currently exposes no Assistant action.
   - Secondary pages use `SecondaryPageToolbar`: a back action, optional avatar, title and mono subtitle
     on the left; optional badge and profile menu on the right; and a bottom border.
-  - Contracting back goes through history. Every Contracting tab is a copy of one stack holding every
-    Contracting screen (`app/(protected)/contracting/(tabs)/(activity,…,workshop)/`), so a record opened
-    from another is pushed onto the current tab. The toolbar back, the iOS edge swipe and Android back all
-    return to it. Give `SecondaryToolbar` a `fallback` (where a screen with nothing beneath goes, never a
-    `router.*` call); leave after a save with `useGoBack` (`src/lib/use-go-back.ts`). Open a tab's list
-    only through `CONTRACTING_TAB_HREF`, because a bare `/contracting/jobs` opens inside whichever tab you
-    are in. Equipment keeps an explicit named-parent back (`onBack` + `parentLabel`) until its tabs move.
+  - Back goes through history in both businesses: the toolbar back, the iOS edge swipe and Android back
+    all pop the same stack. A secondary toolbar takes only a `fallback` (where a screen with nothing
+    beneath goes, never a `router.*` call); leave after a save with `useGoBack` (`src/lib/use-go-back.ts`).
+    A screen that must hold, redirect or finish something before it goes (a busy save, unsaved text, an
+    autosave flush, an open pane) does it with `usePreventRemove`, which every way back passes through.
+    To let the departure go, set its condition false and call the callback's `repeat()`; a bare
+    `navigation.dispatch(data.action)` is blocked again.
+  - Every Contracting tab is a copy of one stack holding every Contracting screen
+    (`app/(protected)/contracting/(tabs)/(activity,…,workshop)/`), so a record opened from another is
+    pushed onto the current tab. Every tab list derives from `CONTRACTING_TABS`; open a tab's list only
+    through `CONTRACTING_TAB_HREF`, because a bare `/contracting/jobs` opens inside whichever tab you are in.
   - Do not create route-local toolbar variants or add arbitrary toolbar actions. Put page-specific
     actions in page content and expose contextual Help through the profile menu.
 - Every list tab root in both businesses renders `src/components/TabRootList.tsx` (pagination optional), except

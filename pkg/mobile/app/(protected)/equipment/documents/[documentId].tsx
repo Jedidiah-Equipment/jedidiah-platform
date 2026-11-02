@@ -1,7 +1,7 @@
 import { getJobDisplayName, getQuoteOfferingName, isBrochureReady } from '@pkg/domain/equipment';
 import type { DocumentSummary } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { type Href, useLocalSearchParams } from 'expo-router';
 import { useEffect } from 'react';
 import { View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
@@ -25,7 +25,6 @@ import { useTRPC } from '@/lib/trpc';
  * deep links need only the document id plus its owner id.
  */
 export default function DocumentViewerRoute() {
-  const router = useRouter();
   const { documentId, jobId, productId, quoteId } = useLocalSearchParams<{
     documentId: string;
     jobId?: string;
@@ -39,7 +38,7 @@ export default function DocumentViewerRoute() {
     captureEvent('document opened', { documentId });
   }, [documentId]);
 
-  const handleBack = () => (owner ? router.dismissTo(owner.returnTo) : router.dismissTo('/'));
+  const fallback = owner?.returnTo ?? '/';
 
   return (
     // The full-screen modal is a react-native-screens route root, so it must measure
@@ -47,9 +46,9 @@ export default function DocumentViewerRoute() {
     <SafeAreaProvider>
       <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom', 'left', 'right']}>
         {owner ? (
-          <OwnerDocumentScreen documentId={documentId} onBack={handleBack} owner={owner} />
+          <OwnerDocumentScreen documentId={documentId} fallback={fallback} owner={owner} />
         ) : (
-          <Message onBack={handleBack} parentLabel="Jobs" text="This document link is incomplete." />
+          <Message fallback={fallback} text="This document link is incomplete." />
         )}
       </SafeAreaView>
     </SafeAreaProvider>
@@ -58,50 +57,34 @@ export default function DocumentViewerRoute() {
 
 function OwnerDocumentScreen({
   documentId,
-  onBack,
+  fallback,
   owner,
 }: {
   documentId: string;
-  onBack: () => void;
+  fallback: Href;
   owner: DocumentParent;
 }) {
   switch (owner.kind) {
     case 'job':
-      return (
-        <JobDocumentScreen documentId={documentId} jobId={owner.id} onBack={onBack} parentLabel={owner.parentLabel} />
-      );
+      return <JobDocumentScreen documentId={documentId} jobId={owner.id} fallback={fallback} />;
     case 'product':
       return documentId === PRODUCT_BROCHURE_DOCUMENT_ID ? (
-        <BrochureScreen onBack={onBack} parentLabel={owner.parentLabel} productId={owner.id} />
+        <BrochureScreen fallback={fallback} productId={owner.id} />
       ) : (
-        <ProductDocumentScreen
-          documentId={documentId}
-          onBack={onBack}
-          parentLabel={owner.parentLabel}
-          productId={owner.id}
-        />
+        <ProductDocumentScreen documentId={documentId} fallback={fallback} productId={owner.id} />
       );
     case 'quote':
-      return (
-        <QuoteDocumentScreen
-          documentId={documentId}
-          onBack={onBack}
-          parentLabel={owner.parentLabel}
-          quoteId={owner.id}
-        />
-      );
+      return <QuoteDocumentScreen documentId={documentId} fallback={fallback} quoteId={owner.id} />;
   }
 }
 
 function QuoteDocumentScreen({
   documentId,
-  onBack,
-  parentLabel,
+  fallback,
   quoteId,
 }: {
   documentId: string;
-  onBack: () => void;
-  parentLabel: string;
+  fallback: Href;
   quoteId: string;
 }) {
   const trpc = useTRPC();
@@ -116,23 +99,12 @@ function QuoteDocumentScreen({
       downloadPath={quoteDocumentDownloadPath(quoteId, documentId)}
       isError={quoteQuery.isError || documentsQuery.isError}
       isPending={quoteQuery.isPending || documentsQuery.isPending}
-      onBack={onBack}
-      parentLabel={parentLabel}
+      fallback={fallback}
     />
   );
 }
 
-function JobDocumentScreen({
-  jobId,
-  documentId,
-  onBack,
-  parentLabel,
-}: {
-  jobId: string;
-  documentId: string;
-  onBack: () => void;
-  parentLabel: string;
-}) {
+function JobDocumentScreen({ jobId, documentId, fallback }: { jobId: string; documentId: string; fallback: Href }) {
   const trpc = useTRPC();
   const query = useQuery(trpc.jobs.get.queryOptions({ id: jobId }));
   const document = query.data?.documents.find((candidate) => candidate.id === documentId);
@@ -144,8 +116,7 @@ function JobDocumentScreen({
       downloadPath={jobDocumentDownloadPath(jobId, documentId)}
       isError={query.isError}
       isPending={query.isPending}
-      onBack={onBack}
-      parentLabel={parentLabel}
+      fallback={fallback}
     />
   );
 }
@@ -153,13 +124,11 @@ function JobDocumentScreen({
 function ProductDocumentScreen({
   productId,
   documentId,
-  onBack,
-  parentLabel,
+  fallback,
 }: {
   productId: string;
   documentId: string;
-  onBack: () => void;
-  parentLabel: string;
+  fallback: Href;
 }) {
   const trpc = useTRPC();
   const productQuery = useQuery(trpc.products.get.queryOptions({ id: productId }));
@@ -173,8 +142,7 @@ function ProductDocumentScreen({
       downloadPath={productDocumentDownloadPath(productId, documentId)}
       isError={productQuery.isError || documentsQuery.isError}
       isPending={productQuery.isPending || documentsQuery.isPending}
-      onBack={onBack}
-      parentLabel={parentLabel}
+      fallback={fallback}
     />
   );
 }
@@ -185,51 +153,31 @@ function DocumentViewerState({
   downloadPath,
   isError,
   isPending,
-  onBack,
-  parentLabel,
+  fallback,
 }: {
   context: string | null;
   document: Pick<DocumentSummary, 'contentType' | 'filename'> | null | undefined;
   downloadPath: string;
   isError: boolean;
   isPending: boolean;
-  onBack: () => void;
-  parentLabel: string;
+  fallback: Href;
 }) {
-  if (isPending) return <Message onBack={onBack} parentLabel={parentLabel} text="Loading document…" />;
-  if (isError) return <Message onBack={onBack} parentLabel={parentLabel} text="Couldn’t load this document." />;
-  if (context === null)
-    return <Message onBack={onBack} parentLabel={parentLabel} text="Couldn’t load this document." />;
-  if (!document)
-    return <Message onBack={onBack} parentLabel={parentLabel} text="This document is no longer available." />;
+  if (isPending) return <Message fallback={fallback} text="Loading document…" />;
+  if (isError) return <Message fallback={fallback} text="Couldn’t load this document." />;
+  if (context === null) return <Message fallback={fallback} text="Couldn’t load this document." />;
+  if (!document) return <Message fallback={fallback} text="This document is no longer available." />;
 
-  return (
-    <DocumentViewer
-      context={context}
-      document={document}
-      downloadPath={downloadPath}
-      onBack={onBack}
-      parentLabel={parentLabel}
-    />
-  );
+  return <DocumentViewer context={context} document={document} downloadPath={downloadPath} fallback={fallback} />;
 }
 
-function BrochureScreen({
-  productId,
-  onBack,
-  parentLabel,
-}: {
-  productId: string;
-  onBack: () => void;
-  parentLabel: string;
-}) {
+function BrochureScreen({ productId, fallback }: { productId: string; fallback: Href }) {
   const trpc = useTRPC();
   const query = useQuery(trpc.products.get.queryOptions({ id: productId }));
 
-  if (query.isPending) return <Message onBack={onBack} parentLabel={parentLabel} text="Loading document…" />;
-  if (query.isError) return <Message onBack={onBack} parentLabel={parentLabel} text="Couldn’t load this document." />;
+  if (query.isPending) return <Message fallback={fallback} text="Loading document…" />;
+  if (query.isError) return <Message fallback={fallback} text="Couldn’t load this document." />;
   if (!isBrochureReady(query.data)) {
-    return <Message onBack={onBack} parentLabel={parentLabel} text="This document is no longer available." />;
+    return <Message fallback={fallback} text="This document is no longer available." />;
   }
 
   return (
@@ -237,16 +185,15 @@ function BrochureScreen({
       context={`${query.data.modelCode} · ${query.data.name}`}
       document={{ contentType: 'application/pdf', filename: productBrochureFilename(query.data.modelCode) }}
       downloadPath={productBrochurePreviewPath(productId)}
-      onBack={onBack}
-      parentLabel={parentLabel}
+      fallback={fallback}
     />
   );
 }
 
-function Message({ text, onBack, parentLabel }: { text: string; onBack: () => void; parentLabel: string }) {
+function Message({ text, fallback }: { text: string; fallback: Href }) {
   return (
     <View className="flex-1">
-      <SecondaryPageToolbar onBack={onBack} parentLabel={parentLabel} subtitle="DOCUMENT VIEWER" title="Document" />
+      <SecondaryPageToolbar fallback={fallback} subtitle="DOCUMENT VIEWER" title="Document" />
       <View className="flex-1 items-center justify-center px-6">
         <Text className="text-center text-sm text-muted-foreground">{text}</Text>
       </View>

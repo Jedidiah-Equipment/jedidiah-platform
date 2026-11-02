@@ -1,6 +1,6 @@
 import { getFirstName } from '@pkg/domain';
-import { type AttentionThresholds, assignmentAttentionSentence } from '@pkg/domain/contracting';
-import type { AssignmentAttentionKind, AssignmentDetail } from '@pkg/schema/contracting';
+import { type AttentionBadge, type AttentionThresholds, assignmentAttentionSentence } from '@pkg/domain/contracting';
+import type { AssignmentDetail } from '@pkg/schema/contracting';
 import { DateText } from '@/components/DateText';
 import { Button } from '@/components/ui/button';
 import { DialogCard } from '@/components/ui/dialog-card';
@@ -15,41 +15,40 @@ import { useDismissAttention } from './use-jobs';
  */
 export function AttentionDialog({
   stint,
-  kind,
+  badge,
   thresholds,
   canDismiss,
   onClose,
 }: {
   stint: AssignmentDetail;
-  kind: AssignmentAttentionKind | null;
+  badge: AttentionBadge | null;
   thresholds: AttentionThresholds;
   canDismiss: boolean;
   onClose: () => void;
 }) {
   const dismiss = useDismissAttention();
   const { busy, error, setError, run } = useBusyAction();
-  const dismissal = stint.dismissedAttention.find((each) => each.kind === kind);
   const close = () => {
     if (busy) return;
     setError(null);
     onClose();
   };
   return (
-    <ThemedModal backdropLabel="Close the warning" open={kind !== null} onClose={close} dismissDisabled={busy}>
-      {kind ? (
+    <ThemedModal backdropLabel="Close the warning" open={badge !== null} onClose={close} dismissDisabled={busy}>
+      {badge ? (
         <DialogCard
-          title={dismissal ? 'Dismissed' : 'Needs a look'}
+          title={badge.dismissal ? 'Dismissed' : 'Needs a look'}
           error={error}
           actions={
             <>
-              {!dismissal && canDismiss ? (
+              {!badge.dismissal && canDismiss ? (
                 <Button
                   primary={!busy}
                   title={busy ? 'Dismissing…' : 'Dismiss for everyone'}
                   disabled={busy}
                   onPress={() =>
                     void run(async () => {
-                      await dismiss.mutateAsync({ assignmentId: stint.id, kind });
+                      await dismiss.mutateAsync({ assignmentId: stint.id, kind: badge.kind });
                       onClose();
                     }, 'Unable to dismiss the warning.')
                   }
@@ -59,11 +58,11 @@ export function AttentionDialog({
             </>
           }
         >
-          <Text className="text-foreground">{assignmentAttentionSentence(kind, stint, thresholds)}</Text>
-          {dismissal ? (
+          <Text className="text-foreground">{assignmentAttentionSentence(badge.kind, stint, thresholds)}</Text>
+          {badge.dismissal ? (
             <Text className="text-sm text-muted-foreground">
-              {`Dismissed by ${getFirstName(dismissal.dismissedByName)} · `}
-              <DateText className="text-sm text-muted-foreground" date={dismissal.dismissedAt} format="medium" />
+              {`Dismissed by ${getFirstName(badge.dismissal.dismissedByName)} · `}
+              <DateText className="text-sm text-muted-foreground" date={badge.dismissal.dismissedAt} format="medium" />
             </Text>
           ) : (
             <Text className="text-sm text-muted-foreground">

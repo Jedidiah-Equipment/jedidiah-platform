@@ -12,7 +12,7 @@ import { expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
 import { createJob } from '../jobs/job-service.js';
 import { closeServiceRecord, openServiceRecord } from '../services/service-record-service.js';
-import { admin, adminId, foremanId, leftStint, seedJobFixtures } from '../test/job-fixtures.js';
+import { admin, adminId, foreman, foremanId, leftStint, seedJobFixtures } from '../test/job-fixtures.js';
 import { createCategory } from './category-service.js';
 import { listFleetHistory, listFleetHistoryFilterOptions } from './fleet-history.js';
 import { createImplement } from './implement-service.js';
@@ -243,4 +243,19 @@ test('lists only the kinds the caller may read, and an Implement only its Breakd
   ).toBe(false);
   expect(listFleetHistoryFilterOptions({ actor: admin, subject: implement })).toEqual({ kinds: ['breakdown'] });
   expect(await titles(context, { subject: implement })).toEqual(['Bent tine']);
+});
+
+test('a Foreman who captures hours reads the Machine’s readings and Job Hours, and nothing else', async ({
+  context,
+}) => {
+  expect(
+    listFleetHistoryFilterOptions({ actor: foreman, subject: { kind: 'machine', id: context.machineId } }),
+  ).toEqual({
+    kinds: ['reading'],
+  });
+  expect(await titles(context, {}, foreman)).toEqual([
+    'Spot · 1 002.0 h',
+    'Departure · 1 001.0 h',
+    'Arrival · 1 000.0 h',
+  ]);
 });

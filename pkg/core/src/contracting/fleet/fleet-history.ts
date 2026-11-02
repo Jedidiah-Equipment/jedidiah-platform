@@ -20,10 +20,11 @@ import {
   breakdownUrgencyLabels,
   fleetHistoryKindLabels,
   formatJobNumber,
+  meterReadPermissions,
   readingRoleLabels,
   readingSourceLabel,
 } from '@pkg/domain/contracting';
-import type { UserAccessSummary } from '@pkg/schema';
+import type { AppPermission, UserAccessSummary } from '@pkg/schema';
 import {
   type BreakdownSubjectRef,
   type FleetHistoryFilterOptions,
@@ -42,17 +43,19 @@ import { breakdownReporter } from '../breakdowns/breakdown-load.js';
 import { jobHoursColumns, jobNumberSql } from '../jobs/job-sql.js';
 
 const kindPermissions = {
-  reading: 'contracting_machine:read',
-  breakdown: 'contracting_breakdown:read',
-  service: 'contracting_service:read',
-} as const;
+  reading: meterReadPermissions,
+  breakdown: ['contracting_breakdown:read'],
+  service: ['contracting_service:read'],
+} as const satisfies Record<FleetHistoryKind, readonly AppPermission[]>;
 /** History lists only the kinds the caller may read, so any one of their permissions opens it. */
-export const fleetHistoryReadPermissions = Object.values(kindPermissions);
+export const fleetHistoryReadPermissions = Object.values(kindPermissions).flat();
 
 /** An Implement has no readings or services, so its History is its Breakdowns. */
 function readableKinds(actor: UserAccessSummary, subject: BreakdownSubjectRef): FleetHistoryKind[] {
   return fleetHistoryKinds.filter(
-    (kind) => (subject.kind === 'machine' || kind === 'breakdown') && hasPermission(actor, kindPermissions[kind]),
+    (kind) =>
+      (subject.kind === 'machine' || kind === 'breakdown') &&
+      kindPermissions[kind].some((permission) => hasPermission(actor, permission)),
   );
 }
 

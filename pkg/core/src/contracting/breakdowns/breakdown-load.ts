@@ -5,18 +5,66 @@ import {
   contractingFarms,
   contractingImplements,
   contractingJobs,
+  contractingMachineAssignments,
   contractingMachines,
 } from '@pkg/db/contracting';
 import { type BreakdownActor, breakdownFirstLine, breakdownReadScope, formatJobNumber } from '@pkg/domain/contracting';
 import { type BreakdownSubjectRef, BreakdownSummary, unsolvedBreakdownStatuses } from '@pkg/schema/contracting';
-import { and, asc, eq, getTableColumns, inArray, or, type SQL, sql } from 'drizzle-orm';
+import { and, asc, eq, getTableColumns, inArray, or, type SQL, type SQLWrapper, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { DbOrTx } from '../jobs/job-load.js';
-import { jobNumberText } from '../jobs/job-sql.js';
+import { jobNumberText, stintOnSite } from '../jobs/job-sql.js';
 import { BreakdownError } from './breakdown-errors.js';
 
+/** A Breakdown's columns the Job rule reads, on the table or on an alias of it. */
+type BreakdownColumns = { jobId: SQLWrapper; machineId: SQLWrapper; implementId: SQLWrapper; status: SQLWrapper };
+
+const unsolvedOf = (breakdown: Pick<BreakdownColumns, 'status'>) =>
+  inArray(breakdown.status, [...unsolvedBreakdownStatuses]);
+
 /** Not yet Fixed: the Breakdowns still on the queue, still a Mechanic's and still a Job's open work. */
-export const unsolvedBreakdown = inArray(contractingBreakdowns.status, [...unsolvedBreakdownStatuses]);
+export const unsolvedBreakdown = unsolvedOf(contractingBreakdowns);
+
+const breakdownStint = alias(contractingMachineAssignments, 'breakdown_stint');
+
+/** While a Breakdown is not yet Fixed, the Job its Machine or Implement is on site on now; null in the yard or once Fixed. */
+const onSiteJobIdOf = (breakdown: BreakdownColumns) => sql<string | null>`(
+  select ${breakdownStint.jobId}
+  from contracting.machine_assignment breakdown_stint
+  where ${unsolvedOf(breakdown)}
+    and (${breakdownStint.machineId} = ${breakdown.machineId}
+      or ${breakdownStint.implementId} = ${breakdown.implementId})
+    and ${stintOnSite(breakdownStint)}
+  limit 1
+)`;
+
+/**
+ * The one rule for which Jobs a Breakdown is on: the Job it was filed on, and while it is not yet Fixed, the Job its
+ * Machine or Implement is on site on now. Every Job read of Breakdowns is built from this pair, so a Job flags exactly
+ * what its fleet's rows flag.
+ */
+const jobsOf = (breakdown: BreakdownColumns) => [breakdown.jobId, onSiteJobIdOf(breakdown)] as const;
+const onJobOf = (breakdown: BreakdownColumns, job: SQLWrapper) => or(...jobsOf(breakdown).map((id) => eq(id, job)));
+
+const breakdownOnSiteJobId = onSiteJobIdOf(contractingBreakdowns);
+
+/** The Breakdowns on this Job, by the one rule. */
+export const breakdownOnJob = (job: SQLWrapper) => onJobOf(contractingBreakdowns, job);
+
+/** The Breakdowns on any of these Jobs, by the one rule. */
+export const breakdownOnJobs = (jobIds: readonly string[]) =>
+  or(...jobsOf(contractingBreakdowns).map((id) => inArray(id, [...jobIds])));
+
+/** The Jobs one loaded Breakdown is on, by the one rule. */
+export const jobsOfBreakdown = ({ breakdown, onSiteJobId }: LoadedBreakdown): string[] => [
+  ...new Set([breakdown.jobId, onSiteJobId].filter((id): id is string => id !== null)),
+];
+
+/**
+ * The Job a Breakdown's summary names and whose Foreman it is: the one it was filed on, or for a yard report not yet
+ * Fixed, where it is now.
+ */
+export const breakdownJobId = sql<string | null>`coalesce(${contractingBreakdowns.jobId}, ${breakdownOnSiteJobId})`;
 
 export const breakdownReporter = alias(user, 'breakdown_reporter');
 const breakdownMechanic = alias(user, 'breakdown_mechanic');
@@ -48,13 +96,20 @@ const firstNoteText = sql<string | null>`(
   limit 1
 )`;
 
-/** Other unsolved Breakdowns on the same Job: the dispatch cross-reference, derived. */
+const sameJob = alias(contractingBreakdowns, 'same_job');
+const sharedJob = alias(contractingJobs, 'shared_job');
+
+/** Other unsolved Breakdowns on a Job this one is on, by the one rule: the dispatch cross-reference, derived. */
 const sameJobOpenCount = sql<number>`(
   select count(*)::integer
   from contracting.breakdown same_job
-  where same_job.job_id = ${contractingBreakdowns.jobId}
-    and same_job.id <> ${contractingBreakdowns.id}
-    and same_job.status in ('open', 'in-progress')
+  where ${sameJob.id} <> ${contractingBreakdowns.id}
+    and ${unsolvedOf(sameJob)}
+    and exists (
+      select 1
+      from contracting.job shared_job
+      where ${breakdownOnJob(sharedJob.id)} and ${onJobOf(sameJob, sharedJob.id)}
+    )
 )`;
 
 /** A Breakdown row with everything its summary shows. */
@@ -75,6 +130,7 @@ const breakdownHeader = {
   noteCount,
   firstNoteText,
   sameJobOpenCount,
+  onSiteJobId: breakdownOnSiteJobId,
 };
 
 /** What the Workshop search box looks in: the subject, the Job and its Farm, the people, and the report. */
@@ -102,7 +158,7 @@ export function selectBreakdowns(db: DbOrTx) {
         eq(contractingCategories.id, contractingImplements.categoryId),
       ),
     )
-    .leftJoin(contractingJobs, eq(contractingJobs.id, contractingBreakdowns.jobId))
+    .leftJoin(contractingJobs, eq(contractingJobs.id, breakdownJobId))
     .leftJoin(contractingFarms, eq(contractingFarms.id, contractingJobs.farmId))
     .innerJoin(breakdownReporter, eq(breakdownReporter.id, contractingBreakdowns.reportedByUserId))
     .leftJoin(breakdownMechanic, eq(breakdownMechanic.id, contractingBreakdowns.primaryMechanicUserId))
@@ -124,7 +180,7 @@ export function breakdownReadableBy(actor: BreakdownActor) {
     sql`exists (
       select 1
       from contracting.job foreman_job
-      where foreman_job.id = ${contractingBreakdowns.jobId}
+      where foreman_job.id = ${breakdownJobId}
         and foreman_job.foreman_user_id = ${actor.userId}
     )`,
   );
@@ -160,7 +216,7 @@ export function toBreakdownSummary(row: LoadedBreakdown): BreakdownSummary {
   return BreakdownSummary.parse({
     id: breakdown.id,
     subject: breakdownSubjectOf(row),
-    jobId: breakdown.jobId,
+    jobId: breakdown.jobId ?? row.onSiteJobId,
     jobNumber: row.jobCode === null ? null : formatJobNumber(row.jobCode),
     jobForemanUserId: row.jobForemanUserId,
     farmId: row.farmId,

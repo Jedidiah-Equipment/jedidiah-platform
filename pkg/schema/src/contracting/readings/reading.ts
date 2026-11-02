@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import { AuthId } from '../../auth/auth-id.js';
 import { DateIso } from '../../common/date.js';
-import { CursorQueryInput, createCursorQueryResult } from '../../common/pagination.js';
 import { UUID } from '../../common/uuid.js';
 import { readingMethods, telematicsProviders } from './reading-enums.js';
 import { ReadingValue } from './reading-value.js';
@@ -103,17 +102,3 @@ const ReadingRefusalReader = z
 
 /** A Reading refusal's context from whatever the transport carried; anything unreadable carries none. */
 export const readingRefusalOf = (data: unknown): ReadingRefusal => ReadingRefusalReader.parse(data);
-
-export const FieldReading = HourReading.pick({
-  id: true,
-  machineId: true,
-  value: true,
-  capturedAt: true,
-  telematicsProvider: true,
-}).extend({ capturedByName: z.string().nullable() });
-export type FieldReading = z.infer<typeof FieldReading>;
-/** One page of a Machine's Hour Readings, newest first, for the phone's Readings tab. */
-export const FieldReadingPageInput = CursorQueryInput.extend({ machineId: UUID });
-export type FieldReadingPageInput = z.infer<typeof FieldReadingPageInput>;
-export const FieldReadingPage = createCursorQueryResult(FieldReading);
-export type FieldReadingPage = z.infer<typeof FieldReadingPage>;

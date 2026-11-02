@@ -1,5 +1,5 @@
 import { hasPermission } from '@pkg/domain';
-import { canSeeActivity, fieldJobAccessMode } from '@pkg/domain/contracting';
+import { canSeeActivity, fieldJobAccessMode, readsMeters } from '@pkg/domain/contracting';
 import type { UserAccessSummary } from '@pkg/schema';
 import type { Href } from 'expo-router';
 
@@ -19,8 +19,7 @@ export function visibleContractingTabs(access: UserAccessSummary | null | undefi
   const tabs: ContractingTab[] = [];
   if (canSeeActivity(access)) tabs.push('activity');
   if (fieldJobAccessMode(access)) tabs.push('jobs');
-  if (hasPermission(access, 'contracting_machine:read') || hasPermission(access, 'contracting_reading:capture'))
-    tabs.push('machines');
+  if (readsMeters(access)) tabs.push('machines');
   if (hasPermission(access, 'contracting_breakdown:read') || hasPermission(access, 'contracting_breakdown:report'))
     tabs.push('workshop');
   if (hasPermission(access, 'contracting_service:read')) tabs.push('services');

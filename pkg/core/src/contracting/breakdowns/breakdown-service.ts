@@ -67,11 +67,15 @@ import {
 } from './breakdown-errors.js';
 import {
   breakdownActionSubject,
+  breakdownJobId,
+  breakdownOnJob,
+  breakdownOnJobs,
   breakdownReadableBy,
   breakdownReporter,
   breakdownSearchColumns,
   breakdownSubjectOf,
   breakdownSubjectRef,
+  jobsOfBreakdown,
   type LoadedBreakdown,
   loadReadableBreakdown,
   namedMechanics,
@@ -262,15 +266,10 @@ export async function reportBreakdown({
 
 async function toDetail(db: DbOrTx, actor: BreakdownActor, row: LoadedBreakdown): Promise<BreakdownDetail> {
   const { breakdown } = row;
-  const hints = breakdown.jobId
+  const jobIds = jobsOfBreakdown(row);
+  const hints = jobIds.length
     ? await selectBreakdowns(db)
-        .where(
-          and(
-            eq(contractingBreakdowns.jobId, breakdown.jobId),
-            ne(contractingBreakdowns.id, breakdown.id),
-            unsolvedBreakdown,
-          ),
-        )
+        .where(and(breakdownOnJobs(jobIds), ne(contractingBreakdowns.id, breakdown.id), unsolvedBreakdown))
         .orderBy(desc(contractingBreakdowns.reportedAt))
     : [];
   return BreakdownDetail.parse({
@@ -330,7 +329,7 @@ export async function listBreakdowns({
       input.machineIds.length ? inArray(contractingBreakdowns.machineId, input.machineIds) : undefined,
       input.implementIds.length ? inArray(contractingBreakdowns.implementId, input.implementIds) : undefined,
     ),
-    input.jobIds.length ? inArray(contractingBreakdowns.jobId, input.jobIds) : undefined,
+    input.jobIds.length ? breakdownOnJobs(input.jobIds) : undefined,
     input.farmIds.length ? inArray(contractingJobs.farmId, input.farmIds) : undefined,
     input.reporterUserIds.length ? inArray(contractingBreakdowns.reportedByUserId, input.reporterUserIds) : undefined,
     onCalendarDays(contractingBreakdowns.reportedAt, JOHANNESBURG_TIME_ZONE, {
@@ -378,13 +377,13 @@ export async function listBreakdownFilterOptions({
     db
       .selectDistinct({ id: contractingJobs.id, code: contractingJobs.code })
       .from(contractingBreakdowns)
-      .innerJoin(contractingJobs, eq(contractingJobs.id, contractingBreakdowns.jobId))
+      .innerJoin(contractingJobs, breakdownOnJob(contractingJobs.id))
       .where(readable)
       .orderBy(asc(contractingJobs.code)),
     db
       .selectDistinct({ id: contractingFarms.id, name: contractingFarms.name })
       .from(contractingBreakdowns)
-      .innerJoin(contractingJobs, eq(contractingJobs.id, contractingBreakdowns.jobId))
+      .innerJoin(contractingJobs, breakdownOnJob(contractingJobs.id))
       .innerJoin(contractingFarms, eq(contractingFarms.id, contractingJobs.farmId))
       .where(readable)
       .orderBy(asc(contractingFarms.name)),
@@ -427,12 +426,12 @@ export async function summarizeBreakdownQueue({
   });
 }
 
-async function jobForemanOf(tx: DatabaseTransaction, jobId: string | null) {
-  if (!jobId) return null;
+async function jobForemanOf(tx: DatabaseTransaction, breakdownId: string) {
   const [job] = await tx
     .select({ foremanUserId: contractingJobs.foremanUserId })
-    .from(contractingJobs)
-    .where(eq(contractingJobs.id, jobId));
+    .from(contractingBreakdowns)
+    .innerJoin(contractingJobs, eq(contractingJobs.id, breakdownJobId))
+    .where(eq(contractingBreakdowns.id, breakdownId));
   return job?.foremanUserId ?? null;
 }
 
@@ -443,7 +442,7 @@ async function assertActionOn(
   before: Row,
   actor: BreakdownActor,
 ) {
-  const jobForemanUserId = await jobForemanOf(tx, before.jobId);
+  const jobForemanUserId = await jobForemanOf(tx, before.id);
   assertBreakdownAction(
     action,
     { status: before.status, reportedByUserId: before.reportedByUserId, jobForemanUserId },

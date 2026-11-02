@@ -244,8 +244,13 @@ workshop and puts it in the same-Job dispatch cross-reference), optional GPS, an
 (machine down) or **Code Green** (still working). Status runs **Not fixed → Fixing → Fixed** (stored as `open` / `in-progress` / `solved`); the workshop manager owns every
 transition — **Start work** moves it to Fixing, **Mark completed** to Fixed — and closes with a mandatory
 close-out note. The subject's Breakdown history is
-permanent. The dispatch cross-reference — other fleet on the same Job with open Breakdowns —
-is derived, never stored. A new Breakdown notifies by push notification: Code Green reaches
+permanent. A Breakdown is **on** the Job it was filed on and, while not yet Fixed, on the Job its Machine or
+Implement is on site on now — so a report made in the yard surfaces on the Job its fleet arrives at, and one that
+moves with its Machine flags the new Job too. That one rule drives every Job's flags and Breakdown list, the
+dispatch cross-reference and a Foreman's reach, so a Job never disagrees with its fleet; a summary names the filed
+Job, or for a yard report the on-site one. Activity stays on the filed Job: it records where things happened. An
+open Breakdown never stops a Machine arriving. The dispatch cross-reference — other fleet on the same Job with open
+Breakdowns — is derived, never stored. A new Breakdown notifies by push notification: Code Green reaches
 the workshop-manager role; Code Red also reaches contracting-manager, contracting-admin and
 super-admin. The reporter never receives their own ping. A Breakdown changed from Code Green to Code Red
 notifies as Code Red again ("Now Code Red"), excluding whoever changed it; a change back to Code Green is

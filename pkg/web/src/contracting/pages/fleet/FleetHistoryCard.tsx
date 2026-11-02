@@ -1,5 +1,5 @@
 import { formatDate, type StatusBadgeColor } from '@pkg/domain';
-import { fleetHistoryKindLabels } from '@pkg/domain/contracting';
+import { fleetHistoryKindLabels, fleetHistoryRowKey } from '@pkg/domain/contracting';
 import {
   type BreakdownSubjectRef,
   type FleetHistoryListInput,
@@ -159,7 +159,7 @@ export function FleetHistoryCard({
     columns,
     data: items,
     enableSortingRemoval: false,
-    getRowId: (row) => `${row.kind}-${row.readingRole ?? ''}-${row.id}`,
+    getRowId: fleetHistoryRowKey,
     manualFiltering: true,
     manualSorting: true,
     onColumnFiltersChange: tableController.setColumnFilters,

@@ -70,7 +70,8 @@ services:
     restart: "no"
 
   minio:
-    image: minio/minio:latest
+    # MinIO no longer publishes pullable images; this third-party community build bundles mc. Bump the pin on purpose.
+    image: &minio-image pgsty/minio:RELEASE.2026-08-04T00-00-00Z
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
@@ -88,7 +89,7 @@ services:
       retries: 10
 
   minio-init:
-    image: minio/mc:latest
+    image: *minio-image
     depends_on:
       minio:
         condition: service_healthy

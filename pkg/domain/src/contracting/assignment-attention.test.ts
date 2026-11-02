@@ -77,20 +77,21 @@ describe('assignment attention', () => {
   });
 
   it('re-arms a dismissal only when a fact its kind reads changes', () => {
-    const row = {
-      arrivalHours: 4480,
-      departureHours: 4500,
-      arrivalTelematicsHours: 4512,
-      departureTelematicsHours: null,
+    const facts = {
       travelHours: 6,
       travelClamped: false,
+      arrival: { hours: 4480, telematics: { hours: 4512, at } },
+      departure: { hours: 4500, telematics: null },
     };
-    expect(rearmedAttentionKinds(row, { ...row })).toEqual([]);
+    expect(rearmedAttentionKinds(facts, { ...facts })).toEqual([]);
     // A new departure is a new comparison with John Deere; Travel is untouched.
-    expect(rearmedAttentionKinds(row, { ...row, departureHours: 4510 })).toEqual(['john-deere-difference']);
-    expect(rearmedAttentionKinds(row, { ...row, travelHours: 7 })).toEqual(['travel-over-threshold']);
+    expect(rearmedAttentionKinds(facts, { ...facts, departure: { hours: 4510, telematics: null } })).toEqual([
+      'john-deere-difference',
+    ]);
+    expect(rearmedAttentionKinds(facts, { ...facts, travelHours: 7 })).toEqual(['travel-over-threshold']);
     // A moved arrival is a new comparison and, while Travel is clamped, a new reason for the clamp.
-    expect(rearmedAttentionKinds(row, { ...row, arrivalHours: 4470, travelClamped: true })).toEqual([
+    const movedArrival = { hours: 4470, telematics: facts.arrival.telematics };
+    expect(rearmedAttentionKinds(facts, { ...facts, arrival: movedArrival, travelClamped: true })).toEqual([
       'travel-clamped',
       'john-deere-difference',
     ]);

@@ -16,7 +16,14 @@ import {
   needsALookColorClassNames,
   travelProvenance,
 } from '@pkg/domain/contracting';
-import type { Assignment, BreakdownSummary, BreakdownUrgency, JobHoursValue } from '@pkg/schema/contracting';
+import type {
+  Assignment,
+  AssignmentAttentionKind,
+  BreakdownSummary,
+  BreakdownUrgency,
+  DismissedAttention,
+  JobHoursValue,
+} from '@pkg/schema/contracting';
 import {
   IconAlertTriangle,
   IconCheck,
@@ -56,23 +63,23 @@ import { useJobWrite } from './use-job-write.js';
 
 type Opens = { onOpen: (dialog: MachineDialog) => void };
 
-/** The hours, who captured them and the comment; when, and what John Deere had read then, sit in the hover title. */
+/** The hours, who captured them and the comment; when, and what JD Link had read then, extend the hover title. */
 function ReadingDetail({ reading }: { reading: JobHoursValue }) {
-  const parts = [`Captured by ${getFirstName(reading.byName)}`, reading.comment].filter(Boolean);
+  const shown = [formatHours(reading.hours), `Captured by ${getFirstName(reading.byName)}`, reading.comment];
+  const telematics = reading.telematics;
   const title = [
-    formatHours(reading.hours),
-    `captured ${formatDate(reading.at, 'medium')} by ${getFirstName(reading.byName)}`,
-    reading.telematics
-      ? `${JD_LINK_LABEL} ${formatHours(reading.telematics.hours)} at ${formatDate(reading.telematics.at, 'medium')}`
-      : null,
-    reading.comment,
-  ]
-    .filter(Boolean)
-    .join(' · ');
+    ...shown,
+    `captured ${formatDate(reading.at, 'medium')}`,
+    telematics ? `${JD_LINK_LABEL} ${formatHours(telematics.hours)} at ${formatDate(telematics.at, 'medium')}` : null,
+  ];
+  const [hours, ...rest] = shown;
   return (
-    <span className="block truncate" title={title}>
-      <span className="font-medium text-primary">{formatHours(reading.hours)}</span>
-      {parts.map((part) => ` · ${part}`).join('')}
+    <span className="block truncate" title={title.filter(Boolean).join(' · ')}>
+      <span className="font-medium text-primary">{hours}</span>
+      {rest
+        .filter(Boolean)
+        .map((part) => ` · ${part}`)
+        .join('')}
     </span>
   );
 }
@@ -102,10 +109,73 @@ function HoursAction({
   );
 }
 
-/**
- * The amber badge per reason the stint needs a look, with a dismiss control for whoever may dismiss it, each dismissed
- * reason faded in its own place, and the latest management edit of its hours.
- */
+const attentionBadgeClassName = cn(
+  'h-auto whitespace-normal',
+  needsALookColorClassNames.chip,
+  needsALookColorClassNames.text,
+);
+
+/** A reason the stint needs a look, with a dismiss control for whoever may dismiss it. */
+function NeedsALookBadge({
+  stint,
+  kind,
+  sentence,
+  canDismiss,
+}: {
+  stint: Assignment;
+  kind: AssignmentAttentionKind;
+  sentence: string;
+  canDismiss: boolean;
+}) {
+  const trpc = useTRPC();
+  const write = useJobWrite();
+  const dismiss = useMutation(
+    trpc.contractingJobs.assignments.dismissAttention.mutationOptions(write.card('Unable to dismiss the warning.')),
+  );
+  return (
+    <Badge className={attentionBadgeClassName} variant="outline">
+      <IconAlertTriangle aria-hidden="true" />
+      {sentence}
+      {canDismiss ? (
+        <button
+          aria-label={`Dismiss for everyone: ${sentence}`}
+          className="-mr-1 rounded-full p-0.5 opacity-0 transition-opacity hover:bg-orange-500/20 focus-visible:opacity-100 disabled:opacity-50 group-hover/badge:opacity-100 pointer-coarse:opacity-100"
+          disabled={dismiss.isPending}
+          onClick={() => dismiss.mutate({ assignmentId: stint.id, kind })}
+          title="Dismiss for everyone"
+          type="button"
+        >
+          <IconX aria-hidden="true" className="size-3" />
+        </button>
+      ) : null}
+    </Badge>
+  );
+}
+
+/** A dismissed reason, faded in its own place; hovering brings it back and says who dismissed it, and when. */
+function DismissedBadge({ sentence, dismissal }: { sentence: string; dismissal: DismissedAttention }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Badge
+            className={cn(attentionBadgeClassName, 'opacity-30 transition-opacity hover:opacity-100')}
+            variant="outline"
+          />
+        }
+      >
+        <IconAlertTriangle aria-hidden="true" />
+        {sentence}
+      </TooltipTrigger>
+      <TooltipContent>
+        {`Dismissed by ${getFirstName(dismissal.dismissedByName)} · `}
+        <DateDisplay date={dismissal.dismissedAt} format="medium" />
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+/** The stint's needs-a-look badges, dismissed ones faded in place, and the latest management edit of its hours. */
 function StintAttention({
   stint,
   thresholds,
@@ -115,52 +185,16 @@ function StintAttention({
   thresholds: AttentionThresholds;
   canDismiss: boolean;
 }) {
-  const trpc = useTRPC();
-  const write = useJobWrite();
-  const dismiss = useMutation(
-    trpc.contractingJobs.assignments.dismissAttention.mutationOptions(write.card('Unable to dismiss the warning.')),
-  );
-  if (!stint.attention.length && !stint.dismissedAttention.length && !stint.amendment) return null;
-  const badgeClassName = cn('h-auto whitespace-normal', needsALookColorClassNames.chip, needsALookColorClassNames.text);
+  const badges = attentionBadges(stint);
+  if (!badges.length && !stint.amendment) return null;
   return (
     <div className="mb-3 flex flex-wrap gap-2">
-      {attentionBadges(stint).map(({ kind, dismissal }) => {
+      {badges.map(({ kind, dismissal }) => {
         const sentence = assignmentAttentionSentence(kind, stint, thresholds);
         return dismissal ? (
-          <Tooltip key={kind}>
-            <TooltipTrigger
-              render={
-                <Badge
-                  className={cn(badgeClassName, 'opacity-30 transition-opacity hover:opacity-100')}
-                  variant="outline"
-                />
-              }
-            >
-              <IconAlertTriangle aria-hidden="true" />
-              {sentence}
-            </TooltipTrigger>
-            <TooltipContent>
-              {`Dismissed by ${getFirstName(dismissal.dismissedByName)} · `}
-              <DateDisplay date={dismissal.dismissedAt} format="medium" />
-            </TooltipContent>
-          </Tooltip>
+          <DismissedBadge dismissal={dismissal} key={kind} sentence={sentence} />
         ) : (
-          <Badge className={badgeClassName} key={kind} variant="outline">
-            <IconAlertTriangle aria-hidden="true" />
-            {sentence}
-            {canDismiss ? (
-              <button
-                aria-label={`Dismiss for everyone: ${sentence}`}
-                className="-mr-1 rounded-full p-0.5 opacity-0 transition-opacity hover:bg-orange-500/20 focus-visible:opacity-100 disabled:opacity-50 group-hover/badge:opacity-100 pointer-coarse:opacity-100"
-                disabled={dismiss.isPending}
-                onClick={() => dismiss.mutate({ assignmentId: stint.id, kind })}
-                title="Dismiss for everyone"
-                type="button"
-              >
-                <IconX aria-hidden="true" className="size-3" />
-              </button>
-            ) : null}
-          </Badge>
+          <NeedsALookBadge canDismiss={canDismiss} key={kind} kind={kind} sentence={sentence} stint={stint} />
         );
       })}
       {stint.amendment ? (

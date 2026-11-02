@@ -1,6 +1,6 @@
 import { useChat } from '@ai-sdk/react';
 import { IconPlus } from '@tabler/icons-react-native';
-import { type Href, useLocalSearchParams, useRouter } from 'expo-router';
+import { type Href, useLocalSearchParams } from 'expo-router';
 import { Pressable, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '@/components/ui/icon';
@@ -13,7 +13,6 @@ import { useKeyboardBottomPadding } from '@/lib/keyboard-padding';
 import { captureEvent } from '@/lib/observability';
 
 export default function AssistantRoute() {
-  const router = useRouter();
   const { parentHref } = useLocalSearchParams<{ parentHref?: string }>();
   const parent = resolveAssistantParent(parentHref);
   const { chat, reset } = useAssistant();
@@ -25,12 +24,7 @@ export default function AssistantRoute() {
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom', 'left', 'right']}>
       <View className="flex-1" style={{ paddingBottom: keyboardBottomPadding }}>
-        <SecondaryPageToolbar
-          onBack={() => router.dismissTo(parent.href as Href)}
-          parentLabel={parent.label}
-          subtitle="ACTS WITH YOUR PERMISSIONS"
-          title="Assistant"
-        />
+        <SecondaryPageToolbar fallback={parent.href as Href} subtitle="ACTS WITH YOUR PERMISSIONS" title="Assistant" />
         <View className="items-end px-4 pt-3">
           <Pressable
             accessibilityLabel="New chat"

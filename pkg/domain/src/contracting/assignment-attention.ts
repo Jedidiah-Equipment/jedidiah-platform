@@ -13,7 +13,7 @@ export type AttentionThresholds = { travelFlagThresholdHours: number; johnDeereD
 type AttentionReading = { hours: number; telematics: { hours: number; at: string } | null } | null;
 
 /** What a kind's sentence names: the stint's Travel and each Job Hours' John Deere snapshot. */
-type AttentionFacts = {
+export type AttentionFacts = {
   travelHours: number | null;
   travelClamped: boolean;
   arrival: AttentionReading;
@@ -32,24 +32,14 @@ export function johnDeereDifferenceOver(stint: AttentionFacts, threshold: number
   return over.length ? Math.max(...over) : null;
 }
 
-/** The stored Assignment columns the kinds read, as a write sees them before and after. */
-export type AttentionFactsRow = {
-  arrivalHours: number | null;
-  departureHours: number | null;
-  arrivalTelematicsHours: number | null;
-  departureTelematicsHours: number | null;
-  travelHours: number | null;
-  travelClamped: boolean;
-};
-
 type AttentionKindRule = {
   label: string;
   /** Travel set by hand was looked at: neither Travel kind holds after it, the clamp being cleared by the set. */
   holds: (stint: AttentionStint, thresholds: AttentionThresholds) => boolean;
   /** The badge on the stint, naming its hours. */
   sentence: (stint: AttentionFacts, thresholds: AttentionThresholds) => string;
-  /** The columns the kind reads: when any of them changes, a dismissal of the kind no longer stands. */
-  facts: (row: AttentionFactsRow) => readonly unknown[];
+  /** The facts the kind reads: when any of them changes, a dismissal of the kind no longer stands. */
+  facts: (stint: AttentionFacts) => readonly unknown[];
 };
 
 /** Assignment Attention has one level, needs a look: amber, counted and filtered for, and it blocks nothing. */
@@ -60,14 +50,14 @@ const attentionKindRules: Record<AssignmentAttentionKind, AttentionKindRule> = {
       !stint.travelSet && stint.travelHours !== null && isOverTravelFlag(stint.travelHours, travelFlagThresholdHours),
     sentence: (stint, { travelFlagThresholdHours }) =>
       `Travel ${formatHours(stint.travelHours ?? 0)} is over the ${formatHours(travelFlagThresholdHours)} threshold`,
-    facts: (row) => [row.travelHours],
+    facts: (stint) => [stint.travelHours],
   },
   'travel-clamped': {
     label: `Travel set to ${formatHours(0)}`,
     holds: (stint) => stint.travelClamped,
     sentence: (stint) =>
       `Travel set to ${formatHours(0)}: arrival ${formatHours(stint.arrival?.hours ?? 0)} is below the Machine's previous departure`,
-    facts: (row) => [row.travelClamped, row.arrivalHours],
+    facts: (stint) => [stint.travelClamped, stint.arrival?.hours],
   },
   'john-deere-difference': {
     label: `${JD_LINK_LABEL} differs`,
@@ -75,7 +65,12 @@ const attentionKindRules: Record<AssignmentAttentionKind, AttentionKindRule> = {
       johnDeereDifferenceOver(stint, johnDeereDifferenceThresholdHours) !== null,
     sentence: (stint, { johnDeereDifferenceThresholdHours }) =>
       `${JD_LINK_LABEL} differs by ${formatHours(johnDeereDifferenceOver(stint, johnDeereDifferenceThresholdHours) ?? 0)}`,
-    facts: (row) => [row.arrivalHours, row.departureHours, row.arrivalTelematicsHours, row.departureTelematicsHours],
+    facts: ({ arrival, departure }) => [
+      arrival?.hours,
+      departure?.hours,
+      arrival?.telematics?.hours,
+      departure?.telematics?.hours,
+    ],
   },
 };
 
@@ -102,7 +97,7 @@ export function stintAttention(
 }
 
 /** The kinds whose facts a write changed: their dismissals no longer stand. */
-export const rearmedAttentionKinds = (before: AttentionFactsRow, after: AttentionFactsRow) =>
+export const rearmedAttentionKinds = (before: AttentionFacts, after: AttentionFacts) =>
   assignmentAttentionKinds.filter((kind) => {
     const was = attentionKindRules[kind].facts(before);
     const is = attentionKindRules[kind].facts(after);

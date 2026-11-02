@@ -2,9 +2,9 @@ import { formatDate, jobStatusAccentColor } from '@pkg/domain';
 import { getBayDisplayText } from '@pkg/domain/equipment';
 import type { BayOperator } from '@pkg/schema/equipment';
 import { IconChevronRight } from '@tabler/icons-react-native';
+import { usePreventRemove } from 'expo-router/react-navigation';
 import { useState } from 'react';
 import { Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
-
 import { Avatar } from '@/components/Avatar';
 import { SECONDARY_PAGE_CONTENT_STYLE } from '@/components/page-frame';
 import { Icon } from '@/components/ui/icon';
@@ -16,7 +16,6 @@ import { STATUS_TONE } from '@/equipment/components/bays/status-chip';
 import { CustomerName } from '@/equipment/components/CustomerName';
 import { OfferingAvatar } from '@/equipment/components/OfferingAvatar';
 import { SecondaryPageToolbar } from '@/equipment/components/TopToolbar';
-import { bayToolbarParentLabel } from '@/equipment/lib/toolbar-navigation';
 import {
   type BayQueueActiveJob,
   type BayQueueState,
@@ -84,13 +83,16 @@ const timelineClasses = {
  * (≥760px) shows them side by side; narrow pushes the detail over the list and
  * back returns to it. Owns the loading, empty, error, and bay-not-found states.
  */
-export function BayQueueScreen({ bayId, onBack }: { bayId: string; onBack: () => void }) {
+/** With nothing beneath it, back goes to the Plan. */
+const PLAN = '/equipment/plan' as const;
+
+export function BayQueueScreen({ bayId }: { bayId: string }) {
   const state = useBaySchedule(bayId);
   const isWide = useWindowDimensions().width >= WIDE_BREAKPOINT;
 
   if (state.status === 'pending') {
     return (
-      <Frame onBack={onBack} operator={null} title="Bay schedule">
+      <Frame operator={null} title="Bay schedule">
         <ScheduleSkeleton />
       </Frame>
     );
@@ -98,7 +100,7 @@ export function BayQueueScreen({ bayId, onBack }: { bayId: string; onBack: () =>
 
   if (state.status === 'forbidden') {
     return (
-      <Frame onBack={onBack} operator={null} title="Bay schedule">
+      <Frame operator={null} title="Bay schedule">
         <Text className="text-sm text-foreground" weight="semibold">
           You don’t have access to this Bay schedule.
         </Text>
@@ -111,7 +113,7 @@ export function BayQueueScreen({ bayId, onBack }: { bayId: string; onBack: () =>
 
   if (state.status === 'error') {
     return (
-      <Frame onBack={onBack} operator={null} title="Bay schedule">
+      <Frame operator={null} title="Bay schedule">
         <Text className="text-sm text-danger" weight="semibold">
           Couldn’t load this bay’s schedule.
         </Text>
@@ -122,7 +124,7 @@ export function BayQueueScreen({ bayId, onBack }: { bayId: string; onBack: () =>
 
   if (state.status === 'not-found') {
     return (
-      <Frame onBack={onBack} operator={null} title="Bay schedule">
+      <Frame operator={null} title="Bay schedule">
         <Text className="text-sm text-foreground" weight="semibold">
           Bay not found.
         </Text>
@@ -131,18 +133,10 @@ export function BayQueueScreen({ bayId, onBack }: { bayId: string; onBack: () =>
     );
   }
 
-  return <Ready isWide={isWide} onBack={onBack} state={state} />;
+  return <Ready isWide={isWide} state={state} />;
 }
 
-function Ready({
-  state,
-  isWide,
-  onBack,
-}: {
-  state: Extract<BayQueueState, { status: 'ready' }>;
-  isWide: boolean;
-  onBack: () => void;
-}) {
+function Ready({ state, isWide }: { state: Extract<BayQueueState, { status: 'ready' }>; isWide: boolean }) {
   const { bay, slotsById } = state;
   const [selectedId, setSelectedId] = useState<string | null>(null);
   // Narrow only: which pane is on top. Wide shows both regardless.
@@ -159,15 +153,12 @@ function Ready({
     setSelectedId(slotId);
     if (!isWide) setDetailOpen(true);
   };
-  const handleBack = () => {
-    if (!isWide && detailOpen) setDetailOpen(false);
-    else onBack();
-  };
-
   const showList = isWide || !detailOpen;
   const showDetail = isWide || detailOpen;
   const display = getBayDisplayText({ bayName: bay.name, operatorName: bay.operator?.name ?? null });
   const onDetail = !isWide && detailOpen;
+  // On a narrow screen the open Slot detail is a step of its own: every way back closes it first.
+  usePreventRemove(onDetail, () => setDetailOpen(false));
 
   return (
     <>
@@ -182,8 +173,7 @@ function Ready({
           )
         }
         helpTopic="plan"
-        onBack={handleBack}
-        parentLabel={bayToolbarParentLabel(onDetail)}
+        fallback={PLAN}
         subtitle={onDetail && selected ? selected.jobDisplayName : display.secondaryText}
         title={onDetail && selected ? selected.jobCode : display.primaryText}
       />
@@ -485,12 +475,10 @@ function SectionLabel({ children, className = '' }: { children: string; classNam
 function Frame({
   title,
   operator,
-  onBack,
   children,
 }: {
   title: string;
   operator: BayOperator | null;
-  onBack: () => void;
   children: React.ReactNode;
 }) {
   return (
@@ -504,8 +492,7 @@ function Frame({
           />
         }
         helpTopic="plan"
-        onBack={onBack}
-        parentLabel="Plan"
+        fallback={PLAN}
         subtitle="BAY SCHEDULE"
         title={title}
       />

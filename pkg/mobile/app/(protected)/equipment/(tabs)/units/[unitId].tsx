@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -12,10 +12,8 @@ import { useTRPC } from '@/lib/trpc';
 /** Read-only Product Unit view. The units layout owns the permission gate. */
 export default function UnitDetailRoute() {
   const { unitId } = useLocalSearchParams<{ unitId: string }>();
-  const router = useRouter();
   const trpc = useTRPC();
   const query = useQuery(trpc.productUnits.get.queryOptions({ id: unitId }));
-  const handleBack = () => router.dismissTo('/equipment/units');
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
@@ -30,8 +28,7 @@ export default function UnitDetailRoute() {
             />
           ) : undefined
         }
-        onBack={handleBack}
-        parentLabel="Units"
+        fallback={'/equipment/units'}
         subtitle={query.isPending ? 'LOADING UNIT…' : query.isError ? 'UNIT UNAVAILABLE' : query.data.product.name}
         title={query.data?.productSerialNumber ?? 'Unit'}
       />

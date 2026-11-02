@@ -44,13 +44,16 @@ const JOB_DETAIL_TABS: readonly SubTabOption<JobDetailTab>[] = [
  * stacks the detail over the route. Days-left + overall progress come from the shared Job projection,
  * so they match the Job List card. Owns the loading, forbidden, error, and not-found states.
  */
-export function JobDetail({ jobId, onBack }: { jobId: string; onBack: () => void }) {
+/** With nothing beneath it, back goes to the Jobs list. */
+const JOBS_LIST = '/equipment/jobs' as const;
+
+export function JobDetail({ jobId }: { jobId: string }) {
   const state = useJobDetail(jobId);
   const isWide = useWindowDimensions().width >= WIDE_BREAKPOINT;
 
   if (state.status === 'pending') {
     return (
-      <Frame onBack={onBack}>
+      <Frame>
         <DetailSkeleton />
       </Frame>
     );
@@ -58,7 +61,7 @@ export function JobDetail({ jobId, onBack }: { jobId: string; onBack: () => void
 
   if (state.status === 'forbidden') {
     return (
-      <Frame onBack={onBack}>
+      <Frame>
         <Text className="text-sm text-foreground" weight="semibold">
           You don’t have access to this Job.
         </Text>
@@ -71,7 +74,7 @@ export function JobDetail({ jobId, onBack }: { jobId: string; onBack: () => void
 
   if (state.status === 'error') {
     return (
-      <Frame onBack={onBack}>
+      <Frame>
         <Text className="text-sm text-danger" weight="semibold">
           Couldn’t load this Job.
         </Text>
@@ -82,7 +85,7 @@ export function JobDetail({ jobId, onBack }: { jobId: string; onBack: () => void
 
   if (state.status === 'not-found') {
     return (
-      <Frame onBack={onBack}>
+      <Frame>
         <Text className="text-sm text-foreground" weight="semibold">
           Job not found.
         </Text>
@@ -91,33 +94,17 @@ export function JobDetail({ jobId, onBack }: { jobId: string; onBack: () => void
     );
   }
 
-  return <Ready isWide={isWide} jobId={jobId} onBack={onBack} state={state} />;
+  return <Ready isWide={isWide} jobId={jobId} state={state} />;
 }
 
-function Ready({
-  state,
-  jobId,
-  isWide,
-  onBack,
-}: {
-  state: ReadyState;
-  jobId: string;
-  isWide: boolean;
-  onBack: () => void;
-}) {
+function Ready({ state, jobId, isWide }: { state: ReadyState; jobId: string; isWide: boolean }) {
   const [activeTab, setActiveTab] = usePersistedState<JobDetailTab>(
     'jedidiah-job-detail-tab',
     'details',
     isJobDetailTab,
   );
   const header = (
-    <SecondaryPageToolbar
-      helpTopic="jobs"
-      onBack={onBack}
-      parentLabel="Jobs"
-      subtitle={state.jobDisplayName}
-      title={state.jobCode}
-    />
+    <SecondaryPageToolbar helpTopic="jobs" fallback={JOBS_LIST} subtitle={state.jobDisplayName} title={state.jobCode} />
   );
 
   return (
@@ -438,10 +425,10 @@ function jobStatus(progress: JobProgress | null, totalCount: number): { tone: St
 }
 
 /** Header + a single scroll for the non-ready states, mirroring the Bay schedule screen. */
-function Frame({ children, onBack }: { children: ReactNode; onBack: () => void }) {
+function Frame({ children }: { children: ReactNode }) {
   return (
     <>
-      <SecondaryPageToolbar helpTopic="jobs" onBack={onBack} parentLabel="Jobs" subtitle="JOB DETAIL" title="Job" />
+      <SecondaryPageToolbar fallback={JOBS_LIST} helpTopic="jobs" subtitle="JOB DETAIL" title="Job" />
       <ScrollView contentContainerStyle={SECONDARY_PAGE_CONTENT_STYLE} refreshControl={<RefreshControl />}>
         {children}
       </ScrollView>

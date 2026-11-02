@@ -1,79 +1,80 @@
 import type { ScreenCatalog } from '@/lib/screen-catalog';
+import { CONTRACTING_TAB_STACK } from './lib/app-tabs';
+
+const TABS = `(protected)/contracting/(tabs)/${CONTRACTING_TAB_STACK}`;
 
 /** Contracting route patterns emitted as non-sensitive mobile `$screen` names. */
 export const CONTRACTING_SCREEN_CATALOG = {
   '(protected)/contracting/index.tsx': { business: 'contracting', name: '/contracting' },
-  '(protected)/contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/jobs/index.tsx': {
+  [`${TABS}/jobs/index.tsx`]: {
     business: 'contracting',
     name: '/contracting/jobs',
   },
-  '(protected)/contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/jobs/new.tsx': {
+  [`${TABS}/jobs/new.tsx`]: {
     business: 'contracting',
     name: '/contracting/jobs/new',
   },
-  '(protected)/contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/jobs/[jobId].tsx': {
+  [`${TABS}/jobs/[jobId].tsx`]: {
     business: 'contracting',
     name: '/contracting/jobs/[jobId]',
   },
-  '(protected)/contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/jobs/[jobId]/add-machine.tsx':
-    {
-      business: 'contracting',
-      name: '/contracting/jobs/[jobId]/add-machine',
-    },
-  '(protected)/contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/jobs/[jobId]/capture.tsx': {
+  [`${TABS}/jobs/[jobId]/add-machine.tsx`]: {
+    business: 'contracting',
+    name: '/contracting/jobs/[jobId]/add-machine',
+  },
+  [`${TABS}/jobs/[jobId]/capture.tsx`]: {
     business: 'contracting',
     name: '/contracting/jobs/[jobId]/capture',
   },
-  '(protected)/contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/machines/index.tsx': {
+  [`${TABS}/machines/index.tsx`]: {
     business: 'contracting',
     name: '/contracting/machines',
   },
-  '(protected)/contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/machines/[id]/index.tsx': {
+  [`${TABS}/machines/[id]/index.tsx`]: {
     business: 'contracting',
     name: '/contracting/machines/[id]',
   },
-  '(protected)/contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/machines/[id]/capture.tsx': {
+  [`${TABS}/machines/[id]/capture.tsx`]: {
     business: 'contracting',
     name: '/contracting/machines/[id]/capture',
   },
-  '(protected)/contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/workshop/index.tsx': {
+  [`${TABS}/workshop/index.tsx`]: {
     business: 'contracting',
     name: '/contracting/workshop',
   },
-  '(protected)/contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/workshop/[breakdownId].tsx': {
+  [`${TABS}/workshop/[breakdownId].tsx`]: {
     business: 'contracting',
     name: '/contracting/workshop/[breakdownId]',
   },
-  '(protected)/contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/workshop/report.tsx': {
+  [`${TABS}/workshop/report.tsx`]: {
     business: 'contracting',
     name: '/contracting/workshop/report',
   },
-  '(protected)/contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/services/index.tsx': {
+  [`${TABS}/services/index.tsx`]: {
     business: 'contracting',
     name: '/contracting/services',
   },
-  '(protected)/contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/services/[serviceId].tsx': {
+  [`${TABS}/services/[serviceId].tsx`]: {
     business: 'contracting',
     name: '/contracting/services/[serviceId]',
   },
-  '(protected)/contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/services/machine/[machineId].tsx':
-    {
-      business: 'contracting',
-      name: '/contracting/services/machine/[machineId]',
-    },
-  '(protected)/contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/activity/index.tsx': {
+  [`${TABS}/services/machine/[machineId].tsx`]: {
+    business: 'contracting',
+    name: '/contracting/services/machine/[machineId]',
+  },
+  [`${TABS}/activity/index.tsx`]: {
     business: 'contracting',
     name: '/contracting/activity',
   },
-  '(protected)/contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/field-notes/index.tsx': {
+  [`${TABS}/field-notes/index.tsx`]: {
     business: 'contracting',
     name: '/contracting/field-notes',
   },
-  '(protected)/contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/field-notes/new.tsx': {
+  [`${TABS}/field-notes/new.tsx`]: {
     business: 'contracting',
     name: '/contracting/field-notes/new',
   },
-  '(protected)/contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/field-notes/[noteId].tsx': {
+  [`${TABS}/field-notes/[noteId].tsx`]: {
     business: 'contracting',
     name: '/contracting/field-notes/[noteId]',
   },

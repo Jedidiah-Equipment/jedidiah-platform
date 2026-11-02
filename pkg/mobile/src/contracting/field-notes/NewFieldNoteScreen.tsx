@@ -68,7 +68,6 @@ export default function NewFieldNoteScreen() {
           title="New Field Note"
           subtitle="CONTRACTING"
           fallback={CONTRACTING_TAB_HREF['field-notes']}
-          backDisabled={busy}
           helpTopic="contractingMobileFieldNote"
         />
       }

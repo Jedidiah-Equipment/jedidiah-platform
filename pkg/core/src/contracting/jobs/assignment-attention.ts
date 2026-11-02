@@ -2,10 +2,8 @@ import { type DatabaseTransaction, type Db, user } from '@pkg/db';
 import { contractingAttentionDismissals, contractingJobs, contractingMachineAssignments } from '@pkg/db/contracting';
 import {
   type AttentionStint,
-  type AttentionThresholds,
   type JobActor,
   rearmedAttentionKinds,
-  stintAttention,
   stintAttentionKinds,
 } from '@pkg/domain/contracting';
 import { type AssignmentAttentionKind, type AttentionDismissInput, DismissedAttention } from '@pkg/schema/contracting';
@@ -54,10 +52,9 @@ export const assignmentAttention = sql<number>`(
 
 export const needsALook = sql<boolean>`(${assignmentAttention} > 0)`;
 
-/** Every dismissal on these Jobs' Assignments, by Assignment, with who dismissed it. */
-export async function loadDismissals(db: DbOrTx, jobIds: readonly string[]) {
+/** Every dismissal on the Job's Assignments, by Assignment, with who dismissed it. */
+export async function loadDismissals(db: DbOrTx, jobId: string) {
   const byAssignment = new Map<string, DismissedAttention[]>();
-  if (!jobIds.length) return byAssignment;
   const rows = await db
     .select({
       assignmentId: contractingAttentionDismissals.assignmentId,
@@ -71,7 +68,7 @@ export async function loadDismissals(db: DbOrTx, jobIds: readonly string[]) {
       eq(contractingMachineAssignments.id, contractingAttentionDismissals.assignmentId),
     )
     .innerJoin(user, eq(user.id, contractingAttentionDismissals.dismissedByUserId))
-    .where(inArray(contractingMachineAssignments.jobId, [...jobIds]));
+    .where(eq(contractingMachineAssignments.jobId, jobId));
   for (const { assignmentId, dismissedAt, ...row } of rows) {
     const dismissal = DismissedAttention.parse({ ...row, dismissedAt: dismissedAt.toISOString() });
     byAssignment.set(assignmentId, [...(byAssignment.get(assignmentId) ?? []), dismissal]);
@@ -99,16 +96,9 @@ export const attentionStint = (row: AssignmentRow): AttentionStint => ({
   departure: reading(row.departureHours, row.departureTelematicsHours, row.departureTelematicsAt),
 });
 
-/** The stint's needs-a-look kinds and its dismissed ones, as every read serves them. */
-export const readAttention = (
-  row: AssignmentRow,
-  thresholds: AttentionThresholds,
-  dismissals: readonly DismissedAttention[],
-) => stintAttention(attentionStint(row), thresholds, dismissals);
-
 /** Deletes the dismissals whose facts this Assignment write changed, so their kinds are judged again. */
 export async function rearmAttention(tx: DatabaseTransaction, before: AssignmentRow, after: AssignmentRow) {
-  const kinds = rearmedAttentionKinds(before, after);
+  const kinds = rearmedAttentionKinds(attentionStint(before), attentionStint(after));
   if (!kinds.length) return;
   await tx
     .delete(contractingAttentionDismissals)

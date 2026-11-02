@@ -13,6 +13,7 @@ import {
   parseJobNumber,
   priceJob,
   type StoredStintPricing,
+  stintAttention,
 } from '@pkg/domain/contracting';
 import {
   type Assignment,
@@ -23,7 +24,7 @@ import {
 } from '@pkg/schema/contracting';
 import { and, asc, eq } from 'drizzle-orm';
 import { getContractingSettings } from '../settings/settings-service.js';
-import { loadDismissals, readAttention } from './assignment-attention.js';
+import { attentionStint, loadDismissals } from './assignment-attention.js';
 import { assertOwner, jobNotFound } from './job-errors.js';
 import {
   type DbOrTx,
@@ -81,12 +82,10 @@ function storedPricing(row: LoadedStint): StoredStintPricing | null {
   };
 }
 
-function mapAssignment(
-  row: LoadedStint,
-  measures: readonly LoadedMeasure[],
-  thresholds: AttentionThresholds,
-  dismissals: readonly DismissedAttention[],
-) {
+/** What the Job read loads per stint beside the stint row itself. */
+type StintExtras = { measures: readonly LoadedMeasure[]; dismissals: readonly DismissedAttention[] };
+
+function mapAssignment(row: LoadedStint, thresholds: AttentionThresholds, { measures, dismissals }: StintExtras) {
   const { stint } = row;
   const arrival = jobHoursValue(row.arrival);
   const departure = jobHoursValue(row.departure);
@@ -99,7 +98,7 @@ function mapAssignment(
     departure,
     travelSetByName: stint.travelSetAt ? row.travelSetByName : null,
     ...deriveStintHours({ arrivalHours, departureHours, travelHours }),
-    ...readAttention(stint, thresholds, dismissals),
+    ...stintAttention(attentionStint(stint), thresholds, dismissals),
     amendment:
       stint.hoursAmendedAt && stint.hoursAmendmentReason
         ? {
@@ -125,19 +124,17 @@ export async function getJob({ db, ...lookup }: { db: DbOrTx } & JobLookup): Pro
     loadMeasures(db, job.id),
     loadChargeLines(db, job.id),
     getContractingSettings({ db }),
-    loadDismissals(db, [job.id]),
+    loadDismissals(db, job.id),
   ]);
   const sorted = rows.sort(
     (left, right) =>
       arrivalOrder(left) - arrivalOrder(right) || left.stint.createdAt.getTime() - right.stint.createdAt.getTime(),
   );
   const stints = sorted.map((row) => ({
-    assignment: mapAssignment(
-      row,
-      measures.filter((measure) => measure.assignmentId === row.stint.id),
-      settings,
-      dismissals.get(row.stint.id) ?? [],
-    ),
+    assignment: mapAssignment(row, settings, {
+      measures: measures.filter((measure) => measure.assignmentId === row.stint.id),
+      dismissals: dismissals.get(row.stint.id) ?? [],
+    }),
     stored: storedPricing(row),
   }));
   const priced = priceJob({

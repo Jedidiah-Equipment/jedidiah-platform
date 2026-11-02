@@ -1,8 +1,7 @@
 import { BUSINESS_HOME } from '@/lib/business-home';
-import { CONTRACTING_TAB_HREF } from './app-tabs';
+import { CONTRACTING_TAB_HREF, contractingTabPath } from './app-tabs';
 
-// The pathname the router reports, which drops the tab group.
-const FIELD_NOTES = '/contracting/field-notes';
+const FIELD_NOTES = contractingTabPath('field-notes');
 const isAtOrUnder = (pathname: string, route: string) => pathname === route || pathname.startsWith(`${route}/`);
 
 /** Every route sits behind the offline cover except Field Notes: capture is online only (ADR 0029). */

@@ -17,7 +17,7 @@ import { hasRequiredLength, parseQuantity, QuantityField } from '@/equipment/com
 import { NoActorNotice, StoresPartScreen } from '@/equipment/components/stores/StoresPartScreen';
 import { previewReturnToSupplierWarnings } from '@/equipment/lib/movement-preview';
 import { useMovementActorUserId } from '@/equipment/lib/stores-actor';
-import { resolveStoresMovementParent } from '@/equipment/lib/toolbar-navigation';
+import { storesMovementReturnTo } from '@/equipment/lib/toolbar-navigation';
 import { useMovementConfirm } from '@/equipment/lib/use-movement-confirm';
 import { useStoresPostOutcome } from '@/equipment/lib/use-stores-post';
 import { useTRPC } from '@/lib/trpc';
@@ -49,7 +49,7 @@ function ReturnToSupplierForm({ row }: { row: StockOnHandRow }) {
   const [note, setNote] = useState('');
 
   const outcome = useStoresPostOutcome({
-    returnTo: resolveStoresMovementParent({ partCode: row.partCode }).returnTo,
+    returnTo: storesMovementReturnTo({ partCode: row.partCode }),
     successMessage: 'Return to Supplier posted',
   });
   const mutation = useMutation(

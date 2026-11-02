@@ -13,17 +13,13 @@ export const SHARED_SCREEN_CATALOG: ScreenCatalog = {
 
 /** A file under a shared group, `(a,b)/x`, is a route in each group: `(a)/x` and `(b)/x`. */
 function routeSegments(file: string): string[] {
-  return file
-    .replace(/\.tsx$/, '')
-    .split('/')
-    .reduce<string[]>(
-      (routes, segment) => {
-        const shared = /^\((.+,.+)\)$/.exec(segment)?.[1]?.split(',');
-        const expanded = shared ? shared.map((group) => `(${group})`) : [segment];
-        return routes.flatMap((route) => expanded.map((part) => (route ? `${route}/${part}` : part)));
-      },
-      [''],
-    );
+  let routes = [''];
+  for (const segment of file.replace(/\.tsx$/, '').split('/')) {
+    const groups = /^\((.+,.+)\)$/.exec(segment)?.[1]?.split(',');
+    const parts = groups ? groups.map((group) => `(${group})`) : [segment];
+    routes = routes.flatMap((route) => parts.map((part) => (route ? `${route}/${part}` : part)));
+  }
+  return routes;
 }
 
 export function createScreenResolver(catalogs: readonly ScreenCatalog[]) {

@@ -1,4 +1,5 @@
 import type { HelpTopic } from '@pkg/domain';
+import type { Href } from 'expo-router';
 import type React from 'react';
 import { ProfileMenuButton } from '@/components/ProfileMenuButton';
 import { MainToolbar, SecondaryToolbar } from '@/components/TopToolbar';
@@ -33,17 +34,15 @@ export function MainTabToolbar({
 export function SecondaryPageToolbar({
   avatar,
   badge,
+  fallback,
   helpTopic,
-  onBack,
-  parentLabel,
   subtitle,
   title,
 }: {
   avatar?: React.ReactNode;
   badge?: React.ReactNode;
+  fallback: Href;
   helpTopic?: HelpTopic;
-  onBack: () => void;
-  parentLabel: string;
   subtitle: string;
   title: string;
 }) {
@@ -52,8 +51,7 @@ export function SecondaryPageToolbar({
       actions={<ProfileMenuButton helpTopic={helpTopic} />}
       avatar={avatar}
       badge={badge}
-      onBack={onBack}
-      parentLabel={parentLabel}
+      fallback={fallback}
       subtitle={subtitle}
       title={title}
     />

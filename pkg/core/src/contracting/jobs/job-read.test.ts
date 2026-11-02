@@ -8,7 +8,7 @@ import { createCustomer } from '../customers/customer-service.js';
 import { createFarm } from '../customers/farm-service.js';
 import { getContractingSettings, updateContractingSettings } from '../settings/settings-service.js';
 import { admin, adminId, foreman, foremanId, leftStint, plannedStint, seedJobFixtures } from '../test/job-fixtures.js';
-import { listJobs, summarizeJobQueues } from './job-queues.js';
+import { listJobs } from './job-queues.js';
 import { getJob } from './job-read.js';
 import { createJob } from './job-service.js';
 
@@ -49,8 +49,7 @@ test('judges Travel against the current Travel Flag threshold on every read, in 
     const [summary] = (
       await listJobs({ db, actor: admin, input: JobListInput.parse({ queues: ['looks-finished'] }) })
     ).items.filter((item) => item.id === second.id);
-    const totals = await summarizeJobQueues({ db, actor: admin });
-    return { count: summary?.assignmentAttention, attention: totals.attention['looks-finished'] };
+    return summary?.assignmentAttention;
   };
   const threshold = async (travelFlagThresholdHours: number) =>
     updateContractingSettings({
@@ -59,16 +58,16 @@ test('judges Travel against the current Travel Flag threshold on every read, in 
       input: { ...(await getContractingSettings({ db })), travelFlagThresholdHours },
     });
   expect(await detail()).toEqual({ attention: [], count: 0, threshold: 4 });
-  expect(await queue()).toEqual({ count: 0, attention: null });
+  expect(await queue()).toBe(0);
 
   await threshold(2);
   expect(await detail()).toEqual({ attention: ['travel-over-threshold'], count: 1, threshold: 2 });
-  expect(await queue()).toEqual({ count: 1, attention: 'needs-a-look' });
+  expect(await queue()).toBe(1);
 
   // Equal to the threshold is not over it.
   await threshold(3);
   expect(await detail()).toEqual({ attention: [], count: 0, threshold: 3 });
-  expect(await queue()).toEqual({ count: 0, attention: null });
+  expect(await queue()).toBe(0);
 });
 
 test('lists only the Jobs needing a look when asked, the SQL agreeing with the domain on every kind', async ({

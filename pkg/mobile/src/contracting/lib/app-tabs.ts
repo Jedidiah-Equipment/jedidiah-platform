@@ -5,7 +5,7 @@ import type { Href } from 'expo-router';
 
 export type ContractingTab = 'activity' | 'jobs' | 'machines' | 'workshop' | 'services' | 'field-notes';
 
-const CONTRACTING_TABS = [
+export const CONTRACTING_TABS = [
   'activity',
   'jobs',
   'machines',
@@ -37,15 +37,14 @@ export const CONTRACTING_TAB_LABEL = {
   'field-notes': 'FIELD NOTES',
 } as const satisfies Record<ContractingTab, string>;
 
-/** Each tab's list, named in its own tab: a bare `/contracting/jobs` would open in whichever tab you are in. */
-export const CONTRACTING_TAB_HREF = {
-  activity: '/contracting/(activity)/activity' as Href,
-  jobs: '/contracting/(jobs)/jobs' as Href,
-  machines: '/contracting/(machines)/machines' as Href,
-  workshop: '/contracting/(workshop)/workshop' as Href,
-  services: '/contracting/(services)/services' as Href,
-  'field-notes': '/contracting/(field-notes)/field-notes' as Href,
-} as const satisfies Record<ContractingTab, Href>;
+/**
+ * The folder every tab's stack is a copy of: each tab is a group named for itself, `(jobs)`, holding every Contracting
+ * screen, so a record opened from another stays in the tab you are in.
+ */
+export const CONTRACTING_TAB_STACK = '(activity,field-notes,jobs,machines,services,workshop)';
+
+/** A tab's list as the router reports its pathname, which never names the group. */
+export const contractingTabPath = (tab: ContractingTab) => `/contracting/${tab}`;
 
 /**
  * A Contracting path opened in its record's own tab, as a tapped push opens it: `/contracting/jobs/j1` in Jobs. A bare
@@ -56,6 +55,11 @@ export function inOwnContractingTab(path: string): string {
   const tab = CONTRACTING_TABS.find((candidate) => candidate === match?.[1]);
   return tab ? `/contracting/(${tab})/${tab}${match?.[2] ?? ''}` : path;
 }
+
+/** Each tab's list, opened in its own tab. */
+export const CONTRACTING_TAB_HREF = Object.fromEntries(
+  CONTRACTING_TABS.map((tab) => [tab, inOwnContractingTab(contractingTabPath(tab)) as Href]),
+) as Record<ContractingTab, Href>;
 
 /** What a tab's dot says to a screen reader. */
 export const CONTRACTING_TAB_BADGE_LABEL: Partial<Record<ContractingTab, string>> = {

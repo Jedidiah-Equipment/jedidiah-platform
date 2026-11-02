@@ -40,7 +40,7 @@ describe('Job Card PDF', () => {
     for (const expected of [
       '42.4 h + 2.1 h travel',
       'Travel set to 0.0 h',
-      'John Deere differs',
+      'JD Link differs',
       "Foreman's note: meter glass cracked",
       'Driver: Thabo',
       'by Sipho',

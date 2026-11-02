@@ -40,6 +40,7 @@ const manager: Matrix = {
   capture: '✓✓sscc',
   editHours: '✓✓✓✓cc',
   setTravel: '✓✓✓✓cc',
+  dismissAttention: '✓✓✓✓cc',
   reportBreakdown: '✓✓sscc',
   addNote: '✓✓✓✓✓✓',
 };

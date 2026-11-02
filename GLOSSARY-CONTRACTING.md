@@ -208,14 +208,18 @@ captured: its Read At the time the machine reported, its evidence the manufactur
 (the System), never amended. No spot capture may contradict one. One may move its Read At forward when the machine
 reports the same value again, so the ledger says the hours stand as of the latest report. A linked Machine's Job
 Hours are compared to its latest Telematics Reading: over the **John Deere difference threshold** (Settings, 10 h
-unless changed) the capture warns and the stint needs a look; nothing blocks. _Avoid_: telemetry reading,
+unless changed) the capture warns and the stint needs a look; nothing blocks. Every screen labels this source
+**JD Link** (one domain constant), not John Deere: a Machine that is not a John Deere may report through the John
+Deere Operations Center too. The Connection and its sign-in keep John Deere's name. _Avoid_: telemetry reading,
 automatic reading, JDLink reading, API reading.
 
 **Assignment Attention** is everything that flags a Machine Assignment for a person, at one level, **needs a
 look** (amber): Travel Hours over the Travel Flag threshold, Travel clamped from a negative, or a John Deere
 difference over its threshold. Travel set by hand has been looked at, so it clears both Travel kinds. It is counted
-on the Jobs list and the Dashboard and filtered for, borders nothing red, and blocks nothing. _Avoid_: bare
-"attention", alert, issue, critical.
+on the Jobs list and the Dashboard and filtered for, borders nothing red, and blocks nothing. Management may
+**dismiss** a kind that is right as it stands: dismissed for everyone, it counts nowhere and shows faded on the
+Machine with who dismissed it, until a fact it reads (Travel, or the Job Hours and their John Deere snapshot)
+changes and it is judged again. _Avoid_: bare "attention", alert, issue, critical, ignore, acknowledge.
 
 **Field Note** is a generic note a Foreman keeps on his phone — when the app cannot take a capture,
 without signal, typically — and later acts on himself: a description, one or more photos, and the

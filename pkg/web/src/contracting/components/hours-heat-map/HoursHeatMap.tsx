@@ -2,6 +2,7 @@ import { formatDate, formatHours, getPlantDateNow } from '@pkg/domain';
 import { busiestDailyHours, type DailyHoursLevel, dailyHoursLevel, dailyHoursLevels } from '@pkg/domain/contracting';
 import type { DailyHoursDay, HoursHeatMapInput } from '@pkg/schema/contracting';
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { Skeleton } from '@/components/ui/skeleton.js';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
@@ -21,25 +22,41 @@ const levelClassNames = {
 
 const swatchClassName = 'size-3 rounded-[3px]';
 const cellClassName = 'aspect-square w-full rounded-[3px]';
+const hoverClassName =
+  'transition-[transform,opacity,box-shadow] duration-150 ease-out motion-reduce:transition-none hover:z-10 hover:scale-125 hover:shadow-md hover:ring-2 hover:ring-primary/60 motion-reduce:hover:scale-100';
 const weekdayLabels = ['Mon', '', 'Wed', '', 'Fri', '', ''] as const;
 
 function dayDescription(day: DailyHoursDay) {
   return `${formatDate(day.date, 'long')}: ${formatHours(day.hours)}${day.estimated ? ', estimated' : ''}`;
 }
 
-function DayCell({ day, busiestHours }: { day: DailyHoursDay; busiestHours: number }) {
+function DayCell({
+  day,
+  busiestHours,
+  spotlight,
+}: {
+  day: DailyHoursDay;
+  busiestHours: number;
+  spotlight: DailyHoursLevel | null;
+}) {
+  const level = dailyHoursLevel(day.hours, busiestHours);
   return (
-    <Tooltip>
+    <Tooltip disableHoverablePopup>
       <TooltipTrigger
         render={
           <div
             aria-label={dayDescription(day)}
-            className={cn(cellClassName, levelClassNames[dailyHoursLevel(day.hours, busiestHours)])}
+            className={cn(
+              cellClassName,
+              hoverClassName,
+              levelClassNames[level],
+              spotlight !== null && spotlight !== level && 'opacity-25',
+            )}
             role="img"
           />
         }
       />
-      <TooltipContent>
+      <TooltipContent className="pointer-events-none">
         <span className="grid gap-0.5">
           <span className="font-medium">{formatDate(day.date, 'long')}</span>
           <span>{formatHours(day.hours)}</span>
@@ -52,12 +69,19 @@ function DayCell({ day, busiestHours }: { day: DailyHoursDay; busiestHours: numb
   );
 }
 
-function Legend() {
+/** Hovering a swatch spotlights the days at that level. */
+function Legend({ onSpotlight }: { onSpotlight: (level: DailyHoursLevel | null) => void }) {
   return (
     <div className="flex items-center justify-end gap-1.5 text-muted-foreground text-xs">
       Less
       {dailyHoursLevels.map((level) => (
-        <span aria-hidden="true" className={cn(swatchClassName, levelClassNames[level])} key={level} />
+        <span
+          aria-hidden="true"
+          className={cn(swatchClassName, hoverClassName, levelClassNames[level])}
+          key={level}
+          onPointerEnter={() => onSpotlight(level)}
+          onPointerLeave={() => onSpotlight(null)}
+        />
       ))}
       More
     </div>
@@ -67,7 +91,15 @@ function Legend() {
 /** The weekday label column and the gap beside it, which the grid never gets. */
 const LABELS_WIDTH_PX = 36;
 
-function Grid({ columns, busiestHours }: { columns: HeatMapColumn[]; busiestHours: number }) {
+function Grid({
+  columns,
+  busiestHours,
+  spotlight,
+}: {
+  columns: HeatMapColumn[];
+  busiestHours: number;
+  spotlight: DailyHoursLevel | null;
+}) {
   return (
     <div className="flex gap-2">
       <div className="mt-[18px] grid w-7 shrink-0 grid-rows-7 gap-[3px] text-muted-foreground text-xs leading-3">
@@ -90,10 +122,14 @@ function Grid({ columns, busiestHours }: { columns: HeatMapColumn[]; busiestHour
             </span>
             {column.days.map((day, index) =>
               day ? (
-                <DayCell busiestHours={busiestHours} day={day} key={day.date} />
+                <DayCell busiestHours={busiestHours} day={day} key={day.date} spotlight={spotlight} />
               ) : (
-                // biome-ignore lint/suspicious/noArrayIndexKey: padding slots have no date of their own
-                <span aria-hidden="true" className={cn(cellClassName, 'bg-muted/30')} key={index} />
+                <span
+                  aria-hidden="true"
+                  className={cn(cellClassName, 'bg-muted/30 transition-opacity', spotlight !== null && 'opacity-25')}
+                  // biome-ignore lint/suspicious/noArrayIndexKey: padding slots have no date of their own
+                  key={index}
+                />
               ),
             )}
           </div>
@@ -111,6 +147,7 @@ function Grid({ columns, busiestHours }: { columns: HeatMapColumn[]; busiestHour
 export function HoursHeatMap({ refetchInterval, ...input }: HoursHeatMapInput & { refetchInterval?: number }) {
   const trpc = useTRPC();
   const [ref, width] = useElementWidth<HTMLDivElement>();
+  const [spotlight, setSpotlight] = useState<DailyHoursLevel | null>(null);
   const fitting = input.start === undefined;
   const range = fitting
     ? {
@@ -130,10 +167,10 @@ export function HoursHeatMap({ refetchInterval, ...input }: HoursHeatMapInput & 
         <ErrorMessage error={query.error} fallbackMessage="Unable to load the daily hours." />
       ) : days ? (
         <>
-          <Grid busiestHours={busiestHours} columns={heatMapColumns(days)} />
+          <Grid busiestHours={busiestHours} columns={heatMapColumns(days)} spotlight={spotlight} />
           <div className="flex items-center justify-between gap-2">
             <span className="text-muted-foreground text-xs">{busiestHours === 0 ? 'No hours recorded' : null}</span>
-            <Legend />
+            <Legend onSpotlight={setSpotlight} />
           </div>
         </>
       ) : (

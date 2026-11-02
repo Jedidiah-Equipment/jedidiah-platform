@@ -1,4 +1,4 @@
-import { discountKinds, jobStatuses, rateBases } from '@pkg/schema/contracting';
+import { assignmentAttentionKinds, discountKinds, jobStatuses, rateBases } from '@pkg/schema/contracting';
 import { sql } from 'drizzle-orm';
 import {
   boolean,
@@ -7,6 +7,7 @@ import {
   foreignKey,
   index,
   integer,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -203,6 +204,28 @@ export const contractingMachineAssignments = contractingSchema.table(
       'machine_assignment_pricing_shape',
       sql`(${table.rateUnitAmount} IS NULL AND ${table.computedAmount} IS NULL AND ${table.finalAmount} IS NULL AND ${table.amountOverride} IS NULL AND ${table.rateName} IS NULL AND ${table.rateBasis} IS NULL AND ${table.rateId} IS NULL AND ${table.rateMeasureTypeId} IS NULL) OR (((${table.rateId} IS NULL AND ${table.rateName} IS NULL AND ${table.rateUnitAmount} = 0 AND ${table.amountOverride} IS NULL) OR (${table.rateId} IS NOT NULL AND length(btrim(${table.rateName})) > 0 AND ${table.rateBasis} IN ('time', 'measure') AND ${table.rateUnitAmount} > 0 AND (${table.amountOverride} IS NULL OR ${table.amountOverride} >= 0))) AND (${table.computedAmount} IS NULL) = (${table.finalAmount} IS NULL) AND (${table.computedAmount} IS NULL OR (${table.computedAmount} >= 0 AND ${table.finalAmount} = COALESCE(${table.amountOverride}, ${table.computedAmount}))))`,
     ),
+  ],
+);
+
+/**
+ * A needs-a-look kind someone decided is fine as it is, for everyone. A write that changes the facts the kind
+ * reads deletes it, so the kind is judged again.
+ */
+export const contractingAttentionDismissals = contractingSchema.table(
+  'attention_dismissal',
+  {
+    assignmentId: uuid('assignment_id')
+      .notNull()
+      .references(() => contractingMachineAssignments.id, { onDelete: 'cascade' }),
+    kind: text('kind', { enum: assignmentAttentionKinds }).notNull(),
+    dismissedAt: timestamp('dismissed_at', { withTimezone: true }).defaultNow().notNull(),
+    dismissedByUserId: text('dismissed_by_user_id')
+      .notNull()
+      .references(() => user.id),
+  },
+  (table) => [
+    primaryKey({ columns: [table.assignmentId, table.kind] }),
+    check('attention_dismissal_kind', sql`${table.kind} IN (${quotedList(assignmentAttentionKinds)})`),
   ],
 );
 

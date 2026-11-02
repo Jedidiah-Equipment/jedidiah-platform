@@ -83,12 +83,12 @@ describe('the John Deere comparison', () => {
   });
 
   it('names the report today by its time and earlier by its date', () => {
-    expect(johnDeereLine(today, now)).toBe('John Deere read 4 512.0 h at 12:05 today.');
+    expect(johnDeereLine(today, now)).toBe('JD Link read 4 512.0 h at 12:05 today.');
     expect(johnDeereLine({ ...today, at: '2026-10-28T14:05:00+02:00' }, now)).toBe(
-      'John Deere read 4 512.0 h on 28 Oct 2026, 14:05.',
+      'JD Link read 4 512.0 h on 28 Oct 2026, 14:05.',
     );
     expect(johnDeereDifferenceWarning(32, today, now)).toBe(
-      "That is 32.0 h away from John Deere's last reading of 4 512.0 h at 12:05 today. Check the hours — you can still save.",
+      "That is 32.0 h away from JD Link's last reading of 4 512.0 h at 12:05 today. Check the hours — you can still save.",
     );
   });
 });

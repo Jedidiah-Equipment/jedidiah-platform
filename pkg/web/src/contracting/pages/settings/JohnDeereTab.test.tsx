@@ -332,7 +332,7 @@ test('the Link dialog puts both meters side by side and links the picked Machine
   expect(options.map((option) => option.textContent?.trim())).toEqual(['ExcavatorT01 · John Deere 8R']);
   await act(async () => options[0]?.click());
 
-  const john = document.querySelector('[aria-label="John Deere"]')?.textContent ?? '';
+  const john = document.querySelector('[aria-label="JD Link"]')?.textContent ?? '';
   const ours = () => document.querySelector('[aria-label="Ours"]')?.textContent ?? '';
   // Ours is the ledger's latest reading, the one the link is judged on, not Known Hours.
   await vi.waitFor(() => expect(ours()).toContain('810.0 h'));

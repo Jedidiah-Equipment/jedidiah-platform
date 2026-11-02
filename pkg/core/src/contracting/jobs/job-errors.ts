@@ -34,7 +34,8 @@ export type JobErrorCode =
   | 'contracting_job.reason_required'
   | 'contracting_job.pricing_incomplete'
   | 'contracting_job.total_changed'
-  | 'contracting_job.rate_inactive';
+  | 'contracting_job.rate_inactive'
+  | 'contracting_job.attention_cleared';
 
 export class JobError extends Error {
   constructor(
@@ -51,6 +52,8 @@ export const isJobError = (error: unknown): error is JobError => error instanceo
 export const jobNotFound = (noun = 'Job') => new JobError('contracting_job.not_found', `${noun} not found.`);
 export const wrongStatus = (message: string) => new JobError('contracting_job.wrong_status', message);
 export const totalChanged = (message: string) => new JobError('contracting_job.total_changed', message);
+export const attentionCleared = () =>
+  new JobError('contracting_job.attention_cleared', 'This warning no longer applies.');
 
 const foreignKeyErrors: Record<string, () => JobError> = {
   job_foreman_role: () =>

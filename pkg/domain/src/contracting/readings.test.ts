@@ -28,7 +28,7 @@ const resolve = (readings: SequencedReading[], amendments: ReturnType<typeof ame
 
 describe('readingSourceLabel', () => {
   it('names John Deere for a Telematics Reading, else the capturer by first name', () => {
-    expect(readingSourceLabel({ telematicsProvider: 'john-deere', capturedByName: null })).toBe('John Deere');
+    expect(readingSourceLabel({ telematicsProvider: 'john-deere', capturedByName: null })).toBe('JD Link');
     expect(readingSourceLabel({ telematicsProvider: null, capturedByName: 'Sipho Dlamini' })).toBe('Sipho');
   });
 });
@@ -67,7 +67,7 @@ describe('resolveReadingAmendments', () => {
       ok: false,
       reason: 'contradicts_telematics',
       id: 'moved',
-      message: `John Deere reported 100.0 h at ${formatDate(day(26, 8), 'medium')}. Check the time or the value.`,
+      message: `JD Link reported 100.0 h at ${formatDate(day(26, 8), 'medium')}. Check the time or the value.`,
     });
   });
 

@@ -18,6 +18,7 @@ export const assignmentActionJobAction: Record<AssignmentActionName, JobActionNa
   editMeasures: 'editMeasures',
   editHours: 'editHours',
   setTravel: 'setTravel',
+  dismissAttention: 'dismissAttention',
   price: 'price',
 };
 
@@ -35,6 +36,7 @@ const rules: Record<AssignmentActionName, { states: readonly AssignmentState[]; 
   },
   editHours: { states: ['on-site', 'left'], refusal: 'The Machine has not arrived yet.' },
   setTravel: { states: ['on-site', 'left'], refusal: 'Travel Hours exist once the Machine has arrived.' },
+  dismissAttention: { states: ['on-site', 'left'], refusal: 'Warnings exist once the Machine has arrived.' },
   price: { states: ['left'], refusal: 'Only a Machine Assignment that has left can be priced.' },
 };
 

@@ -5,6 +5,7 @@ import { formatHours } from '../formatting/number.js';
 import { getFirstName } from '../formatting/text.js';
 import { round1, type StintCaptureMoments, suggestJobDates } from './hours.js';
 import { hasJobCard } from './job-card.js';
+import { JD_LINK_LABEL } from './john-deere.js';
 
 export type StintHoursRefusal = {
   code:
@@ -91,13 +92,13 @@ const reportedWhen = (at: string, now: Date) =>
     ? `at ${formatDate(at, 'time')} today`
     : `on ${formatDate(at, 'medium')}`;
 
-/** The line under the hours input for a linked Machine: "John Deere read 4 512.0 h at 14:05 today." */
+/** The line under the hours input for a linked Machine: "JD Link read 4 512.0 h at 14:05 today." */
 export const johnDeereLine = (telematics: TelematicsSnapshot, now: Date) =>
-  `John Deere read ${formatHours(telematics.hours)} ${reportedWhen(telematics.at, now)}.`;
+  `${JD_LINK_LABEL} read ${formatHours(telematics.hours)} ${reportedWhen(telematics.at, now)}.`;
 
 /** The warning over the threshold, which never stops the save. */
 export const johnDeereDifferenceWarning = (difference: number, telematics: TelematicsSnapshot, now: Date) =>
-  `That is ${formatHours(difference)} away from John Deere's last reading of ${formatHours(telematics.hours)} ${reportedWhen(telematics.at, now)}. Check the hours — you can still save.`;
+  `That is ${formatHours(difference)} away from ${JD_LINK_LABEL}'s last reading of ${formatHours(telematics.hours)} ${reportedWhen(telematics.at, now)}. Check the hours — you can still save.`;
 
 /** Where a stint's Travel Hours came from: "set by Sipho", or "worked out at arrival". */
 export const travelProvenance = ({ travelSetByName }: { travelSetByName: string | null }) =>

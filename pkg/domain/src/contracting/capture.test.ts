@@ -111,7 +111,7 @@ describe('judgeCapture', () => {
         ok: false,
         rule: 'below-previous',
         reason: 'reading.below_latest',
-        message: `John Deere reported ${formatHours(1000)} at ${formatDate(anHourAgo, 'medium')}. Check the time or the value.`,
+        message: `JD Link reported ${formatHours(1000)} at ${formatDate(anHourAgo, 'medium')}. Check the time or the value.`,
       });
       const telematics = reading('deere-later', 1010, now, 'john-deere');
       expect(
@@ -127,7 +127,7 @@ describe('judgeCapture', () => {
         ),
       ).toMatchObject({
         rule: 'above-next',
-        message: `John Deere reported ${formatHours(1010)} at ${formatDate(now, 'medium')}. Check the time or the value.`,
+        message: `JD Link reported ${formatHours(1010)} at ${formatDate(now, 'medium')}. Check the time or the value.`,
       });
     });
   });
@@ -300,7 +300,7 @@ describe('estimateReadAt', () => {
   test('says the date on the estimate line', () => {
     expect(estimateSentence({ kind: 'now' })).toBe('Read now');
     expect(estimateSentence(estimateReadAt(1005, facts()))).toBe(
-      `Read on ${formatDate(at('10:30'), 'medium')} per John Deere`,
+      `Read on ${formatDate(at('10:30'), 'medium')} per JD Link`,
     );
     expect(estimateSentence(estimateReadAt(1005, facts({ ceiling: neighbour('human', 1010, '11:00') })))).toBe(
       `Read about ${formatDate(at('10:30'), 'medium')}`,

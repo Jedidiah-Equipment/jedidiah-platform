@@ -2,6 +2,7 @@ import type { DatabaseTransaction, Db } from '@pkg/db';
 import { contractingJobs, contractingMachineAssignments } from '@pkg/db/contracting';
 import type { AuthId } from '@pkg/schema';
 import { mutateEntity } from '../../audit/mutate-entity.js';
+import { rearmAttention } from './assignment-attention.js';
 import { assignmentDescriptor, jobDescriptor } from './job-audit.js';
 import { jobNotFound, withJobConstraints } from './job-errors.js';
 
@@ -31,7 +32,10 @@ export function writeJobRow(
   });
 }
 
-/** One audited write to a Machine Assignment row its caller has locked, returning the written row. */
+/**
+ * One audited write to a Machine Assignment row its caller has locked, returning the written row. Every Assignment
+ * write passes here, so it is where a change to the facts a dismissed kind reads re-arms that kind.
+ */
 export function writeAssignment(
   tx: DatabaseTransaction,
   actorUserId: AuthId,
@@ -47,6 +51,9 @@ export function writeAssignment(
     id,
     notFound: () => jobNotFound('Machine Assignment'),
     set: (before) => ({ ...set(before), updatedAt: new Date() }),
-    project: (_tx, row) => row,
+    project: async (projectTx, row, before) => {
+      await rearmAttention(projectTx, before, row);
+      return row;
+    },
   });
 }

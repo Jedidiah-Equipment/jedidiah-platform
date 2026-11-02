@@ -19,7 +19,7 @@ describe('johnDeerePollMessage', () => {
     expect(johnDeerePollMessage(run({ skipped: 'not-connected' }))).toBe(
       'John Deere is not connected, so nothing was read.',
     );
-    expect(johnDeerePollMessage(run({ skipped: 'no-links' }))).toBe('No Machines are linked to John Deere yet.');
+    expect(johnDeerePollMessage(run({ skipped: 'no-links' }))).toBe('No Machines are linked to JD Link yet.');
   });
 
   it('counts what became of each polled machine', () => {

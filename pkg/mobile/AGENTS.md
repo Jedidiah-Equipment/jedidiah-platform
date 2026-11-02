@@ -19,9 +19,15 @@
   - Main tab pages use `MainTabToolbar`: Jedidiah icon, title and mono subtitle on the left;
     business-specific actions and the profile menu on the right. Equipment exposes its Assistant action
     there when permitted; Contracting currently exposes no Assistant action.
-  - Secondary pages use `SecondaryPageToolbar`: an explicit named-parent back action, optional
-    avatar, title and mono subtitle on the left; optional badge and profile menu on the right; and
-    a bottom border. Never use generic history-only Back behavior.
+  - Secondary pages use `SecondaryPageToolbar`: a back action, optional avatar, title and mono subtitle
+    on the left; optional badge and profile menu on the right; and a bottom border.
+  - Contracting back goes through history. Every Contracting tab is a copy of one stack holding every
+    Contracting screen (`app/(protected)/contracting/(tabs)/(activity,…,workshop)/`), so a record opened
+    from another is pushed onto the current tab. The toolbar back, the iOS edge swipe and Android back all
+    return to it. Give `SecondaryToolbar` a `fallback` (where a screen with nothing beneath goes, never a
+    `router.*` call); leave after a save with `useGoBack` (`src/lib/use-go-back.ts`). Open a tab's list
+    only through `CONTRACTING_TAB_HREF`, because a bare `/contracting/jobs` opens inside whichever tab you
+    are in. Equipment keeps an explicit named-parent back (`onBack` + `parentLabel`) until its tabs move.
   - Do not create route-local toolbar variants or add arbitrary toolbar actions. Put page-specific
     actions in page content and expose contextual Help through the profile menu.
 - Every list tab root in both businesses renders `src/components/TabRootList.tsx` (pagination optional), except

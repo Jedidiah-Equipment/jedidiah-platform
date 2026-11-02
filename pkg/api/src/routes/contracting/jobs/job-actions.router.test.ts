@@ -206,6 +206,8 @@ const attempts: Record<
   editHours: (caller, { stints }) => editHoursOn(caller, stints[0] as StintFixture),
   setTravel: (caller, { stint }) =>
     caller.contractingJobs.assignments.setTravel({ assignmentId: stint.id, travelHours: 1 }),
+  dismissAttention: (caller, { stint }) =>
+    caller.contractingJobs.assignments.dismissAttention({ assignmentId: stint.id, kind: 'travel-over-threshold' }),
   // Reporting arrives over multipart HTTP too, so it is judged at the core report.
   reportBreakdown: (_caller, { job, stint }, { db }, role) =>
     reportBreakdown({
@@ -322,6 +324,8 @@ const stintAttempts: Record<
   editHours: (caller, stint) => editHoursOn(caller, stint),
   setTravel: (caller, stint) =>
     caller.contractingJobs.assignments.setTravel({ assignmentId: stint.id, travelHours: 1 }),
+  dismissAttention: (caller, stint) =>
+    caller.contractingJobs.assignments.dismissAttention({ assignmentId: stint.id, kind: 'travel-over-threshold' }),
   price: (caller, stint, { rateId }) => caller.contractingJobs.pricing.setStintRate({ assignmentId: stint.id, rateId }),
 };
 

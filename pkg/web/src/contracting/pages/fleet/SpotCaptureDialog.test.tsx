@@ -139,7 +139,7 @@ it('locks a date John Deere brackets and posts it to the second', async () => {
   await mount();
   await press('Earlier');
   await enter('value', '126');
-  expect(document.body.textContent).toContain(`Read on ${formatDate(readAt, 'medium')} per John Deere`);
+  expect(document.body.textContent).toContain(`Read on ${formatDate(readAt, 'medium')} per JD Link`);
   expect(document.querySelector('[name="readAt"]')).toBeNull();
   await press('Date looks good');
   await press('Save reading');

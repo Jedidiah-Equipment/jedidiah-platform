@@ -23,11 +23,10 @@ describe('Contracting screen catalog', () => {
     expect(Object.keys(CONTRACTING_SCREEN_CATALOG)).toHaveLength(19);
   });
 
-  it('resolves a dynamic route to its pattern', () => {
+  it('resolves a dynamic route to its pattern, in whichever tab it opened', () => {
     const resolveScreen = createScreenResolver([CONTRACTING_SCREEN_CATALOG]);
-    expect(resolveScreen(['(protected)', 'contracting', '(tabs)', 'jobs', '[jobId]'])).toEqual({
-      business: 'contracting',
-      name: '/contracting/jobs/[jobId]',
-    });
+    const job = { business: 'contracting', name: '/contracting/jobs/[jobId]' };
+    expect(resolveScreen(['(protected)', 'contracting', '(tabs)', '(jobs)', 'jobs', '[jobId]'])).toEqual(job);
+    expect(resolveScreen(['(protected)', 'contracting', '(tabs)', '(machines)', 'jobs', '[jobId]'])).toEqual(job);
   });
 });

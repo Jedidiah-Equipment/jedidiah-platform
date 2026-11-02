@@ -12,6 +12,7 @@ import {
 } from '@pkg/schema/contracting';
 import { and, asc, eq, not, or, type SQL, type SQLWrapper, sql } from 'drizzle-orm';
 import { loadOpenBreakdowns } from '../breakdowns/open-breakdowns.js';
+import { assignmentAttention, needsALook } from './assignment-attention.js';
 import { foreman, invoicer, jobHeader } from './job-load.js';
 import { assertReadableStatus, readableBy, readerFor } from './job-readers.js';
 import * as jobSql from './job-sql.js';
@@ -24,7 +25,7 @@ export async function summarizeJobQueues({ db, actor }: { db: Db; actor: JobActo
       status: contractingJobs.status,
       looksFinished: jobSql.looksFinished,
       count: sql<number>`count(*)::integer`,
-      attention: sql<number>`sum(${jobSql.assignmentAttention})::integer`,
+      attention: sql<number>`sum(${assignmentAttention})::integer`,
     })
     .from(contractingJobs)
     .where(readableBy(reader))
@@ -89,7 +90,7 @@ export async function listJobs({
       to: input.invoicedTo,
     }),
     readableBy(reader),
-    input.needsALook ? jobSql.needsALook : undefined,
+    input.needsALook ? needsALook : undefined,
     input.machineId ? jobSql.hasMachine(input.machineId) : undefined,
     input.customerId ? eq(contractingJobs.customerId, input.customerId) : undefined,
     createGlobalSearchCondition(input.search, [
@@ -110,7 +111,7 @@ export async function listJobs({
         onSiteStints: jobSql.stintCount('on-site'),
         leftStints: jobSql.stintCount('left'),
         looksFinished: jobSql.looksFinished,
-        assignmentAttention: jobSql.assignmentAttention,
+        assignmentAttention,
         total: sql<number>`count(*) over ()`.mapWith(Number),
       })
       .from(contractingJobs)

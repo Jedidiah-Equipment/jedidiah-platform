@@ -13,11 +13,17 @@ import {
   parseJobNumber,
   priceJob,
   type StoredStintPricing,
-  stintAttentionKinds,
 } from '@pkg/domain/contracting';
-import { type Assignment, FieldDriver, type JobDetail, JobFacts } from '@pkg/schema/contracting';
+import {
+  type Assignment,
+  type DismissedAttention,
+  FieldDriver,
+  type JobDetail,
+  JobFacts,
+} from '@pkg/schema/contracting';
 import { and, asc, eq } from 'drizzle-orm';
 import { getContractingSettings } from '../settings/settings-service.js';
+import { loadDismissals, readAttention } from './assignment-attention.js';
 import { assertOwner, jobNotFound } from './job-errors.js';
 import {
   type DbOrTx,
@@ -75,11 +81,16 @@ function storedPricing(row: LoadedStint): StoredStintPricing | null {
   };
 }
 
-function mapAssignment(row: LoadedStint, measures: readonly LoadedMeasure[], thresholds: AttentionThresholds) {
+function mapAssignment(
+  row: LoadedStint,
+  measures: readonly LoadedMeasure[],
+  thresholds: AttentionThresholds,
+  dismissals: readonly DismissedAttention[],
+) {
   const { stint } = row;
   const arrival = jobHoursValue(row.arrival);
   const departure = jobHoursValue(row.departure);
-  const { arrivalHours, departureHours, travelHours, travelClamped } = stint;
+  const { arrivalHours, departureHours, travelHours } = stint;
   return {
     ...stint,
     ...stintNames(row),
@@ -88,10 +99,7 @@ function mapAssignment(row: LoadedStint, measures: readonly LoadedMeasure[], thr
     departure,
     travelSetByName: stint.travelSetAt ? row.travelSetByName : null,
     ...deriveStintHours({ arrivalHours, departureHours, travelHours }),
-    attention: stintAttentionKinds(
-      { travelHours, travelClamped, travelSet: stint.travelSetAt !== null, arrival, departure },
-      thresholds,
-    ),
+    ...readAttention(stint, thresholds, dismissals),
     amendment:
       stint.hoursAmendedAt && stint.hoursAmendmentReason
         ? {
@@ -112,11 +120,12 @@ export async function getJob({ db, ...lookup }: { db: DbOrTx } & JobLookup): Pro
   );
   if (!header) throw jobNotFound();
   const { job, ...names } = header;
-  const [rows, measures, chargeLines, settings] = await Promise.all([
+  const [rows, measures, chargeLines, settings, dismissals] = await Promise.all([
     loadStints(db, [job.id]),
     loadMeasures(db, job.id),
     loadChargeLines(db, job.id),
     getContractingSettings({ db }),
+    loadDismissals(db, [job.id]),
   ]);
   const sorted = rows.sort(
     (left, right) =>
@@ -127,6 +136,7 @@ export async function getJob({ db, ...lookup }: { db: DbOrTx } & JobLookup): Pro
       row,
       measures.filter((measure) => measure.assignmentId === row.stint.id),
       settings,
+      dismissals.get(row.stint.id) ?? [],
     ),
     stored: storedPricing(row),
   }));

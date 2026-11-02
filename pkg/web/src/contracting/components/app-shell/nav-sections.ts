@@ -20,7 +20,7 @@ import {
 } from '@tabler/icons-react';
 import { linkOptions } from '@tanstack/react-router';
 import type { NavSection } from '@/components/app-shell/NavSections.js';
-import { ActivityUnreadNavIndicator, ServicesNavIndicator, WorkshopNavIndicator } from './AppNavIndicators.js';
+import { ActivityUnreadNavIndicator, ServicesNavIndicator } from './AppNavIndicators.js';
 
 const isCategoriesPath = (pathname: string) => pathname.startsWith('/contracting/fleet/categories');
 
@@ -88,7 +88,6 @@ export const contractingNavSections = [
         link: linkOptions({ to: '/contracting/workshop' }),
         icon: IconTool,
         isActive: isWorkshopNavPath,
-        indicator: WorkshopNavIndicator,
       },
       {
         title: 'Services',

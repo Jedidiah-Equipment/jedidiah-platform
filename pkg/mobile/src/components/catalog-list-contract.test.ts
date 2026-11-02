@@ -27,27 +27,32 @@ const CATALOG_SURFACES = [
   },
   {
     component: 'src/contracting/jobs/JobsScreen.tsx',
-    route: 'app/(protected)/contracting/(tabs)/jobs/index.tsx',
+    route: 'app/(protected)/contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/jobs/index.tsx',
   },
   {
     component: 'src/contracting/components/MachinesScreen.tsx',
-    route: 'app/(protected)/contracting/(tabs)/machines/index.tsx',
+    route:
+      'app/(protected)/contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/machines/index.tsx',
   },
   {
     component: 'src/contracting/workshop/BreakdownRow.tsx',
-    route: 'app/(protected)/contracting/(tabs)/workshop/index.tsx',
+    route:
+      'app/(protected)/contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/workshop/index.tsx',
   },
   {
     component: 'src/contracting/services/ServiceRow.tsx',
-    route: 'app/(protected)/contracting/(tabs)/services/index.tsx',
+    route:
+      'app/(protected)/contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/services/index.tsx',
   },
   {
     component: 'src/contracting/services/DueMachineRow.tsx',
-    route: 'app/(protected)/contracting/(tabs)/services/index.tsx',
+    route:
+      'app/(protected)/contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/services/index.tsx',
   },
   {
     component: 'src/contracting/field-notes/FieldNotesScreen.tsx',
-    route: 'app/(protected)/contracting/(tabs)/field-notes/index.tsx',
+    route:
+      'app/(protected)/contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/field-notes/index.tsx',
   },
 ] as const;
 

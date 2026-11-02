@@ -4,13 +4,19 @@ import {
   assignmentAttentionSentence,
   assignmentStateColorClassNames,
   assignmentStateLabels,
+  attentionBadges,
   breakdownsByStint,
   type JobSheetStint,
   jobSheet,
   mostUrgentBreakdown,
   needsALookColorClassNames,
 } from '@pkg/domain/contracting';
-import type { AssignmentDetail, BreakdownSummary, JobCardVariant } from '@pkg/schema/contracting';
+import type {
+  AssignmentAttentionKind,
+  AssignmentDetail,
+  BreakdownSummary,
+  JobCardVariant,
+} from '@pkg/schema/contracting';
 import { IconPencil, IconPlayerPlay, IconPlayerStop, IconPlus, IconRuler2 } from '@tabler/icons-react-native';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
@@ -28,11 +34,13 @@ import { RecordTabBar, useRecordTab } from '@/contracting/activity/RecordTabs';
 import { BreakdownFlagButton, BreakdownIcon, breakdownBorder } from '@/contracting/components/BreakdownSubjectIcons';
 import { CaptureButton } from '@/contracting/components/CaptureButton';
 import { CategoryIcon, categoryTileSize } from '@/contracting/components/CategoryIcon';
+import { CONTRACTING_TAB_HREF } from '@/contracting/lib/app-tabs';
 import { jobCardShareAction } from '@/contracting/lib/job-card';
 import { useJobBreakdowns } from '@/contracting/workshop/use-breakdowns';
 import { shareDocument } from '@/lib/document-actions';
 import { useBusyAction } from '@/lib/use-busy-action';
 import { useColorMode } from '@/theme/use-color-mode';
+import { AttentionDialog } from './AttentionDialog';
 import { JobStatusChip } from './JobStatusChip';
 import { MeasuresSheet } from './MeasuresSheet';
 import { useJob } from './use-jobs';
@@ -48,9 +56,7 @@ export default function JobScreen() {
   const canReport = sheet?.can('reportBreakdown') ?? false;
   const canShareJobCard = sheet?.showsMoney ?? false;
   // Someone the field Job gate keeps out (a workshop participant opening a note) came from Activity, so returns there.
-  const parent = jobQuery.canRead
-    ? { label: 'Jobs', href: '/contracting/jobs' as const }
-    : { label: 'Activity', href: '/contracting/activity' as const };
+  const fallback = jobQuery.canRead ? CONTRACTING_TAB_HREF.jobs : CONTRACTING_TAB_HREF.activity;
   // The towed Implement rides along, so the report screen can offer it beside the Machine.
   const reportProblem = (stint: AssignmentDetail) =>
     router.push({
@@ -82,8 +88,7 @@ export default function JobScreen() {
       <SecondaryToolbar
         title="Job"
         subtitle={job?.jobNumber ?? 'CONTRACTING'}
-        parentLabel={parent.label}
-        onBack={() => router.replace(parent.href)}
+        fallback={fallback}
         helpTopic="contractingMobileJob"
       />
       {job ? <RecordTabBar value={tab} onChange={setTab} /> : null}
@@ -192,6 +197,37 @@ function stintHoursLine({ arrival, departure, workHours, travelHours }: Assignme
   return `${formatHours(arrival.hours)} → ${formatHours(departure.hours)} · ${formatHours(workHours ?? 0)} work · ${formatHours(travelHours ?? 0)} travel`;
 }
 
+/** The stint's needs-a-look reasons in one amber block, each opening its dialog; a dismissed one fades in its place. */
+function AttentionRows({
+  stint,
+  thresholds,
+  onOpen,
+}: {
+  stint: AssignmentDetail;
+  thresholds: AttentionThresholds;
+  onOpen: (kind: AssignmentAttentionKind) => void;
+}) {
+  const { resolved } = useColorMode();
+  const badges = attentionBadges(stint);
+  if (!badges.length) return null;
+  return (
+    <View className={`gap-1 rounded-xl border px-3 py-2 ${needsALookColorClassNames.chip}`}>
+      {badges.map(({ kind, dismissal }) => (
+        <Pressable
+          accessibilityRole="button"
+          className={dismissal ? 'opacity-30' : undefined}
+          key={kind}
+          onPress={() => onOpen(kind)}
+        >
+          <Text className={`text-sm ${needsALookColorClassNames.textByScheme[resolved]}`}>
+            {assignmentAttentionSentence(kind, stint, thresholds)}
+          </Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
 function StintCard({
   entry: { stint, sheet: stintSheet },
   breakdown,
@@ -214,7 +250,7 @@ function StintCard({
   onReport: () => void;
   thresholds: AttentionThresholds | undefined;
 }) {
-  const { resolved } = useColorMode();
+  const [openedKind, setOpenedKind] = useState<AssignmentAttentionKind | null>(null);
   return (
     <View className={`gap-2 rounded-xl border bg-surface p-4 ${breakdownBorder(breakdown) ?? 'border-border'}`}>
       <View className="flex-row items-center justify-between gap-2">
@@ -258,14 +294,17 @@ function StintCard({
           </Text>
         ) : null}
       </View>
-      {thresholds && stint.attention.length ? (
-        <View className={`gap-1 rounded-xl border px-3 py-2 ${needsALookColorClassNames.chip}`}>
-          {stint.attention.map((kind) => (
-            <Text className={`text-sm ${needsALookColorClassNames.textByScheme[resolved]}`} key={kind}>
-              {assignmentAttentionSentence(kind, stint, thresholds)}
-            </Text>
-          ))}
-        </View>
+      {thresholds ? (
+        <>
+          <AttentionRows onOpen={setOpenedKind} stint={stint} thresholds={thresholds} />
+          <AttentionDialog
+            canDismiss={stintSheet.can('dismissAttention')}
+            kind={openedKind}
+            onClose={() => setOpenedKind(null)}
+            stint={stint}
+            thresholds={thresholds}
+          />
+        </>
       ) : null}
       {stintSheet.can('captureArrival') ? (
         <CaptureButton icon={IconPlayerPlay} label="Start — capture arrival" onPress={onStart} />
@@ -273,9 +312,23 @@ function StintCard({
       {stintSheet.can('captureDeparture') ? (
         <CaptureButton icon={IconPlayerStop} label="Stop — capture departure" onPress={onStop} />
       ) : null}
-      {stintSheet.can('editHours') ? <Button icon={IconPencil} title="Edit hours" onPress={onEdit} /> : null}
-      {stintSheet.can('editMeasures') ? (
-        <Button icon={IconRuler2} title={stint.measures.length ? 'Edit measures' : 'Add measure'} onPress={onMeasure} />
+      {stintSheet.can('editHours') || stintSheet.can('editMeasures') ? (
+        <View className="flex-row gap-2">
+          {stintSheet.can('editHours') ? (
+            <View className="flex-1">
+              <Button icon={IconPencil} title="Edit hours" onPress={onEdit} />
+            </View>
+          ) : null}
+          {stintSheet.can('editMeasures') ? (
+            <View className="flex-1">
+              <Button
+                icon={IconRuler2}
+                title={stint.measures.length ? 'Edit measures' : 'Add measure'}
+                onPress={onMeasure}
+              />
+            </View>
+          ) : null}
+        </View>
       ) : null}
       {canReport ? <Button icon={BreakdownIcon} title="Report a problem" onPress={onReport} /> : null}
     </View>

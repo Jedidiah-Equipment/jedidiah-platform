@@ -4,8 +4,8 @@ import { expect, test, vi } from 'vitest';
 
 vi.mock('expo-router', () => ({
   useLocalSearchParams: () => ({ id: 'm1' }),
-  useNavigation: () => ({ isFocused: () => true }),
-  router: { dismissTo: vi.fn() },
+  useNavigation: () => ({ isFocused: () => true, getState: () => ({ index: 1 }), goBack: vi.fn() }),
+  router: { replace: vi.fn() },
 }));
 vi.mock('react-native', () => ({ Pressable: 'Pressable', View: 'View' }));
 vi.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({ invalidateQueries: vi.fn() }) }));

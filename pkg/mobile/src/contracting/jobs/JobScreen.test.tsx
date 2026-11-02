@@ -30,6 +30,7 @@ vi.mock('@/contracting/components/CategoryIcon', () => ({ CategoryIcon: 'Categor
 vi.mock('@/lib/document-actions', () => ({ shareDocument: vi.fn() }));
 vi.mock('@/lib/observability', () => ({ captureException: vi.fn() }));
 vi.mock('@/contracting/workshop/use-breakdowns', () => ({ useJobBreakdowns: () => ({ data: undefined }) }));
+vi.mock('./AttentionDialog', () => ({ AttentionDialog: 'AttentionDialog' }));
 vi.mock('./MeasuresSheet', () => ({ MeasuresSheet: 'MeasuresSheet' }));
 vi.mock('./use-jobs', () => ({ useJob: () => ({ data: undefined, canRead: false }) }));
 
@@ -43,7 +44,7 @@ test('a Job note deep link opens the authorized Activity feed even when the phon
     renderer = create(<JobScreen />);
   });
   expect(renderer.root.findByType('ActivityFeed' as never).props.thread).toEqual({ kind: 'job', id: 'j1' });
-  expect(renderer.root.findByType('Toolbar' as never).props.parentLabel).toBe('Activity');
+  expect(renderer.root.findByType('Toolbar' as never).props.fallback).toBe('/contracting/(activity)/activity');
   expect(renderer.root.findAllByType('ScrollView' as never)).toHaveLength(0);
   await act(async () => renderer.unmount());
 });

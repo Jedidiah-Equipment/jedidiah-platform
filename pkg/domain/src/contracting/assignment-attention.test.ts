@@ -1,5 +1,13 @@
+import type { DateIso } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
-import { assignmentAttentionSentence, jobNeedsALookCount, stintAttentionKinds } from './assignment-attention.js';
+import {
+  assignmentAttentionSentence,
+  attentionBadges,
+  jobNeedsALookCount,
+  rearmedAttentionKinds,
+  stintAttention,
+  stintAttentionKinds,
+} from './assignment-attention.js';
 
 const thresholds = { travelFlagThresholdHours: 4, johnDeereDifferenceThresholdHours: 10 };
 const at = '2026-10-28T12:05:00Z';
@@ -21,7 +29,7 @@ describe('assignment attention', () => {
     const farFromDeere = { ...stint, arrival: { hours: 4480, telematics: { hours: 4512, at } } };
     expect(stintAttentionKinds(farFromDeere, thresholds)).toEqual(['john-deere-difference']);
     expect(assignmentAttentionSentence('john-deere-difference', farFromDeere, thresholds)).toBe(
-      'John Deere differs by 32.0 h',
+      'JD Link differs by 32.0 h',
     );
     expect(assignmentAttentionSentence('travel-over-threshold', { ...stint, travelHours: 6 }, thresholds)).toBe(
       'Travel 6.0 h is over the 4.0 h threshold',
@@ -45,5 +53,46 @@ describe('assignment attention', () => {
         { attention: ['travel-over-threshold'] },
       ]),
     ).toBe(2);
+  });
+
+  it('moves a dismissed kind out of needs a look, and forgets a dismissal whose kind no longer holds', () => {
+    const henk = { dismissedAt: at as DateIso, dismissedByName: 'Henk Botha' };
+    const both = { ...stint, travelHours: 6, arrival: { hours: 4480, telematics: { hours: 4512, at } } };
+    expect(stintAttention(both, thresholds, [{ kind: 'john-deere-difference', ...henk }])).toEqual({
+      attention: ['travel-over-threshold'],
+      dismissedAttention: [{ kind: 'john-deere-difference', ...henk }],
+    });
+    expect(stintAttention(stint, thresholds, [{ kind: 'travel-over-threshold', ...henk }])).toEqual({
+      attention: [],
+      dismissedAttention: [],
+    });
+  });
+
+  it('keeps every badge in its kind order whether or not it was dismissed, so dismissing never moves one', () => {
+    const dismissal = { kind: 'travel-over-threshold' as const, dismissedAt: at as DateIso, dismissedByName: 'Henk' };
+    expect(attentionBadges({ attention: ['john-deere-difference'], dismissedAttention: [dismissal] })).toEqual([
+      { kind: 'travel-over-threshold', dismissal },
+      { kind: 'john-deere-difference', dismissal: null },
+    ]);
+  });
+
+  it('re-arms a dismissal only when a fact its kind reads changes', () => {
+    const row = {
+      arrivalHours: 4480,
+      departureHours: 4500,
+      arrivalTelematicsHours: 4512,
+      departureTelematicsHours: null,
+      travelHours: 6,
+      travelClamped: false,
+    };
+    expect(rearmedAttentionKinds(row, { ...row })).toEqual([]);
+    // A new departure is a new comparison with John Deere; Travel is untouched.
+    expect(rearmedAttentionKinds(row, { ...row, departureHours: 4510 })).toEqual(['john-deere-difference']);
+    expect(rearmedAttentionKinds(row, { ...row, travelHours: 7 })).toEqual(['travel-over-threshold']);
+    // A moved arrival is a new comparison and, while Travel is clamped, a new reason for the clamp.
+    expect(rearmedAttentionKinds(row, { ...row, arrivalHours: 4470, travelClamped: true })).toEqual([
+      'travel-clamped',
+      'john-deere-difference',
+    ]);
   });
 });

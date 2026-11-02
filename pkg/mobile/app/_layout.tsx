@@ -11,6 +11,7 @@ import { AppErrorBoundary } from '@/components/AppErrorBoundary';
 import { OfflineScreen } from '@/components/OfflineScreen';
 import { UpdatePrompt } from '@/components/UpdatePrompt';
 import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider';
+import { inOwnContractingTab } from '@/contracting/lib/app-tabs';
 import { isOfflineCapableRoute, offlineCoverAction } from '@/contracting/lib/offline-routes';
 import { CONTRACTING_MUTATION_EVENTS } from '@/contracting/observability';
 import { CONTRACTING_SCREEN_CATALOG } from '@/contracting/screen-catalog';
@@ -45,6 +46,7 @@ const screenForSegments = createScreenResolver([
   EQUIPMENT_SCREEN_CATALOG,
 ]);
 const MUTATION_EVENTS = { ...SHARED_MUTATION_EVENTS, ...EQUIPMENT_MUTATION_EVENTS, ...CONTRACTING_MUTATION_EVENTS };
+const PUSH_OPENERS = { contracting: inOwnContractingTab };
 
 export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
   return <AppErrorBoundary error={error} retry={retry} />;
@@ -69,7 +71,7 @@ export default function RootLayout() {
 function ThemedAppShell() {
   const { preference } = useColorMode();
   // In the component that renders the route stack, so its effect runs once the navigator has mounted.
-  usePushResponseNavigation();
+  usePushResponseNavigation(PUSH_OPENERS);
 
   return (
     <GluestackUIProvider mode={preference}>

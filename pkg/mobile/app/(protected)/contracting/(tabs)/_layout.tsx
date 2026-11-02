@@ -5,7 +5,7 @@ import { useSessionAccessSummary } from '@/lib/auth-session';
 import { navigationColors } from '@/theme/gluestack-config';
 import { useColorMode } from '@/theme/use-color-mode';
 
-export const unstable_settings = { anchor: 'activity' };
+export const unstable_settings = { anchor: '(activity)' };
 
 export default function ContractingTabsLayout() {
   const access = useSessionAccessSummary();
@@ -18,26 +18,26 @@ export default function ContractingTabsLayout() {
       tabBar={() => <ContractingTabBar />}
     >
       <Tabs.Screen
-        name="activity"
+        name="(activity)"
         options={{ href: tabs.includes('activity') ? undefined : null, title: CONTRACTING_TAB_LABEL.activity }}
       />
       <Tabs.Screen
-        name="jobs"
+        name="(jobs)"
         options={{ href: tabs.includes('jobs') ? undefined : null, title: CONTRACTING_TAB_LABEL.jobs }}
       />
       <Tabs.Screen
-        name="machines"
+        name="(machines)"
         options={{ href: tabs.includes('machines') ? undefined : null, title: CONTRACTING_TAB_LABEL.machines }}
       />
       <Tabs.Screen
-        name="workshop"
+        name="(workshop)"
         options={{ href: tabs.includes('workshop') ? undefined : null, title: CONTRACTING_TAB_LABEL.workshop }}
       />
       <Tabs.Screen
-        name="services"
+        name="(services)"
         options={{ href: tabs.includes('services') ? undefined : null, title: CONTRACTING_TAB_LABEL.services }}
       />
-      <Tabs.Screen name="field-notes" options={{ title: CONTRACTING_TAB_LABEL['field-notes'] }} />
+      <Tabs.Screen name="(field-notes)" options={{ title: CONTRACTING_TAB_LABEL['field-notes'] }} />
     </Tabs>
   );
 }

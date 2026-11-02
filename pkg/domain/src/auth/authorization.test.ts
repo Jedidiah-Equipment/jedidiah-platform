@@ -260,6 +260,7 @@ describe('getRolePermissions', () => {
     expect(getRolePermissions('contracting-manager')).not.toContain('contracting_rate:read');
     expect(getRolePermissions('contracting-manager')).not.toContain('contracting_rate:update');
     expect(getRolePermissions('contracting-manager')).toEqual([
+      'contracting_attention:dismiss',
       'contracting_breakdown:read',
       'contracting_breakdown:report',
       'contracting_breakdown:update',

@@ -1,5 +1,5 @@
 import { formatDate, statusBadgeColorClassNames } from '@pkg/domain';
-import { Redirect, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { Redirect, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -12,13 +12,12 @@ import { CONTRACTING_TAB_HREF } from '@/contracting/lib/app-tabs';
 import { recordFieldNoteChanged } from '@/contracting/observability';
 import { confirm } from '@/lib/confirm';
 import { choosePhotos, type PickedPhoto, takePhoto } from '@/lib/photo-picker';
+import { useGoBack } from '@/lib/use-go-back';
 import { FieldNoteFields } from './FieldNoteFields';
 import { fieldNoteFiles, resolveFieldNotePhotoUri } from './files';
 import type { FieldNote } from './store';
 import { useFieldNoteAction } from './use-field-note-action';
 import { useFieldNotes } from './use-field-notes';
-
-const backToNotes = () => router.replace(CONTRACTING_TAB_HREF['field-notes']);
 
 export default function FieldNoteScreen() {
   const { noteId } = useLocalSearchParams<{ noteId: string }>();
@@ -33,6 +32,7 @@ export default function FieldNoteScreen() {
 
 /** Every edit applies at once: the description on blur or when the screen loses focus, the rest on tap. */
 function FieldNoteDetail({ note, onLeave }: { note: FieldNote; onLeave: () => void }) {
+  const backToNotes = useGoBack(CONTRACTING_TAB_HREF['field-notes']);
   const { store } = useFieldNotes();
   const [description, setDescription] = useState(note.description);
   const { busy, error, act, report } = useFieldNoteAction();
@@ -91,8 +91,7 @@ function FieldNoteDetail({ note, onLeave }: { note: FieldNote; onLeave: () => vo
         <SecondaryToolbar
           title="Field Note"
           subtitle={formatDate(note.createdAt, 'medium')}
-          parentLabel="Field Notes"
-          onBack={backToNotes}
+          fallback={CONTRACTING_TAB_HREF['field-notes']}
           badge={
             <StatusBadge
               classNames={open ? statusBadgeColorClassNames.orange : statusBadgeColorClassNames.gray}

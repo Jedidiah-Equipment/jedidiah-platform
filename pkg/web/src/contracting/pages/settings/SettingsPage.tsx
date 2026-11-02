@@ -1,3 +1,4 @@
+import { JD_LINK_LABEL } from '@pkg/domain/contracting';
 import type { ContractingSettings, JohnDeereConnectResult } from '@pkg/schema/contracting';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
@@ -81,10 +82,10 @@ function SettingsForm({ settings }: { settings: ContractingSettings }) {
               <form.AppField name="johnDeereDifferenceThresholdHours">
                 {(field) => (
                   <field.NumberField
-                    label="John Deere difference threshold (hours)"
+                    label={`${JD_LINK_LABEL} difference threshold (hours)`}
                     unit="hours"
                     decimals={1}
-                    description="Job hours this far from John Deere's last reading warn the person capturing and mark the stint."
+                    description={`Job hours this far from ${JD_LINK_LABEL}'s last reading warn the person capturing and mark the stint.`}
                   />
                 )}
               </form.AppField>

@@ -6,10 +6,10 @@ A spot reading keeps a Machine's known hours current for service tracking and re
 2. Answer **When was the meter read?** with **Today** or **Earlier**. Nothing else is asked until you do.
 3. Type the **Hours on the meter**, including the decimal digit. **Previous reading** is the Machine's latest reading. Under the hours, the form works out from the Machine's previous readings when those hours were on the meter:
    - **Read now** when the hours are at or above the latest reading.
-   - **Read on … per John Deere** when John Deere's readings bracket the hours. That date is fixed.
+   - **Read on … per JD Link** when JD Link's readings bracket the hours. That date is fixed.
    - **Read about …** when only captured readings bracket them. That date is a guess.
    - When no date can be right, the form says why instead, such as hours the meter cannot have reached yet. Check the hours and type them again.
-4. Check the date. Under **Earlier** the picker is open; under **Today** tap the date to change it. A date John Deere fixes cannot be changed. Read At cannot be in the future.
+4. Check the date. Under **Earlier** the picker is open; under **Today** tap the date to change it. A date JD Link fixes cannot be changed. Read At cannot be in the future.
    - Under **Today**, a date that is not today says so: check the hours, or change the date.
    - A date more than a week ago asks you to check the hours. It never stops you.
 5. Choose **Date looks good**. Changing the hours afterwards asks for the date again.

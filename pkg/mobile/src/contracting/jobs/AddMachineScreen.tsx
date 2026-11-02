@@ -1,7 +1,7 @@
 import { IconPlus } from '@tabler/icons-react-native';
 import { useStore } from '@tanstack/react-form';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { type Href, router, useLocalSearchParams } from 'expo-router';
+import { type Href, useLocalSearchParams } from 'expo-router';
 import { ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppForm } from '@/components/form';
@@ -15,6 +15,7 @@ import { getVisibleMachines } from '@/contracting/lib/machine-catalog';
 import { useFleet } from '@/contracting/readings/use-fleet';
 import { useTRPC } from '@/lib/trpc';
 import { trpcErrorMessage } from '@/lib/trpc-errors';
+import { useGoBack } from '@/lib/use-go-back';
 import { useDrivers, useImplements, useJob } from './use-jobs';
 
 const ADD_FAILED = 'Could not add the Machine. Check your connection and try again.';
@@ -32,7 +33,8 @@ export default function AddMachineScreen() {
   const queryClient = useQueryClient();
   const job = useJob(params.jobId).data;
   const canAdd = job ? job.actions.assign.allowed : false;
-  const backToJob = () => router.dismissTo(`/contracting/jobs/${params.jobId}` as Href);
+  const jobHref = `/contracting/jobs/${params.jobId}` as Href;
+  const backToJob = useGoBack(jobHref);
   const add = useMutation(
     trpc.contractingJobs.assignments.add.mutationOptions({
       onSuccess: async () => {
@@ -69,8 +71,7 @@ export default function AddMachineScreen() {
       <SecondaryToolbar
         title="Add machine"
         subtitle="CONTRACTING"
-        parentLabel="Job"
-        onBack={backToJob}
+        fallback={jobHref}
         helpTopic="contractingMobileAddMachine"
       />
       <ScrollView

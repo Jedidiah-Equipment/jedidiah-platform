@@ -9,7 +9,7 @@ import {
 } from '@pkg/schema/contracting';
 import { IconChevronRight, IconPencil } from '@tabler/icons-react-native';
 import { revalidateLogic } from '@tanstack/react-form';
-import { type Href, router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { type ReactNode, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -28,6 +28,7 @@ import { useAppToast } from '@/components/ui/toast';
 import { CategoryIcon } from '@/contracting/components/CategoryIcon';
 import { DetailRow } from '@/contracting/components/DetailRow';
 import { MachineKnownHours } from '@/contracting/components/MachineKnownHours';
+import { CONTRACTING_TAB_HREF } from '@/contracting/lib/app-tabs';
 import { useFleet } from '@/contracting/readings/use-fleet';
 import { useSessionPermission } from '@/lib/auth-session';
 import { useBusyAction } from '@/lib/use-busy-action';
@@ -46,8 +47,7 @@ export default function ServiceScreen() {
       <SecondaryToolbar
         title="Service"
         subtitle={record?.machineCode ?? 'CONTRACTING'}
-        parentLabel="Services"
-        onBack={() => router.navigate('/contracting/services' as Href)}
+        fallback={CONTRACTING_TAB_HREF.services}
         helpTopic="contractingMobileService"
         badge={badge ? <StatusBadge classNames={badge.colours} label={badge.label} /> : undefined}
       />

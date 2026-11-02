@@ -17,6 +17,7 @@ export const jobActionNames = [
   'capture',
   'editHours',
   'setTravel',
+  'dismissAttention',
   'reportBreakdown',
   'addNote',
 ] as const;
@@ -54,6 +55,7 @@ export const assignmentActionNames = [
   'editMeasures',
   'editHours',
   'setTravel',
+  'dismissAttention',
   'price',
 ] as const;
 export type AssignmentActionName = (typeof assignmentActionNames)[number];

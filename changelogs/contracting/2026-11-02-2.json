@@ -1,0 +1,28 @@
+{
+  "business": "contracting",
+  "releasedAt": "2026-11-02T11:46:13.424Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Track breakdowns across jobs",
+          "description": "Unfixed breakdowns now appear on the job where the machine or implement is currently on site, while remaining linked to the job where they were reported. Job warnings and Workshop filters follow this rule and refresh after arrival or departure hours are saved."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "See job hours alongside machine readings",
+          "description": "The Readings tab now includes arrival and departure hours, with the job number and who captured them. Anyone with permission to capture hours can view this history."
+        },
+        {
+          "title": "Track breakdowns as machines move",
+          "description": "Unfixed breakdowns now follow machines and implements onto their current job while remaining linked to the job where they were reported. Breakdown details refresh after arrival or departure hours are saved."
+        }
+      ]
+    }
+  ]
+}

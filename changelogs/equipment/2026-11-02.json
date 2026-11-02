@@ -1,0 +1,36 @@
+{
+  "business": "equipment",
+  "releasedAt": "2026-11-02T09:19:30.053Z",
+  "sections": [
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Save your latest quote edits before leaving",
+          "description": "Going back now saves pending quote edits before leaving the quote, including when using a swipe or Android's back button."
+        },
+        {
+          "title": "Zoom in on photos",
+          "description": "Open a photo, then pinch or double-tap to zoom and drag to inspect details."
+        },
+        {
+          "title": "Return to your previous screen",
+          "description": "The toolbar back button now follows your browsing history, matching the iOS back swipe and Android's back button."
+        },
+        {
+          "title": "Stay signed in more reliably",
+          "description": "Session renewal now keeps your sign-in expiry in sync, reducing unexpected sign-outs."
+        }
+      ]
+    },
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Stay signed in more reliably",
+          "description": "Session renewal now keeps your sign-in expiry in sync, reducing unexpected sign-outs."
+        }
+      ]
+    }
+  ]
+}

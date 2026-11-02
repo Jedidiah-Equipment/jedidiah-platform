@@ -1,0 +1,52 @@
+{
+  "business": "contracting",
+  "releasedAt": "2026-11-02T09:19:30.053Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Dismiss reviewed warnings for everyone",
+          "description": "Management can dismiss a needs-a-look warning once reviewed, clearing it from attention counts for everyone on web and mobile. Dismissed warnings remain faded with who dismissed them and return if the relevant hours or Travel change."
+        },
+        {
+          "title": "Find connected machine readings under JD Link",
+          "description": "Settings, readings and hour comparisons now use the name JD Link in place of John Deere."
+        },
+        {
+          "title": "Stay signed in more reliably",
+          "description": "Session renewal now keeps your sign-in expiry in sync, reducing unexpected sign-outs."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Dismiss reviewed warnings for everyone",
+          "description": "Tap a needs-a-look warning to view its details; management can choose Dismiss for everyone. Dismissed warnings remain faded with who dismissed them and return if the relevant hours or Travel change."
+        },
+        {
+          "title": "Leave a draft Field Note after discarding it",
+          "description": "Confirming Discard now closes the draft and returns you to the previous screen without getting stuck."
+        },
+        {
+          "title": "Find connected machine readings under JD Link",
+          "description": "Machine readings and hour comparisons now use the name JD Link in place of John Deere."
+        },
+        {
+          "title": "Zoom in on photos",
+          "description": "Open a photo, then pinch or double-tap to zoom and drag to inspect details."
+        },
+        {
+          "title": "Return to your previous screen",
+          "description": "The toolbar back button now follows your browsing history, matching the iOS back swipe and Android's back button."
+        },
+        {
+          "title": "Stay signed in more reliably",
+          "description": "Session renewal now keeps your sign-in expiry in sync, reducing unexpected sign-outs."
+        }
+      ]
+    }
+  ]
+}

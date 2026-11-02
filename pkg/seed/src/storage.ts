@@ -1,4 +1,4 @@
-import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { GetObjectCommand, NoSuchKey, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { EnvBoolean } from '@pkg/schema';
 
 // A minimal S3/MinIO client for the seeder, mirroring the read-only lander adapter
@@ -77,7 +77,8 @@ export async function downloadObject(store: SeedStorage, key: string): Promise<U
 
     return await response.Body.transformToByteArray();
   } catch (error) {
-    if (isS3Status(error, 404)) {
+    // A missing bucket is also a 404 and must fail the sync; only a missing key is a dangling reference.
+    if (error instanceof NoSuchKey) {
       return null;
     }
 
@@ -100,17 +101,5 @@ export async function uploadObject(
       ContentType: contentType,
       Key: key,
     }),
-  );
-}
-
-function isS3Status(error: unknown, statusCode: number): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    '$metadata' in error &&
-    typeof error.$metadata === 'object' &&
-    error.$metadata !== null &&
-    'httpStatusCode' in error.$metadata &&
-    error.$metadata.httpStatusCode === statusCode
   );
 }

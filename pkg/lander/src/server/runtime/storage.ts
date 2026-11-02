@@ -1,6 +1,6 @@
 import { Readable } from 'node:stream';
 
-import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { GetObjectCommand, NoSuchKey, S3Client } from '@aws-sdk/client-s3';
 import { type StorageAdapter, StorageObjectNotFoundError, type StoredObject } from '@pkg/core';
 
 import { getLanderConfig } from './env.js';
@@ -31,7 +31,8 @@ class LanderStorageAdapter implements StorageAdapter {
         contentType: response.ContentType ?? 'application/octet-stream',
       };
     } catch (error) {
-      if (isS3Status(error, 404)) {
+      // A missing bucket is also a 404; only a missing key means the object is gone.
+      if (error instanceof NoSuchKey) {
         throw new StorageObjectNotFoundError(key);
       }
 
@@ -85,16 +86,4 @@ function toAsyncIterable(body: unknown): AsyncIterable<Uint8Array> {
 
 function isAsyncIterable(value: unknown): value is AsyncIterable<Uint8Array> {
   return typeof value === 'object' && value !== null && Symbol.asyncIterator in value;
-}
-
-function isS3Status(error: unknown, statusCode: number): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    '$metadata' in error &&
-    typeof error.$metadata === 'object' &&
-    error.$metadata !== null &&
-    'httpStatusCode' in error.$metadata &&
-    error.$metadata.httpStatusCode === statusCode
-  );
 }

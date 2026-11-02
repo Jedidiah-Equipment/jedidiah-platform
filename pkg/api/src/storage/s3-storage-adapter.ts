@@ -1,6 +1,6 @@
 import { Readable } from 'node:stream';
 
-import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { DeleteObjectCommand, GetObjectCommand, NoSuchKey, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import {
   type StorageAdapter,
   StorageKeyAlreadyExistsError,
@@ -74,7 +74,8 @@ export class S3StorageAdapter implements StorageAdapter {
         contentType: response.ContentType ?? 'application/octet-stream',
       };
     } catch (error) {
-      if (isS3Status(error, 404)) {
+      // A missing bucket is also a 404; only a missing key means the object is gone.
+      if (error instanceof NoSuchKey) {
         throw new StorageObjectNotFoundError(key);
       }
 

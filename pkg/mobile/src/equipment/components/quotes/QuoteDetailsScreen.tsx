@@ -10,7 +10,6 @@ import { type PriorityQuote, type QuoteDetail, QuoteStatus, type QuoteUpdateInpu
 import { IconLayoutSidebarRight } from '@tabler/icons-react-native';
 import { useStore } from '@tanstack/react-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigation } from 'expo-router';
 import { usePreventRemove } from 'expo-router/react-navigation';
 import type React from 'react';
 import { useMemo, useState } from 'react';
@@ -133,7 +132,6 @@ function QuoteEditor({
   priorityQuote: PriorityQuote | null;
   quote: QuoteDetail;
 }) {
-  const navigation = useNavigation();
   const showToast = useAppToast();
   const [activeTab, setActiveTab] = useState<QuoteDetailTab>('details');
   const [summaryOpen, setSummaryOpen] = useState(false);
@@ -158,7 +156,15 @@ function QuoteEditor({
     validator,
   });
   // Every way out saves the last edit first.
-  usePreventRemove(true, ({ data }) => void autosave.flush().finally(() => navigation.dispatch(data.action)));
+  const [leaving, setLeaving] = useState(false);
+  usePreventRemove(
+    !leaving,
+    ({ repeat }) =>
+      void autosave.flush().finally(() => {
+        setLeaving(true);
+        repeat();
+      }),
+  );
   const values = useStore(form.store, (state) => state.values);
   const summary = useMemo(
     () => computeQuoteSummary({ quote, values: { ...values, workItems: values.workItems.map(toQuoteWorkItemInput) } }),

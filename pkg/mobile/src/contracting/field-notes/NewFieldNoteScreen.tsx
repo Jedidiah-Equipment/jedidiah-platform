@@ -1,4 +1,3 @@
-import { useNavigation } from 'expo-router';
 import { usePreventRemove } from 'expo-router/react-navigation';
 import { useEffect, useState } from 'react';
 import { FormPage } from '@/components/FormPage';
@@ -22,7 +21,6 @@ const PICK_FAILED = 'The photo could not be added. Try again.';
 /** A draft in component state: nothing reaches storage or the sandbox until Save note. */
 export default function NewFieldNoteScreen() {
   const { store } = useFieldNotes();
-  const navigation = useNavigation();
   const backToNotes = useGoBack(CONTRACTING_TAB_HREF['field-notes']);
   const [description, setDescription] = useState('');
   const voice = useVoiceSession({ business: 'contracting', purpose: 'field note' });
@@ -32,11 +30,14 @@ export default function NewFieldNoteScreen() {
   const limit = fieldNoteFiles.photoLimit;
   const hasContent = description.trim() !== '' || photos.length > 0;
 
-  usePreventRemove(hasContent && !saved, ({ data }) => {
+  const [discarded, setDiscarded] = useState(false);
+  usePreventRemove(hasContent && !saved && !discarded, ({ repeat }) => {
     // A save in flight would write the note after a discard; leaving waits for it.
     if (busy) return;
     void confirm({ title: 'Discard this Field Note?', confirmLabel: 'Discard', destructive: true }).then((discard) => {
-      if (discard) navigation.dispatch(data.action);
+      if (!discard) return;
+      setDiscarded(true);
+      repeat();
     });
   });
   // Leave only once the guard above has re-rendered without the draft.

@@ -68,6 +68,7 @@ import {
 import {
   breakdownActionSubject,
   breakdownJobId,
+  breakdownOnFarms,
   breakdownOnJob,
   breakdownOnJobs,
   breakdownReadableBy,
@@ -330,7 +331,7 @@ export async function listBreakdowns({
       input.implementIds.length ? inArray(contractingBreakdowns.implementId, input.implementIds) : undefined,
     ),
     input.jobIds.length ? breakdownOnJobs(input.jobIds) : undefined,
-    input.farmIds.length ? inArray(contractingJobs.farmId, input.farmIds) : undefined,
+    input.farmIds.length ? breakdownOnFarms(input.farmIds) : undefined,
     input.reporterUserIds.length ? inArray(contractingBreakdowns.reportedByUserId, input.reporterUserIds) : undefined,
     onCalendarDays(contractingBreakdowns.reportedAt, JOHANNESBURG_TIME_ZONE, {
       from: input.reportedFrom,

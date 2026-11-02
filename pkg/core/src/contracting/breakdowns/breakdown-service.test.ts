@@ -8,6 +8,7 @@ import { InMemoryStorageAdapter } from '../../storage/in-memory-storage-adapter.
 import { createTester } from '../../test/create-tester.js';
 import { assertContractingAccountChangeAllowed } from '../account-change.js';
 import { listActivity } from '../activity/activity-service.js';
+import { createFarm } from '../customers/farm-service.js';
 import { createCategory } from '../fleet/category-service.js';
 import { createImplement } from '../fleet/implement-service.js';
 import { listMachinesWithOpenBreakdowns } from '../fleet/machine-service.js';
@@ -469,4 +470,27 @@ test('an Implement’s yard report flags the Job it is towed onto until it is Fi
   expect(await jobFlagIds(db, jobId)).toEqual([down.id]);
   await solveBreakdown({ db, actor: workshop, input: { id: down.id, closeOutNote: 'Welded' } });
   expect(await jobFlagIds(db, jobId)).toEqual([]);
+});
+
+test('the Workshop’s Farm filter finds a Breakdown on whichever Job it is on, as its Job filter does', async ({
+  context,
+}) => {
+  const { db, excavator, jobId, customer, farm } = context;
+  const otherFarm = await createFarm({
+    db,
+    actorUserId: adminId,
+    input: { customerId: customer.id, name: 'Doornkop' },
+  });
+  const nextJob = await newJob(db, { ...context, farm: otherFarm });
+  const stint = await arrive(db, jobId, excavator.id);
+  const filed = await reportNew({ db, actor: foreman, input: report({ kind: 'machine', id: excavator.id }) });
+  await captureHours(db, stint.id, 'departure', 120);
+  await arrive(db, nextJob.id, excavator.id);
+  const ids = async (filter: Record<string, string[]>) =>
+    (await listBreakdowns({ db, actor: admin, input: BreakdownListInput.parse(filter) })).items.map((item) => item.id);
+  const options = await listBreakdownFilterOptions({ db, actor: admin });
+  expect(options.farms.map((option) => option.id).sort()).toEqual([farm.id, otherFarm.id].sort());
+  expect(await ids({ farmIds: [farm.id] })).toEqual([filed.id]);
+  expect(await ids({ farmIds: [otherFarm.id] })).toEqual([filed.id]);
+  expect(await ids({ jobIds: [nextJob.id], farmIds: [otherFarm.id] })).toEqual([filed.id]);
 });

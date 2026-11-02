@@ -55,6 +55,15 @@ export const breakdownOnJob = (job: SQLWrapper) => onJobOf(contractingBreakdowns
 export const breakdownOnJobs = (jobIds: readonly string[]) =>
   or(...jobsOf(contractingBreakdowns).map((id) => inArray(id, [...jobIds])));
 
+const farmJob = alias(contractingJobs, 'farm_job');
+
+/** The Breakdowns on a Job at any of these Farms, by the one rule. */
+export const breakdownOnFarms = (farmIds: readonly string[]) => sql`exists (
+  select 1
+  from contracting.job farm_job
+  where ${inArray(farmJob.farmId, [...farmIds])} and ${breakdownOnJob(farmJob.id)}
+)`;
+
 /** The Jobs one loaded Breakdown is on, by the one rule. */
 export const jobsOfBreakdown = ({ breakdown, onSiteJobId }: LoadedBreakdown): string[] => [
   ...new Set([breakdown.jobId, onSiteJobId].filter((id): id is string => id !== null)),

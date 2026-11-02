@@ -123,6 +123,8 @@ export type AssignmentPatchInput = z.infer<typeof AssignmentPatchInput>;
 export const AssignmentIdInput = z.object({ id: UUID }).strict();
 export const TravelHoursSetInput = z.object({ assignmentId: UUID, travelHours: Hours }).strict();
 export type TravelHoursSetInput = z.infer<typeof TravelHoursSetInput>;
+export const AttentionDismissInput = z.object({ assignmentId: UUID, kind: z.enum(assignmentAttentionKinds) }).strict();
+export type AttentionDismissInput = z.infer<typeof AttentionDismissInput>;
 export const MeasureSetInput = z.object({ assignmentId: UUID, measureTypeId: UUID, quantity: Quantity }).strict();
 export type MeasureSetInput = z.infer<typeof MeasureSetInput>;
 export const MeasureRemoveInput = z.object({ assignmentId: UUID, measureTypeId: UUID }).strict();
@@ -176,6 +178,14 @@ export const StintPricing = z.discriminatedUnion('kind', [
 ]);
 export type StintPricing = z.infer<typeof StintPricing>;
 
+/** A needs-a-look kind someone decided is fine as it is: it stands for everyone until the facts it reads change. */
+export const DismissedAttention = z.object({
+  kind: z.enum(assignmentAttentionKinds),
+  dismissedAt: DateIso,
+  dismissedByName: z.string(),
+});
+export type DismissedAttention = z.infer<typeof DismissedAttention>;
+
 export const Assignment = z.object({
   id: UUID,
   jobId: UUID,
@@ -200,8 +210,10 @@ export const Assignment = z.object({
   travelSetByName: z.string().nullable(),
   workHours: Hours.nullable(),
   billableHours: Hours.nullable(),
-  /** Every reason the stint needs a look; none blocks anything. */
+  /** Every reason the stint needs a look and nobody dismissed; none blocks anything. */
   attention: z.array(z.enum(assignmentAttentionKinds)),
+  /** The kinds that still hold but were dismissed: shown faded on the Machine, counted nowhere. */
+  dismissedAttention: z.array(DismissedAttention),
   /** The latest management edit of its Job Hours, with its reason. */
   amendment: z.object({ at: DateIso, byName: z.string(), reason: z.string() }).nullable(),
   measures: z.array(Measure),

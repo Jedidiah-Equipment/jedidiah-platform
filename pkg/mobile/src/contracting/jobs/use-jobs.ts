@@ -120,6 +120,17 @@ export function useStintHoursWrites() {
   };
 }
 
+/** Dismisses a needs-a-look kind for everyone; the Job and its list counts refresh. */
+export function useDismissAttention() {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  return useMutation(
+    trpc.contractingJobs.assignments.dismissAttention.mutationOptions({
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: trpc.contractingJobs.pathKey() }),
+    }),
+  );
+}
+
 /** The Measure Types a Measure names, in display order: for whoever may record Measures. */
 export function useMeasureTypes() {
   const canRead = useSessionPermission('contracting_job:update', 'contracting_assignment:update-own');

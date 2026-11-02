@@ -84,6 +84,7 @@ export const jobErrorFamily = defineCoreErrorFamily<JobError>({
     'contracting_job.not_owner': 'FORBIDDEN',
     'contracting_job.pricing_incomplete': 'CONFLICT',
     'contracting_job.rate_inactive': 'CONFLICT',
+    'contracting_job.attention_cleared': 'CONFLICT',
     'contracting_job.reason_required': 'BAD_REQUEST',
     'contracting_job.stint_not_planned': 'CONFLICT',
     'contracting_job.total_changed': 'CONFLICT',

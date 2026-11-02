@@ -24,10 +24,12 @@ import {
   IconPlayerStop,
   IconPlus,
   IconRuler2,
+  IconX,
 } from '@tabler/icons-react';
 import { useMutation } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
+import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { RemoveEntityButton } from '@/components/common/RemoveEntityButton.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
@@ -38,6 +40,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu.js';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
 import { CategoryIcon } from '@/contracting/components/CategoryIcon.js';
 import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
 import { IconAction, Timeline, TimelineRow } from '@/contracting/components/Timeline.js';
@@ -51,15 +54,21 @@ import { useJobWrite } from './use-job-write.js';
 
 type Opens = { onOpen: (dialog: MachineDialog) => void };
 
-/** The hours, when and by whom they were captured, and what John Deere had last read then. */
+/** The hours, who captured them and the comment; when, and what John Deere had read then, sit in the hover title. */
 function ReadingDetail({ reading }: { reading: JobHoursValue }) {
-  const captured = `captured ${formatDate(reading.at, 'medium')} by ${getFirstName(reading.byName)}`;
-  const deere = reading.telematics
-    ? `John Deere ${formatHours(reading.telematics.hours)} at ${formatDate(reading.telematics.at, 'medium')}`
-    : null;
-  const parts = [captured, deere, reading.comment].filter(Boolean);
+  const parts = [`Captured by ${getFirstName(reading.byName)}`, reading.comment].filter(Boolean);
+  const title = [
+    formatHours(reading.hours),
+    `captured ${formatDate(reading.at, 'medium')} by ${getFirstName(reading.byName)}`,
+    reading.telematics
+      ? `John Deere ${formatHours(reading.telematics.hours)} at ${formatDate(reading.telematics.at, 'medium')}`
+      : null,
+    reading.comment,
+  ]
+    .filter(Boolean)
+    .join(' · ');
   return (
-    <span className="block truncate" title={[formatHours(reading.hours), ...parts].join(' · ')}>
+    <span className="block truncate" title={title}>
       <span className="font-medium text-primary">{formatHours(reading.hours)}</span>
       {parts.map((part) => ` · ${part}`).join('')}
     </span>
@@ -91,20 +100,67 @@ function HoursAction({
   );
 }
 
-/** The amber badge per reason the stint needs a look, and the latest management edit of its hours. */
-function StintAttention({ stint, thresholds }: { stint: Assignment; thresholds: AttentionThresholds }) {
-  if (!stint.attention.length && !stint.amendment) return null;
+/**
+ * The amber badge per reason the stint needs a look, with a dismiss control for whoever may dismiss it, then the
+ * dismissed reasons faded, and the latest management edit of its hours.
+ */
+function StintAttention({
+  stint,
+  thresholds,
+  canDismiss,
+}: {
+  stint: Assignment;
+  thresholds: AttentionThresholds;
+  canDismiss: boolean;
+}) {
+  const trpc = useTRPC();
+  const write = useJobWrite();
+  const dismiss = useMutation(
+    trpc.contractingJobs.assignments.dismissAttention.mutationOptions(write.card('Unable to dismiss the warning.')),
+  );
+  if (!stint.attention.length && !stint.dismissedAttention.length && !stint.amendment) return null;
+  const badgeClassName = cn('h-auto whitespace-normal', needsALookColorClassNames.chip, needsALookColorClassNames.text);
   return (
     <div className="mb-3 flex flex-wrap gap-2">
-      {stint.attention.map((kind) => (
-        <Badge
-          className={cn('h-auto whitespace-normal', needsALookColorClassNames.chip, needsALookColorClassNames.text)}
-          key={kind}
-          variant="outline"
-        >
-          <IconAlertTriangle aria-hidden="true" />
-          {assignmentAttentionSentence(kind, stint, thresholds)}
-        </Badge>
+      {stint.attention.map((kind) => {
+        const sentence = assignmentAttentionSentence(kind, stint, thresholds);
+        return (
+          <Badge className={badgeClassName} key={kind} variant="outline">
+            <IconAlertTriangle aria-hidden="true" />
+            {sentence}
+            {canDismiss ? (
+              <button
+                aria-label={`Dismiss for everyone: ${sentence}`}
+                className="-mr-1 rounded-full p-0.5 opacity-0 transition-opacity hover:bg-orange-500/20 focus-visible:opacity-100 disabled:opacity-50 group-hover/badge:opacity-100 pointer-coarse:opacity-100"
+                disabled={dismiss.isPending}
+                onClick={() => dismiss.mutate({ assignmentId: stint.id, kind })}
+                title="Dismiss for everyone"
+                type="button"
+              >
+                <IconX aria-hidden="true" className="size-3" />
+              </button>
+            ) : null}
+          </Badge>
+        );
+      })}
+      {stint.dismissedAttention.map((dismissal) => (
+        <Tooltip key={dismissal.kind}>
+          <TooltipTrigger
+            render={
+              <Badge
+                className={cn(badgeClassName, 'opacity-40 transition-opacity hover:opacity-100')}
+                variant="outline"
+              />
+            }
+          >
+            <IconAlertTriangle aria-hidden="true" />
+            {assignmentAttentionSentence(dismissal.kind, stint, thresholds)}
+          </TooltipTrigger>
+          <TooltipContent>
+            {`Dismissed by ${getFirstName(dismissal.dismissedByName)} · `}
+            <DateDisplay date={dismissal.dismissedAt} format="medium" />
+          </TooltipContent>
+        </Tooltip>
       ))}
       {stint.amendment ? (
         <span className="text-xs text-muted-foreground">
@@ -323,7 +379,7 @@ export function MachineStintCard({
             />
           ) : null}
         </Timeline>
-        <StintAttention stint={stint} thresholds={thresholds} />
+        <StintAttention canDismiss={stintSheet.can('dismissAttention')} stint={stint} thresholds={thresholds} />
         <div className="-mt-1 mb-4 flex justify-end">
           <AddMenu
             canMeasure={canMeasure}

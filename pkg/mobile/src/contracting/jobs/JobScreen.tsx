@@ -10,7 +10,12 @@ import {
   mostUrgentBreakdown,
   needsALookColorClassNames,
 } from '@pkg/domain/contracting';
-import type { AssignmentDetail, BreakdownSummary, JobCardVariant } from '@pkg/schema/contracting';
+import type {
+  AssignmentAttentionKind,
+  AssignmentDetail,
+  BreakdownSummary,
+  JobCardVariant,
+} from '@pkg/schema/contracting';
 import { IconPencil, IconPlayerPlay, IconPlayerStop, IconPlus, IconRuler2 } from '@tabler/icons-react-native';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
@@ -33,6 +38,7 @@ import { useJobBreakdowns } from '@/contracting/workshop/use-breakdowns';
 import { shareDocument } from '@/lib/document-actions';
 import { useBusyAction } from '@/lib/use-busy-action';
 import { useColorMode } from '@/theme/use-color-mode';
+import { AttentionDialog } from './AttentionDialog';
 import { JobStatusChip } from './JobStatusChip';
 import { MeasuresSheet } from './MeasuresSheet';
 import { useJob } from './use-jobs';
@@ -192,6 +198,37 @@ function stintHoursLine({ arrival, departure, workHours, travelHours }: Assignme
   return `${formatHours(arrival.hours)} → ${formatHours(departure.hours)} · ${formatHours(workHours ?? 0)} work · ${formatHours(travelHours ?? 0)} travel`;
 }
 
+/** One amber block of needs-a-look reasons on a stint, each opening its dialog. */
+function AttentionRows({
+  kinds,
+  faded = false,
+  stint,
+  thresholds,
+  onOpen,
+}: {
+  kinds: readonly AssignmentAttentionKind[];
+  faded?: boolean;
+  stint: AssignmentDetail;
+  thresholds: AttentionThresholds;
+  onOpen: (kind: AssignmentAttentionKind) => void;
+}) {
+  const { resolved } = useColorMode();
+  if (!kinds.length) return null;
+  return (
+    <View
+      className={`gap-1 rounded-xl border px-3 py-2 ${needsALookColorClassNames.chip} ${faded ? 'opacity-50' : ''}`}
+    >
+      {kinds.map((kind) => (
+        <Pressable accessibilityRole="button" key={kind} onPress={() => onOpen(kind)}>
+          <Text className={`text-sm ${needsALookColorClassNames.textByScheme[resolved]}`}>
+            {assignmentAttentionSentence(kind, stint, thresholds)}
+          </Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
 function StintCard({
   entry: { stint, sheet: stintSheet },
   breakdown,
@@ -214,7 +251,7 @@ function StintCard({
   onReport: () => void;
   thresholds: AttentionThresholds | undefined;
 }) {
-  const { resolved } = useColorMode();
+  const [openedKind, setOpenedKind] = useState<AssignmentAttentionKind | null>(null);
   return (
     <View className={`gap-2 rounded-xl border bg-surface p-4 ${breakdownBorder(breakdown) ?? 'border-border'}`}>
       <View className="flex-row items-center justify-between gap-2">
@@ -258,14 +295,25 @@ function StintCard({
           </Text>
         ) : null}
       </View>
-      {thresholds && stint.attention.length ? (
-        <View className={`gap-1 rounded-xl border px-3 py-2 ${needsALookColorClassNames.chip}`}>
-          {stint.attention.map((kind) => (
-            <Text className={`text-sm ${needsALookColorClassNames.textByScheme[resolved]}`} key={kind}>
-              {assignmentAttentionSentence(kind, stint, thresholds)}
-            </Text>
-          ))}
-        </View>
+      {thresholds ? (
+        <>
+          <AttentionRows kinds={stint.attention} onOpen={setOpenedKind} stint={stint} thresholds={thresholds} />
+          {/* The dismissed reasons stay readable but faded: nothing counts them any more. */}
+          <AttentionRows
+            faded
+            kinds={stint.dismissedAttention.map((dismissal) => dismissal.kind)}
+            onOpen={setOpenedKind}
+            stint={stint}
+            thresholds={thresholds}
+          />
+          <AttentionDialog
+            canDismiss={stintSheet.can('dismissAttention')}
+            kind={openedKind}
+            onClose={() => setOpenedKind(null)}
+            stint={stint}
+            thresholds={thresholds}
+          />
+        </>
       ) : null}
       {stintSheet.can('captureArrival') ? (
         <CaptureButton icon={IconPlayerPlay} label="Start — capture arrival" onPress={onStart} />

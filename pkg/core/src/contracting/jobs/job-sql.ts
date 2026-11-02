@@ -6,8 +6,8 @@ import { alias } from 'drizzle-orm/pg-core';
 
 /**
  * The Job read model's derived facts, in SQL for the queues. Each mirrors a domain rule the detail read
- * computes in TypeScript (`assignmentState`, `stintAttentionKinds`, `looksFinished`), so a rule changes here and
- * there together.
+ * computes in TypeScript (`assignmentState`, `looksFinished`), so a rule changes here and there together.
+ * Assignment Attention's twin lives with the rest of it, in `assignment-attention.ts`.
  */
 
 const stints = contractingMachineAssignments;
@@ -53,28 +53,6 @@ export const stintCount = (state: AssignmentState) => sql<number>`(
   where summary_assignment.job_id = ${contractingJobs.id}
     and ${assignmentInState[state](summaryAssignment)}
 )`;
-
-/**
- * The Job's stints that need a look against the thresholds as Settings holds them now: the SQL twin of
- * `stintAttentionKinds`.
- */
-export const assignmentAttention = sql<number>`(
-  select count(*)::integer
-  from contracting.machine_assignment summary_assignment
-  cross join contracting.settings
-  where summary_assignment.job_id = ${contractingJobs.id}
-    and (
-      (summary_assignment.travel_hours > contracting.settings.travel_flag_threshold_hours
-        and summary_assignment.travel_set_at is null)
-      or summary_assignment.travel_clamped
-      or abs(summary_assignment.arrival_hours - summary_assignment.arrival_telematics_hours)
-        > contracting.settings.john_deere_difference_threshold_hours
-      or abs(summary_assignment.departure_hours - summary_assignment.departure_telematics_hours)
-        > contracting.settings.john_deere_difference_threshold_hours
-    )
-)`;
-
-export const needsALook = sql<boolean>`(${assignmentAttention} > 0)`;
 
 /** The Machine has an Assignment on the Job, in any state. */
 export const hasMachine = (machineId: string) => sql<boolean>`exists (

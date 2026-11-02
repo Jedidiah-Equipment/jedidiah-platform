@@ -1,5 +1,10 @@
 import type { CaptureWhen } from '@pkg/domain/contracting';
-import type { BreakdownSubjectKind, BreakdownUrgency, ReadAtEstimate } from '@pkg/schema/contracting';
+import {
+  assignmentAttentionKinds,
+  type BreakdownSubjectKind,
+  type BreakdownUrgency,
+  type ReadAtEstimate,
+} from '@pkg/schema/contracting';
 import { addBreadcrumb, captureEvent } from '@/lib/observability';
 import { type MutationEventCatalog, type ObservabilityProperties, pickRecordIds } from '@/lib/observability-contract';
 
@@ -30,6 +35,11 @@ export function recordBreakdownReported(properties: {
 const breakdownUrgency = (variables: unknown): ObservabilityProperties => {
   const urgency = (variables as { urgency?: unknown } | null)?.urgency;
   return urgency === 'code-red' || urgency === 'code-green' ? { urgency } : {};
+};
+
+const attentionKind = (variables: unknown): ObservabilityProperties => {
+  const kind = (variables as { kind?: unknown } | null)?.kind;
+  return assignmentAttentionKinds.find((each) => each === kind) ? { kind: String(kind) } : {};
 };
 
 /** Contracting's tRPC mutations that are events; the shared mutation cache emits each once on success. */
@@ -81,6 +91,10 @@ export const CONTRACTING_MUTATION_EVENTS = {
   'contractingJobs.assignments.editHours': {
     event: 'job hours edited',
     properties: (variables) => pickRecordIds(variables, ['assignmentId']),
+  },
+  'contractingJobs.assignments.dismissAttention': {
+    event: 'attention dismissed',
+    properties: (variables) => ({ ...pickRecordIds(variables, ['assignmentId']), ...attentionKind(variables) }),
   },
   'contractingJobs.measures.set': {
     event: 'measure set',

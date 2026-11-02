@@ -30,6 +30,7 @@ vi.mock('@/contracting/components/CategoryIcon', () => ({ CategoryIcon: 'Categor
 vi.mock('@/lib/document-actions', () => ({ shareDocument: vi.fn() }));
 vi.mock('@/lib/observability', () => ({ captureException: vi.fn() }));
 vi.mock('@/contracting/workshop/use-breakdowns', () => ({ useJobBreakdowns: () => ({ data: undefined }) }));
+vi.mock('./AttentionDialog', () => ({ AttentionDialog: 'AttentionDialog' }));
 vi.mock('./MeasuresSheet', () => ({ MeasuresSheet: 'MeasuresSheet' }));
 vi.mock('./use-jobs', () => ({ useJob: () => ({ data: undefined, canRead: false }) }));
 

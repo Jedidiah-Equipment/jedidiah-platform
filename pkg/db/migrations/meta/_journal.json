@@ -1303,6 +1303,13 @@
       "when": 1793360017651,
       "tag": "0185_job_hours_on_the_assignment",
       "breakpoints": true
+    },
+    {
+      "idx": 186,
+      "version": "7",
+      "when": 1793603928369,
+      "tag": "0186_attention_dismissal",
+      "breakpoints": true
     }
   ]
 }

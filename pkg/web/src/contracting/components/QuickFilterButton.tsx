@@ -8,13 +8,11 @@ export function QuickFilterButton({
   count,
   pressed,
   onClick,
-  attention,
   children,
 }: {
   count?: number | undefined;
   pressed: boolean;
   onClick: () => void;
-  attention?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -30,7 +28,6 @@ export function QuickFilterButton({
       {count === undefined ? null : (
         <span className="rounded bg-muted px-1 text-xs text-muted-foreground">{formatNumber(count)}</span>
       )}
-      {attention}
     </Button>
   );
 }

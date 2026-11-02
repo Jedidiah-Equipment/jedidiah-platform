@@ -117,6 +117,7 @@ export const APP_PERMISSIONS = [
   'contracting_reading:capture',
   'contracting_reading:update',
   'contracting_travel:set',
+  'contracting_attention:dismiss',
   'contracting_breakdown:read',
   'contracting_breakdown:report',
   'contracting_breakdown:update',

@@ -106,6 +106,11 @@ const rules: Record<JobActionName, Rule> = {
     verb: 'change hours',
   },
   setTravel: { statuses: unclosedJobStatuses, permissions: ['contracting_travel:set'], verb: 'set Travel Hours' },
+  dismissAttention: {
+    statuses: unclosedJobStatuses,
+    permissions: ['contracting_attention:dismiss'],
+    verb: 'dismiss a warning',
+  },
   // The core report judges a report that names a Job by this same rule, so the Job sheet and the server agree.
   reportBreakdown: {
     statuses: openJobStatuses,

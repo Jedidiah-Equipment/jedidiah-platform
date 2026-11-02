@@ -6,6 +6,7 @@ import {
   createAssignment,
   createChargeLine,
   createJob,
+  dismissAttention,
   editStintHours,
   findJobsByInvoiceNumber,
   getReadableJob,
@@ -34,6 +35,7 @@ import {
   AssignmentIdInput,
   AssignmentPatchInput,
   AssignmentPlanInput,
+  AttentionDismissInput,
   ChargeLineCreateInput,
   ChargeLineIdInput,
   ChargeLinePatchInput,
@@ -159,6 +161,11 @@ export const createContractingJobsRouter = (push: ContractingPushScheduler) =>
         .input(TravelHoursSetInput)
         .mutation(({ ctx, input }) =>
           mapCoreErrors(() => setTravelHours({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
+        ),
+      dismissAttention: authorizedProcedure('contracting_attention:dismiss')
+        .input(AttentionDismissInput)
+        .mutation(({ ctx, input }) =>
+          mapCoreErrors(() => dismissAttention({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
         ),
     }),
     measures: router({

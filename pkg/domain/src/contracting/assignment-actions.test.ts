@@ -19,6 +19,7 @@ const matrix: Record<AssignmentActionName, string> = {
   editMeasures: '·✓✓',
   editHours: '·✓✓',
   setTravel: '·✓✓',
+  dismissAttention: '·✓✓',
   price: '··✓',
 };
 
@@ -41,6 +42,7 @@ describe('judgeAssignmentAction', () => {
       editMeasures: ['planned', 'Measures can only be recorded after the Machine has arrived.'],
       editHours: ['planned', 'The Machine has not arrived yet.'],
       setTravel: ['planned', 'Travel Hours exist once the Machine has arrived.'],
+      dismissAttention: ['planned', 'Warnings exist once the Machine has arrived.'],
       price: ['on-site', 'Only a Machine Assignment that has left can be priced.'],
     };
     for (const action of assignmentActionNames) {

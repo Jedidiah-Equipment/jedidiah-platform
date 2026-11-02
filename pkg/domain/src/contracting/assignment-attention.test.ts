@@ -1,5 +1,12 @@
+import type { DateIso } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
-import { assignmentAttentionSentence, jobNeedsALookCount, stintAttentionKinds } from './assignment-attention.js';
+import {
+  assignmentAttentionSentence,
+  jobNeedsALookCount,
+  rearmedAttentionKinds,
+  stintAttention,
+  stintAttentionKinds,
+} from './assignment-attention.js';
 
 const thresholds = { travelFlagThresholdHours: 4, johnDeereDifferenceThresholdHours: 10 };
 const at = '2026-10-28T12:05:00Z';
@@ -45,5 +52,38 @@ describe('assignment attention', () => {
         { attention: ['travel-over-threshold'] },
       ]),
     ).toBe(2);
+  });
+
+  it('moves a dismissed kind out of needs a look, and forgets a dismissal whose kind no longer holds', () => {
+    const henk = { dismissedAt: at as DateIso, dismissedByName: 'Henk Botha' };
+    const both = { ...stint, travelHours: 6, arrival: { hours: 4480, telematics: { hours: 4512, at } } };
+    expect(stintAttention(both, thresholds, [{ kind: 'john-deere-difference', ...henk }])).toEqual({
+      attention: ['travel-over-threshold'],
+      dismissedAttention: [{ kind: 'john-deere-difference', ...henk }],
+    });
+    expect(stintAttention(stint, thresholds, [{ kind: 'travel-over-threshold', ...henk }])).toEqual({
+      attention: [],
+      dismissedAttention: [],
+    });
+  });
+
+  it('re-arms a dismissal only when a fact its kind reads changes', () => {
+    const row = {
+      arrivalHours: 4480,
+      departureHours: 4500,
+      arrivalTelematicsHours: 4512,
+      departureTelematicsHours: null,
+      travelHours: 6,
+      travelClamped: false,
+    };
+    expect(rearmedAttentionKinds(row, { ...row })).toEqual([]);
+    // A new departure is a new comparison with John Deere; Travel is untouched.
+    expect(rearmedAttentionKinds(row, { ...row, departureHours: 4510 })).toEqual(['john-deere-difference']);
+    expect(rearmedAttentionKinds(row, { ...row, travelHours: 7 })).toEqual(['travel-over-threshold']);
+    // A moved arrival is a new comparison and, while Travel is clamped, a new reason for the clamp.
+    expect(rearmedAttentionKinds(row, { ...row, arrivalHours: 4470, travelClamped: true })).toEqual([
+      'travel-clamped',
+      'john-deere-difference',
+    ]);
   });
 });

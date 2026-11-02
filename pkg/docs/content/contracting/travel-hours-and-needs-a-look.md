@@ -17,3 +17,7 @@ A Machine on a Job is marked amber when:
 - Its hours are further from John Deere's reading than the John Deere difference threshold.
 
 Travel set by hand has been looked at, so it clears both Travel reasons. The marks show on the Machine, the Job Sheet, pricing and the internal Job Card, and the Jobs list and Dashboard count them. None of them stops the Job: the only thing that stops sign-off is a Machine still on site.
+
+## Dismissed reasons
+
+A reason can be right as it stands: the Machine really did travel that far, or John Deere's last report is old. Management then dismisses it, once, for everyone on the web and the phone. A dismissed reason stays on the Machine, faded, with who dismissed it; it no longer marks the Machine amber, and the Jobs list and Dashboard stop counting it. It comes back by itself when the hours or Travel it is about change. Foremen see reasons but cannot dismiss them.

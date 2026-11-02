@@ -8,6 +8,9 @@ import { InMemoryStorageAdapter } from '../../storage/in-memory-storage-adapter.
 import { createTester } from '../../test/create-tester.js';
 import { assertContractingAccountChangeAllowed } from '../account-change.js';
 import { listActivity } from '../activity/activity-service.js';
+import { createFarm } from '../customers/farm-service.js';
+import { createCategory } from '../fleet/category-service.js';
+import { createImplement } from '../fleet/implement-service.js';
 import { listMachinesWithOpenBreakdowns } from '../fleet/machine-service.js';
 import { onSiteAssignment } from '../fleet/on-site-assignment.js';
 import { listJobs } from '../jobs/job-queues.js';
@@ -42,6 +45,30 @@ const jpeg = new Uint8Array([255, 216, 255]);
 const workshop = accessForRole('workshop-manager', 'connor');
 const otherForeman = accessForRole('foreman', 'thabo');
 
+type Db = Parameters<typeof createJob>[0]['db'];
+type Fixtures = Awaited<ReturnType<typeof seedJobFixtures>>;
+
+/** A Job for the fixture customer and farm, run by the fixture Foreman. */
+const newJob = (db: Db, { customer, farm, workType }: Fixtures) =>
+  createJob({
+    db,
+    actor: admin,
+    input: {
+      customerId: customer.id,
+      farmId: farm.id,
+      workTypeId: workType.id,
+      description: null,
+      foremanUserId: foremanId,
+    },
+  });
+
+/** The Breakdown ids a Job's row flags, sorted; undefined when the Job is neither Active nor looks finished. */
+const jobFlagIds = async (db: Db, jobId: string) =>
+  (await listJobs({ db, actor: admin, input: JobListInput.parse({ queues: ['active', 'looks-finished'] }) })).items
+    .find((item) => item.id === jobId)
+    ?.openBreakdowns.map((flag) => flag.id)
+    .sort();
+
 const test = createTester(async ({ db }) => {
   const fixtures = await seedJobFixtures(db);
   const now = new Date();
@@ -61,17 +88,7 @@ const test = createTester(async ({ db }) => {
       person('danie', 'Danie', 'mechanic'),
       person('thabo', 'Thabo', 'foreman'),
     ]);
-  const job = await createJob({
-    db,
-    actor: admin,
-    input: {
-      customerId: fixtures.customer.id,
-      farmId: fixtures.farm.id,
-      workTypeId: fixtures.workType.id,
-      description: null,
-      foremanUserId: foremanId,
-    },
-  });
+  const job = await newJob(db, fixtures);
   return { ...fixtures, jobId: job.id, storage: new InMemoryStorageAdapter() };
 });
 
@@ -84,6 +101,7 @@ async function arrive(
 ) {
   const stint = await plannedStint(db, admin, { jobId, machineId, implementId });
   await captureHours(db, stint.id, 'arrival', 100);
+  return stint;
 }
 
 const reportNew = async (...args: Parameters<typeof reportBreakdown>) => (await reportBreakdown(...args)).breakdown;
@@ -382,4 +400,97 @@ test('Job and Machine rows list their unsolved Breakdowns, Code Red first, for e
   await solveBreakdown({ db, actor: workshop, input: { id: down.id, closeOutNote: 'Replaced' } });
   expect(await jobFlags(admin)).toEqual([rattle]);
   expect((await machineFlags(admin)).get(excavator.id)).toEqual([]);
+});
+
+test('a Breakdown reported in the yard flags the Job its Machine then arrives on, as the Machine row does', async ({
+  context,
+}) => {
+  const { db, excavator, jobId } = context;
+  const down = await reportNew({ db, actor: workshop, input: report({ kind: 'machine', id: excavator.id }) });
+  expect(down.jobId).toBeNull();
+  await arrive(db, jobId, excavator.id);
+  const flagged = { id: down.id, urgency: 'code-red', status: 'open', subjectCode: 'CAT320-1' };
+  const jobRow = (await listJobs({ db, actor: admin, input: JobListInput.parse({ queues: ['active'] }) })).items.find(
+    (item) => item.id === jobId,
+  );
+  const machineRow = (
+    await listMachinesWithOpenBreakdowns({ db, actor: admin, input: { status: 'active', search: '' } })
+  ).find((machine) => machine.id === excavator.id);
+  expect(machineRow?.openBreakdowns).toEqual([expect.objectContaining(flagged)]);
+  expect(jobRow?.openBreakdowns).toEqual([expect.objectContaining(flagged)]);
+});
+
+test('a Job’s Breakdown list holds the yard report its Machine brought on site, filed under that Job', async ({
+  context,
+}) => {
+  const { db, excavator, jobId } = context;
+  const down = await reportNew({ db, actor: workshop, input: report({ kind: 'machine', id: excavator.id }) });
+  await arrive(db, jobId, excavator.id);
+  const onJob = await listBreakdowns({ db, actor: admin, input: BreakdownListInput.parse({ jobIds: [jobId] }) });
+  expect(onJob.items).toEqual([
+    expect.objectContaining({ id: down.id, jobId, jobNumber: expect.stringMatching(/^CJOB-/), farmName: 'Rooikraal' }),
+  ]);
+});
+
+test('a Machine moving on takes its unfixed Breakdowns along: a filed one stays on its Job too, a yard one does not', async ({
+  context,
+}) => {
+  const { db, excavator, tipper, jobId } = context;
+  const nextJob = await newJob(db, context);
+  const excavatorStint = await arrive(db, jobId, excavator.id);
+  const filed = await reportNew({ db, actor: foreman, input: report({ kind: 'machine', id: excavator.id }) });
+  const yard = await reportNew({ db, actor: workshop, input: report({ kind: 'machine', id: tipper.id }) });
+  const tipperStint = await arrive(db, jobId, tipper.id);
+  const listed = async (id: string) =>
+    (await listBreakdowns({ db, actor: admin, input: BreakdownListInput.parse({ jobIds: [id] }) })).items
+      .map((item) => item.id)
+      .sort();
+  expect(await jobFlagIds(db, jobId)).toEqual([filed.id, yard.id].sort());
+
+  await captureHours(db, excavatorStint.id, 'departure', 120);
+  await captureHours(db, tipperStint.id, 'departure', 120);
+  await arrive(db, nextJob.id, excavator.id);
+  expect(await jobFlagIds(db, jobId)).toEqual([filed.id]);
+  expect(await listed(jobId)).toEqual([filed.id]);
+  expect(await jobFlagIds(db, nextJob.id)).toEqual([filed.id]);
+  expect(await listed(nextJob.id)).toEqual([filed.id]);
+  expect((await getBreakdown({ db, actor: admin, id: filed.id })).jobId).toBe(jobId);
+});
+
+test('an Implement’s yard report flags the Job it is towed onto until it is Fixed', async ({ context }) => {
+  const { db, excavator, jobId } = context;
+  const category = await createCategory({ db, actorUserId: adminId, input: { name: 'Rippers', kind: 'implement' } });
+  const ripper = await createImplement({
+    db,
+    actorUserId: adminId,
+    input: { code: 'RIP-1', categoryId: category.id, notes: null },
+  });
+  const down = await reportNew({ db, actor: workshop, input: report({ kind: 'implement', id: ripper.id }) });
+  await arrive(db, jobId, excavator.id, ripper.id);
+  expect(await jobFlagIds(db, jobId)).toEqual([down.id]);
+  await solveBreakdown({ db, actor: workshop, input: { id: down.id, closeOutNote: 'Welded' } });
+  expect(await jobFlagIds(db, jobId)).toEqual([]);
+});
+
+test('the Workshop’s Farm filter finds a Breakdown on whichever Job it is on, as its Job filter does', async ({
+  context,
+}) => {
+  const { db, excavator, jobId, customer, farm } = context;
+  const otherFarm = await createFarm({
+    db,
+    actorUserId: adminId,
+    input: { customerId: customer.id, name: 'Doornkop' },
+  });
+  const nextJob = await newJob(db, { ...context, farm: otherFarm });
+  const stint = await arrive(db, jobId, excavator.id);
+  const filed = await reportNew({ db, actor: foreman, input: report({ kind: 'machine', id: excavator.id }) });
+  await captureHours(db, stint.id, 'departure', 120);
+  await arrive(db, nextJob.id, excavator.id);
+  const ids = async (filter: Record<string, string[]>) =>
+    (await listBreakdowns({ db, actor: admin, input: BreakdownListInput.parse(filter) })).items.map((item) => item.id);
+  const options = await listBreakdownFilterOptions({ db, actor: admin });
+  expect(options.farms.map((option) => option.id).sort()).toEqual([farm.id, otherFarm.id].sort());
+  expect(await ids({ farmIds: [farm.id] })).toEqual([filed.id]);
+  expect(await ids({ farmIds: [otherFarm.id] })).toEqual([filed.id]);
+  expect(await ids({ jobIds: [nextJob.id], farmIds: [otherFarm.id] })).toEqual([filed.id]);
 });

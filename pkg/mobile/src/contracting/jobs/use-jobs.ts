@@ -98,7 +98,10 @@ export function useDrivers() {
   );
 }
 
-/** A stint's Job Hours writes; each refreshes the Job, its reports and Activity, and wherever Known Hours show. */
+/**
+ * A stint's Job Hours writes; each refreshes the Job, its reports and Activity, wherever Known Hours show, and the
+ * Breakdowns, since an arrival or departure moves which Job an unfixed Breakdown is on.
+ */
 export function useStintHoursWrites() {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
@@ -106,6 +109,7 @@ export function useStintHoursWrites() {
     await Promise.all(
       [
         trpc.contractingJobs,
+        trpc.contractingBreakdowns,
         trpc.contractingReports,
         trpc.contractingActivity,
         trpc.contractingReadings,

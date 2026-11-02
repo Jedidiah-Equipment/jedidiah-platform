@@ -4,12 +4,10 @@ import {
   latestReading,
   latestTelematicsReading,
   listFieldMachines,
-  listFieldReadingsPage,
 } from '@pkg/core/contracting';
+import { meterReadPermissions } from '@pkg/domain/contracting';
 import {
   FieldMachine,
-  FieldReadingPage,
-  FieldReadingPageInput,
   HourReading,
   LatestReading,
   LatestTelematics,
@@ -24,21 +22,17 @@ import { readingErrorFamily } from '../contracting-error-families.js';
 
 // Spot capture goes through the HTTP capture route; Job Hours through contractingJobs.assignments.
 export const contractingReadingsRouter = router({
-  fieldMachines: authorizedProcedure(['contracting_machine:read', 'contracting_reading:capture'])
+  fieldMachines: authorizedProcedure(meterReadPermissions)
     .output(FieldMachine.array())
     .query(({ ctx }) => listFieldMachines({ db: ctx.db, actor: ctx.access })),
-  latest: authorizedProcedure(['contracting_machine:read', 'contracting_reading:capture'])
+  latest: authorizedProcedure(meterReadPermissions)
     .input(ReadingMachineInput)
     .output(LatestReading.nullable())
     .query(({ ctx, input }) => latestReading({ db: ctx.db, ...input })),
-  latestTelematics: authorizedProcedure(['contracting_machine:read', 'contracting_reading:capture'])
+  latestTelematics: authorizedProcedure(meterReadPermissions)
     .input(ReadingMachineInput)
     .output(LatestTelematics.nullable())
     .query(({ ctx, input }) => latestTelematicsReading(ctx.db, input.machineId)),
-  fieldHistoryPage: authorizedProcedure(['contracting_machine:read', 'contracting_reading:capture'])
-    .input(FieldReadingPageInput)
-    .output(FieldReadingPage)
-    .query(({ ctx, input }) => listFieldReadingsPage({ db: ctx.db, input })),
   estimateReadAt: authorizedProcedure('contracting_reading:capture')
     .input(ReadAtEstimateInput)
     .output(ReadAtEstimate)

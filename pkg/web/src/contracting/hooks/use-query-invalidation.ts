@@ -34,9 +34,11 @@ export function useQueryInvalidation() {
       invalidateFleet: invalidate('contractingFleet', 'contractingServices'),
       // Reports derive Active Days and Daily Hours from stints and readings.
       invalidateJobs: invalidate('contractingJobs', 'contractingReports'),
-      // Job Hours move the Job, its reports and Activity, and the Machine's Known Hours on every read that shows them.
+      // Job Hours move the Job, its reports and Activity, and the Machine's Known Hours on every read that shows them. An
+      // arrival or departure moves which Job an unfixed Breakdown is on, so Breakdown reads refresh too.
       invalidateJobHours: invalidate(
         'contractingJobs',
+        'contractingBreakdowns',
         'contractingReports',
         'contractingActivity',
         'contractingReadings',

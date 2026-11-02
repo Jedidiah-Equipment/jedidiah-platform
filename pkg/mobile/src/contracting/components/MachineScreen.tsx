@@ -1,6 +1,6 @@
-import { formatHours, getFirstName } from '@pkg/domain';
-import { machineBusyWith, readingSourceLabel } from '@pkg/domain/contracting';
-import type { FieldMachine, FieldReading } from '@pkg/schema/contracting';
+import { getFirstName } from '@pkg/domain';
+import { fleetHistoryRowKey, machineBusyWith } from '@pkg/domain/contracting';
+import type { FieldMachine, FleetHistoryRow } from '@pkg/schema/contracting';
 
 type BusyWith = { job: NonNullable<FieldMachine['busyOnJob']> | null; jobNumber: string };
 
@@ -79,20 +79,20 @@ function ServiceHistoryLink({ machineId }: { machineId: string }) {
   );
 }
 
-function ReadingCard({ reading }: { reading: FieldReading }) {
-  const source = readingSourceLabel(reading);
+function ReadingCard({ reading }: { reading: FleetHistoryRow }) {
+  const detail = [reading.detail, reading.source].filter(Boolean).join(' · ');
   return (
     <View className="gap-1 rounded-xl border border-border bg-surface p-4">
       <Text className="text-foreground" weight="semibold">
-        {formatHours(reading.value)}
+        {reading.title}
       </Text>
-      <DateText className="text-sm text-muted-foreground" date={reading.capturedAt} format="medium" />
-      {source ? <Text className="text-sm text-muted-foreground">{source}</Text> : null}
+      <DateText className="text-sm text-muted-foreground" date={reading.at} format="medium" />
+      {detail ? <Text className="text-sm text-muted-foreground">{detail}</Text> : null}
     </View>
   );
 }
 
-/** Every Hour Reading on the Machine, newest first, loading the next server page as the end comes into view. */
+/** Every reading and Job Hours on the Machine, newest first, loading the next server page as the end comes into view. */
 function ReadingsTab({ machineId }: { machineId: string }) {
   const { canRead, query, readings } = useMachineReadingPages(machineId);
   const requested = useRef(false);
@@ -111,7 +111,7 @@ function ReadingsTab({ machineId }: { machineId: string }) {
       contentContainerStyle={SECONDARY_PAGE_CONTENT_STYLE}
       data={readings}
       ItemSeparatorComponent={() => <View className="h-3" />}
-      keyExtractor={(reading) => reading.id}
+      keyExtractor={fleetHistoryRowKey}
       ListEmptyComponent={
         <Text className="text-muted-foreground">
           {!canRead

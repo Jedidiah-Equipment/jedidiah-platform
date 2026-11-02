@@ -1,4 +1,4 @@
-import { type DatabaseTransaction, type Db, user, withPagination } from '@pkg/db';
+import type { DatabaseTransaction, Db } from '@pkg/db';
 import { contractingHourReadings, contractingMachines } from '@pkg/db/contracting';
 import {
   type CaptureNeighbour,
@@ -12,17 +12,14 @@ import {
   proposesReadAt,
   resolveReadingAmendments,
 } from '@pkg/domain/contracting';
-import { getNextCursor } from '@pkg/schema';
 import {
-  FieldReading,
-  type FieldReadingPageInput,
   LatestReading,
   ReadAtEstimate,
   ReadAtEstimateInput,
   ReadingAmendInput,
   ReadingCaptureInput,
 } from '@pkg/schema/contracting';
-import { and, eq, getTableColumns, gt, inArray, lte } from 'drizzle-orm';
+import { and, eq, gt, inArray, lte } from 'drizzle-orm';
 import { recordAuditCreate } from '../../audit/audit-writer.js';
 import { serviceDueSoonEdge } from '../fleet/machine-service.js';
 import { type ReadingRow as Row, readingDescriptor, updateAudited } from './reading-audit.js';
@@ -298,25 +295,4 @@ export async function latestReading({ db, machineId }: { db: Db; machineId: stri
     .orderBy(...newestFirst)
     .limit(1);
   return row ? LatestReading.parse(readingToWire(row)) : null;
-}
-
-/** A page of a Machine's ledger, spot and Telematics Readings, newest first. */
-export async function listFieldReadingsPage({ db, input }: { db: Db; input: FieldReadingPageInput }) {
-  const onMachine = eq(contractingHourReadings.machineId, input.machineId);
-  const query = db
-    .select({ ...getTableColumns(contractingHourReadings), capturedByName: user.name })
-    .from(contractingHourReadings)
-    .leftJoin(user, eq(user.id, contractingHourReadings.capturedByUserId))
-    .where(onMachine)
-    .orderBy(...newestFirst)
-    .$dynamic();
-  const [rows, total] = await Promise.all([
-    withPagination(query, input),
-    db.$count(contractingHourReadings, onMachine),
-  ]);
-  return {
-    items: rows.map(({ capturedByName, ...row }) => FieldReading.parse({ ...readingToWire(row), capturedByName })),
-    nextCursor: getNextCursor({ count: rows.length, cursor: input.cursor, total }),
-    total,
-  };
 }

@@ -1,8 +1,19 @@
+import type { AppPermission, UserAccessSummary } from '@pkg/schema';
 import type { FleetHistoryReadingRole, KnownHoursSource, TelematicsProvider } from '@pkg/schema/contracting';
+import { hasPermission } from '../auth/authorization.js';
 import { formatDate } from '../formatting/date.js';
 import { formatHours } from '../formatting/number.js';
 import { getFirstName } from '../formatting/text.js';
 import { JD_LINK_LABEL } from './john-deere.js';
+
+/** Who reads a Machine's meter history and latest hours: whoever views the fleet or captures hours. */
+export const meterReadPermissions = [
+  'contracting_machine:read',
+  'contracting_reading:capture',
+] as const satisfies readonly [AppPermission, ...AppPermission[]];
+
+export const readsMeters = (access: UserAccessSummary | null | undefined): boolean =>
+  meterReadPermissions.some((permission) => hasPermission(access, permission));
 
 export const readingRoleLabels: Record<FleetHistoryReadingRole, string> = {
   spot: 'Spot',

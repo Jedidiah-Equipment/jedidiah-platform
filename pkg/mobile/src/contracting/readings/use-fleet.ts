@@ -1,14 +1,17 @@
-import { ESTIMATE_DEBOUNCE_MS, ESTIMATE_STALE_MS, estimateOnScreen } from '@pkg/domain/contracting';
+import {
+  ESTIMATE_DEBOUNCE_MS,
+  ESTIMATE_STALE_MS,
+  estimateOnScreen,
+  meterReadPermissions,
+} from '@pkg/domain/contracting';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { fieldQuery } from '@/contracting/lib/field-query';
 import { useSessionPermission } from '@/lib/auth-session';
 import { useTRPC } from '@/lib/trpc';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 
-const FIELD_READ_PERMISSIONS = ['contracting_machine:read', 'contracting_reading:capture'] as const;
-
 export function useFleet() {
-  const canRead = useSessionPermission(...FIELD_READ_PERMISSIONS);
+  const canRead = useSessionPermission(...meterReadPermissions);
   const trpc = useTRPC();
   return fieldQuery(
     canRead,
@@ -18,7 +21,7 @@ export function useFleet() {
 
 /** The Machine's latest reading, the one a capture is judged against; null while its ledger is empty. */
 export function useLatestReading(machineId: string) {
-  const canRead = useSessionPermission(...FIELD_READ_PERMISSIONS);
+  const canRead = useSessionPermission(...meterReadPermissions);
   const trpc = useTRPC();
   return fieldQuery(
     canRead,
@@ -28,7 +31,7 @@ export function useLatestReading(machineId: string) {
 
 /** John Deere's latest report for a linked Machine, which Job Hours are compared to; null when unlinked. */
 export function useLatestTelematics(machineId: string) {
-  const canRead = useSessionPermission(...FIELD_READ_PERMISSIONS);
+  const canRead = useSessionPermission(...meterReadPermissions);
   const trpc = useTRPC();
   return fieldQuery(
     canRead,
@@ -59,13 +62,16 @@ export function useReadAtEstimate(machineId: string, value: number | null) {
 
 const READING_PAGE_SIZE = 25;
 
-/** A Machine's Hour Readings, newest first, a server page at a time for the Readings tab. */
+/**
+ * A Machine's readings and Job Hours, newest first, a server page at a time for the Readings tab: the reading rows of
+ * the History the web Machine page lists, so the tab holds whatever Known Hours was taken from.
+ */
 export function useMachineReadingPages(machineId: string) {
-  const canRead = useSessionPermission(...FIELD_READ_PERMISSIONS);
+  const canRead = useSessionPermission(...meterReadPermissions);
   const trpc = useTRPC();
   const query = useInfiniteQuery(
-    trpc.contractingReadings.fieldHistoryPage.infiniteQueryOptions(
-      { machineId, limit: READING_PAGE_SIZE },
+    trpc.contractingFleet.history.list.infiniteQueryOptions(
+      { subject: { kind: 'machine', id: machineId }, kinds: ['reading'], limit: READING_PAGE_SIZE },
       { enabled: canRead && !!machineId, getNextPageParam: (page) => page.nextCursor, initialCursor: 0 },
     ),
   );

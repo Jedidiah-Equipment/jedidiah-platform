@@ -97,14 +97,16 @@ test('audits fleet writes atomically and keeps Contracting rates out of Equipmen
   ).rejects.toMatchObject({ appCode: 'fleet.duplicate', code: 'CONFLICT' });
 });
 
-test('opens a History and its Kind choices to its readers only', async ({ context }) => {
+test('opens a History and its Kind choices to its readers only, a Foreman to readings', async ({ context }) => {
   const subject = { kind: 'machine', id: '11111111-1111-4111-8111-111111111111' } as const;
   const manager = context.createCaller(contractingSession('workshop-manager')).contractingFleet.history;
   expect(await manager.list({ subject })).toEqual({ items: [], nextCursor: null, total: 0 });
   expect(await manager.filters({ subject })).toEqual({ kinds: ['reading', 'breakdown', 'service'] });
-  for (const session of [contractingSession('foreman'), mockSession('admin')]) {
-    const { history } = context.createCaller(session).contractingFleet;
-    await expect(history.list({ subject })).rejects.toMatchObject({ code: 'FORBIDDEN' });
-    await expect(history.filters({ subject })).rejects.toMatchObject({ code: 'FORBIDDEN' });
-  }
+  // A Foreman captures hours, so he reads the readings he adds to and nothing else.
+  const foreman = context.createCaller(contractingSession('foreman')).contractingFleet.history;
+  expect(await foreman.list({ subject, kinds: ['reading'] })).toEqual({ items: [], nextCursor: null, total: 0 });
+  expect(await foreman.filters({ subject })).toEqual({ kinds: ['reading'] });
+  const { history } = context.createCaller(mockSession('admin')).contractingFleet;
+  await expect(history.list({ subject })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  await expect(history.filters({ subject })).rejects.toMatchObject({ code: 'FORBIDDEN' });
 });

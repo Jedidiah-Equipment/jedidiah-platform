@@ -38,6 +38,7 @@ import { useFleet } from '@/contracting/readings/use-fleet';
 import { useSessionPermission } from '@/lib/auth-session';
 import { choosePhotos, type PickedPhoto, takePhoto } from '@/lib/photo-picker';
 import { useBusyAction } from '@/lib/use-busy-action';
+import { useGoBack } from '@/lib/use-go-back';
 import { useColorMode } from '@/theme/use-color-mode';
 import { deriveReport } from './breakdown-form';
 import { type BreakdownReportRequest, REPORT_FAILED, reportBreakdown } from './breakdown-upload';
@@ -78,7 +79,6 @@ export default function ReportBreakdownScreen() {
         ? `/contracting/machines/${prefilled.id}`
         : '/contracting/workshop'
   ) as Href;
-  const parentLabel = jobId ? 'Job' : prefilled?.kind === 'machine' ? 'Machine' : 'Workshop';
   const navigation = useNavigation();
   const canReport = useSessionPermission('contracting_breakdown:report');
   const fleet = useFleet();
@@ -121,12 +121,7 @@ export default function ReportBreakdownScreen() {
     { subject, urgency, description, photoCount: photos.length },
     { canReport, busy: busy || voice.busy },
   );
-  // The report lives in the Workshop tab's stack: empty it first, so a report opened from a Job or Machine does not
-  // stay behind there, then go where it started.
-  const leave = () => {
-    if (router.canDismiss()) router.dismissAll();
-    router.navigate(returnTo);
-  };
+  const leave = useGoBack(returnTo);
 
   async function addPhotos(pick: () => Promise<PickedPhoto[]>) {
     try {
@@ -171,10 +166,8 @@ export default function ReportBreakdownScreen() {
         <SecondaryToolbar
           title="Report a problem"
           subtitle={subjectRow?.code ?? 'CONTRACTING'}
-          parentLabel={parentLabel}
-          onBack={() => {
-            if (!busy) leave();
-          }}
+          fallback={returnTo}
+          backDisabled={busy}
           helpTopic="contractingMobileReportBreakdown"
         />
       }

@@ -208,7 +208,9 @@ captured: its Read At the time the machine reported, its evidence the manufactur
 (the System), never amended. No spot capture may contradict one. One may move its Read At forward when the machine
 reports the same value again, so the ledger says the hours stand as of the latest report. A linked Machine's Job
 Hours are compared to its latest Telematics Reading: over the **John Deere difference threshold** (Settings, 10 h
-unless changed) the capture warns and the stint needs a look; nothing blocks. _Avoid_: telemetry reading,
+unless changed) the capture warns and the stint needs a look; nothing blocks. Every screen labels this source
+**JD Link** (one domain constant), not John Deere: a Machine that is not a John Deere may report through the John
+Deere Operations Center too. The Connection and its sign-in keep John Deere's name. _Avoid_: telemetry reading,
 automatic reading, JDLink reading, API reading.
 
 **Assignment Attention** is everything that flags a Machine Assignment for a person, at one level, **needs a

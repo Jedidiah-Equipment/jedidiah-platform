@@ -14,7 +14,7 @@ test('only the Field Note routes work offline', () => {
 test('the offline cover offers Field Notes on Contracting routes only', () => {
   expect(offlineCoverAction('/contracting')).toMatchObject({
     label: 'Open Field Notes',
-    href: '/contracting/field-notes',
+    href: '/contracting/(field-notes)/field-notes',
   });
   expect(offlineCoverAction('/contracting/machines/abc/capture')).not.toBeNull();
   expect(offlineCoverAction('/contractingx')).toBeNull();

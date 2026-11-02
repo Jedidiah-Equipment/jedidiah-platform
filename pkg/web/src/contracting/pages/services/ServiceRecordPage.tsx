@@ -45,6 +45,7 @@ export function ServiceRecordPage({ id }: { id: string }) {
       }
       description={record ? serviceRecordSummary(record) : undefined}
       actions={record ? <StatusChip {...serviceRecordBadge(record.status)} /> : null}
+      size="lg"
     >
       <QueryContent errorMessage="Unable to load the Service Record." query={query}>
         {(detail) => <ServiceRecordContent record={detail} />}
@@ -56,7 +57,7 @@ export function ServiceRecordPage({ id }: { id: string }) {
 function ServiceRecordContent({ record }: { record: ServiceRecord }) {
   return (
     <div className="space-y-5">
-      <MachineCard machineId={record.machineId} />
+      <MachineCard machineCode={record.machineCode} machineId={record.machineId} />
       {record.status === 'open' ? (
         <OpenServiceForm key={record.id} record={record} />
       ) : (
@@ -67,7 +68,7 @@ function ServiceRecordContent({ record }: { record: ServiceRecord }) {
 }
 
 /** Where the Machine stands on service now, whatever this record says. */
-function MachineCard({ machineId }: { machineId: string }) {
+function MachineCard({ machineId, machineCode }: { machineId: string; machineCode: string }) {
   const trpc = useTRPC();
   const query = useQuery(trpc.contractingFleet.machines.get.queryOptions({ id: machineId }));
   return (
@@ -75,8 +76,13 @@ function MachineCard({ machineId }: { machineId: string }) {
       <CardHeader>
         <CardTitle>Machine</CardTitle>
         <CardAction>
-          <PrimaryLink className="text-sm" to="/contracting/fleet/$id/edit" params={{ id: machineId }}>
-            Open the Machine
+          <PrimaryLink
+            aria-label={`Open ${machineCode}`}
+            className="font-mono text-sm font-semibold"
+            to="/contracting/fleet/$id/edit"
+            params={{ id: machineId }}
+          >
+            {machineCode}
           </PrimaryLink>
         </CardAction>
       </CardHeader>

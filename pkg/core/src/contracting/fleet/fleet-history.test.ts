@@ -141,7 +141,7 @@ test('lists readings, Breakdowns and services as one newest-first timeline, a se
         at: '2026-09-02T08:00:00.000Z',
         title: 'Spot · 1 002.0 h',
         detail: null,
-        source: 'John Deere',
+        source: 'JD Link',
         readingRole: 'spot',
         breakdown: null,
         opens: null,

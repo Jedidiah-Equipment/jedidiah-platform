@@ -19,7 +19,7 @@ import {
   toStintHoursCaptureInput,
   toStintHoursEditInput,
 } from '@pkg/schema/contracting';
-import { type Href, router, useLocalSearchParams } from 'expo-router';
+import { type Href, useLocalSearchParams } from 'expo-router';
 import { type ReactNode, useState } from 'react';
 import { View } from 'react-native';
 import { FormPage } from '@/components/FormPage';
@@ -33,6 +33,7 @@ import { VoiceTextArea } from '@/components/voice/VoiceTextArea';
 import { StintOverrideCard, useStintOverrides } from '@/contracting/components/StintOverrideCard';
 import { useLatestTelematics } from '@/contracting/readings/use-fleet';
 import { useBusyAction } from '@/lib/use-busy-action';
+import { useGoBack } from '@/lib/use-go-back';
 import { useColorMode } from '@/theme/use-color-mode';
 import { useJob, useStintHoursWrites } from './use-jobs';
 
@@ -53,13 +54,13 @@ export default function StintHoursScreen() {
   const jobQuery = useJob(params.jobId);
   const job = jobQuery.data;
   const stint = job?.assignments.find((assignment) => assignment.id === params.assignmentId);
-  const leave = () => router.dismissTo(`/contracting/jobs/${params.jobId}` as Href);
+  const jobHref = `/contracting/jobs/${params.jobId}` as Href;
+  const leave = useGoBack(jobHref);
   const toolbar = (
     <SecondaryToolbar
       title={TITLES[mode]}
       subtitle={stint?.machineCode ?? 'CONTRACTING'}
-      parentLabel="Job"
-      onBack={leave}
+      fallback={jobHref}
       helpTopic="contractingMobileJobHours"
     />
   );

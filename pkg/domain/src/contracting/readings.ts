@@ -2,6 +2,7 @@ import type { FleetHistoryReadingRole, KnownHoursSource, TelematicsProvider } fr
 import { formatDate } from '../formatting/date.js';
 import { formatHours } from '../formatting/number.js';
 import { getFirstName } from '../formatting/text.js';
+import { JD_LINK_LABEL } from './john-deere.js';
 
 export const readingRoleLabels: Record<FleetHistoryReadingRole, string> = {
   spot: 'Spot',
@@ -9,19 +10,19 @@ export const readingRoleLabels: Record<FleetHistoryReadingRole, string> = {
   departure: 'Departure',
 };
 
-export const telematicsProviderLabels: Record<TelematicsProvider, string> = { 'john-deere': 'John Deere' };
+export const telematicsProviderLabels: Record<TelematicsProvider, string> = { 'john-deere': JD_LINK_LABEL };
 
-/** What follows a reading on a line when its source is a machine's telematics: `' · John Deere'`, else nothing. */
+/** What follows a reading on a line when its source is a machine's telematics: `' · JD Link'`, else nothing. */
 export const readingProviderSuffix = (provider: TelematicsProvider | null): string =>
   provider ? ` · ${telematicsProviderLabels[provider]}` : '';
 
 export const knownHoursSourceLabels: Record<KnownHoursSource, string> = {
-  telematics: 'John Deere',
+  telematics: JD_LINK_LABEL,
   spot: 'spot reading',
   job: 'Job',
 };
 
-/** What follows Known Hours on a line: `' · John Deere'`, `' · spot reading'` or `' · Job'`. */
+/** What follows Known Hours on a line: `' · JD Link'`, `' · spot reading'` or `' · Job'`. */
 export const knownHoursSourceSuffix = (source: KnownHoursSource | null): string =>
   source ? ` · ${knownHoursSourceLabels[source]}` : '';
 

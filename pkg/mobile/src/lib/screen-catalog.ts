@@ -11,10 +11,25 @@ export const SHARED_SCREEN_CATALOG: ScreenCatalog = {
   '(protected)/settings.tsx': { business: null, name: '/settings' },
 };
 
+/** A file under a shared group, `(a,b)/x`, is a route in each group: `(a)/x` and `(b)/x`. */
+function routeSegments(file: string): string[] {
+  return file
+    .replace(/\.tsx$/, '')
+    .split('/')
+    .reduce<string[]>(
+      (routes, segment) => {
+        const shared = /^\((.+,.+)\)$/.exec(segment)?.[1]?.split(',');
+        const expanded = shared ? shared.map((group) => `(${group})`) : [segment];
+        return routes.flatMap((route) => expanded.map((part) => (route ? `${route}/${part}` : part)));
+      },
+      [''],
+    );
+}
+
 export function createScreenResolver(catalogs: readonly ScreenCatalog[]) {
   const screensBySegments = new Map(
     catalogs.flatMap((catalog) =>
-      Object.entries(catalog).map(([file, screen]) => [file.replace(/\.tsx$/, ''), screen] as const),
+      Object.entries(catalog).flatMap(([file, screen]) => routeSegments(file).map((route) => [route, screen] as const)),
     ),
   );
   return (segments: readonly string[]): MobileScreen | null => {

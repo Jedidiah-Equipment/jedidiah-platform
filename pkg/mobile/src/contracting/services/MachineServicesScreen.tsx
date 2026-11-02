@@ -1,5 +1,5 @@
 import { serviceRecordStatuses } from '@pkg/schema/contracting';
-import { router, useLocalSearchParams } from 'expo-router';
+import { type Href, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SecondaryToolbar } from '@/components/TopToolbar';
 import { useFleet } from '@/contracting/readings/use-fleet';
@@ -17,8 +17,7 @@ export default function MachineServicesScreen() {
       <SecondaryToolbar
         title="Service history"
         subtitle={machine?.code ?? 'CONTRACTING'}
-        parentLabel="Machine"
-        onBack={() => router.navigate({ pathname: '/contracting/machines/[id]', params: { id: machineId } })}
+        fallback={`/contracting/machines/${machineId}` as Href}
         helpTopic="contractingMobileServices"
       />
       <ServicesList

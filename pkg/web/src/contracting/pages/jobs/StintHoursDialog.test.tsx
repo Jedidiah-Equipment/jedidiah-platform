@@ -105,7 +105,7 @@ async function enter(name: string, value: string) {
 
 test('a departure shows John Deere under the hours, refuses one below the arrival and warns far from Deere', async () => {
   const { posted, onClose } = await mount('departure', stint);
-  await vi.waitFor(() => expect(document.body.textContent).toContain('John Deere read 4 512.0 h'));
+  await vi.waitFor(() => expect(document.body.textContent).toContain('JD Link read 4 512.0 h'));
 
   await enter('hours', '4380');
   expect(document.body.textContent).toContain(departureBeforeArrivalSentence(4400));
@@ -113,7 +113,7 @@ test('a departure shows John Deere under the hours, refuses one below the arriva
 
   await enter('hours', '4480');
   expect(document.body.textContent).not.toContain(departureBeforeArrivalSentence(4400));
-  expect(document.body.textContent).toContain("That is 32.0 h away from John Deere's last reading of 4 512.0 h");
+  expect(document.body.textContent).toContain("That is 32.0 h away from JD Link's last reading of 4 512.0 h");
   expect(save()?.disabled).toBe(false);
   await act(async () => save()?.click());
   await vi.waitFor(() => expect(onClose).toHaveBeenCalled());

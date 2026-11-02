@@ -1,4 +1,5 @@
 import { formatHours } from '@pkg/domain';
+import { JD_LINK_LABEL } from '@pkg/domain/contracting';
 import { requiredSelection, UUID } from '@pkg/schema';
 import type { JohnDeereLinkView, JohnDeereUnlinkedMachine, Machine } from '@pkg/schema/contracting';
 import { IconLink, IconLinkOff, IconLoader2, IconRefresh } from '@tabler/icons-react';
@@ -87,7 +88,7 @@ function UnlinkedMachinesCard({ onLink }: { onLink: (machine: JohnDeereUnlinkedM
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Unlinked John Deere machines</CardTitle>
+        <CardTitle>{`Unlinked ${JD_LINK_LABEL} machines`}</CardTitle>
         <CardAction>
           <Button disabled={busy} onClick={() => void query.refetch()} size="sm" type="button" variant="outline">
             {busy ? (
@@ -108,8 +109,8 @@ function UnlinkedMachinesCard({ onLink }: { onLink: (machine: JohnDeereUnlinkedM
           hideFooter
           isLoading={query.isPending}
           loadingRowCount={3}
-          errorMessage={getApiQueryErrorMessage(query.error, 'Unable to load the John Deere machines.')}
-          emptyMessage="Every John Deere machine is linked."
+          errorMessage={getApiQueryErrorMessage(query.error, `Unable to load the ${JD_LINK_LABEL} machines.`)}
+          emptyMessage={`Every ${JD_LINK_LABEL} machine is linked.`}
         />
       </CardContent>
     </Card>
@@ -146,7 +147,7 @@ function LinkedMachinesCard() {
           />
         ),
       },
-      { accessorKey: 'deereName', header: 'John Deere name' },
+      { accessorKey: 'deereName', header: `${JD_LINK_LABEL} name` },
       { accessorKey: 'serialNumber', header: 'PIN', cell: ({ row }) => orDash(row.original.serialNumber) },
       {
         id: 'lastReport',
@@ -272,7 +273,7 @@ function MeterComparison({ deere, machine }: { deere: JohnDeereUnlinkedMachine; 
   return (
     <div className="grid grid-cols-2 gap-3 rounded-lg border bg-muted/40 p-3 text-sm">
       <MeterColumn
-        title="John Deere"
+        title={JD_LINK_LABEL}
         name={deere.name}
         detail={`PIN ${deere.serialNumber ?? '—'}`}
         hours={deere.lastHours}

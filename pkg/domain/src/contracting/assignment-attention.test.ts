@@ -2,6 +2,7 @@ import type { DateIso } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 import {
   assignmentAttentionSentence,
+  attentionBadges,
   jobNeedsALookCount,
   rearmedAttentionKinds,
   stintAttention,
@@ -28,7 +29,7 @@ describe('assignment attention', () => {
     const farFromDeere = { ...stint, arrival: { hours: 4480, telematics: { hours: 4512, at } } };
     expect(stintAttentionKinds(farFromDeere, thresholds)).toEqual(['john-deere-difference']);
     expect(assignmentAttentionSentence('john-deere-difference', farFromDeere, thresholds)).toBe(
-      'John Deere differs by 32.0 h',
+      'JD Link differs by 32.0 h',
     );
     expect(assignmentAttentionSentence('travel-over-threshold', { ...stint, travelHours: 6 }, thresholds)).toBe(
       'Travel 6.0 h is over the 4.0 h threshold',
@@ -65,6 +66,14 @@ describe('assignment attention', () => {
       attention: [],
       dismissedAttention: [],
     });
+  });
+
+  it('keeps every badge in its kind order whether or not it was dismissed, so dismissing never moves one', () => {
+    const dismissal = { kind: 'travel-over-threshold' as const, dismissedAt: at as DateIso, dismissedByName: 'Henk' };
+    expect(attentionBadges({ attention: ['john-deere-difference'], dismissedAttention: [dismissal] })).toEqual([
+      { kind: 'travel-over-threshold', dismissal },
+      { kind: 'john-deere-difference', dismissal: null },
+    ]);
   });
 
   it('re-arms a dismissal only when a fact its kind reads changes', () => {

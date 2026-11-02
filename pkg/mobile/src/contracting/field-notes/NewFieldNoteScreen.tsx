@@ -1,4 +1,4 @@
-import { router, useNavigation } from 'expo-router';
+import { useNavigation } from 'expo-router';
 import { usePreventRemove } from 'expo-router/react-navigation';
 import { useEffect, useState } from 'react';
 import { FormPage } from '@/components/FormPage';
@@ -11,18 +11,19 @@ import { newLocalId } from '@/contracting/lib/local-id';
 import { recordFieldNoteCreated } from '@/contracting/observability';
 import { confirm } from '@/lib/confirm';
 import { choosePhotos, type PickedPhoto, takePhoto } from '@/lib/photo-picker';
+import { useGoBack } from '@/lib/use-go-back';
 import { FieldNoteFields } from './FieldNoteFields';
 import { fieldNoteFiles } from './files';
 import { useFieldNoteAction } from './use-field-note-action';
 import { useFieldNotes } from './use-field-notes';
 
 const PICK_FAILED = 'The photo could not be added. Try again.';
-const backToNotes = () => router.replace(CONTRACTING_TAB_HREF['field-notes']);
 
 /** A draft in component state: nothing reaches storage or the sandbox until Save note. */
 export default function NewFieldNoteScreen() {
   const { store } = useFieldNotes();
   const navigation = useNavigation();
+  const backToNotes = useGoBack(CONTRACTING_TAB_HREF['field-notes']);
   const [description, setDescription] = useState('');
   const voice = useVoiceSession({ business: 'contracting', purpose: 'field note' });
   const [photos, setPhotos] = useState<(PickedPhoto & { id: string })[]>([]);
@@ -39,6 +40,7 @@ export default function NewFieldNoteScreen() {
     });
   });
   // Leave only once the guard above has re-rendered without the draft.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: leaves once, when the save lands.
   useEffect(() => {
     if (saved) backToNotes();
   }, [saved]);
@@ -65,10 +67,8 @@ export default function NewFieldNoteScreen() {
         <SecondaryToolbar
           title="New Field Note"
           subtitle="CONTRACTING"
-          parentLabel="Field Notes"
-          onBack={() => {
-            if (!busy) backToNotes();
-          }}
+          fallback={CONTRACTING_TAB_HREF['field-notes']}
+          backDisabled={busy}
           helpTopic="contractingMobileFieldNote"
         />
       }

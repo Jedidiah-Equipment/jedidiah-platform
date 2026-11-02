@@ -16,7 +16,7 @@ import { pendingPushPath, usePushResponseNavigation, useSettlePendingPushPath } 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 function Navigation() {
-  usePushResponseNavigation();
+  usePushResponseNavigation({ contracting: (path) => path.replace('/contracting/', '/contracting/(tab)/') });
   useSettlePendingPushPath();
   return null;
 }
@@ -34,8 +34,9 @@ test.each([
   await act(async () => {
     renderer = create(<Navigation />);
   });
-  expect(navigation.push).toHaveBeenLastCalledWith(path);
-  expect(pendingPushPath()).toBe(path);
+  const opened = path.replace('/contracting/', '/contracting/(tab)/');
+  expect(navigation.push).toHaveBeenLastCalledWith(opened);
+  expect(pendingPushPath()).toBe(opened);
   navigation.pathname = pathname;
   await act(async () => renderer.update(<Navigation />));
   expect(pendingPushPath()).toBeNull();

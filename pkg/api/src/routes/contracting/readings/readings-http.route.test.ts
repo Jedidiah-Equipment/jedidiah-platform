@@ -110,7 +110,7 @@ test('a refusal John Deere brackets carries the Read At it proposes beside the a
           overAWeek: true,
         },
       },
-      message: expect.stringContaining('John Deere reported'),
+      message: expect.stringContaining('JD Link reported'),
     });
   } finally {
     await app.close();

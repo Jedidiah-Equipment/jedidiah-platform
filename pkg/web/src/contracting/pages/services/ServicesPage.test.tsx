@@ -133,8 +133,8 @@ test('shows the John Deere mark on a Machine whose Known Hours its telematics re
   const { rows } = await mount({ ...machine, knownHoursSource: 'telematics' });
 
   const [pinned, booked] = rows();
-  expect(pinned?.textContent).toContain('John Deere');
-  expect(booked?.textContent).not.toContain('John Deere');
+  expect(pinned?.textContent).toContain('JD Link');
+  expect(booked?.textContent).not.toContain('JD Link');
 });
 
 test('books a service from the page header, picking the Machine in the dialog', async () => {

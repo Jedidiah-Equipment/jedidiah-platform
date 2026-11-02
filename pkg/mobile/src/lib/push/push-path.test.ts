@@ -13,6 +13,7 @@ test('follows only well-formed push data whose path is inside its business', () 
     href: '/contracting/workshop/b1',
     pathname: '/contracting/workshop/b1',
     kind: 'breakdown',
+    business: 'contracting',
   });
   expect(pushTargetFromData({ ...data('/equipment/jobs/j1', 'equipment'), kind: 'job' })).toMatchObject({
     href: '/equipment/jobs/j1',
@@ -36,5 +37,6 @@ test('keeps the query in the path to open but not in the pathname it arrives at'
     href: '/contracting/jobs/j1?tab=activity',
     pathname: '/contracting/jobs/j1',
     kind: 'job',
+    business: 'contracting',
   });
 });

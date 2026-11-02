@@ -5,7 +5,11 @@ import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { afterEach, expect, test, vi } from 'vitest';
 
 const params = vi.hoisted(() => ({ current: {} as Record<string, string> }));
-vi.mock('expo-router', () => ({ useLocalSearchParams: () => params.current, router: { dismissTo: vi.fn() } }));
+vi.mock('expo-router', () => ({
+  useLocalSearchParams: () => params.current,
+  useNavigation: () => ({ getState: () => ({ index: 1 }), goBack: vi.fn() }),
+  router: { replace: vi.fn() },
+}));
 vi.mock('react-native', () => ({ View: 'View' }));
 vi.mock('@/components/FormPage', () => ({
   FormPage: ({ children, error, footer }: { children: ReactNode; error: string | null; footer: ReactNode }) => (
@@ -84,14 +88,14 @@ const saveButton = (renderer: ReactTestRenderer) => renderer.root.findByType('Bu
 
 test('a departure shows John Deere, refuses one below the arrival and warns far from Deere', async () => {
   const renderer = await mount({ role: 'departure' });
-  expect(texts(renderer).some((line) => line.startsWith('John Deere read 4 512.0 h'))).toBe(true);
+  expect(texts(renderer).some((line) => line.startsWith('JD Link read 4 512.0 h'))).toBe(true);
 
   await act(async () => input(renderer, 'Departure hours')?.props.onChangeText('4380'));
   expect(texts(renderer)).toContain(departureBeforeArrivalSentence(4400));
   expect(saveButton(renderer).props.disabled).toBe(true);
 
   await act(async () => input(renderer, 'Departure hours')?.props.onChangeText('4480'));
-  expect(texts(renderer).some((line) => line.startsWith('That is 32.0 h away from John Deere'))).toBe(true);
+  expect(texts(renderer).some((line) => line.startsWith('That is 32.0 h away from JD Link'))).toBe(true);
   expect(saveButton(renderer).props.disabled).toBe(false);
   await act(async () => saveButton(renderer).props.onPress());
   expect(writes.capture).toHaveBeenCalledWith({

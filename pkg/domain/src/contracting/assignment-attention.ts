@@ -5,6 +5,7 @@ import {
 } from '@pkg/schema/contracting';
 import { formatHours } from '../formatting/number.js';
 import { type BadgeColorClassNames, statusBadgeColorClassNames } from '../theme/status-badge.js';
+import { JD_LINK_LABEL } from './john-deere.js';
 import { isOverTravelFlag, johnDeereDifference } from './stint-hours.js';
 
 export type AttentionThresholds = { travelFlagThresholdHours: number; johnDeereDifferenceThresholdHours: number };
@@ -69,11 +70,11 @@ const attentionKindRules: Record<AssignmentAttentionKind, AttentionKindRule> = {
     facts: (row) => [row.travelClamped, row.arrivalHours],
   },
   'john-deere-difference': {
-    label: 'John Deere differs',
+    label: `${JD_LINK_LABEL} differs`,
     holds: (stint, { johnDeereDifferenceThresholdHours }) =>
       johnDeereDifferenceOver(stint, johnDeereDifferenceThresholdHours) !== null,
     sentence: (stint, { johnDeereDifferenceThresholdHours }) =>
-      `John Deere differs by ${formatHours(johnDeereDifferenceOver(stint, johnDeereDifferenceThresholdHours) ?? 0)}`,
+      `${JD_LINK_LABEL} differs by ${formatHours(johnDeereDifferenceOver(stint, johnDeereDifferenceThresholdHours) ?? 0)}`,
     facts: (row) => [row.arrivalHours, row.departureHours, row.arrivalTelematicsHours, row.departureTelematicsHours],
   },
 };
@@ -106,6 +107,19 @@ export const rearmedAttentionKinds = (before: AttentionFactsRow, after: Attentio
     const was = attentionKindRules[kind].facts(before);
     const is = attentionKindRules[kind].facts(after);
     return was.some((value, index) => value !== is[index]);
+  });
+
+/** Every kind on the stint that holds, dismissed or not, in the kinds' fixed order: dismissing never moves a badge. */
+export type AttentionBadge = { kind: AssignmentAttentionKind; dismissal: DismissedAttention | null };
+
+export const attentionBadges = (stint: {
+  attention: readonly AssignmentAttentionKind[];
+  dismissedAttention: readonly DismissedAttention[];
+}): AttentionBadge[] =>
+  assignmentAttentionKinds.flatMap((kind): AttentionBadge[] => {
+    if (stint.attention.includes(kind)) return [{ kind, dismissal: null }];
+    const dismissal = stint.dismissedAttention.find((each) => each.kind === kind);
+    return dismissal ? [{ kind, dismissal }] : [];
   });
 
 export const assignmentAttentionSentence = (

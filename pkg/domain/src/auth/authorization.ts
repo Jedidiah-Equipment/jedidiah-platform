@@ -245,7 +245,7 @@ export const permissionDescriptions = {
   'contracting_rate:update': 'Create, edit, reorder, and remove Contracting Rates and Measure Types.',
   'contracting_report:read': 'View Contracting utilisation and mechanic-performance reports.',
   'contracting_settings:update':
-    'Edit the Travel Flag threshold, the John Deere difference threshold, the Service Due Soon threshold and the Utilisation Target.',
+    'Edit the Travel Flag threshold, the JD Link difference threshold, the Service Due Soon threshold and the Utilisation Target.',
   'contracting_transcription:read':
     "Read every user's voice note text, the transcription hints learned from it, and the prompts sent to the models.",
   'contracting_transcription:use': 'Turn a recorded voice note into text in any Contracting text area.',

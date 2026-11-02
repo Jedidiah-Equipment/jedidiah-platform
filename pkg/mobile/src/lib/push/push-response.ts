@@ -1,3 +1,4 @@
+import type { Business } from '@pkg/schema';
 import * as Notifications from 'expo-notifications';
 import { type Href, router, usePathname } from 'expo-router';
 import { useEffect } from 'react';
@@ -23,15 +24,21 @@ export function useSettlePendingPushPath(): void {
 const pushTargetFromResponse = (response: Notifications.NotificationResponse | null) =>
   pushTargetFromData(response?.notification.request.content.data);
 
+/** Where each business opens a tapped push's path, when not as it stands. */
+export type PushOpeners = Partial<Record<Business, (path: string) => string>>;
+
 /**
  * Opens the record a tapped push names, whether the tap launched the app or reached it running. The business is in
  * the path, so landing there is the mode switch. A signed-out phone signs in first and then lands on the record.
  */
-export function usePushResponseNavigation(): void {
+const AS_SENT: PushOpeners = {};
+
+export function usePushResponseNavigation(openers: PushOpeners = AS_SENT): void {
   useEffect(() => {
     const open = (response: Notifications.NotificationResponse | null) => {
-      const target = pushTargetFromResponse(response);
-      if (!target) return;
+      const parsed = pushTargetFromResponse(response);
+      if (!parsed) return;
+      const target = { ...parsed, href: openers[parsed.business]?.(parsed.href) ?? parsed.href };
       addBreadcrumb('navigation', 'push opened', { kind: target.kind });
       Notifications.clearLastNotificationResponse();
       pending = target;
@@ -40,5 +47,5 @@ export function usePushResponseNavigation(): void {
     open(Notifications.getLastNotificationResponse());
     const subscription = Notifications.addNotificationResponseReceivedListener(open);
     return () => subscription.remove();
-  }, []);
+  }, [openers]);
 }

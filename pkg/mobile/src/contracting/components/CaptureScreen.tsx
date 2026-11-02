@@ -16,7 +16,7 @@ import {
 } from '@pkg/domain/contracting';
 import { ReadingComment, readingRefusalOf } from '@pkg/schema/contracting';
 import { useQueryClient } from '@tanstack/react-query';
-import { type Href, router, useLocalSearchParams, useNavigation } from 'expo-router';
+import { type Href, useLocalSearchParams, useNavigation } from 'expo-router';
 import { type Dispatch, type RefObject, useReducer, useRef, useState } from 'react';
 import { Pressable, type ScrollViewInstance, View } from 'react-native';
 import { FormPage } from '@/components/FormPage';
@@ -36,11 +36,12 @@ import { useSessionPermission } from '@/lib/auth-session';
 import { UploadRefusedError } from '@/lib/multipart-upload';
 import { useTRPC } from '@/lib/trpc';
 import { useBusyAction } from '@/lib/use-busy-action';
+import { useGoBack } from '@/lib/use-go-back';
 
 /** `/contracting/machines/[id]/capture`: a spot reading from the Machine screen. Job Hours are captured from the Job. */
 export default function MachineCaptureScreen() {
   const { id: machineId } = useLocalSearchParams<{ id: string }>();
-  const leave = () => router.dismissTo(`/contracting/machines/${machineId}` as Href);
+  const leave = useGoBack(`/contracting/machines/${machineId}` as Href);
   const navigation = useNavigation();
   const fleet = useFleet();
   const machine = fleet.data?.find((row) => row.id === machineId);
@@ -105,10 +106,8 @@ export default function MachineCaptureScreen() {
         <SecondaryToolbar
           title="Capture reading"
           subtitle={machine?.code ?? 'CONTRACTING'}
-          parentLabel="Machine"
-          onBack={() => {
-            if (!busy) leave();
-          }}
+          fallback={`/contracting/machines/${machineId}` as Href}
+          backDisabled={busy}
           helpTopic="contractingMobileCapture"
         />
       }

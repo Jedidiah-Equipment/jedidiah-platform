@@ -1,5 +1,6 @@
 import type { HelpTopic } from '@pkg/domain';
 import { IconChevronLeft } from '@tabler/icons-react-native';
+import type { Href } from 'expo-router';
 import type React from 'react';
 import { Pressable, View } from 'react-native';
 
@@ -8,6 +9,7 @@ import { ProfileMenuButton } from '@/components/ProfileMenuButton';
 import { TOOLBAR_INSET } from '@/components/page-frame';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
+import { useGoBack } from '@/lib/use-go-back';
 
 export function MainToolbar({
   helpTopic,
@@ -31,35 +33,38 @@ export function MainToolbar({
   );
 }
 
+/**
+ * How a secondary page goes back. `fallback` is history first: back to the screen beneath, as the iOS edge swipe goes,
+ * and to `fallback` only when nothing is beneath; `backDisabled` holds it while the page is busy. `onBack` is a fixed
+ * named parent, for pages whose tab has not moved to history yet.
+ */
+type SecondaryBack =
+  | { fallback: Href; backDisabled?: boolean; onBack?: never; parentLabel?: never }
+  | { onBack: () => void; parentLabel: string; fallback?: never; backDisabled?: never };
+
 export function SecondaryToolbar({
   helpTopic,
   actions = <ProfileMenuButton helpTopic={helpTopic} />,
   avatar,
   badge,
-  onBack,
-  parentLabel,
   subtitle,
   title,
+  ...back
 }: {
   actions?: React.ReactNode;
   helpTopic?: HelpTopic;
   avatar?: React.ReactNode;
   badge?: React.ReactNode;
-  onBack: () => void;
-  parentLabel: string;
   subtitle: string;
   title: string;
-}) {
+} & SecondaryBack) {
   return (
     <ToolbarFrame bordered>
-      <Pressable
-        accessibilityLabel={`Back to ${parentLabel}`}
-        accessibilityRole="button"
-        className="h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-surface active:bg-muted"
-        onPress={onBack}
-      >
-        <Icon icon={IconChevronLeft} size={20} />
-      </Pressable>
+      {back.fallback === undefined ? (
+        <BackButton label={`Back to ${back.parentLabel}`} onPress={back.onBack} />
+      ) : (
+        <HistoryBackButton disabled={back.backDisabled ?? false} fallback={back.fallback} />
+      )}
       {avatar === undefined ? null : (
         <View className="h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-border bg-muted">{avatar}</View>
       )}
@@ -71,6 +76,31 @@ export function SecondaryToolbar({
       )}
       {actions}
     </ToolbarFrame>
+  );
+}
+
+function HistoryBackButton({ disabled, fallback }: { disabled: boolean; fallback: Href }) {
+  const goBack = useGoBack(fallback);
+  return (
+    <BackButton
+      label="Back"
+      onPress={() => {
+        if (!disabled) goBack();
+      }}
+    />
+  );
+}
+
+function BackButton({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityLabel={label}
+      accessibilityRole="button"
+      className="h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-surface active:bg-muted"
+      onPress={onPress}
+    >
+      <Icon icon={IconChevronLeft} size={20} />
+    </Pressable>
   );
 }
 

@@ -27,6 +27,7 @@ import { AddNoteButton } from '@/contracting/activity/AddNoteButton';
 import { ContractingActivityFeed } from '@/contracting/activity/ContractingActivityFeed';
 import { RecordTabBar, useRecordTab } from '@/contracting/activity/RecordTabs';
 import { BreakdownStatusBadge, BreakdownSubjectIcons } from '@/contracting/components/BreakdownSubjectIcons';
+import { CONTRACTING_TAB_HREF } from '@/contracting/lib/app-tabs';
 import { useSessionAccessSummary } from '@/lib/auth-session';
 import { useBusyAction } from '@/lib/use-busy-action';
 import { BreakdownPhotosCard } from './BreakdownPhotosCard';
@@ -43,8 +44,7 @@ export default function BreakdownScreen() {
       <SecondaryToolbar
         title="Breakdown"
         subtitle={breakdown?.subject.code ?? 'CONTRACTING'}
-        parentLabel="Workshop"
-        onBack={() => router.navigate('/contracting/workshop' as Href)}
+        fallback={CONTRACTING_TAB_HREF.workshop}
         helpTopic="contractingMobileBreakdown"
       />
       {breakdown ? <RecordTabBar value={tab} onChange={setTab} /> : null}

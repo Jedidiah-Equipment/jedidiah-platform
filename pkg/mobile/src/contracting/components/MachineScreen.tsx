@@ -18,6 +18,7 @@ import { Icon } from '@/components/ui/icon';
 import { RefreshControl } from '@/components/ui/refresh-control';
 import { Text } from '@/components/ui/text';
 import { useCanReadJobs } from '@/contracting/jobs/use-jobs';
+import { CONTRACTING_TAB_HREF } from '@/contracting/lib/app-tabs';
 import { contractingStorageKey } from '@/contracting/lib/contracting-storage';
 import { useFleet, useMachineReadingPages } from '@/contracting/readings/use-fleet';
 import { BookServiceSheet } from '@/contracting/services/BookServiceSheet';
@@ -186,8 +187,7 @@ export default function MachineScreen() {
       <SecondaryToolbar
         title="Machine"
         subtitle={machine?.code ?? 'CONTRACTING'}
-        parentLabel="Machines"
-        onBack={() => router.replace('/contracting/machines' as Href)}
+        fallback={CONTRACTING_TAB_HREF.machines}
         helpTopic="contractingMobileMachine"
       />
       <View className="border-b border-border px-4 py-3">

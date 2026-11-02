@@ -4,11 +4,13 @@ import {
   assignmentAttentionSentence,
   assignmentStateColorClassNames,
   assignmentStateLabels,
+  attentionBadges,
   breakdownPhases,
   breakdownStatusColorClassNames,
   breakdownStatusLabels,
   breakdownUrgencyColorClassNames,
   breakdownUrgencyLabels,
+  JD_LINK_LABEL,
   type JobSheet,
   type JobSheetStint,
   needsALookColorClassNames,
@@ -61,7 +63,7 @@ function ReadingDetail({ reading }: { reading: JobHoursValue }) {
     formatHours(reading.hours),
     `captured ${formatDate(reading.at, 'medium')} by ${getFirstName(reading.byName)}`,
     reading.telematics
-      ? `John Deere ${formatHours(reading.telematics.hours)} at ${formatDate(reading.telematics.at, 'medium')}`
+      ? `${JD_LINK_LABEL} ${formatHours(reading.telematics.hours)} at ${formatDate(reading.telematics.at, 'medium')}`
       : null,
     reading.comment,
   ]
@@ -101,8 +103,8 @@ function HoursAction({
 }
 
 /**
- * The amber badge per reason the stint needs a look, with a dismiss control for whoever may dismiss it, then the
- * dismissed reasons faded, and the latest management edit of its hours.
+ * The amber badge per reason the stint needs a look, with a dismiss control for whoever may dismiss it, each dismissed
+ * reason faded in its own place, and the latest management edit of its hours.
  */
 function StintAttention({
   stint,
@@ -122,9 +124,27 @@ function StintAttention({
   const badgeClassName = cn('h-auto whitespace-normal', needsALookColorClassNames.chip, needsALookColorClassNames.text);
   return (
     <div className="mb-3 flex flex-wrap gap-2">
-      {stint.attention.map((kind) => {
+      {attentionBadges(stint).map(({ kind, dismissal }) => {
         const sentence = assignmentAttentionSentence(kind, stint, thresholds);
-        return (
+        return dismissal ? (
+          <Tooltip key={kind}>
+            <TooltipTrigger
+              render={
+                <Badge
+                  className={cn(badgeClassName, 'opacity-30 transition-opacity hover:opacity-100')}
+                  variant="outline"
+                />
+              }
+            >
+              <IconAlertTriangle aria-hidden="true" />
+              {sentence}
+            </TooltipTrigger>
+            <TooltipContent>
+              {`Dismissed by ${getFirstName(dismissal.dismissedByName)} · `}
+              <DateDisplay date={dismissal.dismissedAt} format="medium" />
+            </TooltipContent>
+          </Tooltip>
+        ) : (
           <Badge className={badgeClassName} key={kind} variant="outline">
             <IconAlertTriangle aria-hidden="true" />
             {sentence}
@@ -143,25 +163,6 @@ function StintAttention({
           </Badge>
         );
       })}
-      {stint.dismissedAttention.map((dismissal) => (
-        <Tooltip key={dismissal.kind}>
-          <TooltipTrigger
-            render={
-              <Badge
-                className={cn(badgeClassName, 'opacity-40 transition-opacity hover:opacity-100')}
-                variant="outline"
-              />
-            }
-          >
-            <IconAlertTriangle aria-hidden="true" />
-            {assignmentAttentionSentence(dismissal.kind, stint, thresholds)}
-          </TooltipTrigger>
-          <TooltipContent>
-            {`Dismissed by ${getFirstName(dismissal.dismissedByName)} · `}
-            <DateDisplay date={dismissal.dismissedAt} format="medium" />
-          </TooltipContent>
-        </Tooltip>
-      ))}
       {stint.amendment ? (
         <span className="text-xs text-muted-foreground">
           {`Hours amended ${formatDate(stint.amendment.at, 'medium')} by ${getFirstName(stint.amendment.byName)} · ${stint.amendment.reason}`}

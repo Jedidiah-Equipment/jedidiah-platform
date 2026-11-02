@@ -11,13 +11,13 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { useVoiceSession } from '@/components/voice/use-voice-session';
 import { VoiceTextArea } from '@/components/voice/VoiceTextArea';
+import { CONTRACTING_TAB_HREF } from '@/contracting/lib/app-tabs';
 import { useTRPC } from '@/lib/trpc';
 import { useCan } from '@/lib/use-access';
 import { useBusyAction } from '@/lib/use-busy-action';
 
 const CREATE_FAILED = 'The Job could not be created. Try again.';
 const EMPTY_DRAFT: JobCreateValues = { customerId: '', farmId: '', workTypeId: '', description: '', foremanUserId: '' };
-const backToJobs = () => router.dismissTo('/contracting/jobs' as Href);
 
 /** `/contracting/jobs/new`: the web's New job form for management, online only. */
 export default function NewJobScreen() {
@@ -92,10 +92,8 @@ export default function NewJobScreen() {
         <SecondaryToolbar
           title="New job"
           subtitle="CONTRACTING"
-          parentLabel="Jobs"
-          onBack={() => {
-            if (!busy) backToJobs();
-          }}
+          fallback={CONTRACTING_TAB_HREF.jobs}
+          backDisabled={busy}
           helpTopic="contractingMobileNewJob"
         />
       }

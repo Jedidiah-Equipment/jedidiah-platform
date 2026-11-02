@@ -50,7 +50,7 @@ export function ServicesPage() {
     <PageLayout
       title="Services"
       description="Machines due for a service first, then the services Booked In. Booking one in takes it off the top."
-      size="full"
+      size="lg"
       actions={canBook ? <Button onClick={() => setBooking(true)}>Book a service</Button> : undefined}
     >
       <ServicesTable />

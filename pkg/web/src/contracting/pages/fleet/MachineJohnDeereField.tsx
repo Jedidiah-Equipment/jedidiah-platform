@@ -1,3 +1,4 @@
+import { JD_LINK_LABEL } from '@pkg/domain/contracting';
 import type { Machine } from '@pkg/schema/contracting';
 import { IconArrowRight } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
@@ -19,7 +20,7 @@ export function MachineJohnDeereField({
   const { can: managesSettings } = useCan('contracting_settings:update');
   return (
     <ReadOnlyField
-      label="John Deere"
+      label={JD_LINK_LABEL}
       value={
         johnDeere ? (
           <span className="flex min-w-0 items-center gap-2">

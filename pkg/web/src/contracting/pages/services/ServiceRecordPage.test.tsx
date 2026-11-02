@@ -102,8 +102,8 @@ async function mount(record: ServiceRecord, { without = [] as AppPermission[] } 
     ),
   );
   await act(async () => {
-    await vi.waitFor(() => expect(container.textContent).toContain('Open the Machine'));
-    await vi.waitFor(() => expect(container.textContent).toContain('John Deere'));
+    await vi.waitFor(() => expect(container.querySelector('[aria-label="Open JD110-1"]')?.textContent).toBe('JD110-1'));
+    await vi.waitFor(() => expect(container.textContent).toContain('JD Link'));
   });
   const button = (name: string) =>
     [...container.querySelectorAll('button')].find((each) => each.textContent?.trim() === name);

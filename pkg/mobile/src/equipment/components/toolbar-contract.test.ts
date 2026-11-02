@@ -19,27 +19,75 @@ const SIGNED_IN_PERMISSION_LOADING_SURFACES = {
 } as const;
 
 const SIGNED_IN_ROUTE_TOOLBARS = {
-  'contracting/(tabs)/activity/index.tsx': toolbar('main', 'src/contracting/activity/ActivityScreen.tsx'),
-  'contracting/(tabs)/jobs/index.tsx': toolbar('main', 'src/contracting/jobs/JobsScreen.tsx'),
-  'contracting/(tabs)/jobs/[jobId].tsx': toolbar('secondary', 'src/contracting/jobs/JobScreen.tsx'),
-  'contracting/(tabs)/jobs/new.tsx': toolbar('secondary', 'src/contracting/jobs/NewJobScreen.tsx'),
-  'contracting/(tabs)/jobs/[jobId]/add-machine.tsx': toolbar('secondary', 'src/contracting/jobs/AddMachineScreen.tsx'),
-  'contracting/(tabs)/jobs/[jobId]/capture.tsx': toolbar('secondary', 'src/contracting/components/CaptureScreen.tsx'),
-  'contracting/(tabs)/machines/index.tsx': toolbar('main', 'src/contracting/components/MachinesScreen.tsx'),
-  'contracting/(tabs)/machines/[id]/index.tsx': toolbar('secondary', 'src/contracting/components/MachineScreen.tsx'),
-  'contracting/(tabs)/machines/[id]/capture.tsx': toolbar('secondary', 'src/contracting/components/CaptureScreen.tsx'),
-  'contracting/(tabs)/workshop/index.tsx': toolbar('main', 'src/contracting/workshop/WorkshopScreen.tsx'),
-  'contracting/(tabs)/services/index.tsx': toolbar('main', 'src/contracting/services/ServicesScreen.tsx'),
-  'contracting/(tabs)/services/[serviceId].tsx': toolbar('secondary', 'src/contracting/services/ServiceScreen.tsx'),
-  'contracting/(tabs)/services/machine/[machineId].tsx': toolbar(
+  'contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/activity/index.tsx': toolbar(
+    'main',
+    'src/contracting/activity/ActivityScreen.tsx',
+  ),
+  'contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/jobs/index.tsx': toolbar(
+    'main',
+    'src/contracting/jobs/JobsScreen.tsx',
+  ),
+  'contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/jobs/[jobId].tsx': toolbar(
+    'secondary',
+    'src/contracting/jobs/JobScreen.tsx',
+  ),
+  'contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/jobs/new.tsx': toolbar(
+    'secondary',
+    'src/contracting/jobs/NewJobScreen.tsx',
+  ),
+  'contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/jobs/[jobId]/add-machine.tsx': toolbar(
+    'secondary',
+    'src/contracting/jobs/AddMachineScreen.tsx',
+  ),
+  'contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/jobs/[jobId]/capture.tsx': toolbar(
+    'secondary',
+    'src/contracting/components/CaptureScreen.tsx',
+  ),
+  'contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/machines/index.tsx': toolbar(
+    'main',
+    'src/contracting/components/MachinesScreen.tsx',
+  ),
+  'contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/machines/[id]/index.tsx': toolbar(
+    'secondary',
+    'src/contracting/components/MachineScreen.tsx',
+  ),
+  'contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/machines/[id]/capture.tsx': toolbar(
+    'secondary',
+    'src/contracting/components/CaptureScreen.tsx',
+  ),
+  'contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/workshop/index.tsx': toolbar(
+    'main',
+    'src/contracting/workshop/WorkshopScreen.tsx',
+  ),
+  'contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/services/index.tsx': toolbar(
+    'main',
+    'src/contracting/services/ServicesScreen.tsx',
+  ),
+  'contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/services/[serviceId].tsx': toolbar(
+    'secondary',
+    'src/contracting/services/ServiceScreen.tsx',
+  ),
+  'contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/services/machine/[machineId].tsx': toolbar(
     'secondary',
     'src/contracting/services/MachineServicesScreen.tsx',
   ),
-  'contracting/(tabs)/workshop/[breakdownId].tsx': toolbar('secondary', 'src/contracting/workshop/BreakdownScreen.tsx'),
-  'contracting/(tabs)/workshop/report.tsx': toolbar('secondary', 'src/contracting/workshop/ReportBreakdownScreen.tsx'),
-  'contracting/(tabs)/field-notes/index.tsx': toolbar('main', 'src/contracting/field-notes/FieldNotesScreen.tsx'),
-  'contracting/(tabs)/field-notes/new.tsx': toolbar('secondary', 'src/contracting/field-notes/NewFieldNoteScreen.tsx'),
-  'contracting/(tabs)/field-notes/[noteId].tsx': toolbar(
+  'contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/workshop/[breakdownId].tsx': toolbar(
+    'secondary',
+    'src/contracting/workshop/BreakdownScreen.tsx',
+  ),
+  'contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/workshop/report.tsx': toolbar(
+    'secondary',
+    'src/contracting/workshop/ReportBreakdownScreen.tsx',
+  ),
+  'contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/field-notes/index.tsx': toolbar(
+    'main',
+    'src/contracting/field-notes/FieldNotesScreen.tsx',
+  ),
+  'contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/field-notes/new.tsx': toolbar(
+    'secondary',
+    'src/contracting/field-notes/NewFieldNoteScreen.tsx',
+  ),
+  'contracting/(tabs)/(activity,field-notes,jobs,machines,services,workshop)/field-notes/[noteId].tsx': toolbar(
     'secondary',
     'src/contracting/field-notes/FieldNoteScreen.tsx',
   ),

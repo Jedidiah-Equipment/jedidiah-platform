@@ -248,14 +248,16 @@ test("changes a Machine's default Driver from the phone, and its on-site stint's
   const fleet = context.createCaller(contractingSession('contracting-manager')).contractingFleet.machines;
 
   await expect(fleet.changeDriver({ machineId: machine.id, driverUserId: driverId, onSite: true })).resolves.toEqual({
-    onSiteRefusal: null,
+    onSite: null,
   });
   expect(await getMachine({ db, id: machine.id })).toMatchObject({ currentDriverUserId: driverId });
   expect(await stintDriver(stint.id)).toBeNull();
 
   await fleet.changeDriver({ machineId: otherMachine.id, driverUserId: driverId, onSite: false });
   expect(await stintDriver(otherStint.id)).toBeNull();
-  await fleet.changeDriver({ machineId: otherMachine.id, driverUserId: driverId, onSite: true });
+  await expect(
+    fleet.changeDriver({ machineId: otherMachine.id, driverUserId: driverId, onSite: true }),
+  ).resolves.toEqual({ onSite: { jobNumber: otherJob.jobNumber, refusal: null } });
   expect(await stintDriver(otherStint.id)).toBe(driverId);
 
   await db
@@ -269,7 +271,7 @@ test("changes a Machine's default Driver from the phone, and its on-site stint's
     })
     .where(eq(contractingJobs.id, otherJob.id));
   const refused = await fleet.changeDriver({ machineId: otherMachine.id, driverUserId: null, onSite: true });
-  expect(refused.onSiteRefusal).toEqual(expect.any(String));
+  expect(refused.onSite).toEqual({ jobNumber: otherJob.jobNumber, refusal: expect.any(String) });
   expect(await getMachine({ db, id: otherMachine.id })).toMatchObject({ currentDriverUserId: null });
   expect(await stintDriver(otherStint.id)).toBe(driverId);
 });

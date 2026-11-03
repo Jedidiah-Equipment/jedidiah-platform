@@ -104,8 +104,10 @@ export const MachineDriverChangeInput = z
   .object({ machineId: UUID, driverUserId: AuthId.nullable(), onSite: z.boolean() })
   .strict();
 export type MachineDriverChangeInput = z.infer<typeof MachineDriverChangeInput>;
-/** Why the on-site stint kept its Driver; null when it changed or was not asked to. */
-export const MachineDriverChangeResult = z.object({ onSiteRefusal: z.string().nullable() });
+/** The Job whose on-site stint was asked to change, and why it kept its Driver; null when no stint was asked. */
+export const MachineDriverChangeResult = z.object({
+  onSite: z.object({ jobNumber: z.string(), refusal: z.string().nullable() }).nullable(),
+});
 export type MachineDriverChangeResult = z.infer<typeof MachineDriverChangeResult>;
 export const knownHoursSources = ['telematics', 'spot', 'job'] as const;
 export type KnownHoursSource = (typeof knownHoursSources)[number];

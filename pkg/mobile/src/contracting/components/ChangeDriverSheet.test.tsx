@@ -34,7 +34,9 @@ vi.mock('@/components/form/fields/SelectField', () => ({ SelectField: 'SelectFie
 vi.mock('@/components/form/fields/TextareaField', () => ({ TextareaField: 'TextareaField' }));
 vi.mock('@/components/form/fields/TextField', () => ({ TextField: 'TextField' }));
 vi.mock('@/contracting/jobs/use-jobs', () => ({ useDrivers: () => ({ data: [], isError: false }) }));
-const changeDriver = vi.hoisted(() => vi.fn(async (_input: unknown) => ({ onSiteRefusal: null as string | null })));
+const changeDriver = vi.hoisted(() =>
+  vi.fn(async (_input: unknown) => ({ onSite: null as { jobNumber: string; refusal: string | null } | null })),
+);
 vi.mock('@/contracting/readings/use-fleet', () => ({ useChangeMachineDriver: () => ({ mutateAsync: changeDriver }) }));
 
 import { Text } from '@/components/ui/text';
@@ -84,10 +86,12 @@ test('on site the switch starts on and can be turned off', async () => {
 });
 
 test('a refused stint keeps the sheet open with the refusal', async () => {
-  changeDriver.mockResolvedValueOnce({ onSiteRefusal: 'The Job is completed.' });
+  changeDriver.mockResolvedValueOnce({ onSite: { jobNumber: 'CJOB-3', refusal: 'The Job is completed.' } });
   const { renderer, onClose, submit } = mount('CJOB-7');
   await submit();
   expect(changeDriver).toHaveBeenCalledWith({ machineId, driverUserId: 'driver-1', onSite: true });
   expect(onClose).not.toHaveBeenCalled();
-  expect(renderer.root.findByProps({ testID: 'error' }).props.children).toContain('The Job is completed.');
+  expect(renderer.root.findByProps({ testID: 'error' }).props.children).toBe(
+    'The default Driver changed, but not on CJOB-3: The Job is completed.',
+  );
 });

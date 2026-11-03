@@ -23,17 +23,18 @@ export function ChangeDriverSheet({ machine, onClose }: { machine: FieldMachine;
     defaultValues: { driverUserId: machine.currentDriverUserId ?? '', onSite: onSiteJobNumber !== null },
     onSubmit: ({ value }) =>
       run(async () => {
-        const { onSiteRefusal } = await change.mutateAsync({
+        const { onSite } = await change.mutateAsync({
           machineId: machine.id,
           driverUserId: value.driverUserId || null,
           onSite: value.onSite,
         });
-        if (onSiteRefusal) {
-          setError(`The default Driver changed, but not on ${onSiteJobNumber}: ${onSiteRefusal}`);
+        // The server names the Job it wrote, which may not be the one this screen loaded.
+        if (onSite?.refusal) {
+          setError(`The default Driver changed, but not on ${onSite.jobNumber}: ${onSite.refusal}`);
           return;
         }
         onClose();
-        showToast('success', 'Driver changed');
+        showToast('success', onSite ? `Driver changed, also on ${onSite.jobNumber}` : 'Driver changed');
       }, CHANGE_FAILED),
   });
   return (

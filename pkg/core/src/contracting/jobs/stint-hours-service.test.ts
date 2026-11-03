@@ -1,4 +1,5 @@
 import { auditEvents, user } from '@pkg/db';
+import { getPlantDateNow } from '@pkg/domain';
 import { accessForRole } from '@pkg/domain/testing';
 import { describe, expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
@@ -18,7 +19,7 @@ import {
   seedJobFixtures,
 } from '../test/job-fixtures.js';
 import { getJob, getReadableJob } from './job-read.js';
-import { createJob } from './job-service.js';
+import { completeJob, createJob } from './job-service.js';
 import { captureStintHours, editStintHours, setTravelHours } from './stint-hours-service.js';
 
 const driverId = 'stint-driver';
@@ -154,12 +155,32 @@ describe('capturing Job Hours', () => {
     });
     expect((await getJob({ db, id: backLoaded.id })).assignments[0]).toMatchObject({ state: 'on-site' });
 
-    const first = await plannedStint(db, admin, { jobId: current.id, machineId: tipper.id, implementId: null });
-    const second = await plannedStint(db, admin, { jobId: current.id, machineId: tipper.id, implementId: null });
+    const first = await plannedStint(db, admin, { jobId: backLoaded.id, machineId: tipper.id, implementId: null });
+    const second = await plannedStint(db, admin, { jobId: backLoaded.id, machineId: tipper.id, implementId: null });
     await captureHours(db, first.id, 'arrival', 10);
     expect((await captureHours(db, second.id, 'arrival', 10)).warnings).toEqual([
-      `TIP-7 is also on site on ${current.jobNumber} — its departure there hasn't been captured.`,
+      `TIP-7 is also on site on ${backLoaded.jobNumber} — its departure there hasn't been captured.`,
     ]);
+
+    // The Job the Machine is still on waits for its departure there.
+    const today = getPlantDateNow();
+    const complete = () =>
+      completeJob({
+        db,
+        actor: admin,
+        input: {
+          id: current.id,
+          startDate: today,
+          endDate: today,
+          dieselLitres: 0,
+          notes: null,
+          removePlannedAssignmentIds: [],
+        },
+      });
+    await expect(complete()).rejects.toMatchObject({ code: 'contracting_job.has_on_site_stints' });
+    await captureHours(db, onSite.id, 'departure', 510);
+    await complete();
+    expect((await getJob({ db, id: current.id })).status).toBe('completed');
   });
 
   test('refuses a retired Machine, a retired Implement, a device Driver, a foreign Job and a departure below arrival', async ({

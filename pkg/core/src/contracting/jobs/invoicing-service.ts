@@ -9,7 +9,7 @@ import {
 } from '@pkg/domain';
 import { formatJobNumber, type JobActor, jobTransitions, readsJobMoney } from '@pkg/domain/contracting';
 import type { DateOnlyIso } from '@pkg/schema';
-import { InvoicedByMonth, type JobStampInvoiceInput } from '@pkg/schema/contracting';
+import { INVOICED_MONTHS_SHOWN, InvoicedByMonth, type JobStampInvoiceInput } from '@pkg/schema/contracting';
 import { and, asc, eq, gte, sql } from 'drizzle-orm';
 import { JobError, totalChanged } from './job-errors.js';
 import { lockJobFor } from './job-lock.js';
@@ -46,8 +46,6 @@ export async function findJobsByInvoiceNumber({ db, invoiceNumber }: { db: Db; i
   return rows.map((row) => ({ ...row, jobNumber: formatJobNumber(row.code) }));
 }
 
-const invoicedMonthsShown = 4;
-
 /**
  * The priced totals of the Jobs marked as Invoiced in each plant-time month: this month to date first, then the three
  * full months before it. Only someone whose Job read sees money gets the figures.
@@ -64,9 +62,9 @@ export async function summarizeInvoicedByMonth({
   if (!readsJobMoney(actor))
     throw new JobError('contracting_job.forbidden', 'You do not have permission to view invoiced amounts.');
   const thisMonth = startOfDateOnlyMonth(today);
-  const months = Array.from({ length: invoicedMonthsShown }, (_, back) => addDateOnlyMonths(thisMonth, -back));
+  const months = Array.from({ length: INVOICED_MONTHS_SHOWN }, (_, back) => addDateOnlyMonths(thisMonth, -back));
   const from = zonedDateStartToUtcInstant(
-    addDateOnlyMonths(thisMonth, 1 - invoicedMonthsShown),
+    addDateOnlyMonths(thisMonth, 1 - INVOICED_MONTHS_SHOWN),
     JOHANNESBURG_TIME_ZONE,
   );
   const month = sql<string>`to_char(${contractingJobs.invoicedAt} at time zone ${JOHANNESBURG_TIME_ZONE}, 'YYYY-MM-01')`;

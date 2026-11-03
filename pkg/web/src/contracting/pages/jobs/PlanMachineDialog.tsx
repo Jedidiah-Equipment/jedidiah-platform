@@ -1,3 +1,4 @@
+import { onJobNote } from '@pkg/domain/contracting';
 import { emptyStringOr, requiredSelection, UUID } from '@pkg/schema';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
@@ -14,9 +15,6 @@ const PlanValues = z.object({
   implementId: emptyStringOr(UUID),
   driverUserId: emptyStringOr(z.string()),
 });
-
-const onJobNote = (machine: { onSiteJobNumber: string | null }) =>
-  machine.onSiteJobNumber ? `On Job ${machine.onSiteJobNumber}` : null;
 
 export function PlanMachineDialog({
   jobId,

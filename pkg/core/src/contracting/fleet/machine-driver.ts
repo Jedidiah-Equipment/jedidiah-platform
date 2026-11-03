@@ -1,7 +1,8 @@
 import type { Db } from '@pkg/db';
 import { formatJobNumber, type JobActor } from '@pkg/domain/contracting';
 import type { MachineDriverChangeInput, MachineDriverChangeResult } from '@pkg/schema/contracting';
-import { changeStintDriver } from '../jobs/assignment-service.js';
+import { changeStintResources } from '../jobs/assignment-service.js';
+import { jobTransaction } from '../jobs/job-write.js';
 import { patchMachine } from './machine-service.js';
 import { onSiteAssignment } from './on-site-assignment.js';
 
@@ -19,7 +20,7 @@ export function changeMachineDriver({
   actor: JobActor;
   input: MachineDriverChangeInput;
 }): Promise<MachineDriverChangeResult> {
-  return db.transaction(async (tx) => {
+  return jobTransaction(db, async (tx) => {
     await patchMachine({
       db: tx,
       actorUserId: actor.userId,
@@ -29,7 +30,7 @@ export function changeMachineDriver({
       ? await onSiteAssignment({ db: tx, subject: { kind: 'machine', id: input.machineId } })
       : null;
     if (!stint) return { onSite: null };
-    const refusal = await changeStintDriver(tx, actor, stint.stintId, input.driverUserId);
-    return { onSite: { jobNumber: formatJobNumber(stint.jobCode), refusal } };
+    const verdict = await changeStintResources(tx, actor, stint.stintId, { driverUserId: input.driverUserId });
+    return { onSite: { jobNumber: formatJobNumber(stint.jobCode), refusal: verdict.allowed ? null : verdict.message } };
   });
 }

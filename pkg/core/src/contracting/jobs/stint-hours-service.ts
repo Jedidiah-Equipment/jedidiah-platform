@@ -14,6 +14,7 @@ import {
 import type {
   BreakdownSubjectRef,
   StintHoursCaptureInput,
+  StintHoursCaptureResult,
   StintHoursEditInput,
   StintOverrides,
   TravelHoursSetInput,
@@ -37,8 +38,8 @@ type StintRow = typeof contractingMachineAssignments.$inferSelect;
 /** `serviceDueSoonCrossed` is true when the write took the Machine into Service Due Soon; the caller pushes after commit. */
 export type StintHoursWrite = { machineId: string; serviceDueSoonCrossed: boolean };
 
-/** A capture's write, with a warning for each of the arriving Machine and Implement still on site elsewhere. */
-export type StintHoursCapture = StintHoursWrite & { warnings: string[] };
+/** A capture's write, with the wire's warnings for each of the arriving Machine and Implement still on site elsewhere. */
+export type StintHoursCapture = StintHoursWrite & StintHoursCaptureResult;
 
 /** What John Deere had last read for this Machine when the hours were saved, as the stint stores it. */
 const snapshotColumns = (side: 'arrival' | 'departure', telematics: { hours: number; at: Date } | null) =>

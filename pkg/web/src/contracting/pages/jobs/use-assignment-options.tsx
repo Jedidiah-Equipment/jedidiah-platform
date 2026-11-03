@@ -1,3 +1,4 @@
+import { onJobNote } from '@pkg/domain/contracting';
 import type { Assignment } from '@pkg/schema/contracting';
 import { useQuery } from '@tanstack/react-query';
 import type { SearchableComboboxOption } from '@/components/common/SearchableCombobox.js';
@@ -24,7 +25,7 @@ export function useAssignmentOptions({
     { value: '', label: noImplementLabel },
     ...(implementsQuery.data ?? []).map((entry) => ({
       value: entry.id,
-      label: entry.onSiteJobNumber ? `${entry.code} · On Job ${entry.onSiteJobNumber}` : entry.code,
+      label: [entry.code, onJobNote(entry)].filter(Boolean).join(' · '),
       icon: <CategoryIcon icon={entry.categoryIcon} colour={entry.categoryColour} size={14} />,
     })),
   ];

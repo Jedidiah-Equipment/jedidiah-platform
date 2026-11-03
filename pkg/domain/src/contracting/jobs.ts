@@ -90,14 +90,14 @@ export const webJobReadPermissions = [
 export const opensWebJobs = (access: UserAccessSummary | null | undefined): boolean =>
   webJobReadPermissions.some((permission) => hasPermission(access, permission));
 
-/** Whoever reads Jobs with money: every Job, or Invoicing's Completed-onward Jobs, never a Foreman's own. */
+/**
+ * Whoever reads Jobs with money: every Job, or Invoicing's Completed-onward Jobs, never a Foreman's own. Job Cards carry
+ * money, so this is who opens them too.
+ */
 export function readsJobMoney(access: Pick<UserAccessSummary, 'permissions'> | null | undefined): boolean {
   const mode = jobReadMode(access);
   return mode !== null && jobReadSeesMoney(mode);
 }
-
-/** Job Cards carry money, so whoever reads Jobs with money opens them. */
-export const canOpenJobCards = readsJobMoney;
 
 export function looksFinished(job: { status: JobStatus }, states: readonly AssignmentState[]): boolean {
   return job.status === 'active' && states.includes('left') && !states.includes('on-site');

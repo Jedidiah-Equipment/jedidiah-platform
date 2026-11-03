@@ -3,7 +3,8 @@ import { parseJobNumber } from '@pkg/domain/contracting';
 import { eq } from 'drizzle-orm';
 import { expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
-import { getBreakdownReportContext } from '../breakdowns/breakdown-service.js';
+import { getBreakdownReportContext, reportBreakdown } from '../breakdowns/breakdown-service.js';
+import { loadOpenBreakdowns } from '../breakdowns/open-breakdowns.js';
 import { createJob } from '../jobs/job-service.js';
 import { admin, captureHours, foremanId, plannedStint, seedJobFixtures } from '../test/job-fixtures.js';
 import { createCategory } from './category-service.js';
@@ -124,4 +125,12 @@ test('on site on two Jobs, every reader names the latest arrival capture', async
   expect(await getBreakdownReportContext({ db, actor: admin, subject: machine })).toMatchObject({
     defaultJob: { jobNumber: backLoaded.jobNumber },
   });
+  // A Breakdown filed on no Job follows the Machine to the same one while it is not yet Fixed.
+  await reportBreakdown({
+    db,
+    actor: admin,
+    input: { subject: machine, jobId: null, urgency: 'code-green', description: 'Hydraulic hose burst' },
+  });
+  const flagged = await loadOpenBreakdowns({ db, actor: admin, on: 'job', ids: [job.id, backLoaded.id] });
+  expect([...flagged.keys()]).toEqual([backLoaded.id]);
 });

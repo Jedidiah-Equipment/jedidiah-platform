@@ -1,15 +1,9 @@
 import { breakdownReadScope } from '@pkg/domain/contracting';
 import type { BreakdownStatus, BreakdownSubjectRef } from '@pkg/schema/contracting';
-import {
-  keepPreviousData,
-  skipToken,
-  useInfiniteQuery,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query';
+import { keepPreviousData, skipToken, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
 import type { DecorateMutationProcedure, ResolverDef } from '@trpc/tanstack-react-query';
 import { fieldQuery } from '@/contracting/lib/field-query';
+import { useInvalidateRoots } from '@/contracting/lib/use-invalidate-roots';
 import { useSessionAccessSummary, useSessionPermission } from '@/lib/auth-session';
 import { useTRPC } from '@/lib/trpc';
 import { isNotFoundError } from '@/lib/trpc-errors';
@@ -106,14 +100,8 @@ export function useBreakdownUpload<TVariables, TData>(upload: (variables: TVaria
 
 /** A Breakdown write also moves the flags the Jobs list and the field Machines list (under Readings) serve. */
 function useRefetchBreakdowns() {
-  const trpc = useTRPC();
-  const queryClient = useQueryClient();
-  return () =>
-    Promise.all(
-      [trpc.contractingBreakdowns, trpc.contractingJobs, trpc.contractingReadings].map((root) =>
-        queryClient.invalidateQueries({ queryKey: root.pathKey() }),
-      ),
-    );
+  const invalidate = useInvalidateRoots();
+  return () => invalidate('contractingBreakdowns', 'contractingJobs', 'contractingReadings');
 }
 
 /** Where a report of the chosen subject files when it names no Job, and what is already open on it. */

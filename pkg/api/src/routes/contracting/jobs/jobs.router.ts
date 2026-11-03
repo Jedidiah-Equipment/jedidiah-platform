@@ -61,6 +61,7 @@ import {
   MeasureType,
   StintAmountSetInput,
   StintHoursCaptureInput,
+  StintHoursCaptureResult,
   StintHoursEditInput,
   StintRateClearInput,
   StintRateSetInput,
@@ -150,6 +151,7 @@ export const createContractingJobsRouter = (push: ContractingPushScheduler) =>
         ),
       captureHours: authorizedProcedure('contracting_reading:capture')
         .input(StintHoursCaptureInput)
+        .output(StintHoursCaptureResult)
         .mutation(async ({ ctx, input }) => {
           const capture = await mapCoreErrors(
             () => captureStintHours({ db: ctx.db, actor: ctx.access, input }),

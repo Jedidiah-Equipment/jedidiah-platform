@@ -2,6 +2,7 @@ import { fieldJobAccessMode, jobReadMode, openJobQueues, readableJobQueues } fro
 import type { JobListInput, JobQueue } from '@pkg/schema/contracting';
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { fieldQuery } from '@/contracting/lib/field-query';
+import { useInvalidateRoots } from '@/contracting/lib/use-invalidate-roots';
 import { useSessionAccessSummary, useSessionPermission } from '@/lib/auth-session';
 import { useTRPC } from '@/lib/trpc';
 import { isForbiddenError, isNotFoundError, trpcErrorMessage } from '@/lib/trpc-errors';
@@ -104,20 +105,17 @@ export function useDrivers() {
  */
 export function useStintHoursWrites() {
   const trpc = useTRPC();
-  const queryClient = useQueryClient();
-  const onSuccess = async () => {
-    await Promise.all(
-      [
-        trpc.contractingJobs,
-        trpc.contractingBreakdowns,
-        trpc.contractingReports,
-        trpc.contractingActivity,
-        trpc.contractingReadings,
-        trpc.contractingFleet,
-        trpc.contractingServices,
-      ].map((router) => queryClient.invalidateQueries({ queryKey: router.pathKey() })),
+  const invalidate = useInvalidateRoots();
+  const onSuccess = () =>
+    invalidate(
+      'contractingJobs',
+      'contractingBreakdowns',
+      'contractingReports',
+      'contractingActivity',
+      'contractingReadings',
+      'contractingFleet',
+      'contractingServices',
     );
-  };
   return {
     capture: useMutation(trpc.contractingJobs.assignments.captureHours.mutationOptions({ onSuccess })),
     edit: useMutation(trpc.contractingJobs.assignments.editHours.mutationOptions({ onSuccess })),

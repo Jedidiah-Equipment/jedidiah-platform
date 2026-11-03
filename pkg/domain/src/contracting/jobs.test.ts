@@ -2,7 +2,6 @@ import { jobQueues } from '@pkg/schema/contracting';
 import { describe, expect, test } from 'vitest';
 import { createUserAccessSummary } from '../auth/authorization.js';
 import {
-  canOpenJobCards,
   fieldJobAccessMode,
   formatJobNumber,
   isJobQueue,
@@ -12,6 +11,7 @@ import {
   jobReadMode,
   parseJobNumber,
   readableJobQueues,
+  readsJobMoney,
   stagesCount,
 } from './jobs.js';
 
@@ -45,18 +45,18 @@ describe('jobReadMode', () => {
   });
 });
 
-describe('canOpenJobCards', () => {
-  test('opens Job Cards for whoever reads Jobs with money', () => {
+describe('readsJobMoney', () => {
+  test('reads money, and opens Job Cards, for every reader but a Foreman', () => {
     const access = (contractingRole: Parameters<typeof createUserAccessSummary>[0]['contractingRole']) =>
       createUserAccessSummary({ userId: 'actor', equipmentRole: null, contractingRole });
 
-    expect(canOpenJobCards(access('contracting-admin'))).toBe(true);
-    expect(canOpenJobCards(access('contracting-manager'))).toBe(true);
-    expect(canOpenJobCards(access('workshop-manager'))).toBe(true);
-    expect(canOpenJobCards(access('contracting-invoicing'))).toBe(true);
-    expect(canOpenJobCards(access('foreman'))).toBe(false);
-    expect(canOpenJobCards(access('driver'))).toBe(false);
-    expect(canOpenJobCards(null)).toBe(false);
+    expect(readsJobMoney(access('contracting-admin'))).toBe(true);
+    expect(readsJobMoney(access('contracting-manager'))).toBe(true);
+    expect(readsJobMoney(access('workshop-manager'))).toBe(true);
+    expect(readsJobMoney(access('contracting-invoicing'))).toBe(true);
+    expect(readsJobMoney(access('foreman'))).toBe(false);
+    expect(readsJobMoney(access('driver'))).toBe(false);
+    expect(readsJobMoney(null)).toBe(false);
   });
 });
 

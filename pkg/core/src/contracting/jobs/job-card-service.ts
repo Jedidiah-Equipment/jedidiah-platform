@@ -1,11 +1,5 @@
 import type { Db } from '@pkg/db';
-import {
-  buildJobCardModel,
-  canOpenJobCards,
-  hasJobCard,
-  type JobActor,
-  jobCardFilename,
-} from '@pkg/domain/contracting';
+import { buildJobCardModel, hasJobCard, type JobActor, jobCardFilename, readsJobMoney } from '@pkg/domain/contracting';
 import type { JobCardPdfRenderer, JobCardVariant } from '@pkg/schema/contracting';
 import { JobError, wrongStatus } from './job-errors.js';
 import { getReadableJob } from './job-read.js';
@@ -26,7 +20,7 @@ export async function renderJobCard({
   pdfRenderer: JobCardPdfRenderer;
   now?: Date;
 }) {
-  if (!canOpenJobCards(actor))
+  if (!readsJobMoney(actor))
     throw new JobError('contracting_job.forbidden', 'You do not have permission to open Job Cards.');
   const job = await getReadableJob({ db, actor, code });
   if (!hasJobCard(job.status)) throw wrongStatus('A Job Card exists once the Job is Completed.');

@@ -1,4 +1,4 @@
-import { isJobQueue, openJobQueues } from '@pkg/domain/contracting';
+import { isJobQueue, type JobReadMode, openJobQueues, readableJobQueues } from '@pkg/domain/contracting';
 import { type JobQueue, type JobQueueCounts, jobQueues } from '@pkg/schema/contracting';
 import type { ColumnFiltersState } from '@tanstack/react-table';
 import { isPickedExactly, readMultiSelectFilter, togglePick } from '@/components/data-table/column-filter-values.js';
@@ -33,6 +33,10 @@ export const quickFilterStages = (
   columnFilters: ColumnFiltersState,
   stages: readonly JobQueue[],
 ) => stages.filter((queue) => (counts?.[queue] ?? 0) > 0 || isPickedStages(columnFilters, [queue]));
+
+/** The Jobs page's quick-filter stages: every stage the reader lists but Cancelled, so Invoiced follows the open ones. */
+export const jobsQuickFilterStages = (mode: JobReadMode | null): readonly JobQueue[] =>
+  mode ? readableJobQueues(mode).filter((queue) => queue !== 'cancelled') : openJobQueues;
 
 /** Picks exactly these stages; pressing again clears the pick. */
 export const toggleStages = (columnFilters: ColumnFiltersState, stages: readonly JobQueue[]) =>

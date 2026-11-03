@@ -49,6 +49,7 @@ import {
   focusOnNeedsALook,
   focusOnStage,
   jobListFilters,
+  jobsQuickFilterStages,
   NEEDS_A_LOOK,
   STAGE_COLUMN_ID,
 } from './job-stage-filter.js';
@@ -364,7 +365,7 @@ export function JobsTable({ scope }: { scope?: JobsScope }) {
       {scopeKind ? null : (
         <JobStageQuickFilters
           label="Job stages"
-          stages={openJobQueues}
+          stages={jobsQuickFilterStages(readMode)}
           allStages={jobQueues}
           summary={queues.data}
           columnFilters={tableController.columnFilters}

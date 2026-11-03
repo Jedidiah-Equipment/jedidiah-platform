@@ -1,0 +1,60 @@
+{
+  "business": "contracting",
+  "releasedAt": "2026-11-03T11:20:12.942Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Find invoiced jobs quickly",
+          "description": "Choose the new Invoiced quick filter on the Jobs page to see jobs already invoiced."
+        },
+        {
+          "title": "Track monthly invoiced totals",
+          "description": "If your role can view job amounts, the Dashboard now shows invoiced totals excluding VAT and job counts for this month to date and the previous three months. Select a tile to open the invoiced jobs list."
+        },
+        {
+          "title": "Save arrivals with an on-site warning",
+          "description": "Capture an arrival even when the machine or implement is still recorded on site on another assignment. The arrival saves and a warning names the job that needs its departure captured."
+        },
+        {
+          "title": "Calculate travel correctly when entering older jobs",
+          "description": "Travel hours now use meter readings rather than capture order, so entering older jobs no longer skews travel on newer jobs. The obsolete warning for an arrival below the last captured departure has been removed."
+        },
+        {
+          "title": "Remove machine assignments added by mistake",
+          "description": "Use the machine card’s ⋯ menu to remove an assignment even after arrival or departure, subject to your permissions and before invoicing. Arrived assignments require a reason and their hours and measures are deleted; priced jobs return for re-pricing."
+        },
+        {
+          "title": "Identify a machine’s default driver",
+          "description": "Driver fields now consistently say Default Driver, making the machine’s usual driver easier to distinguish from the driver assigned to a particular job."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Change a machine’s default driver",
+          "description": "Managers can change the default driver from the Machine screen and optionally update its latest on-site assignment too. The confirmation names the affected job and explains if its driver could not be changed."
+        },
+        {
+          "title": "Edit job details directly from machine cards",
+          "description": "Roomier cards let you tap the implement and driver, arrival and departure readings, work hours or measures to edit them; managers can also tap Travel to set travel hours. Use the ⋯ menu to add measures or remove an assignment, while dismissed alerts stay hidden."
+        },
+        {
+          "title": "Save arrivals with an on-site warning",
+          "description": "Capture an arrival even when the machine or implement is still recorded on site on another assignment. The arrival saves with a warning naming the job, and implement choices show where they are already on site."
+        },
+        {
+          "title": "Calculate travel correctly when entering older jobs",
+          "description": "Travel hours now use meter readings rather than capture order, so entering older jobs no longer skews travel on newer jobs. The obsolete warning for an arrival below the last captured departure has been removed."
+        },
+        {
+          "title": "Remove machine assignments added by mistake",
+          "description": "Remove an assignment even after arrival or departure, subject to your permissions and before invoicing. Arrived assignments require a reason and their hours and measures are deleted; priced jobs return for re-pricing."
+        }
+      ]
+    }
+  ]
+}

@@ -1,10 +1,13 @@
 import type { Db } from '@pkg/db';
 import { contractingCustomers, contractingJobs } from '@pkg/db/contracting';
-import { formatJobNumber, type JobActor, jobTransitions } from '@pkg/domain/contracting';
-import type { JobStampInvoiceInput } from '@pkg/schema/contracting';
-import { asc, eq, sql } from 'drizzle-orm';
-import { totalChanged } from './job-errors.js';
+import { addDateOnlyMonths, getPlantDateNow, JOHANNESBURG_TIME_ZONE, zonedDateStartToUtcInstant } from '@pkg/domain';
+import { formatJobNumber, type JobActor, jobReadSeesMoney, jobTransitions } from '@pkg/domain/contracting';
+import type { DateOnlyIso } from '@pkg/schema';
+import { InvoicedByMonth, type JobStampInvoiceInput } from '@pkg/schema/contracting';
+import { and, asc, eq, gte, sql } from 'drizzle-orm';
+import { JobError, totalChanged } from './job-errors.js';
 import { lockJobFor } from './job-lock.js';
+import { readerFor } from './job-readers.js';
 import { jobTransaction, writeJobRow } from './job-write.js';
 
 /** Stamps the accounting system's Invoice Number on a Priced Job, making it Invoiced: the wall. */
@@ -36,4 +39,44 @@ export async function findJobsByInvoiceNumber({ db, invoiceNumber }: { db: Db; i
     .where(sql`lower(${contractingJobs.invoiceNumber}) = lower(${invoiceNumber})`)
     .orderBy(asc(contractingJobs.code));
   return rows.map((row) => ({ ...row, jobNumber: formatJobNumber(row.code) }));
+}
+
+const invoicedMonthsShown = 4;
+
+/**
+ * The priced totals of the Jobs marked as Invoiced in each plant-time month: this month to date first, then the three
+ * full months before it. Only someone whose Job read sees money gets the figures.
+ */
+export async function summarizeInvoicedByMonth({
+  db,
+  actor,
+  today = getPlantDateNow(),
+}: {
+  db: Db;
+  actor: JobActor;
+  today?: DateOnlyIso;
+}): Promise<InvoicedByMonth> {
+  if (!jobReadSeesMoney(readerFor(actor).mode))
+    throw new JobError('contracting_job.forbidden', 'You do not have permission to view invoiced amounts.');
+  const thisMonth = `${today.slice(0, 8)}01` as DateOnlyIso;
+  const months = Array.from({ length: invoicedMonthsShown }, (_, back) => addDateOnlyMonths(thisMonth, -back));
+  const from = zonedDateStartToUtcInstant(
+    addDateOnlyMonths(thisMonth, 1 - invoicedMonthsShown),
+    JOHANNESBURG_TIME_ZONE,
+  );
+  const month = sql<string>`to_char(${contractingJobs.invoicedAt} at time zone ${JOHANNESBURG_TIME_ZONE}, 'YYYY-MM-01')`;
+  const rows = await db
+    .select({
+      month,
+      total: sql<number>`coalesce(sum(${contractingJobs.pricedTotal}), 0)`.mapWith(Number),
+      jobs: sql<number>`count(*)::integer`,
+    })
+    .from(contractingJobs)
+    .where(and(eq(contractingJobs.status, 'invoiced'), gte(contractingJobs.invoicedAt, from)))
+    // By position: the month expression's time zone is a bound parameter, which Postgres would not match as the same.
+    .groupBy(sql`1`);
+  const byMonth = new Map(rows.map(({ month, ...figures }) => [month, figures]));
+  return InvoicedByMonth.parse({
+    months: months.map((first) => ({ month: first, ...(byMonth.get(first) ?? { total: 0, jobs: 0 }) })),
+  });
 }

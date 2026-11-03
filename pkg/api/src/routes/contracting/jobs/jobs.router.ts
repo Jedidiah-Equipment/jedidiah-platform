@@ -29,8 +29,10 @@ import {
   setStintRate,
   setTravelHours,
   stampInvoice,
+  summarizeInvoicedByMonth,
   summarizeJobQueues,
 } from '@pkg/core/contracting';
+import { webJobReadPermissions } from '@pkg/domain/contracting';
 import {
   AssignmentIdInput,
   AssignmentPatchInput,
@@ -43,6 +45,7 @@ import {
   DiscountSetInput,
   FieldDriver,
   FieldImplement,
+  InvoicedByMonth,
   InvoiceNumberLookupInput,
   JobCancelInput,
   JobCompleteInput,
@@ -88,6 +91,11 @@ export const createContractingJobsRouter = (push: ContractingPushScheduler) =>
       queues: authorizedProcedure(readPermissions)
         .output(JobQueueSummary)
         .query(({ ctx }) => mapCoreErrors(() => summarizeJobQueues({ db: ctx.db, actor: ctx.access }), jobErrorFamily)),
+      invoicedByMonth: authorizedProcedure(webJobReadPermissions)
+        .output(InvoicedByMonth)
+        .query(({ ctx }) =>
+          mapCoreErrors(() => summarizeInvoicedByMonth({ db: ctx.db, actor: ctx.access }), jobErrorFamily),
+        ),
       list: authorizedProcedure(readPermissions)
         .input(JobListInput)
         .query(({ ctx, input }) =>

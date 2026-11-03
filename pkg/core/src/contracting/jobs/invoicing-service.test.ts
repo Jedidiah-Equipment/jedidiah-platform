@@ -1,9 +1,19 @@
 import { auditEvents } from '@pkg/db';
+import { contractingJobs } from '@pkg/db/contracting';
+import { DateOnlyIso } from '@pkg/schema';
 import { and, eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
-import { admin, editHours, invoicing, type JobFixtures, pricedJob, seedJobFixtures } from '../test/job-fixtures.js';
-import { findJobsByInvoiceNumber, stampInvoice } from './invoicing-service.js';
+import {
+  admin,
+  editHours,
+  foreman,
+  invoicing,
+  type JobFixtures,
+  pricedJob,
+  seedJobFixtures,
+} from '../test/job-fixtures.js';
+import { findJobsByInvoiceNumber, stampInvoice, summarizeInvoicedByMonth } from './invoicing-service.js';
 import { getJob } from './job-read.js';
 import { markPriced } from './pricing-service.js';
 
@@ -86,5 +96,55 @@ describe('finding Jobs by Invoice Number', () => {
       { id: first.jobId, code: expect.any(Number), jobNumber: first.jobNumber, customerName: 'Rowley' },
     ]);
     expect(await findJobsByInvoiceNumber({ db: context.db, invoiceNumber: 'INV-7' })).toEqual([]);
+  });
+});
+
+describe('invoiced by month', () => {
+  const invoicedAt = async (context: JobFixtures, job: { jobId: string; total: number }, at: string) => {
+    await stampInvoice({
+      db: context.db,
+      actor: invoicing,
+      input: { id: job.jobId, invoiceNumber: `INV-${at}`, expectedTotal: job.total },
+    });
+    await context.db
+      .update(contractingJobs)
+      .set({ invoicedAt: new Date(at) })
+      .where(eq(contractingJobs.id, job.jobId));
+  };
+
+  test('sums each plant-time month, this month to date first, and shows an empty month as zero', async ({
+    context,
+  }) => {
+    const first = await pricedJob(context, [{ machineId: context.excavator.id, arrival: 100, departure: 110 }]);
+    const second = await pricedJob(context, [{ machineId: context.tipper.id, arrival: 100, departure: 104 }]);
+    const third = await pricedJob(context, [{ machineId: context.excavator.id, arrival: 111, departure: 112 }]);
+    const tooOld = await pricedJob(context, [{ machineId: context.tipper.id, arrival: 105, departure: 106 }]);
+    // 00:30 SAST on 1 November is still 31 October in UTC.
+    await invoicedAt(context, first, '2026-10-31T22:30:00Z');
+    await invoicedAt(context, second, '2026-11-02T08:00:00Z');
+    await invoicedAt(context, third, '2026-08-01T07:00:00Z');
+    await invoicedAt(context, tooOld, '2026-07-31T21:59:00Z');
+
+    const summary = await summarizeInvoicedByMonth({
+      db: context.db,
+      actor: invoicing,
+      today: DateOnlyIso.parse('2026-11-15'),
+    });
+
+    expect(summary.months).toEqual([
+      { month: '2026-11-01', total: first.total + second.total, jobs: 2 },
+      { month: '2026-10-01', total: 0, jobs: 0 },
+      { month: '2026-09-01', total: 0, jobs: 0 },
+      { month: '2026-08-01', total: third.total, jobs: 1 },
+    ]);
+  });
+
+  test('never gives a Foreman the figures', async ({ context }) => {
+    await expect(summarizeInvoicedByMonth({ db: context.db, actor: foreman })).rejects.toMatchObject({
+      code: 'contracting_job.forbidden',
+    });
+    await expect(summarizeInvoicedByMonth({ db: context.db, actor: admin })).resolves.toMatchObject({
+      months: expect.any(Array),
+    });
   });
 });

@@ -353,7 +353,10 @@ The **Dashboard** is the web home: counts and lists of what needs a person now â
 Breakdowns not yet Fixed, the Machines Due for Service, the Jobs waiting for sign-off, pricing or an
 Invoice Number â€” and two counts of what is under way: the Active Jobs not yet looking
 finished and the Machines On Job. Each block shows only to a role holding the permission that reads what
-it lists, and it refreshes every minute. Apart from the Daily Hours heat map, a trailing six-month card for the roles that read reports, it never shows anything over a period; that is Reporting's.
+it lists, and it refreshes every minute. Apart from the Daily Hours heat map, a trailing six-month card for the roles that read reports, and
+**Invoiced by month**, it never shows anything over a period; that is Reporting's. Invoiced by month is this plant-time
+month to date and the three full months before it, each the sum of the priced totals (ex VAT) of the Jobs whose Invoice
+Number was stamped in it, with their count; it shows to whoever reads Jobs with money.
 
 ## Activity
 

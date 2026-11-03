@@ -7,7 +7,8 @@ export type DashboardWidgetSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 export type DashboardWidget = {
   id: string;
   title: string;
-  requires?: AppPermission;
+  /** Any one of these shows the widget. */
+  requires?: AppPermission | readonly AppPermission[];
   size: DashboardWidgetSize;
   Component: React.ComponentType;
 };
@@ -16,5 +17,9 @@ export function filterDashboardWidgets(
   access: Pick<UserAccessSummary, 'permissions'> | null | undefined,
   widgets: readonly DashboardWidget[],
 ): DashboardWidget[] {
-  return widgets.filter((widget) => !widget.requires || hasPermission(access, widget.requires));
+  return widgets.filter(
+    ({ requires }) =>
+      !requires ||
+      (typeof requires === 'string' ? [requires] : requires).some((permission) => hasPermission(access, permission)),
+  );
 }

@@ -100,13 +100,12 @@ export function useDrivers() {
 }
 
 /**
- * A stint's Job Hours writes; each refreshes the Job, its reports and Activity, wherever Known Hours show, and the
+ * After a write that moves a stint's Job Hours: the Job, its reports and Activity, wherever Known Hours show, and the
  * Breakdowns, since an arrival or departure moves which Job an unfixed Breakdown is on.
  */
-export function useStintHoursWrites() {
-  const trpc = useTRPC();
+function useStintHoursRefresh() {
   const invalidate = useInvalidateRoots();
-  const onSuccess = () =>
+  return () =>
     invalidate(
       'contractingJobs',
       'contractingBreakdowns',
@@ -116,10 +115,23 @@ export function useStintHoursWrites() {
       'contractingFleet',
       'contractingServices',
     );
+}
+
+/** A stint's Job Hours writes. */
+export function useStintHoursWrites() {
+  const trpc = useTRPC();
+  const onSuccess = useStintHoursRefresh();
   return {
     capture: useMutation(trpc.contractingJobs.assignments.captureHours.mutationOptions({ onSuccess })),
     edit: useMutation(trpc.contractingJobs.assignments.editHours.mutationOptions({ onSuccess })),
   };
+}
+
+/** Takes one stint off its Job, with whatever hours it had. */
+export function useRemoveStint() {
+  const trpc = useTRPC();
+  const onSuccess = useStintHoursRefresh();
+  return useMutation(trpc.contractingJobs.assignments.remove.mutationOptions({ onSuccess }));
 }
 
 /** Dismisses a needs-a-look kind for everyone; the Job and its list counts refresh. */

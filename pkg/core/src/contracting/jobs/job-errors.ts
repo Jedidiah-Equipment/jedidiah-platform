@@ -1,8 +1,6 @@
 import {
   assignmentActionJobAction,
-  assignmentActionRefusal,
   assignmentState,
-  assignmentStateAllows,
   type JobActionSubject,
   type JobActor,
   judgeAssignmentAction,
@@ -119,11 +117,6 @@ export function assertStintAction(
   actor: JobActor,
 ) {
   assertStintVerdict(action, judgeStintAction(action, job, stint, actor));
-}
-
-/** The state half alone, for a write whose Job Action is something else (completing a Job removes its planned stints). */
-export function assertAssignmentState(action: AssignmentActionName, stint: StintStateRow) {
-  if (!assignmentStateAllows(action, assignmentState(stint))) throw wrongStatus(assignmentActionRefusal(action));
 }
 
 /** A read-side check: a Foreman reads only the Jobs they are Foreman on. */

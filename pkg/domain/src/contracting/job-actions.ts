@@ -42,6 +42,14 @@ type Rule = {
   verb: string;
 };
 
+/** Correcting a stint after the fact: the Foreman on his own Job while it is open, management until Invoiced. */
+const stintCorrection = {
+  statuses: unclosedJobStatuses,
+  permissions: ['contracting_reading:capture', 'contracting_reading:update'],
+  anyJob: 'contracting_job:work-any',
+  ownStatuses: openJobStatuses,
+} as const satisfies Omit<Rule, 'verb'>;
+
 const rules: Record<JobActionName, Rule> = {
   editSetup: { statuses: openJobStatuses, permissions: ['contracting_job:update'], verb: 'change Job setup' },
   assignForeman: { statuses: openJobStatuses, permissions: ['contracting_job:assign'], verb: 'assign the Foreman' },
@@ -98,13 +106,9 @@ const rules: Record<JobActionName, Rule> = {
     verb: 'capture Job hours',
   },
   // The Foreman edits his own Job's hours while it is open; management until Invoiced, with a reason once signed off.
-  editHours: {
-    statuses: unclosedJobStatuses,
-    permissions: ['contracting_reading:capture', 'contracting_reading:update'],
-    anyJob: 'contracting_job:work-any',
-    ownStatuses: openJobStatuses,
-    verb: 'change hours',
-  },
+  editHours: { ...stintCorrection, verb: 'change hours' },
+  // Taking an accidental Machine off reaches as far as correcting its hours, so a Priced Job reopens either way.
+  removeAssignment: { ...stintCorrection, verb: 'remove a Machine Assignment' },
   setTravel: { statuses: unclosedJobStatuses, permissions: ['contracting_travel:set'], verb: 'set Travel Hours' },
   dismissAttention: {
     statuses: unclosedJobStatuses,

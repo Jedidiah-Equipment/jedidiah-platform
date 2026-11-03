@@ -25,6 +25,12 @@ export const jobTransitions = {
     (event: { at: Date; byUserId: AuthId }) =>
       ({ status: 'active', activatedAt: event.at, activatedByUserId: event.byUserId }) as const,
   ),
+  /** The Job's only arrival was removed: back to Upcoming, as if it never started. */
+  deactivate: edge(
+    'deactivate',
+    ['active'],
+    () => ({ status: 'upcoming', activatedAt: null, activatedByUserId: null }) as const,
+  ),
   complete: edge(
     'complete',
     ['active'],

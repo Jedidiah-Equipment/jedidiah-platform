@@ -13,7 +13,14 @@ import {
   needsALookColorClassNames,
 } from '@pkg/domain/contracting';
 import type { AssignmentDetail, BreakdownSummary, JobCardVariant } from '@pkg/schema/contracting';
-import { IconPencil, IconPlayerPlay, IconPlayerStop, IconPlus, IconRuler2 } from '@tabler/icons-react-native';
+import {
+  IconPencil,
+  IconPlayerPlay,
+  IconPlayerStop,
+  IconPlus,
+  IconRuler2,
+  IconTrash,
+} from '@tabler/icons-react-native';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
@@ -39,6 +46,7 @@ import { useColorMode } from '@/theme/use-color-mode';
 import { AttentionDialog } from './AttentionDialog';
 import { JobStatusChip } from './JobStatusChip';
 import { MeasuresSheet } from './MeasuresSheet';
+import { RemoveStintDialog } from './RemoveStintDialog';
 import { useJob } from './use-jobs';
 
 export default function JobScreen() {
@@ -247,6 +255,7 @@ function StintCard({
   thresholds: AttentionThresholds | undefined;
 }) {
   const [opened, setOpened] = useState<AttentionBadge | null>(null);
+  const [removing, setRemoving] = useState(false);
   return (
     <View className={`gap-2 rounded-xl border bg-surface p-4 ${breakdownBorder(breakdown) ?? 'border-border'}`}>
       <View className="flex-row items-center justify-between gap-2">
@@ -327,6 +336,12 @@ function StintCard({
         </View>
       ) : null}
       {canReport ? <Button icon={BreakdownIcon} title="Report a problem" onPress={onReport} /> : null}
+      {stintSheet.can('remove') ? (
+        <>
+          <Button destructive icon={IconTrash} title="Remove machine" onPress={() => setRemoving(true)} />
+          <RemoveStintDialog stint={stint} open={removing} onClose={() => setRemoving(false)} />
+        </>
+      ) : null}
     </View>
   );
 }

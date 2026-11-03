@@ -5,14 +5,14 @@ import {
   type JobActionVerdict,
 } from '@pkg/schema/contracting';
 import { describe, expect, test } from 'vitest';
-import { judgeAssignmentAction } from './assignment-actions.js';
+import { judgeAssignmentAction, judgeAssignmentRemoval } from './assignment-actions.js';
 
 const states: AssignmentState[] = ['planned', 'on-site', 'left'];
 const allowed: JobActionVerdict = { allowed: true };
 
 /** One column per state, in the order planned, on-site, left. ✓ allowed · refused. */
 const matrix: Record<AssignmentActionName, string> = {
-  remove: '✓··',
+  remove: '✓✓✓',
   changeResources: '✓✓·',
   captureArrival: '✓··',
   captureDeparture: '·✓·',
@@ -34,8 +34,7 @@ describe('judgeAssignmentAction', () => {
   });
 
   test("refuses a wrong state with the rule's own sentence", () => {
-    const sentences: Record<AssignmentActionName, [AssignmentState, string]> = {
-      remove: ['on-site', 'Only a planned Machine Assignment can be removed.'],
+    const sentences: Record<Exclude<AssignmentActionName, 'remove'>, [AssignmentState, string]> = {
       changeResources: ['left', 'The Implement and Driver cannot change after the Machine has left.'],
       captureArrival: ['on-site', 'This Machine Assignment already arrived.'],
       captureDeparture: ['planned', 'This Machine Assignment is not on site.'],
@@ -45,9 +44,8 @@ describe('judgeAssignmentAction', () => {
       dismissAttention: ['planned', 'Warnings exist once the Machine has arrived.'],
       price: ['on-site', 'Only a Machine Assignment that has left can be priced.'],
     };
-    for (const action of assignmentActionNames) {
-      const [state, message] = sentences[action];
-      expect(judgeAssignmentAction(action, allowed, { state })).toEqual({
+    for (const [action, [state, message]] of Object.entries(sentences)) {
+      expect(judgeAssignmentAction(action as AssignmentActionName, allowed, { state })).toEqual({
         allowed: false,
         reason: 'wrong-state',
         message,
@@ -62,5 +60,18 @@ describe('judgeAssignmentAction', () => {
       message: 'This Job is assigned to another Foreman.',
     } as const;
     expect(judgeAssignmentAction('remove', refused, { state: 'planned' })).toEqual(refused);
+  });
+});
+
+describe('judgeAssignmentRemoval', () => {
+  test('takes a planned stint off with no reason and wants one once it has arrived', () => {
+    const refusal = (state: AssignmentState, reason?: string) => {
+      const verdict = judgeAssignmentRemoval({ state }, reason);
+      return verdict.ok ? null : verdict.refusal.message;
+    };
+    expect(refusal('planned')).toBeNull();
+    expect(refusal('on-site', '  ')).toBe('A reason is required once the Machine has arrived.');
+    expect(refusal('left')).toBe('A reason is required once the Machine has arrived.');
+    expect(refusal('left', 'Added by accident')).toBeNull();
   });
 });

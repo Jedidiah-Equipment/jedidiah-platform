@@ -12,6 +12,7 @@ vi.mock('@tabler/icons-react-native', () => ({
   IconPlayerStop: 'Stop',
   IconPlus: 'Plus',
   IconRuler2: 'Ruler',
+  IconTrash: 'Trash',
 }));
 vi.mock('@/components/TopToolbar', () => ({ SecondaryToolbar: 'Toolbar' }));
 vi.mock('@/components/SubTabControl', () => ({ SubTabControl: 'Tabs' }));
@@ -32,6 +33,7 @@ vi.mock('@/lib/observability', () => ({ captureException: vi.fn() }));
 vi.mock('@/contracting/workshop/use-breakdowns', () => ({ useJobBreakdowns: () => ({ data: undefined }) }));
 vi.mock('./AttentionDialog', () => ({ AttentionDialog: 'AttentionDialog' }));
 vi.mock('./MeasuresSheet', () => ({ MeasuresSheet: 'MeasuresSheet' }));
+vi.mock('./RemoveStintDialog', () => ({ RemoveStintDialog: 'RemoveStintDialog' }));
 vi.mock('./use-jobs', () => ({ useJob: () => ({ data: undefined, canRead: false }) }));
 
 import JobScreen from './JobScreen';

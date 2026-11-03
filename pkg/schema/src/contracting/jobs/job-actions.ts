@@ -16,6 +16,7 @@ export const jobActionNames = [
   'stampInvoice',
   'capture',
   'editHours',
+  'removeAssignment',
   'setTravel',
   'dismissAttention',
   'reportBreakdown',

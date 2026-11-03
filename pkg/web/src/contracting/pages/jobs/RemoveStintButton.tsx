@@ -1,13 +1,12 @@
 import { removalNeedsReason } from '@pkg/domain/contracting';
-import { requiredTrimmedText } from '@pkg/schema';
-import type { AssignmentDetail } from '@pkg/schema/contracting';
+import { type AssignmentDetail, AssignmentRemovalReason } from '@pkg/schema/contracting';
 import { IconTrash } from '@tabler/icons-react';
 import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { RemoveEntityButton } from '@/components/common/RemoveEntityButton.js';
+import { Button } from '@/components/ui/button.js';
 import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
 import { ReasonDialog } from '@/contracting/components/ReasonDialog.js';
-import { IconAction } from '@/contracting/components/Timeline.js';
 import { useResetOnOpen } from '@/contracting/hooks/use-contracting-write.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { useJobWrite } from './use-job-write.js';
@@ -39,7 +38,16 @@ export function RemoveStintButton({ stint }: { stint: AssignmentDetail }) {
     );
   return (
     <>
-      <IconAction icon={IconTrash} label={`Remove ${stint.machineCode}`} onClick={() => setOpen(true)} />
+      <Button
+        aria-label={`Remove ${stint.machineCode}`}
+        onClick={() => setOpen(true)}
+        size="icon-sm"
+        title={`Remove ${stint.machineCode}`}
+        type="button"
+        variant="outline"
+      >
+        <IconTrash aria-hidden="true" />
+      </Button>
       <ReasonDialog
         open={open}
         onOpenChange={setOpen}
@@ -47,7 +55,7 @@ export function RemoveStintButton({ stint }: { stint: AssignmentDetail }) {
         description="This deletes the stint with its hours, Travel and Measures. It cannot be undone."
         label="Reason"
         submitLabel="Remove"
-        schema={requiredTrimmedText('A reason is required')}
+        schema={AssignmentRemovalReason}
         submit={(reason) => remove.mutateAsync({ id: stint.id, reason })}
         error={remove.error}
         fallbackMessage={REMOVE_FAILED}

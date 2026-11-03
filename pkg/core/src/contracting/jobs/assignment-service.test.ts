@@ -62,8 +62,8 @@ describe('removing a Machine Assignment', () => {
     const summaries = (await db.select({ summary: auditEvents.summary }).from(auditEvents)).map((row) => row.summary);
     expect(summaries).toEqual(
       expect.arrayContaining([
-        'Removed Machine Assignment "TIP-7": Added by accident',
-        'Removed Machine Assignment "CAT320-1": Wrong Machine',
+        'Deleted Machine Assignment "TIP-7": Added by accident',
+        'Deleted Machine Assignment "CAT320-1": Wrong Machine',
         'Deleted Machine Assignment "TIP-7"',
       ]),
     );

@@ -343,26 +343,23 @@ export function MachineStintCard({
             {stint.categoryName} · {stintLabel}
           </span>
         </div>
-        <Badge
-          className={cn(
-            'self-start',
-            assignmentStateColorClassNames[stint.state].chip,
-            assignmentStateColorClassNames[stint.state].text,
-          )}
-          variant="outline"
-        >
-          {assignmentStateLabels[stint.state]}
-        </Badge>
+        <div className="flex items-start gap-2">
+          <Badge
+            className={cn(
+              assignmentStateColorClassNames[stint.state].chip,
+              assignmentStateColorClassNames[stint.state].text,
+            )}
+            variant="outline"
+          >
+            {assignmentStateLabels[stint.state]}
+          </Badge>
+          {stintSheet.can('remove') ? <RemoveStintButton stint={stint} /> : null}
+        </div>
       </CardHeader>
       <CardContent className="flex flex-1 flex-col">
         <Timeline className="mb-3">
           <TimelineRow
-            actions={
-              <>
-                {stintSheet.can('changeResources') ? <AssignmentEditDialog stint={stint} /> : null}
-                {stintSheet.can('remove') ? <RemoveStintButton stint={stint} /> : null}
-              </>
-            }
+            actions={stintSheet.can('changeResources') ? <AssignmentEditDialog stint={stint} /> : null}
             detail={`${stint.implementCode ?? 'No implement'} · ${stint.driverName ? getFirstName(stint.driverName) : 'No driver'}`}
             title="Planned"
             tone="done"

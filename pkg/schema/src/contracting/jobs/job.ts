@@ -124,10 +124,9 @@ export const AssignmentPatchInput = z
   })
   .strict();
 export type AssignmentPatchInput = z.infer<typeof AssignmentPatchInput>;
+export const AssignmentRemovalReason = requiredTrimmedText('A reason is required');
 /** A reason is required once the stint has arrived; the server says so. */
-export const AssignmentRemoveInput = z
-  .object({ id: UUID, reason: requiredTrimmedText('A reason is required').optional() })
-  .strict();
+export const AssignmentRemoveInput = z.object({ id: UUID, reason: AssignmentRemovalReason.optional() }).strict();
 export type AssignmentRemoveInput = z.infer<typeof AssignmentRemoveInput>;
 export const TravelHoursSetInput = z.object({ assignmentId: UUID, travelHours: Hours }).strict();
 export type TravelHoursSetInput = z.infer<typeof TravelHoursSetInput>;

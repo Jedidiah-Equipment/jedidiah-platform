@@ -100,7 +100,7 @@ export async function deleteAssignment(
     actorUserId,
     descriptor: assignmentDescriptor(machineCode),
     input: stint,
-    ...(reason ? { summary: `Removed Machine Assignment "${machineCode}": ${reason}` } : {}),
+    ...(reason ? { summary: `Deleted Machine Assignment "${machineCode}": ${reason}` } : {}),
   });
 }
 

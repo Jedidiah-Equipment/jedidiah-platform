@@ -1,4 +1,4 @@
-import { machineBusyWith } from '@pkg/domain/contracting';
+import { DEFAULT_DRIVER_LABEL, machineBusyWith } from '@pkg/domain/contracting';
 import type { FieldMachine } from '@pkg/schema/contracting';
 import { View } from 'react-native';
 import { useAppForm } from '@/components/form';
@@ -50,7 +50,7 @@ export function ChangeDriverSheet({ machine, onClose }: { machine: FieldMachine;
       <form.AppField name="driverUserId">
         {(field) => (
           <field.SearchSelectField
-            label="Default Driver"
+            label={DEFAULT_DRIVER_LABEL}
             placeholder="No driver"
             searchPlaceholder="Search drivers…"
             emptyMessage={drivers.isError ? 'The drivers could not be loaded.' : 'No drivers match.'}

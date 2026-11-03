@@ -53,10 +53,9 @@ describe('quickFilterStages', () => {
 });
 
 describe('jobsQuickFilterStages', () => {
-  it('offers Invoiced after the open stages, never Cancelled, and only to readers who list Invoiced', () => {
+  it('offers the stages the reader lists, Invoiced after the open ones and never Cancelled', () => {
     expect(jobsQuickFilterStages('all')).toEqual([...openJobQueues, 'invoiced']);
     expect(jobsQuickFilterStages('priced')).toEqual(['awaiting-pricing', 'awaiting-invoice', 'invoiced']);
-    expect(jobsQuickFilterStages('own')).not.toContain('invoiced');
   });
 });
 

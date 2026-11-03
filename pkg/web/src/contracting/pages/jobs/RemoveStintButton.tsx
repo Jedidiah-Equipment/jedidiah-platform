@@ -7,16 +7,17 @@ import { RemoveEntityButton } from '@/components/common/RemoveEntityButton.js';
 import { Button } from '@/components/ui/button.js';
 import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
 import { ReasonDialog } from '@/contracting/components/ReasonDialog.js';
-import { useResetOnOpen } from '@/contracting/hooks/use-contracting-write.js';
+import { useContractingWrite, useResetOnOpen } from '@/contracting/hooks/use-contracting-write.js';
+import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';
-import { useJobWrite } from './use-job-write.js';
 
 const REMOVE_FAILED = 'Unable to remove Machine Assignment.';
 
 /** Takes one stint off its Job: a plain confirm while planned, a reason once its hours exist. */
 export function RemoveStintButton({ stint }: { stint: AssignmentDetail }) {
   const trpc = useTRPC();
-  const write = useJobWrite();
+  const { invalidateJobHours } = useQueryInvalidation();
+  const write = useContractingWrite(invalidateJobHours);
   const [open, setOpen] = useState(false);
   const needsReason = removalNeedsReason(stint.state);
   const remove = useMutation(

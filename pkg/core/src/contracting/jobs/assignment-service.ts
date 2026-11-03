@@ -106,7 +106,7 @@ export async function deleteAssignment(
 
 /**
  * Removes one Machine Assignment in any state, with a reason once it has arrived. A Priced Job returns to Completed
- * for re-pricing, and an Active Job whose only arrival this was returns to Upcoming. Nothing else recomputes.
+ * for re-pricing, and a Job whose only arrival this was no longer counts as started. Nothing else recomputes.
  */
 export async function removeAssignment({
   db,
@@ -125,8 +125,13 @@ export async function removeAssignment({
     if (stint.arrivalHours === null) return;
     if (job.status === 'priced')
       await reopenPricingWithin(tx, actor.userId, job.id, `${machineCode} removed — amounts recomputed.`);
-    else if (job.status === 'active' && !(await anyArrival(tx, job.id)))
-      await writeJobRow(tx, actor.userId, job.id, (before) => jobTransitions.deactivate(before, undefined));
+    // With no arrival left the Job never started: an Active one returns to Upcoming, a signed-off one keeps its status.
+    if (!(await anyArrival(tx, job.id)))
+      await writeJobRow(tx, actor.userId, job.id, (before) =>
+        before.status === 'active'
+          ? jobTransitions.deactivate(before, undefined)
+          : { activatedAt: null, activatedByUserId: null },
+      );
   });
 }
 

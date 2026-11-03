@@ -44,8 +44,9 @@ Travel, John Deere snapshot, Measures and dismissals — while the Machine's oth
 as far as an hours edit: the Foreman removes on his own Job while it is open (Upcoming or Active), management until
 the Job is Invoiced, and removing from a Priced Job returns it to Completed for re-pricing. Every removal is
 confirmed, and one that has arrived needs a reason, which the audit entry keeps; the stint's Activity goes with it.
-If it was an Active Job's only arrival, the Job returns to Upcoming as if it never started. Nothing else
-recomputes: a later stint's Travel snapshot, and the Breakdowns and notes filed on the Job, stay as they are.
+If it was the Job's only arrival, the Job no longer counts as started: an Active Job returns to Upcoming, and a
+signed-off Job keeps its status. Nothing else recomputes: a later stint's Travel snapshot, and the Breakdowns and
+notes filed on the Job, stay as they are.
 Completion itself removes any planned Assignment still waiting. The Foreman edits only his own
 Job's Assignments and only while the Job is open (Upcoming or Active); after Completion only management amends. Avoid
 Slot (an Equipment scheduling term).

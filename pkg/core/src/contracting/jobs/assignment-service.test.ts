@@ -1,8 +1,10 @@
 import { auditEvents } from '@pkg/db';
 import { contractingJobs, contractingMeasures } from '@pkg/db/contracting';
+import { ActivityListInput } from '@pkg/schema/contracting';
 import { eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
+import { listActivity } from '../activity/activity-service.js';
 import {
   admin,
   captureHours,
@@ -120,5 +122,21 @@ describe('removing a Machine Assignment', () => {
       repricingNote: 'TIP-7 removed — amounts recomputed.',
       assignments: [{ id: kept.id, pricing: { finalAmount: 36_000 } }],
     });
+  });
+
+  test("a signed-off Job's only arrival removed keeps its status but no longer reads as started", async ({
+    context,
+  }) => {
+    const { db, excavator } = context;
+    const priced = await pricedJob(context, [{ machineId: excavator.id, arrival: 100, departure: 150 }]);
+    const [only] = priced.stints;
+    if (!only) throw new Error('Expected a stint');
+
+    await removeAssignment({ db, actor: admin, input: { id: only.id, reason: 'Wrong Job' } });
+
+    const [row] = await db.select().from(contractingJobs).where(eq(contractingJobs.id, priced.jobId));
+    expect(row).toMatchObject({ status: 'completed', activatedAt: null, activatedByUserId: null });
+    const activity = await listActivity({ db, actor: admin, input: ActivityListInput.parse({}) });
+    expect(activity.items.map((item) => item.type)).not.toContain('job-started');
   });
 });

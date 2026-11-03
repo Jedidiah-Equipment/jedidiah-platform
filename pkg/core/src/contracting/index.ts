@@ -11,6 +11,7 @@ export * from './fleet/fleet-entry.js';
 export * from './fleet/fleet-errors.js';
 export * from './fleet/fleet-history.js';
 export * from './fleet/implement-service.js';
+export * from './fleet/machine-driver.js';
 export * from './fleet/machine-service.js';
 export { dismissAttention } from './jobs/assignment-attention.js';
 export * from './jobs/assignment-service.js';

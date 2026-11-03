@@ -90,7 +90,18 @@ export function assertJobAction(action: JobActionName, job: JobActionSubject, ac
 
 type StintStateRow = { arrivalHours: number | null; departureHours: number | null };
 
-/** Refuses unless this actor may take this Assignment Action on this stint now: its Job Action first, then its state. */
+/** Whether this actor may take this Assignment Action on this stint now: its Job Action first, then its state. */
+export const judgeStintAction = (
+  action: AssignmentActionName,
+  job: JobActionSubject,
+  stint: StintStateRow,
+  actor: JobActor,
+) =>
+  judgeAssignmentAction(action, judgeJobAction(assignmentActionJobAction[action], job, actor), {
+    state: assignmentState(stint),
+  });
+
+/** Refuses unless this actor may take this Assignment Action on this stint now. */
 export function assertStintAction(
   action: AssignmentActionName,
   job: JobActionSubject,
@@ -98,9 +109,7 @@ export function assertStintAction(
   actor: JobActor,
 ) {
   const jobAction = assignmentActionJobAction[action];
-  const verdict = judgeAssignmentAction(action, judgeJobAction(jobAction, job, actor), {
-    state: assignmentState(stint),
-  });
+  const verdict = judgeStintAction(action, job, stint, actor);
   if (verdict.allowed) return;
   if (verdict.reason === 'wrong-state') throw wrongStatus(verdict.message);
   throw new JobError(refusalCodes[verdict.reason], verdict.message, { action: jobAction, reason: verdict.reason });

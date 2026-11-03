@@ -4,7 +4,7 @@ import {
   estimateOnScreen,
   meterReadPermissions,
 } from '@pkg/domain/contracting';
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { fieldQuery } from '@/contracting/lib/field-query';
 import { useSessionPermission } from '@/lib/auth-session';
 import { useTRPC } from '@/lib/trpc';
@@ -76,4 +76,20 @@ export function useMachineReadingPages(machineId: string) {
     ),
   );
   return { canRead, query, readings: canRead ? (query.data?.pages.flatMap((page) => page.items) ?? []) : [] };
+}
+
+/** Changes a Machine's default Driver, and its on-site stint's when asked; refreshes the fleet and the Jobs. */
+export function useChangeMachineDriver() {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  return useMutation(
+    trpc.contractingFleet.machines.changeDriver.mutationOptions({
+      onSuccess: () =>
+        Promise.all(
+          [trpc.contractingReadings, trpc.contractingFleet, trpc.contractingJobs].map((root) =>
+            queryClient.invalidateQueries({ queryKey: root.pathKey() }),
+          ),
+        ),
+    }),
+  );
 }

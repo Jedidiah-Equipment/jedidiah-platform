@@ -6,7 +6,7 @@ import type { AssignmentPatchInput, AssignmentPlanInput } from '@pkg/schema/cont
 import { eq } from 'drizzle-orm';
 import { recordAuditCreate, recordAuditDelete } from '../../audit/audit-writer.js';
 import { assignmentDescriptor } from './job-audit.js';
-import { assertAssignmentState, assertJobAction, assertStintAction, JobError } from './job-errors.js';
+import { assertAssignmentState, assertJobAction, assertStintAction, JobError, judgeStintAction } from './job-errors.js';
 import { lockAssignment, lockJobFor, lockStintFor } from './job-lock.js';
 import { jobTransaction, writeAssignment } from './job-write.js';
 
@@ -65,6 +65,23 @@ export async function patchAssignment({
       driverUserId: input.driverUserId === undefined ? before.driverUserId : input.driverUserId,
     }));
   });
+}
+
+/**
+ * Changes a stint's Driver inside the caller's transaction when its `changeResources` verdict allows, returning the
+ * refusal sentence instead of throwing so the caller's other writes still land.
+ */
+export async function changeStintDriver(
+  tx: DatabaseTransaction,
+  actor: JobActor,
+  id: string,
+  driverUserId: string | null,
+): Promise<string | null> {
+  const { job, stint, machineCode } = await lockAssignment(tx, id);
+  const verdict = judgeStintAction('changeResources', job, stint, actor);
+  if (!verdict.allowed) return verdict.message;
+  await writeAssignment(tx, actor.userId, machineCode, id, () => ({ driverUserId }));
+  return null;
 }
 
 /** Deletes a planned Machine Assignment whose Job the caller has already locked and checked. */

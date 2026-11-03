@@ -80,6 +80,10 @@ export const CONTRACTING_MUTATION_EVENTS = {
     properties: (variables) => pickRecordIds(variables, ['customerId']),
   },
   'contractingDirectory.workTypes.create': { event: 'work type created', properties: () => ({}) },
+  'contractingFleet.machines.changeDriver': {
+    event: 'machine driver changed',
+    properties: (variables) => pickRecordIds(variables, ['machineId', 'driverUserId']),
+  },
   'contractingJobs.assignments.add': {
     event: 'machine added to job',
     properties: (variables) => pickRecordIds(variables, ['jobId', 'machineId']),

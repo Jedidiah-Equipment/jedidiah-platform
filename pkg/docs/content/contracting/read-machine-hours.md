@@ -6,3 +6,4 @@
 4. **Busy with** shows the Job the Machine is on site on now: its customer, farm and arrival time when you work every Job or it is your Job, otherwise its Job Number. It is hidden when the Machine is on no Job. Choose it to open that Job.
 5. Choose **Readings** to see every earlier reading and the arrival and departure hours on its Jobs, newest first. A reading is marked with who captured it or **JD Link** (hours the Machine's telematics reported); Job hours are marked with their Job Number and who captured them. Scroll down to load older ones.
 6. Choose **Capture reading** on **Details** to [record the current meter value](./capture-a-reading).
+7. With fleet management access, choose **Change driver** to [change the Machine's default Driver](./maintain-machines#change-the-driver-from-the-phone).

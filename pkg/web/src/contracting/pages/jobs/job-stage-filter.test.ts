@@ -6,6 +6,7 @@ import {
   focusOnStage,
   isPickedStages,
   jobListFilters,
+  jobsQuickFilterStages,
   listedStages,
   quickFilterStages,
   toggleStages,
@@ -48,6 +49,14 @@ describe('quickFilterStages', () => {
 
   it('keeps the quick filter of a stage picked on its own after it empties', () => {
     expect(quickFilterStages(undefined, stage(['awaiting-pricing']), openJobQueues)).toEqual(['awaiting-pricing']);
+  });
+});
+
+describe('jobsQuickFilterStages', () => {
+  it('offers Invoiced after the open stages, never Cancelled, and only to readers who list Invoiced', () => {
+    expect(jobsQuickFilterStages('all')).toEqual([...openJobQueues, 'invoiced']);
+    expect(jobsQuickFilterStages('priced')).toEqual(['awaiting-pricing', 'awaiting-invoice', 'invoiced']);
+    expect(jobsQuickFilterStages('own')).not.toContain('invoiced');
   });
 });
 

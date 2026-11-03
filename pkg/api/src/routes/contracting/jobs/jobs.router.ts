@@ -33,9 +33,9 @@ import {
   summarizeJobQueues,
 } from '@pkg/core/contracting';
 import {
-  AssignmentIdInput,
   AssignmentPatchInput,
   AssignmentPlanInput,
+  AssignmentRemoveInput,
   AttentionDismissInput,
   ChargeLineCreateInput,
   ChargeLineIdInput,
@@ -144,10 +144,10 @@ export const createContractingJobsRouter = (push: ContractingPushScheduler) =>
         .mutation(({ ctx, input }) =>
           mapCoreErrors(() => patchAssignment({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
         ),
-      remove: authorizedProcedure(['contracting_job:assign', 'contracting_assignment:update-own'])
-        .input(AssignmentIdInput)
+      remove: authorizedProcedure(['contracting_reading:capture', 'contracting_reading:update'])
+        .input(AssignmentRemoveInput)
         .mutation(({ ctx, input }) =>
-          mapCoreErrors(() => removeAssignment({ db: ctx.db, actor: ctx.access, id: input.id }), jobErrorFamily),
+          mapCoreErrors(() => removeAssignment({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
         ),
       captureHours: authorizedProcedure('contracting_reading:capture')
         .input(StintHoursCaptureInput)

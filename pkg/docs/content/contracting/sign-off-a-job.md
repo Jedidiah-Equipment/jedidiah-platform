@@ -8,4 +8,4 @@
 6. Enter **Diesel supplied** and **Add charge line** for transport, parts, or a fixed quote. Amounts are set at Pricing.
 7. Check the suggested **Start** and **End** dates, taken from when the first arrival and the last departure were captured, then choose **Complete**. Reports count the Machines' active days from these dates. Planned Machines that never arrived are removed, and the Job moves to Awaiting pricing.
 
-After Completion, you can still edit the details, the hours and the travel. Once the Job is Priced, its diesel litres no longer change; editing hours or travel returns it to pricing.
+After Completion, you can still edit the details, the hours and the travel, and remove a Machine added by mistake. Once the Job is Priced, its diesel litres no longer change; editing hours or travel, or removing a Machine, returns it to pricing.

@@ -204,6 +204,8 @@ const attempts: Record<
   capture: (caller, { stint }) =>
     caller.contractingJobs.assignments.captureHours({ assignmentId: stint.id, role: 'arrival', hours: 500 }),
   editHours: (caller, { stints }) => editHoursOn(caller, stints[0] as StintFixture),
+  removeAssignment: (caller, { stint }) =>
+    caller.contractingJobs.assignments.remove({ id: stint.id, reason: 'Added by accident' }),
   setTravel: (caller, { stint }) =>
     caller.contractingJobs.assignments.setTravel({ assignmentId: stint.id, travelHours: 1 }),
   dismissAttention: (caller, { stint }) =>
@@ -313,7 +315,7 @@ const stintAttempts: Record<
   AssignmentActionName,
   (caller: AppRouterCaller, stint: StintFixture, seeded: Seeded, role: ContractingRole) => Promise<unknown>
 > = {
-  remove: (caller, stint) => caller.contractingJobs.assignments.remove({ id: stint.id }),
+  remove: (caller, stint) => caller.contractingJobs.assignments.remove({ id: stint.id, reason: 'Added by accident' }),
   changeResources: (caller, stint) => caller.contractingJobs.assignments.patch({ id: stint.id, driverUserId: null }),
   captureArrival: (caller, stint) =>
     caller.contractingJobs.assignments.captureHours({ assignmentId: stint.id, role: 'arrival', hours: 500 }),

@@ -11,7 +11,7 @@ import {
 import type { JobCancelInput, JobCompleteInput, JobCreateInput, JobPatchInput } from '@pkg/schema/contracting';
 import { eq } from 'drizzle-orm';
 import { recordAuditCreate, recordAuditDelete } from '../../audit/audit-writer.js';
-import { deletePlannedAssignment } from './assignment-service.js';
+import { deleteAssignment } from './assignment-service.js';
 import { jobDescriptor } from './job-audit.js';
 import { assertJobAction, JobError, jobNotFound } from './job-errors.js';
 import { lockJob, lockJobFor } from './job-lock.js';
@@ -138,7 +138,7 @@ export async function completeJob({
     )
       throw new JobError('contracting_job.stint_not_planned', 'The planned stints changed. Reload and complete again.');
     for (const stint of planned)
-      await deletePlannedAssignment(tx, actor.userId, stint, assignmentIn(detail, stint.id).machineCode);
+      await deleteAssignment(tx, actor.userId, stint, assignmentIn(detail, stint.id).machineCode);
     await writeJobRow(tx, actor.userId, before.id, (row) => ({
       ...jobTransitions.complete(row, {
         at: new Date(),

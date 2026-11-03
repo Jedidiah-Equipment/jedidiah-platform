@@ -303,11 +303,13 @@ export async function recordAuditDelete<TInput>({
   descriptor,
   actorUserId,
   input,
+  summary,
 }: {
   db: DatabaseTransaction;
   descriptor: AuditDescriptor<TInput>;
   actorUserId: string | null;
   input: TInput;
+  summary?: string;
 }): Promise<void> {
   const record = descriptor.toRecord(input);
 
@@ -322,6 +324,7 @@ export async function recordAuditDelete<TInput>({
       ...snapshotAuditCollections(descriptor.toCollections?.(input) ?? {}, 'deleted'),
     },
     label: recordLabel(descriptor, input, record),
+    ...(summary === undefined ? {} : { summary }),
   });
 }
 

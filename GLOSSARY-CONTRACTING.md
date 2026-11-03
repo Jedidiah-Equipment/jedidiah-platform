@@ -16,11 +16,11 @@ transcription corrections. Across contexts, say **Contracting Job**; it is unrel
 Equipment context's Job. A Job's
 statuses: **Upcoming** (pre-created; freely editable and deletable; the future-work list; visible
 to management only until a Foreman is assigned), **Active** (entered automatically when its first
-machine starts; cancellable by management with a mandatory reason), **Completed** (the
+machine starts, and left back to Upcoming if that only arrival is removed; cancellable by management with a mandatory reason), **Completed** (the
 Contracting Manager's sign-off, reachable only once every Assignment has left: work confirmed done, Charge Lines
 and notes added, final start and end dates stamped — suggested from when the first arrival and last departure were
 captured, tweakable), **Priced**
-(rates applied and frozen as a snapshot — diesel litres and travel lock with it; a Job Hours or Travel Hours edit reopens the Job to Completed for
+(rates applied and frozen as a snapshot — diesel litres and travel lock with it; a Job Hours or Travel Hours edit, or removing a Machine Assignment, reopens the Job to Completed for
 re-pricing — the chosen Rates and their snapshotted unit amounts stay, line amounts recompute from
 the amended hours, and manual amount edits are discarded), and **Invoiced** (the invoice number stamped; the wall — after it, nothing moves). There is no "submitted" status: foremen never close Jobs; a
 Job whose machines have all stopped surfaces in the Contracting Manager's queue as looking
@@ -39,9 +39,14 @@ loaded while the Machine is out on a current one. An Assignment names at most on
 **Measures** are recorded on an Assignment once its Machine has arrived — a Measure Type and a quantity
 (hectares disked, loads hauled), at most one per Measure Type — the production figures Pricing may bill on.
 The Foreman records them on his own Job while it is Active; management records them on any Job until it is Priced.
-A planned Assignment whose Machine never arrives is removed — by the Foreman while the Job is
-open (Upcoming or Active), by management at sign-off, or by Completion itself, which removes any still waiting — and
-leaves nothing behind. The Foreman edits only his own
+An Assignment added by mistake is **removed**, in any state, and removal deletes that one stint whole — its hours,
+Travel, John Deere snapshot, Measures and dismissals — while the Machine's other stints on the Job stay. It reaches
+as far as an hours edit: the Foreman removes on his own Job while it is open (Upcoming or Active), management until
+the Job is Invoiced, and removing from a Priced Job returns it to Completed for re-pricing. Every removal is
+confirmed, and one that has arrived needs a reason, which the audit entry keeps; the stint's Activity goes with it.
+If it was an Active Job's only arrival, the Job returns to Upcoming as if it never started. Nothing else
+recomputes: a later stint's Travel snapshot, and the Breakdowns and notes filed on the Job, stay as they are.
+Completion itself removes any planned Assignment still waiting. The Foreman edits only his own
 Job's Assignments and only while the Job is open (Upcoming or Active); after Completion only management amends. Avoid
 Slot (an Equipment scheduling term).
 
@@ -77,7 +82,8 @@ _Avoid_: comment, message, chat message, feedback
 
 **Job Actions** are the derived verdicts of what one person may do to a Job in its current status:
 change its setup, Foreman, Machine Assignments, Travel Hours, Measures, Charge Lines and their amounts,
-sign-off details and diesel litres; complete, cancel, price or stamp it; capture and edit its Job Hours.
+sign-off details and diesel litres; complete, cancel, price or stamp it; capture and edit its Job Hours, and remove
+a Machine Assignment.
 They are computed, never stored, and judged for the person asking — a Foreman works only his own Jobs, while
 open — and they are the same answer the server's write gates apply, so a screen shows a control
 when its verdict allows it and hides it when the person lacks the permission. Both the web and the phone read
@@ -88,7 +94,7 @@ Job — the Mark as Priced gate, the invoice total, a departure below its arriva
 and stays with the write that reads that input.
 
 **Assignment Actions** are the verdicts of what one person may do to one Machine Assignment now: remove it
-while planned; change its Implement and Driver until it has left; capture its arrival while planned and its
+in any state, as far as an hours edit reaches; change its Implement and Driver until it has left; capture its arrival while planned and its
 departure while on site; edit its Job Hours and set its Travel Hours once it has arrived; record Measures once
 it has arrived; price it once it has left. Each is judged as its Job Action first and the Assignment's state second, and served on every Machine
 Assignment of the Job detail beside the Job's own verdicts, so a screen offers a control only when the served

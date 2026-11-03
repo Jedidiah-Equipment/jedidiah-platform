@@ -96,6 +96,11 @@ export const CONTRACTING_MUTATION_EVENTS = {
     event: 'job hours edited',
     properties: (variables) => pickRecordIds(variables, ['assignmentId']),
   },
+  // The reason is free text, so only the stint's id travels.
+  'contractingJobs.assignments.remove': {
+    event: 'machine removed from job',
+    properties: (variables) => pickRecordIds(variables, ['id']),
+  },
   'contractingJobs.assignments.dismissAttention': {
     event: 'attention dismissed',
     properties: (variables) => ({ ...pickRecordIds(variables, ['assignmentId']), ...attentionKind(variables) }),

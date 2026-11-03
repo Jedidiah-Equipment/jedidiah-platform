@@ -39,7 +39,6 @@ import { useMutation } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
-import { RemoveEntityButton } from '@/components/common/RemoveEntityButton.js';
 import { Badge } from '@/components/ui/badge.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardContent, CardHeader } from '@/components/ui/card.js';
@@ -51,13 +50,13 @@ import {
 } from '@/components/ui/dropdown-menu.js';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
 import { CategoryIcon } from '@/contracting/components/CategoryIcon.js';
-import { MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
 import { IconAction, Timeline, TimelineRow } from '@/contracting/components/Timeline.js';
 import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
 import { AddMeasureDialog } from './AddMeasureDialog.js';
 import { AssignmentEditDialog } from './AssignmentEditDialog.js';
+import { RemoveStintButton } from './RemoveStintButton.js';
 import type { MachineDialog } from './types.js';
 import { useJobWrite } from './use-job-write.js';
 
@@ -307,7 +306,6 @@ export function MachineStintCard({
   /** The thresholds the server judged this Job's stints against. */
   thresholds: AttentionThresholds;
 } & Opens) {
-  const trpc = useTRPC();
   const [measuring, setMeasuring] = useState(false);
   const readsMachines = useCan('contracting_machine:read').can;
   const { stint, number, sheet: stintSheet } = entry;
@@ -316,10 +314,6 @@ export function MachineStintCard({
   const phases = breakdownPhases(stint, breakdowns);
   const breakdownRows = (phase: readonly BreakdownSummary[]) =>
     phase.map((breakdown) => <BreakdownRow breakdown={breakdown} key={breakdown.id} />);
-  const write = useJobWrite();
-  const remove = useMutation(
-    trpc.contractingJobs.assignments.remove.mutationOptions(write.card('Unable to remove Machine Assignment.')),
-  );
   const planned = stint.state === 'planned';
   const onSite = stint.state === 'on-site';
   const stintLabel = number === 1 ? 'First stint' : number === 2 ? 'Second stint' : `Stint ${formatNumber(number)}`;
@@ -364,23 +358,10 @@ export function MachineStintCard({
         <Timeline className="mb-3">
           <TimelineRow
             actions={
-              stintSheet.can('changeResources') ? (
-                <>
-                  <AssignmentEditDialog stint={stint} />
-                  {stintSheet.can('remove') ? (
-                    <RemoveEntityButton
-                      description="Remove this Machine Assignment?"
-                      isPending={remove.isPending}
-                      onConfirm={() => remove.mutate({ id: stint.id })}
-                      title={<MachineDialogTitle machine={stint}>Remove planned Machine</MachineDialogTitle>}
-                      triggerIconOnly
-                      triggerLabel={`Remove ${stint.machineCode}`}
-                      triggerSize="icon-sm"
-                      triggerVariant="outline"
-                    />
-                  ) : null}
-                </>
-              ) : null
+              <>
+                {stintSheet.can('changeResources') ? <AssignmentEditDialog stint={stint} /> : null}
+                {stintSheet.can('remove') ? <RemoveStintButton stint={stint} /> : null}
+              </>
             }
             detail={`${stint.implementCode ?? 'No implement'} · ${stint.driverName ? getFirstName(stint.driverName) : 'No driver'}`}
             title="Planned"

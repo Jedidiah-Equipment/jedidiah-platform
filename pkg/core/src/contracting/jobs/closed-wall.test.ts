@@ -82,7 +82,8 @@ test.for(['invoiced', 'cancelled'] as const)(
           actor: foreman,
           input: { jobId, machineId: context.tipper.id, implementId: null },
         }),
-      removeAssignment: () => removeAssignment({ db, actor: admin, id: stint.id }),
+      removeAssignment: () =>
+        removeAssignment({ db, actor: admin, input: { id: stint.id, reason: 'Added by accident' } }),
       setMeasure: () =>
         setMeasure({
           db,

@@ -39,6 +39,7 @@ const manager: Matrix = {
   stampInvoice: 'nnnnnn',
   capture: '✓✓sscc',
   editHours: '✓✓✓✓cc',
+  removeAssignment: '✓✓✓✓cc',
   setTravel: '✓✓✓✓cc',
   dismissAttention: '✓✓✓✓cc',
   reportBreakdown: '✓✓sscc',
@@ -52,6 +53,7 @@ const foremanOnOwnJob: Matrix = {
   editMeasures: 's✓sscc',
   capture: '✓✓sscc',
   editHours: '✓✓sscc',
+  removeAssignment: '✓✓sscc',
   reportBreakdown: '✓✓sscc',
   addNote: '✓✓✓pss',
 };
@@ -61,6 +63,7 @@ const foremanOnAnotherJob: Matrix = {
   editMeasures: 'oooooo',
   capture: 'oooooo',
   editHours: 'oooooo',
+  removeAssignment: 'oooooo',
   reportBreakdown: 'oooooo',
   addNote: 'oooooo',
 };
@@ -108,6 +111,9 @@ describe('a refused verdict', () => {
     );
     expect(refusal('editHours', 'completed', sipho)).toBe(
       'You can only change hours while the Job is Upcoming or Active.',
+    );
+    expect(refusal('removeAssignment', 'completed', sipho)).toBe(
+      'You can only remove a Machine Assignment while the Job is Upcoming or Active.',
     );
     expect(refusal('editMeasures', 'completed', sipho)).toBe('You can only change Measures while the Job is Active.');
     expect(refusal('editSignOffDetails', 'active', admin)).toBe(

@@ -149,7 +149,7 @@ function DraftSignOffDetails({ job, sheet }: { job: JobDetail; sheet: JobSheet }
                 <span>
                   {stint.machineCode} · {stint.implementCode ?? 'No Implement'}
                 </span>
-                {sheet.can('assign') ? (
+                {sheet.can('removeAssignment') ? (
                   <RemoveEntityButton
                     title={<MachineDialogTitle machine={stint}>Remove planned Machine</MachineDialogTitle>}
                     description="Remove this Machine Assignment?"

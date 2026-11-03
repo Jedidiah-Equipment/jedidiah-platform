@@ -96,6 +96,14 @@ export const CONTRACTING_MUTATION_EVENTS = {
     event: 'job hours edited',
     properties: (variables) => pickRecordIds(variables, ['assignmentId']),
   },
+  'contractingJobs.assignments.setTravel': {
+    event: 'travel hours set',
+    properties: (variables) => pickRecordIds(variables, ['assignmentId']),
+  },
+  'contractingJobs.assignments.patch': {
+    event: 'machine assignment changed',
+    properties: (variables) => pickRecordIds(variables, ['id', 'implementId', 'driverUserId']),
+  },
   // The reason is free text, so only the stint's id travels.
   'contractingJobs.assignments.remove': {
     event: 'machine removed from job',

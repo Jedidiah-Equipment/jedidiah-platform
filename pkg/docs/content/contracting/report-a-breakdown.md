@@ -3,7 +3,7 @@
 A Breakdown is one problem on one Machine or Implement. Reporting one needs a connection; without signal, [keep a Field Note](./keep-a-field-note) with the photos and report the Breakdown once you are back online.
 
 1. Start from where the problem is:
-   - On a Job, choose **Report a problem** on the Machine's card. When it tows an Implement, pick the **Machine** or the **Implement** at the top of the report. The Job is attached for you.
+   - On a Job, choose **Breakdown** on the Machine's card. When it tows an Implement, pick the **Machine** or the **Implement** at the top of the report. The Job is attached for you.
    - On a Machine, choose **Report a problem**.
    - Anywhere else, open **Workshop** and choose **+** (Report a problem), then pick **Machine** or **Implement** and choose it from the list.
 

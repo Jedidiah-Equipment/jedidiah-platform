@@ -7,6 +7,7 @@ import {
   assignmentStateLabels,
   attentionBadges,
   breakdownsByStint,
+  breakdownUrgencyColorClassNames,
   type JobSheetStint,
   jobSheet,
   mostUrgentBreakdown,
@@ -22,13 +23,14 @@ import {
   IconTrash,
 } from '@tabler/icons-react-native';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { type ReactNode, useMemo, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SECONDARY_PAGE_CONTENT_STYLE } from '@/components/page-frame';
 import { SecondaryToolbar } from '@/components/TopToolbar';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
+import { OverflowMenu, type OverflowMenuItem } from '@/components/ui/overflow-menu';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Text } from '@/components/ui/text';
 import { AddNoteButton } from '@/contracting/activity/AddNoteButton';
@@ -44,9 +46,11 @@ import { shareDocument } from '@/lib/document-actions';
 import { useBusyAction } from '@/lib/use-busy-action';
 import { useColorMode } from '@/theme/use-color-mode';
 import { AttentionDialog } from './AttentionDialog';
+import { ChangeStintResourcesSheet } from './ChangeStintResourcesSheet';
 import { JobStatusChip } from './JobStatusChip';
 import { MeasuresSheet } from './MeasuresSheet';
 import { RemoveStintDialog } from './RemoveStintDialog';
+import { TravelHoursSheet } from './TravelHoursSheet';
 import { useJob } from './use-jobs';
 
 export default function JobScreen() {
@@ -194,14 +198,7 @@ export default function JobScreen() {
 
 const MACHINE_ICON_SIZE = 20;
 
-/** "4 480.0 h → 4 512.0 h · 32.0 h work · 2.0 h travel", or "Arrived 4 480.0 h" while on site. */
-function stintHoursLine({ arrival, departure, workHours, travelHours }: AssignmentDetail) {
-  if (!arrival) return '';
-  if (!departure) return `Arrived ${formatHours(arrival.hours)}`;
-  return `${formatHours(arrival.hours)} → ${formatHours(departure.hours)} · ${formatHours(workHours ?? 0)} work · ${formatHours(travelHours ?? 0)} travel`;
-}
-
-/** The stint's needs-a-look reasons in one amber block, each opening its dialog; a dismissed one fades in its place. */
+/** The stint's needs-a-look reasons in one amber block, each opening its dialog; a dismissed one is hidden. */
 function AttentionRows({
   stint,
   thresholds,
@@ -212,23 +209,36 @@ function AttentionRows({
   onOpen: (badge: AttentionBadge) => void;
 }) {
   const { resolved } = useColorMode();
-  const badges = attentionBadges(stint);
+  const badges = attentionBadges(stint).filter((badge) => !badge.dismissal);
   if (!badges.length) return null;
   return (
     <View className={`gap-1 rounded-xl border px-3 py-2 ${needsALookColorClassNames.chip}`}>
       {badges.map((badge) => (
-        <Pressable
-          accessibilityRole="button"
-          className={badge.dismissal ? 'opacity-30' : undefined}
-          key={badge.kind}
-          onPress={() => onOpen(badge)}
-        >
+        <Pressable accessibilityRole="button" key={badge.kind} onPress={() => onOpen(badge)}>
           <Text className={`text-sm ${needsALookColorClassNames.textByScheme[resolved]}`}>
             {assignmentAttentionSentence(badge.kind, stint, thresholds)}
           </Text>
         </Pressable>
       ))}
     </View>
+  );
+}
+
+/** A card line that opens its own edit: the whole row is the target, and the pencil says so. */
+function EditableLine({ label, onPress, children }: { label: string; onPress?: () => void; children: ReactNode }) {
+  const line = <Text className="text-base text-foreground/70">{children}</Text>;
+  if (!onPress) return line;
+  return (
+    <Pressable
+      accessibilityLabel={label}
+      accessibilityRole="button"
+      className="flex-row items-center gap-2 rounded-lg active:bg-muted"
+      hitSlop={6}
+      onPress={onPress}
+    >
+      <View className="min-w-0 flex-1">{line}</View>
+      <Icon className="text-muted-foreground" icon={IconPencil} size={16} />
+    </Pressable>
   );
 }
 
@@ -256,6 +266,16 @@ function StintCard({
 }) {
   const [opened, setOpened] = useState<AttentionBadge | null>(null);
   const [removing, setRemoving] = useState(false);
+  const [changing, setChanging] = useState(false);
+  const [settingTravel, setSettingTravel] = useState(false);
+  const canMeasure = stintSheet.can('editMeasures');
+  const editHours = stintSheet.can('editHours') ? onEdit : undefined;
+  const more: OverflowMenuItem[] = [
+    ...(canMeasure && !stint.measures.length ? [{ label: 'Add measure', icon: IconRuler2, onPress: onMeasure }] : []),
+    ...(stintSheet.can('remove')
+      ? [{ label: 'Remove', icon: IconTrash, destructive: true, onPress: () => setRemoving(true) }]
+      : []),
+  ];
   return (
     <View className={`gap-2 rounded-xl border bg-surface p-4 ${breakdownBorder(breakdown) ?? 'border-border'}`}>
       <View className="flex-row items-center justify-between gap-2">
@@ -277,28 +297,39 @@ function StintCard({
           label={assignmentStateLabels[stint.state]}
         />
       </View>
-      <View className="flex-row items-end justify-between gap-2">
-        <View className="min-w-0 flex-1 gap-2">
-          <Text className="text-sm text-muted-foreground">
-            {stint.categoryName}
-            {stint.implementCode ? ` · ${stint.implementCode}` : ''}
-            {stint.driverName ? ` · ${getFirstName(stint.driverName)}` : ''}
-          </Text>
-          {stint.arrival ? <Text className="text-sm text-muted-foreground">{stintHoursLine(stint)}</Text> : null}
-          {stint.measures.length ? (
-            <Text className="text-sm text-foreground">
-              {stint.measures
-                .map((measure) => `${formatQuantity(measure.quantity)} ${measure.measureTypeName}`)
-                .join(' · ')}
-            </Text>
-          ) : null}
-        </View>
-        {stint.departure && stint.workHours !== null ? (
-          <Text className="text-xl text-foreground" weight="bold" mono>
-            {formatHours(stint.workHours)}
-          </Text>
-        ) : null}
-      </View>
+      <EditableLine
+        label="Change implement and driver"
+        onPress={stintSheet.can('changeResources') ? () => setChanging(true) : undefined}
+      >
+        {stint.categoryName}
+        {stint.implementCode ? ` · ${stint.implementCode}` : ''}
+        {stint.driverName ? ` · ${getFirstName(stint.driverName)}` : ''}
+      </EditableLine>
+      {stint.arrival && stint.travelHours !== null ? (
+        <EditableLine
+          label="Set Travel Hours"
+          onPress={stintSheet.can('setTravel') ? () => setSettingTravel(true) : undefined}
+        >
+          Travel {formatHours(stint.travelHours)}
+        </EditableLine>
+      ) : null}
+      {stint.arrival ? (
+        <EditableLine label="Edit hours" onPress={editHours}>
+          Arrived {formatHours(stint.arrival.hours)}
+        </EditableLine>
+      ) : null}
+      {stint.departure ? (
+        <EditableLine label="Edit hours" onPress={editHours}>
+          Departed {formatHours(stint.departure.hours)}
+        </EditableLine>
+      ) : null}
+      {stint.measures.length ? (
+        <EditableLine label="Edit measures" onPress={canMeasure ? onMeasure : undefined}>
+          {stint.measures
+            .map((measure) => `${formatQuantity(measure.quantity)} ${measure.measureTypeName}`)
+            .join(' · ')}
+        </EditableLine>
+      ) : null}
       {thresholds ? (
         <>
           <AttentionRows onOpen={setOpened} stint={stint} thresholds={thresholds} />
@@ -317,31 +348,40 @@ function StintCard({
       {stintSheet.can('captureDeparture') ? (
         <CaptureButton icon={IconPlayerStop} label="Stop — capture departure" onPress={onStop} />
       ) : null}
-      {stintSheet.can('editHours') || stintSheet.can('editMeasures') ? (
-        <View className="flex-row gap-2">
-          {stintSheet.can('editHours') ? (
-            <View className="flex-1">
-              <Button icon={IconPencil} title="Edit hours" onPress={onEdit} />
-            </View>
-          ) : null}
-          {stintSheet.can('editMeasures') ? (
+      {stint.departure && stint.workHours !== null ? (
+        // Sized to the capture button it replaces: text-xl's line less py-2 matches text-sm's line plus py-3.
+        <Pressable
+          accessibilityLabel="Edit hours"
+          accessibilityRole="button"
+          className="items-center rounded-lg border border-border bg-muted px-3 py-2 active:bg-surface"
+          disabled={!editHours}
+          onPress={editHours}
+        >
+          <Text className="text-xl text-foreground" weight="bold" mono>
+            {formatHours(stint.workHours)}
+          </Text>
+        </Pressable>
+      ) : null}
+      {canReport || more.length ? (
+        <View className="flex-row justify-end gap-2">
+          {canReport ? (
             <View className="flex-1">
               <Button
-                icon={IconRuler2}
-                title={stint.measures.length ? 'Edit measures' : 'Add measure'}
-                onPress={onMeasure}
+                icon={BreakdownIcon}
+                iconClassName={breakdownUrgencyColorClassNames['code-green'].icon}
+                title="Breakdown"
+                onPress={onReport}
               />
             </View>
           ) : null}
+          {more.length ? <OverflowMenu accessibilityLabel={`${stint.machineCode} actions`} items={more} /> : null}
         </View>
       ) : null}
-      {canReport ? <Button icon={BreakdownIcon} title="Report a problem" onPress={onReport} /> : null}
       {stintSheet.can('remove') ? (
-        <>
-          <Button destructive icon={IconTrash} title="Remove machine" onPress={() => setRemoving(true)} />
-          <RemoveStintDialog stint={stint} open={removing} onClose={() => setRemoving(false)} />
-        </>
+        <RemoveStintDialog stint={stint} open={removing} onClose={() => setRemoving(false)} />
       ) : null}
+      {changing ? <ChangeStintResourcesSheet stint={stint} onClose={() => setChanging(false)} /> : null}
+      {settingTravel ? <TravelHoursSheet stint={stint} onClose={() => setSettingTravel(false)} /> : null}
     </View>
   );
 }

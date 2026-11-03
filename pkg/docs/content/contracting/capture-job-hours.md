@@ -14,7 +14,7 @@ Job hours are a Machine's arrival and departure meter readings on a Job. They ar
 5. On an arrival, check the **Implement & driver** and choose **Change** if they differ from the plan.
 6. Choose **Save**.
 
-To correct your own hours while the Job is still open, choose **Edit hours** on the Machine, change the arrival or departure hours and their comments, and choose **Save**.
+To correct your own hours while the Job is still open, tap the hours line on the Machine, change the arrival or departure hours and their comments, and choose **Save**.
 
 Capturing needs a connection. Without one, [keep a Field Note](./keep-a-field-note) and capture the hours when you are back online.
 

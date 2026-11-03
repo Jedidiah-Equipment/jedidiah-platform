@@ -1,5 +1,5 @@
 import { getFirstName } from '@pkg/domain';
-import { fleetHistoryRowKey, machineBusyWith } from '@pkg/domain/contracting';
+import { breakdownUrgencyColorClassNames, fleetHistoryRowKey, machineBusyWith } from '@pkg/domain/contracting';
 import type { FieldMachine, FleetHistoryRow } from '@pkg/schema/contracting';
 
 type BusyWith = { job: NonNullable<FieldMachine['busyOnJob']> | null; jobNumber: string };
@@ -240,6 +240,7 @@ export default function MachineScreen() {
                 <View className="flex-1">
                   <Button
                     icon={BreakdownIcon}
+                    iconClassName={breakdownUrgencyColorClassNames['code-green'].icon}
                     title="Report a problem"
                     onPress={() =>
                       router.push({

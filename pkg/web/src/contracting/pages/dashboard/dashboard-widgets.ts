@@ -1,4 +1,4 @@
-import { jobQueueLabels } from '@pkg/domain/contracting';
+import { jobQueueLabels, readsJobMoney } from '@pkg/domain/contracting';
 import type { UserAccessSummary } from '@pkg/schema';
 import {
   type DashboardWidget,
@@ -6,6 +6,7 @@ import {
   filterDashboardWidgets,
 } from '@/components/common/dashboard/dashboard-widget-types.js';
 import { DailyHoursWidget } from './widgets/DailyHoursWidget.js';
+import { InvoicedByMonthWidget } from './widgets/InvoicedByMonthWidget.js';
 import {
   ActiveJobsTile,
   AwaitingInvoiceTile,
@@ -40,6 +41,15 @@ export const contractingDashboardRows = [
       requires: 'contracting_job:read-priced',
       size: 'xs',
       title: jobQueueLabels['awaiting-invoice'],
+    },
+  ],
+  [
+    {
+      Component: InvoicedByMonthWidget,
+      id: 'invoiced-by-month',
+      requires: readsJobMoney,
+      size: 'xl',
+      title: 'Invoiced by month (ex VAT)',
     },
   ],
   [

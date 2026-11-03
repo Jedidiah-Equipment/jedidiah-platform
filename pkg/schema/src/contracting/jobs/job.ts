@@ -93,6 +93,18 @@ export type JobQueueCounts = z.infer<typeof JobQueueCounts>;
 export const JobQueueSummary = z.object({ counts: JobQueueCounts });
 export type JobQueueSummary = z.infer<typeof JobQueueSummary>;
 
+/** One plant-time month of Jobs marked as Invoiced: their priced totals ex VAT, and how many. */
+export const InvoicedMonth = z.object({
+  /** The month's first day. */
+  month: DateOnlyIso,
+  total: z.number(),
+  jobs: z.number().int().nonnegative(),
+});
+export type InvoicedMonth = z.infer<typeof InvoicedMonth>;
+/** This month to date, then the three full months before it; a month with nothing invoiced is zero, not missing. */
+export const InvoicedByMonth = z.object({ months: InvoicedMonth.array() });
+export type InvoicedByMonth = z.infer<typeof InvoicedByMonth>;
+
 export const AssignmentPlanInput = z
   .object({
     jobId: UUID,

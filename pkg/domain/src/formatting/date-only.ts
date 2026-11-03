@@ -42,6 +42,12 @@ export function dateOnlyWeekday(date: DateOnlyIso): number {
   return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
 }
 
+/** The first day of the date's month. */
+export function startOfDateOnlyMonth(date: DateOnlyIso): DateOnlyIso {
+  const { month, year } = parseDateOnlyParts(date);
+  return toDateOnlyParts(year, month, 1);
+}
+
 /** Monday starting the Monday-based week containing the given date. */
 export function startOfDateOnlyWeek(date: DateOnlyIso): DateOnlyIso {
   return addDateOnlyDays(date, -((dateOnlyWeekday(date) + 6) % 7));

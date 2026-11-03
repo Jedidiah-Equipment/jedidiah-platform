@@ -61,7 +61,7 @@ export function judgeStintHoursEdit(
   return judgeStintHours({ arrival: edit.arrivalHours, departure: edit.departureHours });
 }
 
-/** Travel as the arrival snapshots it: the arrival less the Machine's last departure, clamped at zero. */
+/** Travel as the arrival snapshots it: the arrival less the departure it is measured against, clamped at zero. */
 export function snapshotTravelHours(
   arrivalHours: number,
   previousDepartureHours: number | null,
@@ -112,7 +112,7 @@ export const travelProvenance = ({ travelSetByName }: { travelSetByName: string 
   travelSetByName ? `set by ${getFirstName(travelSetByName)}` : 'worked out at arrival';
 
 export const TRAVEL_HOURS_EXPLANATION =
-  'Travel Hours are worked out when the Machine arrives: its arrival hours less its last departure hours on any Job. Change them here if that is wrong; nothing recalculates them once you have.';
+  'Travel Hours are worked out when the Machine arrives: its arrival hours less the highest departure hours at or below that arrival on any Job. Change them here if that is wrong; nothing recalculates them once you have.';
 
 /**
  * The Job's dates as reports read them: stored when set, else from the first arrival's capture to the last departure's

@@ -80,8 +80,12 @@ test('lists only the Jobs needing a look when asked, the SQL agreeing with the d
   // 10 h of Travel after the clean Job's departure: over the default 4 h threshold.
   await leftStint(db, over.id, excavator.id, 120, 125);
   const clamped = await newJob(context);
-  // Captured out of order: an arrival below the Machine's last departure stores 0 h, clamped.
-  await leftStint(db, clamped.id, excavator.id, 115, 118);
+  // A stint holding a clamp from an earlier snapshot.
+  const { id: clampedStint } = await leftStint(db, clamped.id, excavator.id, 125, 128);
+  await db
+    .update(contractingMachineAssignments)
+    .set({ travelHours: 0, travelClamped: true })
+    .where(eq(contractingMachineAssignments.id, clampedStint));
   const deere = await newJob(context);
   const { id: deereStint } = await leftStint(db, deere.id, tipper.id, 50, 60);
   await db

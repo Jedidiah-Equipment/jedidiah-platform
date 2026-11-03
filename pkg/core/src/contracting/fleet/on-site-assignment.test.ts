@@ -117,9 +117,6 @@ test('on site on two Jobs, every reader names the latest arrival capture', async
   const implement = { kind: 'implement', id: ripper.id } as const;
   expect(await onSiteAssignment({ db, subject: machine })).toMatchObject({ jobId: backLoaded.id });
   expect(await onSiteAssignment({ db, subject: implement })).toMatchObject({ jobId: backLoaded.id });
-  expect(await onSiteAssignment({ db, subject: machine, otherThanJobId: backLoaded.id })).toMatchObject({
-    jobId: job.id,
-  });
   const fieldMachine = (await listFieldMachines({ db, actor: admin })).find((row) => row.id === excavator.id);
   expect(fieldMachine).toMatchObject({ busyOnJob: { id: backLoaded.id }, onSiteJobNumber: backLoaded.jobNumber });
   const fieldImplement = (await listFieldImplements({ db })).find((row) => row.id === ripper.id);

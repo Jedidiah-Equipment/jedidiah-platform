@@ -24,7 +24,7 @@ import { and, asc, eq, isNull, type SQLWrapper, sql } from 'drizzle-orm';
 import { defineAuditDescriptor, recordAuditCreate } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
 import { loadOpenBreakdowns } from '../breakdowns/open-breakdowns.js';
-import { stintOnSite } from '../jobs/job-sql.js';
+import { latestArrivalFirst, stintOnSite } from '../jobs/job-sql.js';
 import { getContractingSettings } from '../settings/settings-service.js';
 import { assertCategoryKind } from './category-service.js';
 import {
@@ -62,7 +62,12 @@ type BusyOnJobRow = {
  * The busy subquery's stint, named as its raw SQL joins it: a relational query re-roots Drizzle column references
  * in `extras` onto its own table, so the on-site predicate gets the alias's columns as plain SQL.
  */
-const busyStint = { arrivalHours: sql`stint.arrival_hours`, departureHours: sql`stint.departure_hours` };
+const busyStint = {
+  id: sql`stint.id`,
+  arrivalHours: sql`stint.arrival_hours`,
+  arrivalAt: sql`stint.arrival_at`,
+  departureHours: sql`stint.departure_hours`,
+};
 type JohnDeereRow = {
   equipmentId: string;
   principalId: number;
@@ -175,7 +180,7 @@ const derivedMachineColumns = (machine: MachineColumns) => ({
     join contracting.work_type work_type on work_type.id = job.work_type_id
     where stint.machine_id = ${machine.id}
       and ${stintOnSite(busyStint)}
-    order by stint.arrival_at desc, stint.id desc
+    order by ${latestArrivalFirst(busyStint)}
     limit 1
   )`.as('busy_on_job'),
   // Nothing refuses a second open record, so the newest start is the one in the workshop.

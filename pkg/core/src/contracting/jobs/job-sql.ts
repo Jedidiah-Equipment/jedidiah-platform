@@ -35,12 +35,13 @@ export const jobHoursColumns = {
 /** A Machine Assignment's Job Hours columns, on the table or on an alias of it. */
 type StintColumns = { arrivalHours: SQLWrapper; departureHours: SQLWrapper };
 
-/**
- * The on-site Assignment: arrival captured, no departure yet. A Machine or Implement may be on site on several Jobs at
- * once (ADR 0031); a reader wanting one takes the latest arrival capture.
- */
+/** The on-site Assignment: arrival captured, no departure yet. A Machine or Implement may have several (ADR 0031). */
 export const stintOnSite = (stint: StintColumns): SQL =>
   sql`${stint.arrivalHours} is not null and ${stint.departureHours} is null`;
+
+/** The order every reader naming one on-site Assignment takes: the latest arrival capture first. */
+export const latestArrivalFirst = (stint: { arrivalAt: SQLWrapper; id: SQLWrapper }): SQL =>
+  sql`${stint.arrivalAt} desc, ${stint.id} desc`;
 
 const assignmentInState: Record<AssignmentState, (stint: StintColumns) => SQL> = {
   planned: (stint) => sql`${stint.arrivalHours} is null`,

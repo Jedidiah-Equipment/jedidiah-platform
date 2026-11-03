@@ -17,10 +17,10 @@ import {
   type ImplementCreateInput,
   type ImplementPatchInput,
 } from '@pkg/schema/contracting';
-import { and, asc, desc, eq, ilike, inArray, sql } from 'drizzle-orm';
+import { and, asc, eq, ilike, inArray, sql } from 'drizzle-orm';
 import { defineAuditDescriptor, recordAuditCreate } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
-import { stintOnSite } from '../jobs/job-sql.js';
+import { latestArrivalFirst, stintOnSite } from '../jobs/job-sql.js';
 import { assertCategoryKind } from './category-service.js';
 import {
   type CategoryRelation,
@@ -78,12 +78,7 @@ export async function listFieldImplements({ db }: { db: Db }) {
             stintOnSite(contractingMachineAssignments),
           ),
         )
-        // On site on several Jobs, an Implement names its latest arrival.
-        .orderBy(
-          contractingMachineAssignments.implementId,
-          desc(contractingMachineAssignments.arrivalAt),
-          desc(contractingMachineAssignments.id),
-        )
+        .orderBy(contractingMachineAssignments.implementId, latestArrivalFirst(contractingMachineAssignments))
     : [];
   const jobByImplement = new Map(
     onSite.flatMap((row) => (row.implementId ? [[row.implementId, formatJobNumber(row.jobCode)] as const] : [])),

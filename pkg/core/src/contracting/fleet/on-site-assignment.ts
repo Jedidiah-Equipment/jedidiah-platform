@@ -1,8 +1,8 @@
 import type { DatabaseTransaction, Db } from '@pkg/db';
 import { contractingJobs, contractingMachineAssignments } from '@pkg/db/contracting';
 import type { BreakdownSubjectRef } from '@pkg/schema/contracting';
-import { and, desc, eq, ne } from 'drizzle-orm';
-import { stintOnSite } from '../jobs/job-sql.js';
+import { and, eq } from 'drizzle-orm';
+import { latestArrivalFirst, stintOnSite } from '../jobs/job-sql.js';
 
 export type OnSiteAssignment = {
   stintId: string;
@@ -16,18 +16,13 @@ export type OnSiteAssignment = {
 export const stintSubjectColumn = (kind: BreakdownSubjectRef['kind']) =>
   kind === 'machine' ? contractingMachineAssignments.machineId : contractingMachineAssignments.implementId;
 
-/**
- * Where this Machine or Implement is right now: its on-site Assignment and that Job, or null in the yard. On site on
- * several Jobs, it is the latest arrival capture; `otherThanJobId` looks only beyond that Job.
- */
+/** Where this Machine or Implement is right now: its latest on-site Assignment and that Job, or null in the yard. */
 export async function onSiteAssignment({
   db,
   subject,
-  otherThanJobId,
 }: {
   db: Db | DatabaseTransaction;
   subject: BreakdownSubjectRef;
-  otherThanJobId?: string;
 }): Promise<OnSiteAssignment | null> {
   const [row] = await db
     .select({
@@ -39,14 +34,8 @@ export async function onSiteAssignment({
     })
     .from(contractingMachineAssignments)
     .innerJoin(contractingJobs, eq(contractingJobs.id, contractingMachineAssignments.jobId))
-    .where(
-      and(
-        eq(stintSubjectColumn(subject.kind), subject.id),
-        stintOnSite(contractingMachineAssignments),
-        otherThanJobId ? ne(contractingMachineAssignments.jobId, otherThanJobId) : undefined,
-      ),
-    )
-    .orderBy(desc(contractingMachineAssignments.arrivalAt), desc(contractingMachineAssignments.id))
+    .where(and(eq(stintSubjectColumn(subject.kind), subject.id), stintOnSite(contractingMachineAssignments)))
+    .orderBy(latestArrivalFirst(contractingMachineAssignments))
     .limit(1);
   return row?.arrivedAt ? { ...row, arrivedAt: row.arrivedAt } : null;
 }

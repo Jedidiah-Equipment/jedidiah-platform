@@ -37,7 +37,7 @@ type StintRow = typeof contractingMachineAssignments.$inferSelect;
 /** `serviceDueSoonCrossed` is true when the write took the Machine into Service Due Soon; the caller pushes after commit. */
 export type StintHoursWrite = { machineId: string; serviceDueSoonCrossed: boolean };
 
-/** A capture's write, with a warning for each of the arriving Machine and Implement still on site on another Job. */
+/** A capture's write, with a warning for each of the arriving Machine and Implement still on site elsewhere. */
 export type StintHoursCapture = StintHoursWrite & { warnings: string[] };
 
 /** What John Deere had last read for this Machine when the hours were saved, as the stint stores it. */
@@ -101,15 +101,14 @@ async function assertArrivalResources(
   return arriving;
 }
 
-/** A Machine or Implement on site on another Job warns and never refuses (ADR 0031): that Job's Completion gate waits. */
+/** A Machine or Implement still on site elsewhere warns and never refuses (ADR 0031): that Job's Completion gate waits. */
 async function onSiteElsewhereWarnings(
   tx: DatabaseTransaction,
-  jobId: string,
   arriving: readonly { subject: BreakdownSubjectRef; code: string }[],
 ) {
   const warnings = await Promise.all(
     arriving.map(async ({ subject, code }) => {
-      const elsewhere = await onSiteAssignment({ db: tx, subject, otherThanJobId: jobId });
+      const elsewhere = await onSiteAssignment({ db: tx, subject });
       return elsewhere ? onSiteElsewhereWarning(code, formatJobNumber(elsewhere.jobCode)) : null;
     }),
   );
@@ -122,7 +121,7 @@ function assertStintHours(verdict: StintHoursVerdict) {
 
 /**
  * Captures a stint's arrival or departure hours. An arrival snapshots Travel and John Deere, applies the phone's
- * Implement and Driver, starts an Upcoming Job, and warns when its Machine or Implement is on site on another Job. A
+ * Implement and Driver, starts an Upcoming Job, and warns when its Machine or Implement is still on site elsewhere. A
  * retry of a capture already landed, with the same hours by the same person, returns without writing.
  */
 export async function captureStintHours({
@@ -155,7 +154,7 @@ export async function captureStintHours({
         latestTelematicsReading(tx, machine.id),
         travelSnapshot(tx, stint, input.hours),
       ]);
-      warnings = await onSiteElsewhereWarnings(tx, job.id, [
+      warnings = await onSiteElsewhereWarnings(tx, [
         { subject: { kind: 'machine', id: machine.id }, code: machineCode },
         ...(implement ? [{ subject: { kind: 'implement' as const, id: implement.id }, code: implement.code }] : []),
       ]);

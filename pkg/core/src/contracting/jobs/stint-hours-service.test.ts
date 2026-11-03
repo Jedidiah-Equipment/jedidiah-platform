@@ -113,10 +113,10 @@ describe('capturing Job Hours', () => {
     expect((await getJob({ db, id: first.id })).assignments[0]).toMatchObject({ travelHours: 0, travelClamped: false });
   });
 
-  test('a Machine and Implement on site on another Job arrive anyway, warning which Job still has them', async ({
+  test('a Machine and Implement still on site elsewhere arrive anyway, warning which Job still has them', async ({
     context,
   }) => {
-    const { db, excavator, implement } = context;
+    const { db, excavator, tipper, implement } = context;
     const current = await openJob(context);
     const backLoaded = await openJob(context);
     const onSite = await plannedStint(db, admin, {
@@ -137,6 +137,13 @@ describe('capturing Job Hours', () => {
       ],
     });
     expect((await getJob({ db, id: backLoaded.id })).assignments[0]).toMatchObject({ state: 'on-site' });
+
+    const first = await plannedStint(db, admin, { jobId: current.id, machineId: tipper.id, implementId: null });
+    const second = await plannedStint(db, admin, { jobId: current.id, machineId: tipper.id, implementId: null });
+    await captureHours(db, first.id, 'arrival', 10);
+    expect((await captureHours(db, second.id, 'arrival', 10)).warnings).toEqual([
+      `TIP-7 is also on site on ${current.jobNumber} — its departure there hasn't been captured.`,
+    ]);
   });
 
   test('refuses a retired Machine, a retired Implement, a device Driver, a foreign Job and a departure below arrival', async ({

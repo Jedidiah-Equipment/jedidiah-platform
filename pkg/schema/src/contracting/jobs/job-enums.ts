@@ -41,7 +41,7 @@ export const jobQueues = [
 export type JobQueue = (typeof jobQueues)[number];
 
 /** Why a Machine Assignment needs a look; the domain says how each is worded. */
-export const assignmentAttentionKinds = ['travel-over-threshold', 'travel-clamped', 'john-deere-difference'] as const;
+export const assignmentAttentionKinds = ['travel-over-threshold', 'john-deere-difference'] as const;
 export type AssignmentAttentionKind = (typeof assignmentAttentionKinds)[number];
 /** The one level a Machine Assignment's attention shows at: it is counted and filtered, and blocks nothing. */
 export const needsALookLevels = ['needs-a-look'] as const;

@@ -75,7 +75,7 @@ export const JobListInput = createSearchedSortedCursorQueryInput({
     invoicedFrom: DateOnlyIso.optional(),
     /** Keep only Jobs invoiced on or before this South African calendar day; a Job not yet invoiced drops out. */
     invoicedTo: DateOnlyIso.optional(),
-    /** Keep only Jobs with a Machine Assignment that needs a look: Travel over threshold or clamped, or John Deere differs. */
+    /** Keep only Jobs with a Machine Assignment that needs a look: Travel over threshold, or John Deere differs. */
     needsALook: z.boolean().optional(),
     /** Keep only Jobs this Machine has an Assignment on, in any state: planned, on site, or left. */
     machineId: UUID.optional(),
@@ -208,8 +208,6 @@ export const Assignment = z.object({
   departure: JobHoursValue.nullable(),
   /** Snapshot at arrival, hand-set after; null until the Machine arrives. */
   travelHours: Hours.nullable(),
-  /** The arrival was below the Machine's previous departure, so Travel was stored as 0. */
-  travelClamped: z.boolean(),
   /** Who set Travel by hand; null while it is the arrival's snapshot. */
   travelSetByName: z.string().nullable(),
   workHours: Hours.nullable(),

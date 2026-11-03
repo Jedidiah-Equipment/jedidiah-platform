@@ -34,7 +34,6 @@ function stint(overrides: Partial<Assignment>): Assignment {
     arrival: null,
     departure: null,
     travelHours: 0,
-    travelClamped: false,
     travelSetByName: null,
     workHours: null,
     billableHours: null,
@@ -229,11 +228,10 @@ describe('buildJobCardModel', () => {
   });
 
   test('the internal copy prints the work and travel split, who captured what and when, and sign-off notes', () => {
-    const clampedGrader = {
+    const flaggedGrader = {
       ...grader,
       travelHours: 0,
-      travelClamped: true,
-      attention: ['travel-clamped', 'john-deere-difference'] as AssignmentAttentionKind[],
+      attention: ['john-deere-difference'] as AssignmentAttentionKind[],
       arrival: reading(7110, '2026-09-01T09:00:00.000Z', { comment: 'Meter glass cracked' }),
     };
     const amendedExcavator = {
@@ -241,7 +239,7 @@ describe('buildJobCardModel', () => {
       amendment: { at: '2026-09-08T09:00:00.000Z', byName: 'Dean', reason: 'Misread the dash' },
     } as Assignment;
     const job = rowleyDam({
-      assignments: [amendedExcavator, clampedGrader],
+      assignments: [amendedExcavator, flaggedGrader],
       repricingNote: 'Lowbed was double-counted',
     });
     const card = buildJobCardModel(job, 'internal', now);
@@ -266,7 +264,7 @@ describe('buildJobCardModel', () => {
           comment: 'Meter glass cracked',
           byName: 'Sipho',
         },
-        hours: { variant: 'internal', work: 42.4, travel: 0, attention: ['travel-clamped', 'john-deere-difference'] },
+        hours: { variant: 'internal', work: 42.4, travel: 0, attention: ['john-deere-difference'] },
       }),
     ]);
     const [customerGrader] = stintLines(job, 'customer').filter((line) => line.machineCode === 'GRAD140K-1');

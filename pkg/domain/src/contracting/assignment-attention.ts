@@ -15,7 +15,6 @@ type AttentionReading = { hours: number; telematics: { hours: number; at: string
 /** What a kind's sentence names: the stint's Travel and each Job Hours' John Deere snapshot. */
 export type AttentionFacts = {
   travelHours: number | null;
-  travelClamped: boolean;
   arrival: AttentionReading;
   departure: AttentionReading;
 };
@@ -34,7 +33,7 @@ export function johnDeereDifferenceOver(stint: AttentionFacts, threshold: number
 
 type AttentionKindRule = {
   label: string;
-  /** Travel set by hand was looked at: neither Travel kind holds after it, the clamp being cleared by the set. */
+  /** Travel set by hand was looked at: the Travel kind does not hold after it. */
   holds: (stint: AttentionStint, thresholds: AttentionThresholds) => boolean;
   /** The badge on the stint, naming its hours. */
   sentence: (stint: AttentionFacts, thresholds: AttentionThresholds) => string;
@@ -51,13 +50,6 @@ const attentionKindRules: Record<AssignmentAttentionKind, AttentionKindRule> = {
     sentence: (stint, { travelFlagThresholdHours }) =>
       `Travel ${formatHours(stint.travelHours ?? 0)} is over the ${formatHours(travelFlagThresholdHours)} threshold`,
     facts: (stint) => [stint.travelHours],
-  },
-  'travel-clamped': {
-    label: `Travel set to ${formatHours(0)}`,
-    holds: (stint) => stint.travelClamped,
-    sentence: (stint) =>
-      `Travel set to ${formatHours(0)}: arrival ${formatHours(stint.arrival?.hours ?? 0)} is below the Machine's previous departure`,
-    facts: (stint) => [stint.travelClamped, stint.arrival?.hours],
   },
   'john-deere-difference': {
     label: `${JD_LINK_LABEL} differs`,

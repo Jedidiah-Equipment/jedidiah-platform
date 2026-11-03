@@ -18,7 +18,7 @@ import type {
   StintOverrides,
   TravelHoursSetInput,
 } from '@pkg/schema/contracting';
-import { and, desc, eq, isNotNull, lt, ne } from 'drizzle-orm';
+import { and, desc, eq, lte, ne } from 'drizzle-orm';
 import { serviceDueSoonEdge } from '../fleet/machine-service.js';
 import { onSiteAssignment } from '../fleet/on-site-assignment.js';
 import { latestTelematicsReading } from '../readings/telematics-reading.js';
@@ -46,8 +46,11 @@ const snapshotColumns = (side: 'arrival' | 'departure', telematics: { hours: num
     ? { arrivalTelematicsHours: telematics?.hours ?? null, arrivalTelematicsAt: telematics?.at ?? null }
     : { departureTelematicsHours: telematics?.hours ?? null, departureTelematicsAt: telematics?.at ?? null };
 
-/** Travel as an arrival snapshots it: against the Machine's last departure on any other stint, before `before` when given. */
-async function travelSnapshot(tx: DatabaseTransaction, stint: StintRow, arrivalHours: number, before?: Date) {
+/**
+ * Travel as an arrival snapshots it: against the Machine's highest departure at or below the arrival on any other stint,
+ * by meter value rather than capture order, so a back-loaded Job neither reads nor skews the live ones.
+ */
+async function travelSnapshot(tx: DatabaseTransaction, stint: StintRow, arrivalHours: number) {
   const [previous] = await tx
     .select({ departureHours: contractingMachineAssignments.departureHours })
     .from(contractingMachineAssignments)
@@ -55,11 +58,10 @@ async function travelSnapshot(tx: DatabaseTransaction, stint: StintRow, arrivalH
       and(
         eq(contractingMachineAssignments.machineId, stint.machineId),
         ne(contractingMachineAssignments.id, stint.id),
-        isNotNull(contractingMachineAssignments.departureAt),
-        before ? lt(contractingMachineAssignments.departureAt, before) : undefined,
+        lte(contractingMachineAssignments.departureHours, arrivalHours),
       ),
     )
-    .orderBy(desc(contractingMachineAssignments.departureAt))
+    .orderBy(desc(contractingMachineAssignments.departureHours))
     .limit(1);
   const { travelHours, clamped } = snapshotTravelHours(arrivalHours, previous?.departureHours ?? null);
   return { travelHours, travelClamped: clamped };
@@ -218,9 +220,7 @@ export async function editStintHours({
     const edge = await serviceDueSoonEdge(tx, machine);
     const [telematics, travel] = await Promise.all([
       arrivalMoved || departureMoved ? latestTelematicsReading(tx, machine.id) : null,
-      arrivalMoved && stint.travelSetAt === null && stint.arrivalAt
-        ? travelSnapshot(tx, stint, input.arrivalHours, stint.arrivalAt)
-        : {},
+      arrivalMoved && stint.travelSetAt === null ? travelSnapshot(tx, stint, input.arrivalHours) : {},
     ]);
     await writeAssignment(tx, actor.userId, machineCode, stint.id, () => ({
       arrivalHours: input.arrivalHours,

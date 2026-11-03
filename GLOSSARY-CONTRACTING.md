@@ -174,10 +174,11 @@ a Priced Job returns it to Completed for re-pricing, and the internal Job Card m
 _Avoid_: arrival reading, departure reading, stint reading.
 
 **Travel Hours** are a Machine Assignment's billed travel: snapshot when the arrival is captured as the arrival
-hours less the Machine's last departure hours on any Job, clamped at 0 — a Machine with no earlier departure, or one
-moved by truck, has 0. An arrival edit recomputes them until someone sets them by hand; management sets them until the
-Job is Invoiced, and nothing recalculates them after. They are billed at the Assignment's rate. Over the **Travel Flag
-threshold** in Settings (4 h unless changed), or clamped from a negative, the stint needs a look.
+hours less the Machine's highest departure hours at or below that arrival on any Job — by meter value, never capture
+order, so a back-loaded Job neither reads nor skews the live ones. A Machine with no departure at or below the arrival,
+or one moved by truck, has 0. An arrival edit recomputes them until someone sets them by hand; management sets them
+until the Job is Invoiced, and nothing recalculates them after. They are billed at the Assignment's rate. Over the
+**Travel Flag threshold** in Settings (4 h unless changed), the stint needs a look.
 _Avoid_: Hour Gap, Gap Flag, Unaccounted Interval, Unresolved.
 
 **Hour Reading** is one entry in a Machine's hour-meter ledger: the value, when the meter was read (its **Read At**

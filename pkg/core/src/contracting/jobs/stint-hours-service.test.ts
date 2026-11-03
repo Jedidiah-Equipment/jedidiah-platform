@@ -81,17 +81,14 @@ describe('capturing Job Hours', () => {
   test('an arrival starts the Job and snapshots Travel against the last departure; a retry writes nothing', async ({
     context,
   }) => {
-    const { db, excavator, tipper } = context;
+    const { db, excavator } = context;
     const first = await openJob(context);
     await leftStint(db, first.id, excavator.id, 100, 150);
-    await leftStint(db, first.id, tipper.id, 100, 150);
 
     const job = await openJob(context);
     const travelled = await plannedStint(db, admin, { jobId: job.id, machineId: excavator.id, implementId: null });
-    const clamped = await plannedStint(db, admin, { jobId: job.id, machineId: tipper.id, implementId: null });
     expect((await getJob({ db, id: job.id })).status).toBe('upcoming');
     await captureHours(db, travelled.id, 'arrival', 156);
-    await captureHours(db, clamped.id, 'arrival', 120);
     expect((await getJob({ db, id: job.id })).status).toBe('active');
 
     const events = (await db.select().from(auditEvents)).length;
@@ -108,9 +105,28 @@ describe('capturing Job Hours', () => {
         travelClamped: false,
         attention: ['travel-over-threshold'],
       },
-      { id: clamped.id, travelHours: 0, travelClamped: true, attention: ['travel-clamped'] },
     ]);
     expect((await getJob({ db, id: first.id })).assignments[0]).toMatchObject({ travelHours: 0, travelClamped: false });
+  });
+
+  test('a back-loaded Job snapshots Travel against the highest departure at or below its arrival, and the next live arrival ignores it', async ({
+    context,
+  }) => {
+    const { db, excavator } = context;
+    const travel = async (jobId: string) => (await getJob({ db, id: jobId })).assignments[0];
+    const live = await openJob(context);
+    await leftStint(db, live.id, excavator.id, 1480, 1500);
+    const older = await openJob(context);
+    await leftStint(db, older.id, excavator.id, 900, 990);
+    expect(await travel(older.id)).toMatchObject({ travelHours: 0, travelClamped: false });
+
+    const backLoaded = await openJob(context);
+    await leftStint(db, backLoaded.id, excavator.id, 1000, 1020);
+    expect(await travel(backLoaded.id)).toMatchObject({ travelHours: 10, travelClamped: false });
+
+    const next = await openJob(context);
+    await leftStint(db, next.id, excavator.id, 1503, 1510);
+    expect(await travel(next.id)).toMatchObject({ travelHours: 3, travelClamped: false, attention: [] });
   });
 
   test('a Machine and Implement still on site elsewhere arrive anyway, warning which Job still has them', async ({

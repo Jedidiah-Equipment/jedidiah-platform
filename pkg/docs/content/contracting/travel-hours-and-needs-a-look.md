@@ -2,9 +2,9 @@
 
 ## Travel Hours
 
-- Travel Hours are worked out when the Machine arrives: its arrival hours less its last departure hours on any Job.
-- A Machine with no earlier departure, or one moved by truck, has 0 travel.
-- When the arrival is below the Machine's last departure, Travel is set to 0 and the Machine is marked as needing a look.
+- Travel Hours are worked out when the Machine arrives: its arrival hours less the highest departure hours at or below that arrival on any Job.
+- Because Travel goes by the hours and not by when they were captured, loading an old Job after the fact works out its Travel from the departures before it, and leaves the Travel of later Jobs alone.
+- A Machine with no departure at or below the arrival, or one moved by truck, has 0 travel.
 - Editing the arrival works Travel out again, until management sets it by hand. Nothing recalculates Travel once it has been set by hand.
 - Travel is billed at the Machine's rate.
 

@@ -1,4 +1,4 @@
--- Travel on a clamped stint the Job has not yet Priced or Invoiced, unless set by hand, re-snapshotted as an arrival
+-- Travel on a clamped stint whose Job is not yet Priced or Invoiced, unless set by hand, re-snapshotted as an arrival
 -- snapshots it now: the arrival less the Machine's highest departure at or below it on any other stint, else 0.
 UPDATE "contracting"."machine_assignment" AS stint
 SET "travel_hours" = stint.arrival_hours - coalesce((

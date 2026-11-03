@@ -1,4 +1,4 @@
-import { onJobNote } from '@pkg/domain/contracting';
+import { machineDefaultDriverChoice, onJobNote } from '@pkg/domain/contracting';
 import { IconPlus } from '@tabler/icons-react-native';
 import { useStore } from '@tanstack/react-form';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -121,16 +121,11 @@ export default function AddMachineScreen() {
             <field.SearchSelectField
               disabled={!selected}
               label="Driver"
-              placeholder="Machine's usual driver"
+              placeholder={machineDefaultDriverChoice()}
               searchPlaceholder="Search drivers…"
               emptyMessage="No drivers match."
               options={[
-                {
-                  label: selected?.currentDriverName
-                    ? `Machine's usual driver · ${selected.currentDriverName}`
-                    : "Machine's usual driver",
-                  value: '',
-                },
+                { label: machineDefaultDriverChoice(selected?.currentDriverName), value: '' },
                 ...(drivers.data ?? []).map((driver) => ({ label: driver.name, value: driver.id })),
               ]}
             />

@@ -155,7 +155,7 @@ a Breakdown. Whether a towed unit is a Machine or an Implement is decided by whe
 meter.
 
 **Driver** is a non-login user record (the bay-operator pattern): drivers take instructions and
-never sign in. The Machine carries its current Driver, its **default Driver**; each Machine Assignment
+never sign in. The Machine carries its **default Driver**; each Machine Assignment
 snapshots its driver at start — defaulted from the Machine, overridable by the Foreman from the pre-saved list
 — so a driver's history is derivable from Assignments and survives reshuffles. Changing the default Driver
 from the phone also changes the Driver of the Machine's on-site Assignment unless the user opts out.

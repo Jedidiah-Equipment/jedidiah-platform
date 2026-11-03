@@ -1,4 +1,4 @@
-import { onJobNote } from '@pkg/domain/contracting';
+import { machineDefaultDriverChoice, onJobNote } from '@pkg/domain/contracting';
 import { emptyStringOr, requiredSelection, UUID } from '@pkg/schema';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
@@ -31,7 +31,7 @@ export function PlanMachineDialog({
   const options = useAssignmentOptions({
     enabled: open,
     noImplementLabel: 'None',
-    noDriverLabel: "Machine's current driver",
+    noDriverLabel: machineDefaultDriverChoice(),
   });
   const plan = useMutation(trpc.contractingJobs.assignments.add.mutationOptions(write.dialog));
   useResetOnOpen(plan, open);
@@ -64,7 +64,7 @@ export function PlanMachineDialog({
             {(field) => (
               <field.ComboboxField
                 label="Driver"
-                placeholder="Machine's current driver"
+                placeholder={machineDefaultDriverChoice()}
                 options={options.driverOptions}
               />
             )}

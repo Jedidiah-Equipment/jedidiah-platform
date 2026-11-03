@@ -1,5 +1,5 @@
 import { formatNumber } from '@pkg/domain';
-import { knownHoursSourceSuffix, opensWebJobs } from '@pkg/domain/contracting';
+import { DEFAULT_DRIVER_LABEL, knownHoursSourceSuffix, opensWebJobs } from '@pkg/domain/contracting';
 import type { Machine } from '@pkg/schema/contracting';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
@@ -159,7 +159,7 @@ function MachineForm({
                 <form.AppField name="currentDriverUserId">
                   {(field) => (
                     <field.ComboboxField
-                      label="Current driver"
+                      label={DEFAULT_DRIVER_LABEL}
                       disabled={!canEdit}
                       placeholder="Search drivers..."
                       emptyMessage="No drivers found."

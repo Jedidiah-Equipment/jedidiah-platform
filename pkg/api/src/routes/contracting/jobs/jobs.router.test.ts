@@ -10,6 +10,7 @@ import {
   createMeasureType,
   createWorkType,
   getJob,
+  getMachine,
   patchMachine,
 } from '@pkg/core/contracting';
 import { eq, user } from '@pkg/db';
@@ -230,6 +231,49 @@ test("serves the phone's Implement and Driver pickers, and a Machine's on-site J
       expect.objectContaining({ id: context.machine.id, onSiteJobNumber: context.ownJob.jobNumber }),
     ]),
   );
+});
+
+test("changes a Machine's default Driver from the phone, and its on-site stint's unless asked not to", async ({
+  context,
+}) => {
+  const { db, machine, otherMachine, otherJob, otherStint, stint } = context;
+  const stintDriver = async (id: string) =>
+    (await db.select().from(contractingMachineAssignments).where(eq(contractingMachineAssignments.id, id)))[0]
+      ?.driverUserId;
+  await expect(
+    context
+      .createCaller(contractingSession('foreman'))
+      .contractingFleet.machines.changeDriver({ machineId: machine.id, driverUserId: driverId, onSite: true }),
+  ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  const fleet = context.createCaller(contractingSession('contracting-manager')).contractingFleet.machines;
+
+  await expect(fleet.changeDriver({ machineId: machine.id, driverUserId: driverId, onSite: true })).resolves.toEqual({
+    onSite: null,
+  });
+  expect(await getMachine({ db, id: machine.id })).toMatchObject({ currentDriverUserId: driverId });
+  expect(await stintDriver(stint.id)).toBeNull();
+
+  await fleet.changeDriver({ machineId: otherMachine.id, driverUserId: driverId, onSite: false });
+  expect(await stintDriver(otherStint.id)).toBeNull();
+  await expect(
+    fleet.changeDriver({ machineId: otherMachine.id, driverUserId: driverId, onSite: true }),
+  ).resolves.toEqual({ onSite: { jobNumber: otherJob.jobNumber, refusal: null } });
+  expect(await stintDriver(otherStint.id)).toBe(driverId);
+
+  await db
+    .update(contractingJobs)
+    .set({
+      status: 'completed',
+      startDate: '2026-09-01',
+      endDate: '2026-09-02',
+      completedAt: new Date(),
+      completedByUserId: managerId,
+    })
+    .where(eq(contractingJobs.id, otherJob.id));
+  const refused = await fleet.changeDriver({ machineId: otherMachine.id, driverUserId: null, onSite: true });
+  expect(refused.onSite).toEqual({ jobNumber: otherJob.jobNumber, refusal: expect.any(String) });
+  expect(await getMachine({ db, id: otherMachine.id })).toMatchObject({ currentDriverUserId: null });
+  expect(await stintDriver(otherStint.id)).toBe(driverId);
 });
 
 test('enforces the Job queue role matrix and strips money from Foreman reads', async ({ context }) => {

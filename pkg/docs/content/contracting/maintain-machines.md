@@ -10,4 +10,11 @@
 8. To permanently withdraw a Machine, choose **Retire machine**, enter a **Retirement reason**, and choose **Retire**. Its history remains available, and it disappears from the active fleet and pickers. Retirement clears the Current driver and cannot be undone. A Machine in for a service cannot be retired until the service is closed.
 9. Use **Delete machine** only for a never-used entry. If linked history blocks deletion, retire it instead.
 
+## Change the Driver from the phone
+
+1. Open the Machine in the phone's **Machines** tab and choose **Change driver**.
+2. Pick the Machine's **Default Driver** (its **Current driver** on the web), or **No driver** to clear it. The default Driver is filled in each time the Machine is added to a Job.
+3. When the Machine is on site on a Job, **Also change the Driver on** that Job is on: the Machine's Assignment there takes the new Driver too. Turn it off to change only the default. If the Machine is on site on more than one Job, it is the Job it arrived on last.
+4. Choose **Save**. If that Job no longer allows its Driver to change, the default still changes and the sheet says why.
+
 Fleet changes require Contracting fleet management access. Other fleet readers can inspect details.

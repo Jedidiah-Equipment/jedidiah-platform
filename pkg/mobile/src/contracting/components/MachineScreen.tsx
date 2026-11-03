@@ -4,7 +4,7 @@ import type { FieldMachine, FleetHistoryRow } from '@pkg/schema/contracting';
 
 type BusyWith = { job: NonNullable<FieldMachine['busyOnJob']> | null; jobNumber: string };
 
-import { IconCalendarPlus, IconChevronRight, IconGauge } from '@tabler/icons-react-native';
+import { IconCalendarPlus, IconChevronRight, IconGauge, IconSteeringWheel } from '@tabler/icons-react-native';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { FlatList, Pressable, ScrollView, View } from 'react-native';
@@ -30,6 +30,7 @@ import { useSessionPermission } from '@/lib/auth-session';
 import { usePersistedState } from '@/lib/use-persisted-state';
 import { BreakdownIcon } from './BreakdownSubjectIcons';
 import { CategoryIcon } from './CategoryIcon';
+import { ChangeDriverSheet } from './ChangeDriverSheet';
 import { MachineKnownHours } from './MachineKnownHours';
 
 type MachineTab = 'details' | 'readings';
@@ -176,6 +177,8 @@ export default function MachineScreen() {
   const canReport = useSessionPermission('contracting_breakdown:report');
   const canBook = useSessionPermission('contracting_service:update');
   const [booking, setBooking] = useState(false);
+  const canChangeDriver = useSessionPermission('contracting_machine:update');
+  const [changingDriver, setChangingDriver] = useState(false);
   const canReadBreakdowns = useSessionPermission('contracting_breakdown:read');
   const breakdowns = useMachineBreakdowns(id);
   const canOpenJobs = useCanReadJobs();
@@ -254,6 +257,9 @@ export default function MachineScreen() {
               ) : null}
             </View>
           ) : null}
+          {canChangeDriver && machine ? (
+            <Button icon={IconSteeringWheel} title="Change driver" onPress={() => setChangingDriver(true)} />
+          ) : null}
           {machine ? (
             <>
               <SectionTitle>Service</SectionTitle>
@@ -282,6 +288,9 @@ export default function MachineScreen() {
         </ScrollView>
       )}
       {booking ? <BookServiceSheet machineId={id} onClose={() => setBooking(false)} /> : null}
+      {changingDriver && machine ? (
+        <ChangeDriverSheet machine={machine} onClose={() => setChangingDriver(false)} />
+      ) : null}
     </SafeAreaView>
   );
 }

@@ -99,6 +99,16 @@ export const MachinePatchInput = z
   })
   .strict();
 export type MachinePatchInput = z.infer<typeof MachinePatchInput>;
+/** A Machine's default Driver, and with `onSite` the Driver of the stint it is on site on now too. */
+export const MachineDriverChangeInput = z
+  .object({ machineId: UUID, driverUserId: AuthId.nullable(), onSite: z.boolean() })
+  .strict();
+export type MachineDriverChangeInput = z.infer<typeof MachineDriverChangeInput>;
+/** The Job whose on-site stint was asked to change, and why it kept its Driver; null when no stint was asked. */
+export const MachineDriverChangeResult = z.object({
+  onSite: z.object({ jobNumber: z.string(), refusal: z.string().nullable() }).nullable(),
+});
+export type MachineDriverChangeResult = z.infer<typeof MachineDriverChangeResult>;
 export const knownHoursSources = ['telematics', 'spot', 'job'] as const;
 export type KnownHoursSource = (typeof knownHoursSources)[number];
 const retirement = {

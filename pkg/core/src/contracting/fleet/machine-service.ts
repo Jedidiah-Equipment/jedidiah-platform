@@ -318,7 +318,7 @@ export async function patchMachine({
   actorUserId,
   input,
 }: {
-  db: Db;
+  db: Db | DatabaseTransaction;
   actorUserId: AuthId;
   input: MachinePatchInput;
 }) {

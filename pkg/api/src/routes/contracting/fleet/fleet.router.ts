@@ -1,4 +1,5 @@
 import {
+  changeMachineDriver,
   createCategory,
   createImplement,
   createMachine,
@@ -37,12 +38,14 @@ import {
   ImplementCreateInput,
   ImplementPatchInput,
   MachineCreateInput,
+  MachineDriverChangeInput,
+  MachineDriverChangeResult,
   MachineListInput,
   MachinePatchInput,
 } from '@pkg/schema/contracting';
 import { mapCoreErrors } from '../../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../../trpc/init.js';
-import { fleetErrorFamily } from '../contracting-error-families.js';
+import { fleetErrorFamily, jobErrorFamily } from '../contracting-error-families.js';
 
 export const contractingFleetRouter = router({
   history: router({
@@ -98,6 +101,16 @@ export const contractingFleetRouter = router({
       .input(MachinePatchInput)
       .mutation(({ ctx, input }) =>
         mapCoreErrors(() => patchMachine({ db: ctx.db, actorUserId: ctx.session.user.id, input }), fleetErrorFamily),
+      ),
+    changeDriver: authorizedProcedure('contracting_machine:update')
+      .input(MachineDriverChangeInput)
+      .output(MachineDriverChangeResult)
+      .mutation(({ ctx, input }) =>
+        mapCoreErrors(
+          () => changeMachineDriver({ db: ctx.db, actor: ctx.access, input }),
+          fleetErrorFamily,
+          jobErrorFamily,
+        ),
       ),
     retire: authorizedProcedure('contracting_machine:update')
       .input(FleetRetireInput)

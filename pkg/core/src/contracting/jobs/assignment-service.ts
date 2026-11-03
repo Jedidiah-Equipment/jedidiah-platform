@@ -6,7 +6,13 @@ import type { AssignmentPatchInput, AssignmentPlanInput } from '@pkg/schema/cont
 import { eq } from 'drizzle-orm';
 import { recordAuditCreate, recordAuditDelete } from '../../audit/audit-writer.js';
 import { assignmentDescriptor } from './job-audit.js';
-import { assertAssignmentState, assertJobAction, assertStintAction, JobError, judgeStintAction } from './job-errors.js';
+import {
+  assertAssignmentState,
+  assertJobAction,
+  assertStintVerdict,
+  JobError,
+  judgeStintAction,
+} from './job-errors.js';
 import { lockAssignment, lockJobFor, lockStintFor } from './job-lock.js';
 import { jobTransaction, writeAssignment } from './job-write.js';
 
@@ -56,32 +62,33 @@ export async function patchAssignment({
   input: AssignmentPatchInput;
 }): Promise<void> {
   await jobTransaction(db, async (tx) => {
-    const { job, stint, machineCode } = await lockAssignment(tx, input.id);
-    const changesResources = input.implementId !== undefined || input.driverUserId !== undefined;
-    if (changesResources) assertStintAction('changeResources', job, stint, actor);
-    else assertJobAction('assign', job, actor);
-    await writeAssignment(tx, actor.userId, machineCode, input.id, (before) => ({
-      implementId: input.implementId === undefined ? before.implementId : input.implementId,
-      driverUserId: input.driverUserId === undefined ? before.driverUserId : input.driverUserId,
-    }));
+    const { id, ...resources } = input;
+    if (resources.implementId === undefined && resources.driverUserId === undefined) {
+      assertJobAction('assign', (await lockAssignment(tx, id)).job, actor);
+      return;
+    }
+    assertStintVerdict('changeResources', await changeStintResources(tx, actor, id, resources));
   });
 }
 
 /**
- * Changes a stint's Driver inside the caller's transaction when its `changeResources` verdict allows, returning the
- * refusal sentence instead of throwing so the caller's other writes still land.
+ * Changes a stint's Implement and Driver inside the caller's transaction when its `changeResources` verdict allows (an
+ * omitted one keeps its value), and returns that verdict, so a caller with other writes may let them land on a refusal.
  */
-export async function changeStintDriver(
+export async function changeStintResources(
   tx: DatabaseTransaction,
   actor: JobActor,
   id: string,
-  driverUserId: string | null,
-): Promise<string | null> {
+  resources: Omit<AssignmentPatchInput, 'id'>,
+) {
   const { job, stint, machineCode } = await lockAssignment(tx, id);
   const verdict = judgeStintAction('changeResources', job, stint, actor);
-  if (!verdict.allowed) return verdict.message;
-  await writeAssignment(tx, actor.userId, machineCode, id, () => ({ driverUserId }));
-  return null;
+  if (verdict.allowed)
+    await writeAssignment(tx, actor.userId, machineCode, id, (before) => ({
+      implementId: resources.implementId === undefined ? before.implementId : resources.implementId,
+      driverUserId: resources.driverUserId === undefined ? before.driverUserId : resources.driverUserId,
+    }));
+  return verdict;
 }
 
 /** Deletes a planned Machine Assignment whose Job the caller has already locked and checked. */

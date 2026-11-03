@@ -28,6 +28,9 @@ export const invoicedRange = (columnFilters: ColumnFiltersState): Pick<JobListIn
 
 export type InvoicingStage = (typeof invoicingStages)[number];
 
+export const isInvoicingStage = (queue: JobQueue | undefined): queue is InvoicingStage =>
+  (invoicingStages as readonly (JobQueue | undefined)[]).includes(queue);
+
 /** The Dashboard opens Invoicing on one stage this way; the invoiced range goes too, or it would hide the waiting Jobs. */
 export const focusOnInvoicingStage = (columnFilters: ColumnFiltersState, stage: InvoicingStage) =>
   focusOnStage(

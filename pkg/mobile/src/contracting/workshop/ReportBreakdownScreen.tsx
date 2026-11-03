@@ -3,6 +3,7 @@ import {
   breakdownSubjectKindLabels,
   breakdownUrgencyColorClassNames,
   breakdownUrgencyLabels,
+  onJobNote,
 } from '@pkg/domain/contracting';
 import {
   BREAKDOWN_MAX_PHOTOS,
@@ -247,9 +248,7 @@ export default function ReportBreakdownScreen() {
                 ? (fleet.data ?? []).map((machine) => ({
                     value: machine.id,
                     label: machine.code,
-                    description: machine.onSiteJobNumber
-                      ? `${machine.categoryName} · On Job ${machine.onSiteJobNumber}`
-                      : machine.categoryName,
+                    description: [machine.categoryName, onJobNote(machine)].filter(Boolean).join(' · '),
                     icon: <CategoryIcon icon={machine.categoryIcon} colour={machine.categoryColour} size={16} />,
                   }))
                 : (implementsQuery.data ?? []).map(implementOption)

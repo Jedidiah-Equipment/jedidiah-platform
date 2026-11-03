@@ -1,3 +1,4 @@
+import { onJobNote } from '@pkg/domain/contracting';
 import type { FieldImplement } from '@pkg/schema/contracting';
 import type { SearchSelectFieldOption } from '@/components/form/fields/SearchSelectField';
 import { CategoryIcon } from './CategoryIcon';
@@ -7,9 +8,7 @@ export function implementOption(implement: FieldImplement): SearchSelectFieldOpt
   return {
     value: implement.id,
     label: implement.code,
-    description: implement.onSiteJobNumber
-      ? `${implement.categoryName} · On Job ${implement.onSiteJobNumber}`
-      : implement.categoryName,
+    description: [implement.categoryName, onJobNote(implement)].filter(Boolean).join(' · '),
     icon: <CategoryIcon icon={implement.categoryIcon} colour={implement.categoryColour} size={16} />,
   };
 }

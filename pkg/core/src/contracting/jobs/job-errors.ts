@@ -101,6 +101,16 @@ export const judgeStintAction = (
     state: assignmentState(stint),
   });
 
+/** Throws an Assignment Action's refusal as the error its reason maps to. */
+export function assertStintVerdict(action: AssignmentActionName, verdict: ReturnType<typeof judgeStintAction>) {
+  if (verdict.allowed) return;
+  if (verdict.reason === 'wrong-state') throw wrongStatus(verdict.message);
+  throw new JobError(refusalCodes[verdict.reason], verdict.message, {
+    action: assignmentActionJobAction[action],
+    reason: verdict.reason,
+  });
+}
+
 /** Refuses unless this actor may take this Assignment Action on this stint now. */
 export function assertStintAction(
   action: AssignmentActionName,
@@ -108,11 +118,7 @@ export function assertStintAction(
   stint: StintStateRow,
   actor: JobActor,
 ) {
-  const jobAction = assignmentActionJobAction[action];
-  const verdict = judgeStintAction(action, job, stint, actor);
-  if (verdict.allowed) return;
-  if (verdict.reason === 'wrong-state') throw wrongStatus(verdict.message);
-  throw new JobError(refusalCodes[verdict.reason], verdict.message, { action: jobAction, reason: verdict.reason });
+  assertStintVerdict(action, judgeStintAction(action, job, stint, actor));
 }
 
 /** The state half alone, for a write whose Job Action is something else (completing a Job removes its planned stints). */

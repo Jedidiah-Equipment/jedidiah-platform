@@ -116,6 +116,10 @@ export const machineBusyWith = <TJob extends { jobNumber: string }>(machine: {
       ? { job: null, jobNumber: machine.onSiteJobNumber }
       : null;
 
+/** A picker row's note for a Machine or Implement on site on a Job: "On Job CJOB-00123", or null in the yard. */
+export const onJobNote = ({ onSiteJobNumber }: { onSiteJobNumber: string | null }) =>
+  onSiteJobNumber ? `On Job ${onSiteJobNumber}` : null;
+
 export const serviceDueStatusLabels: Record<ServiceDueStatus, string> = {
   unknown: 'Service due unknown',
   ok: 'Service on track',

@@ -29,6 +29,9 @@ export const StintHoursCaptureInput = z
       ctx.addIssue({ code: 'custom', path: ['stintOverrides'], message: 'Only an arrival can change a stint.' });
   });
 export type StintHoursCaptureInput = z.infer<typeof StintHoursCaptureInput>;
+/** A capture that landed, with a sentence for each of the arriving Machine and Implement still on site elsewhere. */
+export const StintHoursCaptureResult = z.object({ warnings: z.string().array() });
+export type StintHoursCaptureResult = z.infer<typeof StintHoursCaptureResult>;
 
 export const StintHoursEditInput = z
   .object({

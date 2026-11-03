@@ -28,6 +28,7 @@ import { TextInput } from '@/components/ui/text-input';
 import { useVoiceSession } from '@/components/voice/use-voice-session';
 import { VoiceTextArea } from '@/components/voice/VoiceTextArea';
 import { ReadAtField, type ReadAtFieldHandle } from '@/contracting/components/ReadAtField';
+import { useInvalidateRoots } from '@/contracting/lib/use-invalidate-roots';
 import { recordReadingCaptured } from '@/contracting/observability';
 import { type AttemptIdentity, captureAttempt, captureAttemptPayload } from '@/contracting/readings/capture-attempt';
 import { CAPTURE_FAILED, captureReading } from '@/contracting/readings/reading-upload';
@@ -48,6 +49,7 @@ export default function MachineCaptureScreen() {
   const latestQuery = useLatestReading(machineId);
   const queryClient = useQueryClient();
   const trpc = useTRPC();
+  const invalidate = useInvalidateRoots();
   const canCapture = useSessionPermission('contracting_reading:capture');
   const [steps, dispatch] = useReducer(captureStepsReducer, CAPTURE_STEPS_START);
   const scroll = useRef<ScrollViewInstance>(null);
@@ -95,8 +97,7 @@ export default function MachineCaptureScreen() {
       recordReadingCaptured({ ...captured, refused: null });
       voice.reportSaved();
       // The screens underneath stay mounted, so they refetch in place: the form leaves without waiting on them.
-      void queryClient.invalidateQueries({ queryKey: trpc.contractingReadings.pathKey() });
-      void queryClient.invalidateQueries({ queryKey: trpc.contractingJobs.pathKey() });
+      void invalidate('contractingReadings', 'contractingJobs');
       if (navigation.isFocused()) leave();
     }, CAPTURE_FAILED);
   }

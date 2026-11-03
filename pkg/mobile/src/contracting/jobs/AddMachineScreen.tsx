@@ -1,3 +1,4 @@
+import { onJobNote } from '@pkg/domain/contracting';
 import { IconPlus } from '@tabler/icons-react-native';
 import { useStore } from '@tanstack/react-form';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -85,21 +86,18 @@ export default function AddMachineScreen() {
               placeholder="Choose a Machine"
               searchPlaceholder="Search by code, make, model, or category…"
               emptyMessage="No Machines match."
-              options={machines.map((machine) => {
-                const onJob = machine.onSiteJobNumber;
-                return {
-                  value: machine.id,
-                  label: machine.code,
-                  description: [
-                    [machine.make, machine.model].filter(Boolean).join(' '),
-                    machine.categoryName,
-                    onJob ? `On Job ${onJob}` : null,
-                  ]
-                    .filter(Boolean)
-                    .join(' · '),
-                  icon: <CategoryIcon icon={machine.categoryIcon} colour={machine.categoryColour} size={16} />,
-                };
-              })}
+              options={machines.map((machine) => ({
+                value: machine.id,
+                label: machine.code,
+                description: [
+                  [machine.make, machine.model].filter(Boolean).join(' '),
+                  machine.categoryName,
+                  onJobNote(machine),
+                ]
+                  .filter(Boolean)
+                  .join(' · '),
+                icon: <CategoryIcon icon={machine.categoryIcon} colour={machine.categoryColour} size={16} />,
+              }))}
             />
           )}
         </form.AppField>

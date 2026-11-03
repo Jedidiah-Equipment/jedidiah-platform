@@ -1,8 +1,9 @@
 import { machinesDueForService, withRecordMechanic } from '@pkg/domain/contracting';
 import type { ServiceRecord, ServiceRecordStatus } from '@pkg/schema/contracting';
-import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
 import type { DecorateMutationProcedure, ResolverDef } from '@trpc/tanstack-react-query';
 import { fieldQuery } from '@/contracting/lib/field-query';
+import { useInvalidateRoots } from '@/contracting/lib/use-invalidate-roots';
 import { useMechanics } from '@/contracting/lib/use-mechanics';
 import { useFleet } from '@/contracting/readings/use-fleet';
 import { useSessionPermission } from '@/lib/auth-session';
@@ -84,15 +85,10 @@ export function useServiceMutation<TDef extends ResolverDef>(
   select: (services: ServiceRoutes) => DecorateMutationProcedure<TDef>,
 ) {
   const trpc = useTRPC();
-  const queryClient = useQueryClient();
+  const invalidate = useInvalidateRoots();
   return useMutation(
     select(trpc.contractingServices).mutationOptions({
-      onSuccess: () =>
-        Promise.all(
-          [trpc.contractingServices, trpc.contractingReadings, trpc.contractingFleet].map((root) =>
-            queryClient.invalidateQueries({ queryKey: root.pathKey() }),
-          ),
-        ),
+      onSuccess: () => invalidate('contractingServices', 'contractingReadings', 'contractingFleet'),
     }),
   );
 }

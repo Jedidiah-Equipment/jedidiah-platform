@@ -61,8 +61,7 @@ async function travelSnapshot(tx: DatabaseTransaction, stint: StintRow, arrivalH
     )
     .orderBy(desc(contractingMachineAssignments.departureHours))
     .limit(1);
-  const { travelHours, clamped } = snapshotTravelHours(arrivalHours, previous?.departureHours ?? null);
-  return { travelHours, travelClamped: clamped };
+  return { travelHours: snapshotTravelHours(arrivalHours, previous?.departureHours ?? null) };
 }
 
 /** The Implement and Driver an arrival brings: the phone's overrides, else what the stint planned. */
@@ -251,7 +250,6 @@ export async function setTravelHours({
     assertStintAction('setTravel', job, stint, actor);
     await writeAssignment(tx, actor.userId, machineCode, stint.id, () => ({
       travelHours: input.travelHours,
-      travelClamped: false,
       travelSetAt: new Date(),
       travelSetByUserId: actor.userId,
     }));

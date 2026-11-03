@@ -61,15 +61,12 @@ export function judgeStintHoursEdit(
   return judgeStintHours({ arrival: edit.arrivalHours, departure: edit.departureHours });
 }
 
-/** Travel as the arrival snapshots it: the arrival less the departure it is measured against, clamped at zero. */
-export function snapshotTravelHours(
-  arrivalHours: number,
-  previousDepartureHours: number | null,
-): { travelHours: number; clamped: boolean } {
-  if (previousDepartureHours === null) return { travelHours: 0, clamped: false };
-  const difference = round1(arrivalHours - previousDepartureHours);
-  return difference < 0 ? { travelHours: 0, clamped: true } : { travelHours: difference, clamped: false };
-}
+/**
+ * Travel as the arrival snapshots it: the arrival less the Machine's highest departure at or below it, and zero when
+ * there is none.
+ */
+export const snapshotTravelHours = (arrivalHours: number, departureBelowHours: number | null) =>
+  departureBelowHours === null ? 0 : round1(arrivalHours - departureBelowHours);
 
 /**
  * What an arrival says when its Machine or Implement is still on site on another Job; the arrival saves regardless:

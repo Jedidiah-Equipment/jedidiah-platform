@@ -41,7 +41,6 @@ export const assignmentAttention = sql<number>`(
       (summary_assignment.travel_hours > contracting.settings.travel_flag_threshold_hours
         and summary_assignment.travel_set_at is null
         and ${undismissed('travel-over-threshold')})
-      or (summary_assignment.travel_clamped and ${undismissed('travel-clamped')})
       or ((abs(summary_assignment.arrival_hours - summary_assignment.arrival_telematics_hours)
           > contracting.settings.john_deere_difference_threshold_hours
         or abs(summary_assignment.departure_hours - summary_assignment.departure_telematics_hours)
@@ -90,7 +89,6 @@ const reading = (hours: number | null, telematicsHours: number | null, telematic
 /** What the kinds read off a stored Machine Assignment. */
 export const attentionStint = (row: AssignmentRow): AttentionStint => ({
   travelHours: row.travelHours,
-  travelClamped: row.travelClamped,
   travelSet: row.travelSetAt !== null,
   arrival: reading(row.arrivalHours, row.arrivalTelematicsHours, row.arrivalTelematicsAt),
   departure: reading(row.departureHours, row.departureTelematicsHours, row.departureTelematicsAt),

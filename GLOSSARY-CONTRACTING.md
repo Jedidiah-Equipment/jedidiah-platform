@@ -219,8 +219,8 @@ Deere Operations Center too. The Connection and its sign-in keep John Deere's na
 automatic reading, JDLink reading, API reading.
 
 **Assignment Attention** is everything that flags a Machine Assignment for a person, at one level, **needs a
-look** (amber): Travel Hours over the Travel Flag threshold, Travel clamped from a negative, or a John Deere
-difference over its threshold. Travel set by hand has been looked at, so it clears both Travel kinds. It is counted
+look** (amber): Travel Hours over the Travel Flag threshold, or a John Deere difference over its threshold.
+Travel set by hand has been looked at, so it clears the Travel kind. It is counted
 on the Jobs list and the Dashboard and filtered for, borders nothing red, and blocks nothing. Management may
 **dismiss** a kind that is right as it stands: dismissed for everyone, it counts nowhere and shows faded on the
 Machine with who dismissed it, until a fact it reads (Travel, or the Job Hours and their John Deere snapshot)

@@ -176,14 +176,13 @@ describe('0185 job hours on the assignment', () => {
         arrivalByUserId: string;
         arrivalComment: string | null;
         travelHours: string;
-        travelClamped: boolean;
         travelSetByUserId: string | null;
         hoursAmendedByUserId: string | null;
         hoursAmendmentReason: string | null;
       }[]
     >`select id, arrival_hours as "arrivalHours", departure_hours as "departureHours", arrival_at as "arrivalAt",
         arrival_by_user_id as "arrivalByUserId", arrival_comment as "arrivalComment", travel_hours as "travelHours",
-        travel_clamped as "travelClamped", travel_set_by_user_id as "travelSetByUserId",
+        travel_set_by_user_id as "travelSetByUserId",
         hours_amended_by_user_id as "hoursAmendedByUserId", hours_amendment_reason as "hoursAmendmentReason"
       from contracting.machine_assignment order by id`;
     const billable = Object.fromEntries(
@@ -206,7 +205,6 @@ describe('0185 job hours on the assignment', () => {
       arrivalAt: new Date(at(2)),
       arrivalByUserId: 'u1',
       arrivalComment: 'On the lowbed',
-      travelClamped: false,
       travelSetByUserId: null,
       hoursAmendedByUserId: 'u2',
       hoursAmendmentReason: 'Misread',

@@ -13,10 +13,9 @@
 A Machine on a Job is marked amber when:
 
 - Its Travel Hours are over the Travel Flag threshold in [Settings](./maintain-contracting-settings).
-- Its Travel was set to 0 because the arrival was below the last departure.
 - Its hours are further from JD Link's reading than the JD Link difference threshold.
 
-Travel set by hand has been looked at, so it clears both Travel reasons. The marks show on the Machine, the Job Sheet, pricing and the internal Job Card, and the Jobs list and Dashboard count them. None of them stops the Job: the only thing that stops sign-off is a Machine still on site.
+Travel set by hand has been looked at, so it clears the Travel reason. The marks show on the Machine, the Job Sheet, pricing and the internal Job Card, and the Jobs list and Dashboard count them. None of them stops the Job: the only thing that stops sign-off is a Machine still on site.
 
 ## Dismissed reasons
 

@@ -1,7 +1,6 @@
 import { assignmentAttentionKinds, discountKinds, jobStatuses, rateBases } from '@pkg/schema/contracting';
 import { sql } from 'drizzle-orm';
 import {
-  boolean,
   check,
   date,
   foreignKey,
@@ -140,7 +139,6 @@ export const contractingMachineAssignments = contractingSchema.table(
     departureTelematicsAt: timestamp('departure_telematics_at', { withTimezone: true }),
     /** Snapshot at arrival, hand-set after; null until the Machine arrives. */
     travelHours: hours('travel_hours'),
-    travelClamped: boolean('travel_clamped').notNull().default(false),
     travelSetAt: timestamp('travel_set_at', { withTimezone: true }),
     travelSetByUserId: text('travel_set_by_user_id').references(() => user.id),
     /** The latest management edit of either reading, for the Job Card's amended marker. */

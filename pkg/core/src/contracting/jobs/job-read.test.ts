@@ -79,13 +79,6 @@ test('lists only the Jobs needing a look when asked, the SQL agreeing with the d
   const over = await newJob(context);
   // 10 h of Travel after the clean Job's departure: over the default 4 h threshold.
   await leftStint(db, over.id, excavator.id, 120, 125);
-  const clamped = await newJob(context);
-  // A stint holding a clamp from an earlier snapshot.
-  const { id: clampedStint } = await leftStint(db, clamped.id, excavator.id, 125, 128);
-  await db
-    .update(contractingMachineAssignments)
-    .set({ travelHours: 0, travelClamped: true })
-    .where(eq(contractingMachineAssignments.id, clampedStint));
   const deere = await newJob(context);
   const { id: deereStint } = await leftStint(db, deere.id, tipper.id, 50, 60);
   await db
@@ -104,7 +97,6 @@ test('lists only the Jobs needing a look when asked, the SQL agreeing with the d
   const kinds = async (jobId: string) => (await getJob({ db, id: jobId })).assignments.flatMap((a) => a.attention);
   expect(await kinds(clean.id)).toEqual([]);
   expect(await kinds(over.id)).toEqual(['travel-over-threshold']);
-  expect(await kinds(clamped.id)).toEqual(['travel-clamped']);
   expect(await kinds(deere.id)).toEqual(['john-deere-difference']);
   expect(await kinds(handSet.id)).toEqual([]);
 
@@ -112,9 +104,9 @@ test('lists only the Jobs needing a look when asked, the SQL agreeing with the d
     (
       await listJobs({ db, actor, input: JobListInput.parse({ queues: ['looks-finished'], needsALook: true }) })
     ).items.map((item) => item.id);
-  expect(new Set(await listed(admin))).toEqual(new Set([over.id, clamped.id, deere.id]));
+  expect(new Set(await listed(admin))).toEqual(new Set([over.id, deere.id]));
   // Still reader-scoped: the Foreman's own Jobs only.
-  expect(new Set(await listed(foreman))).toEqual(new Set([over.id, clamped.id]));
+  expect(await listed(foreman)).toEqual([over.id]);
 
   // Judged against the current thresholds: 10 h of Travel is not over 12 h, nor a 20 h difference over 25 h.
   await updateContractingSettings({
@@ -126,7 +118,7 @@ test('lists only the Jobs needing a look when asked, the SQL agreeing with the d
       johnDeereDifferenceThresholdHours: 25,
     },
   });
-  expect(await listed(admin)).toEqual([clamped.id]);
+  expect(await listed(admin)).toEqual([]);
 });
 
 test('lists only the Jobs a Machine has an Assignment on when asked, in any state and any queue', async ({

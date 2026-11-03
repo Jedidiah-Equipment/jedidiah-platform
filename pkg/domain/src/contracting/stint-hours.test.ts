@@ -8,7 +8,6 @@ import {
   johnDeereLine,
   judgeStintHours,
   judgeStintHoursEdit,
-  snapshotTravelHours,
 } from './stint-hours.js';
 
 describe('judgeStintHours', () => {
@@ -61,14 +60,6 @@ describe('judgeStintHoursEdit', () => {
     expect(edit(12, false)).toBe('contracting_job.departure_not_editable');
     expect(edit(9, true)).toBe('contracting_job.departure_before_arrival');
     expect(edit(null, false)).toBeNull();
-  });
-});
-
-describe('snapshotTravelHours', () => {
-  it('is the arrival less the previous departure, clamped at zero, and zero for a first arrival', () => {
-    expect(snapshotTravelHours(4486, 4480)).toEqual({ travelHours: 6, clamped: false });
-    expect(snapshotTravelHours(4480, 4512)).toEqual({ travelHours: 0, clamped: true });
-    expect(snapshotTravelHours(4480, null)).toEqual({ travelHours: 0, clamped: false });
   });
 });
 

@@ -13,19 +13,15 @@ const thresholds = { travelFlagThresholdHours: 4, johnDeereDifferenceThresholdHo
 const at = '2026-10-28T12:05:00Z';
 const stint = {
   travelHours: 2,
-  travelClamped: false,
   travelSet: false,
   arrival: { hours: 4480, telematics: null },
   departure: null,
 };
 
 describe('assignment attention', () => {
-  it('needs a look for Travel over the threshold, Travel clamped, or Job hours far from John Deere', () => {
+  it('needs a look for Travel over the threshold, or Job hours far from John Deere', () => {
     expect(stintAttentionKinds(stint, thresholds)).toEqual([]);
     expect(stintAttentionKinds({ ...stint, travelHours: 6 }, thresholds)).toEqual(['travel-over-threshold']);
-    expect(stintAttentionKinds({ ...stint, travelHours: 0, travelClamped: true }, thresholds)).toEqual([
-      'travel-clamped',
-    ]);
     const farFromDeere = { ...stint, arrival: { hours: 4480, telematics: { hours: 4512, at } } };
     expect(stintAttentionKinds(farFromDeere, thresholds)).toEqual(['john-deere-difference']);
     expect(assignmentAttentionSentence('john-deere-difference', farFromDeere, thresholds)).toBe(
@@ -36,7 +32,7 @@ describe('assignment attention', () => {
     );
   });
 
-  it('clears both Travel kinds once management sets Travel by hand', () => {
+  it('clears the Travel kind once management sets Travel by hand', () => {
     expect(stintAttentionKinds({ ...stint, travelHours: 6, travelSet: true }, thresholds)).toEqual([]);
   });
 
@@ -48,7 +44,7 @@ describe('assignment attention', () => {
   it('counts the stints needing a look, not their kinds', () => {
     expect(
       jobNeedsALookCount([
-        { attention: ['travel-clamped', 'john-deere-difference'] },
+        { attention: ['travel-over-threshold', 'john-deere-difference'] },
         { attention: [] },
         { attention: ['travel-over-threshold'] },
       ]),
@@ -79,7 +75,6 @@ describe('assignment attention', () => {
   it('re-arms a dismissal only when a fact its kind reads changes', () => {
     const facts = {
       travelHours: 6,
-      travelClamped: false,
       arrival: { hours: 4480, telematics: { hours: 4512, at } },
       departure: { hours: 4500, telematics: null },
     };
@@ -89,11 +84,8 @@ describe('assignment attention', () => {
       'john-deere-difference',
     ]);
     expect(rearmedAttentionKinds(facts, { ...facts, travelHours: 7 })).toEqual(['travel-over-threshold']);
-    // A moved arrival is a new comparison and, while Travel is clamped, a new reason for the clamp.
+    // A moved arrival is a new comparison with John Deere.
     const movedArrival = { hours: 4470, telematics: facts.arrival.telematics };
-    expect(rearmedAttentionKinds(facts, { ...facts, arrival: movedArrival, travelClamped: true })).toEqual([
-      'travel-clamped',
-      'john-deere-difference',
-    ]);
+    expect(rearmedAttentionKinds(facts, { ...facts, arrival: movedArrival })).toEqual(['john-deere-difference']);
   });
 });

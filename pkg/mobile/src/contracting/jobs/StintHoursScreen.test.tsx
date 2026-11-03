@@ -46,7 +46,12 @@ vi.mock('@/contracting/components/StintOverrideCard', () => ({
 vi.mock('@/contracting/readings/use-fleet', () => ({
   useLatestTelematics: () => ({ data: { hours: 4512, at: '2026-10-28T12:05:00.000Z' } }),
 }));
-const writes = vi.hoisted(() => ({ capture: vi.fn(async () => null), edit: vi.fn(async () => null) }));
+const writes = vi.hoisted(() => ({
+  capture: vi.fn(async (): Promise<{ warnings: string[] }> => ({ warnings: [] })),
+  edit: vi.fn(async () => null),
+}));
+const showToast = vi.hoisted(() => vi.fn());
+vi.mock('@/components/ui/toast', () => ({ useAppToast: () => showToast }));
 const job = vi.hoisted(() => ({ current: {} as Record<string, unknown> }));
 vi.mock('./use-jobs', () => ({
   useJob: () => ({ data: job.current, gone: false }),
@@ -106,6 +111,16 @@ test('a departure shows John Deere, refuses one below the arrival and warns far 
   });
 });
 
+test('an arrival saves and then warns that the Machine is still on site on another Job', async () => {
+  const warning = "JD8R-1 is also on site on CJOB-00123 — its departure there hasn't been captured.";
+  writes.capture.mockResolvedValueOnce({ warnings: [warning] });
+  const renderer = await mount({ role: 'arrival' }, 'active', { ...stint, arrival: null });
+  await act(async () => input(renderer, 'Arrival hours')?.props.onChangeText('4400'));
+  await act(async () => saveButton(renderer).props.onPress());
+  expect(writes.capture).toHaveBeenCalledWith(expect.objectContaining({ role: 'arrival', hours: 4400 }));
+  expect(showToast).toHaveBeenCalledWith('warning', warning);
+});
+
 test('editing hours on a Completed Job asks for a reason before it saves', async () => {
   const renderer = await mount({ mode: 'edit' }, 'completed', { ...stint, departure: reading(4500) });
   const reason = input(renderer, 'Reason');
@@ -125,11 +140,11 @@ test.each([
     TRPCClientError.from({
       error: {
         code: -32009,
-        message: 'JD8R-1 is already on site on another Job.',
-        data: { code: 'CONFLICT', appCode: 'contracting_job.machine_on_site' },
+        message: 'This Machine has already arrived.',
+        data: { code: 'CONFLICT', appCode: 'contracting_job.stint_not_planned' },
       },
     }),
-    'JD8R-1 is already on site on another Job.',
+    'This Machine has already arrived.',
   ],
 ])('a save that fails because %s says so', async (_label, failure, sentence) => {
   writes.capture.mockRejectedValueOnce(failure);

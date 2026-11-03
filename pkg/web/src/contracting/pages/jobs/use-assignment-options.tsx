@@ -10,28 +10,23 @@ export function useAssignmentOptions({
   stint = null,
   noImplementLabel,
   noDriverLabel,
-  freeImplementsOnly = false,
 }: {
   enabled: boolean;
   /** Its Implement and Driver stay listed even when the pick lists no longer offer them. */
   stint?: Pick<Assignment, 'implementId' | 'implementCode' | 'driverUserId' | 'driverName'> | null;
   noImplementLabel: string;
   noDriverLabel: string;
-  /** Hide Implements on site on another Job; the stint's own Implement stays. */
-  freeImplementsOnly?: boolean;
 }) {
   const trpc = useTRPC();
   const implementsQuery = useQuery(trpc.contractingJobs.field.implements.queryOptions(undefined, { enabled }));
   const driversQuery = useQuery(trpc.contractingJobs.field.drivers.queryOptions(undefined, { enabled }));
   const implementOptions: SearchableComboboxOption[] = [
     { value: '', label: noImplementLabel },
-    ...(implementsQuery.data ?? [])
-      .filter((entry) => !freeImplementsOnly || !entry.onSiteJobNumber || entry.id === stint?.implementId)
-      .map((entry) => ({
-        value: entry.id,
-        label: entry.code,
-        icon: <CategoryIcon icon={entry.categoryIcon} colour={entry.categoryColour} size={14} />,
-      })),
+    ...(implementsQuery.data ?? []).map((entry) => ({
+      value: entry.id,
+      label: entry.onSiteJobNumber ? `${entry.code} · On Job ${entry.onSiteJobNumber}` : entry.code,
+      icon: <CategoryIcon icon={entry.categoryIcon} colour={entry.categoryColour} size={14} />,
+    })),
   ];
   if (stint?.implementId && stint.implementCode && !implementOptions.some((entry) => entry.value === stint.implementId))
     implementOptions.push({ value: stint.implementId, label: stint.implementCode });

@@ -13,7 +13,7 @@ import { type BreakdownSubjectRef, BreakdownSummary, unsolvedBreakdownStatuses }
 import { and, asc, eq, getTableColumns, inArray, or, type SQL, type SQLWrapper, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { DbOrTx } from '../jobs/job-load.js';
-import { jobNumberText, stintOnSite } from '../jobs/job-sql.js';
+import { jobNumberText, latestArrivalFirst, stintOnSite } from '../jobs/job-sql.js';
 import { BreakdownError } from './breakdown-errors.js';
 
 /** A Breakdown's columns the Job rule reads, on the table or on an alias of it. */
@@ -35,6 +35,7 @@ const onSiteJobIdOf = (breakdown: BreakdownColumns) => sql<string | null>`(
     and (${breakdownStint.machineId} = ${breakdown.machineId}
       or ${breakdownStint.implementId} = ${breakdown.implementId})
     and ${stintOnSite(breakdownStint)}
+  order by ${latestArrivalFirst(breakdownStint)}
   limit 1
 )`;
 

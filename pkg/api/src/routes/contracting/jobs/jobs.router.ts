@@ -143,12 +143,14 @@ export const createContractingJobsRouter = (push: ContractingPushScheduler) =>
         ),
       captureHours: authorizedProcedure('contracting_reading:capture')
         .input(StintHoursCaptureInput)
-        .mutation(async ({ ctx, input }) =>
-          scheduleServiceDueSoon(
-            push,
-            await mapCoreErrors(() => captureStintHours({ db: ctx.db, actor: ctx.access, input }), jobErrorFamily),
-          ),
-        ),
+        .mutation(async ({ ctx, input }) => {
+          const capture = await mapCoreErrors(
+            () => captureStintHours({ db: ctx.db, actor: ctx.access, input }),
+            jobErrorFamily,
+          );
+          scheduleServiceDueSoon(push, capture);
+          return { warnings: capture.warnings };
+        }),
       editHours: authorizedProcedure(['contracting_reading:capture', 'contracting_reading:update'])
         .input(StintHoursEditInput)
         .mutation(async ({ ctx, input }) =>

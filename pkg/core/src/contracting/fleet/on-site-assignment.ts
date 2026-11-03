@@ -2,7 +2,7 @@ import type { DatabaseTransaction, Db } from '@pkg/db';
 import { contractingJobs, contractingMachineAssignments } from '@pkg/db/contracting';
 import type { BreakdownSubjectRef } from '@pkg/schema/contracting';
 import { and, eq } from 'drizzle-orm';
-import { stintOnSite } from '../jobs/job-sql.js';
+import { latestArrivalFirst, stintOnSite } from '../jobs/job-sql.js';
 
 export type OnSiteAssignment = {
   stintId: string;
@@ -16,7 +16,7 @@ export type OnSiteAssignment = {
 export const stintSubjectColumn = (kind: BreakdownSubjectRef['kind']) =>
   kind === 'machine' ? contractingMachineAssignments.machineId : contractingMachineAssignments.implementId;
 
-/** Where this Machine or Implement is right now: its on-site Assignment and that Job, or null in the yard. */
+/** Where this Machine or Implement is right now: its latest on-site Assignment and that Job, or null in the yard. */
 export async function onSiteAssignment({
   db,
   subject,
@@ -35,6 +35,7 @@ export async function onSiteAssignment({
     .from(contractingMachineAssignments)
     .innerJoin(contractingJobs, eq(contractingJobs.id, contractingMachineAssignments.jobId))
     .where(and(eq(stintSubjectColumn(subject.kind), subject.id), stintOnSite(contractingMachineAssignments)))
+    .orderBy(latestArrivalFirst(contractingMachineAssignments))
     .limit(1);
   return row?.arrivedAt ? { ...row, arrivedAt: row.arrivedAt } : null;
 }

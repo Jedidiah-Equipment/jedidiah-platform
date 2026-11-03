@@ -20,7 +20,7 @@ import {
 import { and, asc, eq, ilike, inArray, sql } from 'drizzle-orm';
 import { defineAuditDescriptor, recordAuditCreate } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
-import { stintOnSite } from '../jobs/job-sql.js';
+import { latestArrivalFirst, stintOnSite } from '../jobs/job-sql.js';
 import { assertCategoryKind } from './category-service.js';
 import {
   type CategoryRelation,
@@ -63,7 +63,10 @@ export async function listFieldImplements({ db }: { db: Db }) {
   const implements_ = await listImplements({ db, input: { status: 'active', search: '' } });
   const onSite = implements_.length
     ? await db
-        .select({ implementId: contractingMachineAssignments.implementId, jobCode: contractingJobs.code })
+        .selectDistinctOn([contractingMachineAssignments.implementId], {
+          implementId: contractingMachineAssignments.implementId,
+          jobCode: contractingJobs.code,
+        })
         .from(contractingMachineAssignments)
         .innerJoin(contractingJobs, eq(contractingJobs.id, contractingMachineAssignments.jobId))
         .where(
@@ -75,6 +78,7 @@ export async function listFieldImplements({ db }: { db: Db }) {
             stintOnSite(contractingMachineAssignments),
           ),
         )
+        .orderBy(contractingMachineAssignments.implementId, latestArrivalFirst(contractingMachineAssignments))
     : [];
   const jobByImplement = new Map(
     onSite.flatMap((row) => (row.implementId ? [[row.implementId, formatJobNumber(row.jobCode)] as const] : [])),

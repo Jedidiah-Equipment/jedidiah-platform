@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 export type SearchSelectFieldOption = {
   /** Second line under the label; search matches it too. */
   description?: string;
-  /** Shown but not pickable, such as a Machine already on another Job. */
+  /** Shown but not pickable. */
   disabled?: boolean;
   icon?: ReactNode;
   label: string;

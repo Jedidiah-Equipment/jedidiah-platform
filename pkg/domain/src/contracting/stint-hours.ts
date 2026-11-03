@@ -71,6 +71,13 @@ export function snapshotTravelHours(
   return difference < 0 ? { travelHours: 0, clamped: true } : { travelHours: difference, clamped: false };
 }
 
+/**
+ * What an arrival says when its Machine or Implement is still on site on another Job; the arrival saves regardless:
+ * "MF-04 is also on site on CJOB-00123 — its departure there hasn't been captured."
+ */
+export const onSiteElsewhereWarning = (code: string, jobNumber: string) =>
+  `${code} is also on site on ${jobNumber} — its departure there hasn't been captured.`;
+
 export const isOverTravelFlag = (travelHours: number, threshold: number) => travelHours > threshold;
 
 export type TelematicsSnapshot = { hours: number; at: string };

@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createTRPCClient, httpLink } from '@trpc/client';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
+import { toast } from 'sonner';
 import { afterEach, expect, test, vi } from 'vitest';
 import { TRPCProvider } from '@/lib/trpc.js';
 import { StintHoursDialog, type StintHoursMode } from './StintHoursDialog.js';
@@ -16,6 +17,7 @@ vi.mock('@/hooks/use-api-mutation-error-toast.js', () => ({
   useApiMutationErrorReport: () => () => undefined,
   useApiMutationErrorToast: () => () => undefined,
 }));
+vi.mock('sonner', () => ({ toast: { warning: vi.fn() } }));
 vi.mock('@/contracting/hooks/use-query-invalidation.js', () => ({
   useQueryInvalidation: () => ({ invalidateJobHours: async () => undefined }),
 }));
@@ -45,7 +47,7 @@ afterEach(async () => {
   for (const cleanup of cleanups.splice(0)) await cleanup();
 });
 
-async function mount(mode: StintHoursMode, target: Assignment, status: JobStatus = 'active') {
+async function mount(mode: StintHoursMode, target: Assignment, status: JobStatus = 'active', warnings: string[] = []) {
   const posted: Record<string, unknown> = {};
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   const trpcClient = createTRPCClient<AppRouter>({
@@ -56,6 +58,8 @@ async function mount(mode: StintHoursMode, target: Assignment, status: JobStatus
           const path = new URL(String(input)).pathname.slice('/trpc/'.length);
           if (path === 'contractingReadings.latestTelematics') return Response.json({ result: { data: deere } });
           posted[path] = JSON.parse(String(init?.body));
+          if (path === 'contractingJobs.assignments.captureHours')
+            return Response.json({ result: { data: { warnings } } });
           return Response.json({ result: { data: null } });
         },
       }),
@@ -123,6 +127,16 @@ test('a departure shows John Deere under the hours, refuses one below the arriva
     hours: 4480,
     comment: null,
   });
+});
+
+test('an arrival saves and then warns that the Machine is still on site on another Job', async () => {
+  const warning = "JD8R-1 is also on site on CJOB-00123 — its departure there hasn't been captured.";
+  const { posted, onClose } = await mount('arrival', { ...stint, arrival: null }, 'active', [warning]);
+  await enter('hours', '4400');
+  await act(async () => save()?.click());
+  await vi.waitFor(() => expect(onClose).toHaveBeenCalled());
+  expect(posted['contractingJobs.assignments.captureHours']).toMatchObject({ role: 'arrival', hours: 4400 });
+  expect(toast.warning).toHaveBeenCalledWith(warning);
 });
 
 test('editing hours on a Completed Job asks for a reason before it saves', async () => {

@@ -47,7 +47,7 @@ export const fieldReaderOpensJob = (
 /** Every Job, a Foreman's own Jobs without money, or Invoicing's Completed-onward Jobs. */
 export type JobReadMode = 'all' | 'own' | 'priced';
 
-export function jobReadMode(access: UserAccessSummary | null | undefined): JobReadMode | null {
+export function jobReadMode(access: Pick<UserAccessSummary, 'permissions'> | null | undefined): JobReadMode | null {
   if (hasPermission(access, 'contracting_job:read')) return 'all';
   if (hasPermission(access, 'contracting_job:read-own')) return 'own';
   if (hasPermission(access, 'contracting_job:read-priced')) return 'priced';
@@ -90,11 +90,14 @@ export const webJobReadPermissions = [
 export const opensWebJobs = (access: UserAccessSummary | null | undefined): boolean =>
   webJobReadPermissions.some((permission) => hasPermission(access, permission));
 
-/** Job Cards carry money, so whoever reads Jobs with money opens them. */
-export function canOpenJobCards(access: UserAccessSummary | null | undefined): boolean {
+/** Whoever reads Jobs with money: every Job, or Invoicing's Completed-onward Jobs, never a Foreman's own. */
+export function readsJobMoney(access: Pick<UserAccessSummary, 'permissions'> | null | undefined): boolean {
   const mode = jobReadMode(access);
   return mode !== null && jobReadSeesMoney(mode);
 }
+
+/** Job Cards carry money, so whoever reads Jobs with money opens them. */
+export const canOpenJobCards = readsJobMoney;
 
 export function looksFinished(job: { status: JobStatus }, states: readonly AssignmentState[]): boolean {
   return job.status === 'active' && states.includes('left') && !states.includes('on-site');

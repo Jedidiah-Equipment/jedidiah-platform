@@ -32,7 +32,6 @@ import {
   summarizeInvoicedByMonth,
   summarizeJobQueues,
 } from '@pkg/core/contracting';
-import { webJobReadPermissions } from '@pkg/domain/contracting';
 import {
   AssignmentIdInput,
   AssignmentPatchInput,
@@ -91,7 +90,7 @@ export const createContractingJobsRouter = (push: ContractingPushScheduler) =>
       queues: authorizedProcedure(readPermissions)
         .output(JobQueueSummary)
         .query(({ ctx }) => mapCoreErrors(() => summarizeJobQueues({ db: ctx.db, actor: ctx.access }), jobErrorFamily)),
-      invoicedByMonth: authorizedProcedure(webJobReadPermissions)
+      invoicedByMonth: authorizedProcedure(readPermissions)
         .output(InvoicedByMonth)
         .query(({ ctx }) =>
           mapCoreErrors(() => summarizeInvoicedByMonth({ db: ctx.db, actor: ctx.access }), jobErrorFamily),

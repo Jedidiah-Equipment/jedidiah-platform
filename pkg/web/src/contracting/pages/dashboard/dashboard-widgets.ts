@@ -1,4 +1,4 @@
-import { jobQueueLabels, webJobReadPermissions } from '@pkg/domain/contracting';
+import { jobQueueLabels, readsJobMoney } from '@pkg/domain/contracting';
 import type { UserAccessSummary } from '@pkg/schema';
 import {
   type DashboardWidget,
@@ -47,8 +47,7 @@ export const contractingDashboardRows = [
     {
       Component: InvoicedByMonthWidget,
       id: 'invoiced-by-month',
-      // Whoever reads Jobs with money: the same permissions the server's read accepts.
-      requires: webJobReadPermissions,
+      requires: readsJobMoney,
       size: 'xl',
       title: 'Invoiced by month (ex VAT)',
     },

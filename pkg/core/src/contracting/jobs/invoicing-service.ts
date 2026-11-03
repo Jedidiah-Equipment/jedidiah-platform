@@ -1,13 +1,18 @@
 import type { Db } from '@pkg/db';
 import { contractingCustomers, contractingJobs } from '@pkg/db/contracting';
-import { addDateOnlyMonths, getPlantDateNow, JOHANNESBURG_TIME_ZONE, zonedDateStartToUtcInstant } from '@pkg/domain';
-import { formatJobNumber, type JobActor, jobReadSeesMoney, jobTransitions } from '@pkg/domain/contracting';
+import {
+  addDateOnlyMonths,
+  getPlantDateNow,
+  JOHANNESBURG_TIME_ZONE,
+  startOfDateOnlyMonth,
+  zonedDateStartToUtcInstant,
+} from '@pkg/domain';
+import { formatJobNumber, type JobActor, jobTransitions, readsJobMoney } from '@pkg/domain/contracting';
 import type { DateOnlyIso } from '@pkg/schema';
 import { InvoicedByMonth, type JobStampInvoiceInput } from '@pkg/schema/contracting';
 import { and, asc, eq, gte, sql } from 'drizzle-orm';
 import { JobError, totalChanged } from './job-errors.js';
 import { lockJobFor } from './job-lock.js';
-import { readerFor } from './job-readers.js';
 import { jobTransaction, writeJobRow } from './job-write.js';
 
 /** Stamps the accounting system's Invoice Number on a Priced Job, making it Invoiced: the wall. */
@@ -56,9 +61,9 @@ export async function summarizeInvoicedByMonth({
   actor: JobActor;
   today?: DateOnlyIso;
 }): Promise<InvoicedByMonth> {
-  if (!jobReadSeesMoney(readerFor(actor).mode))
+  if (!readsJobMoney(actor))
     throw new JobError('contracting_job.forbidden', 'You do not have permission to view invoiced amounts.');
-  const thisMonth = `${today.slice(0, 8)}01` as DateOnlyIso;
+  const thisMonth = startOfDateOnlyMonth(today);
   const months = Array.from({ length: invoicedMonthsShown }, (_, back) => addDateOnlyMonths(thisMonth, -back));
   const from = zonedDateStartToUtcInstant(
     addDateOnlyMonths(thisMonth, 1 - invoicedMonthsShown),

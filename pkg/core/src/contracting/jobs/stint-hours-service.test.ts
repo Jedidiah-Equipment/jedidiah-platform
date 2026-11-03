@@ -113,18 +113,40 @@ describe('capturing Job Hours', () => {
     expect((await getJob({ db, id: first.id })).assignments[0]).toMatchObject({ travelHours: 0, travelClamped: false });
   });
 
-  test('refuses a busy or retired Machine, a retired Implement, a device Driver, a foreign Job and a departure below arrival', async ({
+  test('a Machine and Implement on site on another Job arrive anyway, warning which Job still has them', async ({
+    context,
+  }) => {
+    const { db, excavator, implement } = context;
+    const current = await openJob(context);
+    const backLoaded = await openJob(context);
+    const onSite = await plannedStint(db, admin, {
+      jobId: current.id,
+      machineId: excavator.id,
+      implementId: implement.id,
+    });
+    expect(await captureHours(db, onSite.id, 'arrival', 500)).toMatchObject({ warnings: [] });
+    const earlier = await plannedStint(db, admin, {
+      jobId: backLoaded.id,
+      machineId: excavator.id,
+      implementId: implement.id,
+    });
+    expect(await captureHours(db, earlier.id, 'arrival', 100)).toMatchObject({
+      warnings: [
+        `CAT320-1 is also on site on ${current.jobNumber} — its departure there hasn't been captured.`,
+        `TIP-1 is also on site on ${current.jobNumber} — its departure there hasn't been captured.`,
+      ],
+    });
+    expect((await getJob({ db, id: backLoaded.id })).assignments[0]).toMatchObject({ state: 'on-site' });
+  });
+
+  test('refuses a retired Machine, a retired Implement, a device Driver, a foreign Job and a departure below arrival', async ({
     context,
   }) => {
     const { db, excavator, tipper, implement } = context;
     const job = await openJob(context);
     const other = await openJob(context);
     const onSite = await plannedStint(db, admin, { jobId: job.id, machineId: excavator.id, implementId: null });
-    const busy = await plannedStint(db, admin, { jobId: other.id, machineId: excavator.id, implementId: null });
     await captureHours(db, onSite.id, 'arrival', 100);
-    await expect(captureHours(db, busy.id, 'arrival', 101)).rejects.toMatchObject({
-      code: 'contracting_job.machine_on_site',
-    });
 
     const planned = await plannedStint(db, admin, { jobId: other.id, machineId: tipper.id, implementId: null });
     const arrive = (stintOverrides: { implementId?: string; driverUserId?: string | null }) =>
@@ -187,6 +209,7 @@ describe('capturing Job Hours', () => {
     expect(await captureHours(db, stint.id, 'arrival', 1350)).toEqual({
       machineId: excavator.id,
       serviceDueSoonCrossed: false,
+      warnings: [],
     });
     expect(await getMachine({ db, id: excavator.id })).toMatchObject({ knownHours: 1350, knownHoursSource: 'job' });
     expect((await captureHours(db, stint.id, 'departure', 1420)).serviceDueSoonCrossed).toBe(true);

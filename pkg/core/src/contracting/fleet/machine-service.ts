@@ -175,7 +175,7 @@ const derivedMachineColumns = (machine: MachineColumns) => ({
     join contracting.work_type work_type on work_type.id = job.work_type_id
     where stint.machine_id = ${machine.id}
       and ${stintOnSite(busyStint)}
-    order by stint.arrival_at desc
+    order by stint.arrival_at desc, stint.id desc
     limit 1
   )`.as('busy_on_job'),
   // Nothing refuses a second open record, so the newest start is the one in the workshop.

@@ -35,7 +35,10 @@ export const jobHoursColumns = {
 /** A Machine Assignment's Job Hours columns, on the table or on an alias of it. */
 type StintColumns = { arrivalHours: SQLWrapper; departureHours: SQLWrapper };
 
-/** The on-site Assignment: arrival captured, no departure yet. The partial unique indexes allow one per subject. */
+/**
+ * The on-site Assignment: arrival captured, no departure yet. A Machine or Implement may be on site on several Jobs at
+ * once (ADR 0031); a reader wanting one takes the latest arrival capture.
+ */
 export const stintOnSite = (stint: StintColumns): SQL =>
   sql`${stint.arrivalHours} is not null and ${stint.departureHours} is null`;
 

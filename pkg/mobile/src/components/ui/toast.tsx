@@ -14,10 +14,11 @@ import { useColorMode } from '@/theme/use-color-mode';
 // matching `ToastProvider` is mounted in `GluestackUIProvider`.
 const useGluestackToast = createToastHook(Motion.View, AnimatePresence);
 
-type ToastTone = 'success' | 'error';
+type ToastTone = 'success' | 'warning' | 'error';
 
 const TONE: Record<ToastTone, { accent: string; icon: typeof IconCircleCheck }> = {
   success: { accent: 'text-status-scheduled', icon: IconCircleCheck },
+  warning: { accent: 'text-orange-500', icon: IconAlertTriangle },
   error: { accent: 'text-danger', icon: IconAlertTriangle },
 };
 

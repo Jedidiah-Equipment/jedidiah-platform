@@ -28,6 +28,7 @@ import { SecondaryToolbar } from '@/components/TopToolbar';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/ui/text-input';
+import { useAppToast } from '@/components/ui/toast';
 import { useVoiceSession } from '@/components/voice/use-voice-session';
 import { VoiceTextArea } from '@/components/voice/VoiceTextArea';
 import { StintOverrideCard, useStintOverrides } from '@/contracting/components/StintOverrideCard';
@@ -83,6 +84,7 @@ type FormProps = { job: JobDetail; stint: AssignmentDetail; toolbar: ReactNode; 
 
 function CaptureHours({ side, job, stint, toolbar, onSaved }: FormProps & { side: 'arrival' | 'departure' }) {
   const writes = useStintHoursWrites();
+  const showToast = useAppToast();
   const { busy, error, run } = useBusyAction();
   const [hours, setHours] = useState('');
   const [comment, setComment] = useState('');
@@ -104,7 +106,7 @@ function CaptureHours({ side, job, stint, toolbar, onSaved }: FormProps & { side
   const save = () => {
     if (!canSave || !values.success) return;
     void run(async () => {
-      await writes.capture.mutateAsync(
+      const { warnings } = await writes.capture.mutateAsync(
         toStintHoursCaptureInput(
           { assignmentId: stint.id, role: side },
           values.data,
@@ -113,6 +115,7 @@ function CaptureHours({ side, job, stint, toolbar, onSaved }: FormProps & { side
       );
       voice.reportSaved();
       onSaved();
+      for (const warning of warnings) showToast('warning', warning);
     }, SAVE_FAILED);
   };
   return (

@@ -2,14 +2,17 @@ import { type DatabaseTransaction, type Db, user } from '@pkg/db';
 import { contractingImplements, contractingMachineAssignments } from '@pkg/db/contracting';
 import {
   assignmentState,
+  formatJobNumber,
   type JobActor,
   jobTransitions,
   judgeStintHours,
   judgeStintHoursEdit,
+  onSiteElsewhereWarning,
   type StintHoursVerdict,
   snapshotTravelHours,
 } from '@pkg/domain/contracting';
 import type {
+  BreakdownSubjectRef,
   StintHoursCaptureInput,
   StintHoursEditInput,
   StintOverrides,
@@ -17,6 +20,7 @@ import type {
 } from '@pkg/schema/contracting';
 import { and, desc, eq, isNotNull, lt, ne } from 'drizzle-orm';
 import { serviceDueSoonEdge } from '../fleet/machine-service.js';
+import { onSiteAssignment } from '../fleet/on-site-assignment.js';
 import { latestTelematicsReading } from '../readings/telematics-reading.js';
 import { assertStintAction, JobError } from './job-errors.js';
 import { lockAssignment, lockAssignmentWithMachine } from './job-lock.js';
@@ -32,6 +36,9 @@ type StintRow = typeof contractingMachineAssignments.$inferSelect;
 
 /** `serviceDueSoonCrossed` is true when the write took the Machine into Service Due Soon; the caller pushes after commit. */
 export type StintHoursWrite = { machineId: string; serviceDueSoonCrossed: boolean };
+
+/** A capture's write, with a warning for each of the arriving Machine and Implement still on site on another Job. */
+export type StintHoursCapture = StintHoursWrite & { warnings: string[] };
 
 /** What John Deere had last read for this Machine when the hours were saved, as the stint stores it. */
 const snapshotColumns = (side: 'arrival' | 'departure', telematics: { hours: number; at: Date } | null) =>
@@ -66,18 +73,21 @@ function arrivalResources(stint: StintRow, overrides: StintOverrides | undefined
   };
 }
 
+/** Refuses a retired Implement or a Driver without the role; returns the arriving Implement. */
 async function assertArrivalResources(
   tx: DatabaseTransaction,
   { implementId, driverUserId }: ReturnType<typeof arrivalResources>,
 ) {
+  let arriving: { id: string; code: string } | null = null;
   if (implementId) {
     const [implement] = await tx
-      .select({ retiredAt: contractingImplements.retiredAt })
+      .select({ code: contractingImplements.code, retiredAt: contractingImplements.retiredAt })
       .from(contractingImplements)
       .where(eq(contractingImplements.id, implementId))
       .for('update');
     if (!implement || implement.retiredAt)
       throw new JobError('contracting_job.invalid_reference', 'The selected Implement is no longer available.');
+    arriving = { id: implementId, code: implement.code };
   }
   if (driverUserId) {
     const [driver] = await tx
@@ -88,6 +98,22 @@ async function assertArrivalResources(
     if (driver?.contractingRole !== 'driver' || driver.isDevice)
       throw new JobError('contracting_job.invalid_driver', 'Select a person with the Contracting driver role.');
   }
+  return arriving;
+}
+
+/** A Machine or Implement on site on another Job warns and never refuses (ADR 0031): that Job's Completion gate waits. */
+async function onSiteElsewhereWarnings(
+  tx: DatabaseTransaction,
+  jobId: string,
+  arriving: readonly { subject: BreakdownSubjectRef; code: string }[],
+) {
+  const warnings = await Promise.all(
+    arriving.map(async ({ subject, code }) => {
+      const elsewhere = await onSiteAssignment({ db: tx, subject, otherThanJobId: jobId });
+      return elsewhere ? onSiteElsewhereWarning(code, formatJobNumber(elsewhere.jobCode)) : null;
+    }),
+  );
+  return warnings.filter((warning) => warning !== null);
 }
 
 function assertStintHours(verdict: StintHoursVerdict) {
@@ -96,8 +122,8 @@ function assertStintHours(verdict: StintHoursVerdict) {
 
 /**
  * Captures a stint's arrival or departure hours. An arrival snapshots Travel and John Deere, applies the phone's
- * Implement and Driver, and starts an Upcoming Job. A retry of a capture already landed, with the same hours by the
- * same person, returns without writing.
+ * Implement and Driver, starts an Upcoming Job, and warns when its Machine or Implement is on site on another Job. A
+ * retry of a capture already landed, with the same hours by the same person, returns without writing.
  */
 export async function captureStintHours({
   db,
@@ -107,7 +133,7 @@ export async function captureStintHours({
   db: Db;
   actor: JobActor;
   input: StintHoursCaptureInput;
-}): Promise<StintHoursWrite> {
+}): Promise<StintHoursCapture> {
   return jobTransaction(db, async (tx) => {
     const { job, stint, machine, machineCode } = await lockAssignmentWithMachine(tx, input.assignmentId);
     const arrival = input.role === 'arrival';
@@ -115,18 +141,23 @@ export async function captureStintHours({
       ? stint.arrivalHours === input.hours && stint.arrivalByUserId === actor.userId
       : stint.departureHours === input.hours && stint.departureByUserId === actor.userId;
     if (landed && assignmentState(stint) !== (arrival ? 'planned' : 'on-site'))
-      return { machineId: machine.id, serviceDueSoonCrossed: false };
+      return { machineId: machine.id, serviceDueSoonCrossed: false, warnings: [] };
     assertStintAction(arrival ? 'captureArrival' : 'captureDeparture', job, stint, actor);
     const now = new Date();
     const edge = await serviceDueSoonEdge(tx, machine);
     const comment = input.comment ?? null;
+    let warnings: string[] = [];
     if (arrival) {
       if (machine.retiredAt) throw new JobError('contracting_job.invalid_reference', 'This Machine is retired.');
       const resources = arrivalResources(stint, input.stintOverrides);
-      await assertArrivalResources(tx, resources);
+      const implement = await assertArrivalResources(tx, resources);
       const [telematics, travel] = await Promise.all([
         latestTelematicsReading(tx, machine.id),
         travelSnapshot(tx, stint, input.hours),
+      ]);
+      warnings = await onSiteElsewhereWarnings(tx, job.id, [
+        { subject: { kind: 'machine', id: machine.id }, code: machineCode },
+        ...(implement ? [{ subject: { kind: 'implement' as const, id: implement.id }, code: implement.code }] : []),
       ]);
       await writeAssignment(tx, actor.userId, machineCode, stint.id, () => ({
         ...resources,
@@ -152,7 +183,7 @@ export async function captureStintHours({
         ...snapshotColumns('departure', telematics),
       }));
     }
-    return { machineId: machine.id, serviceDueSoonCrossed: await edge.crossed() };
+    return { machineId: machine.id, serviceDueSoonCrossed: await edge.crossed(), warnings };
   });
 }
 

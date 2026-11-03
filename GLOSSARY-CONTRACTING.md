@@ -31,9 +31,10 @@ the invoice — that chain is the app's core promise.
 the Job up — machine and Implement chosen ahead of arrival, a **planned** Assignment — or the
 Foreman adds it from the phone, planned until the Machine arrives; either way it becomes **on site** when its arrival hours are
 captured and **left** when its departure hours are. A Machine may have **several sequential Assignments
-on the same Job** — leaving and returning, often with a different Implement — but **at most one
-on-site Assignment at a time across all Jobs**, which is what enforces that a machine is never in
-two places at once; planned Assignments never count against that. An Assignment names at most one
+on the same Job** — leaving and returning, often with a different Implement. Nothing stops a Machine or
+Implement being **on site on more than one Job** (ADR 0031): an arrival there saves and warns which other Job
+still has it, and that Job's Completion gate waits for its departure — so a Job done in the past can be loaded
+while the Machine is out on a current one. An Assignment names at most one
 **Implement**, and an Implement on a Job is always attached to exactly one Assignment. Zero or more
 **Measures** are recorded on an Assignment once its Machine has arrived — a Measure Type and a quantity
 (hectares disked, loads hauled), at most one per Measure Type — the production figures Pricing may bill on.
@@ -132,7 +133,9 @@ selects so spelling stays consistent), a year, a registration number, a hand-ent
 current **Driver**, notes, and a serial number filled in by its John Deere Link. A Machine is what an
 Assignment assigns. It has no reference to the Equipment context: the two businesses share no machine
 identity. A Machine is **On Job** while it has an **on-site** Assignment and otherwise **In Yard** — a
-planned Assignment never counts — derived, never stored, with no manual flag;
+planned Assignment never counts — derived, never stored, with no manual flag; on site on several Jobs, its On Job
+Job is the one whose arrival was captured most recently, everywhere a single Job is named (Fleet, the phone,
+a Breakdown's default Job);
 the **Machine Yard** view lists In Yard machines by Category, and an open fault shows as an
 indicator, not a third state. A Machine with any history is never deleted: it is **Retired** with
 a mandatory reason, hidden from every picker and the yard view, history intact and un-retirable;

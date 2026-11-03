@@ -66,13 +66,7 @@ export function StintOverrideCard({
                 placeholder="No implement"
                 searchPlaceholder="Search by code or category…"
                 emptyMessage="No Implements match."
-                options={[
-                  { label: 'No implement', value: '' },
-                  ...(implementsQuery.data ?? []).map((row) => ({
-                    ...implementOption(row),
-                    disabled: row.onSiteJobNumber !== null,
-                  })),
-                ]}
+                options={[{ label: 'No implement', value: '' }, ...(implementsQuery.data ?? []).map(implementOption)]}
               />
             )}
           </overrides.form.AppField>

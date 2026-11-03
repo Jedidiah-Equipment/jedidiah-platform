@@ -168,14 +168,6 @@ export const contractingMachineAssignments = contractingSchema.table(
     // The Activity feed's arrived and left branches order by (stamp, id).
     index('machine_assignment_arrival_idx').on(table.arrivalAt, table.id),
     index('machine_assignment_departure_idx').on(table.departureAt, table.id),
-    uniqueIndex('machine_assignment_machine_on_site_unique')
-      .on(table.machineId)
-      .where(sql`${table.arrivalHours} IS NOT NULL AND ${table.departureHours} IS NULL`),
-    uniqueIndex('machine_assignment_implement_on_site_unique')
-      .on(table.implementId)
-      .where(
-        sql`${table.implementId} IS NOT NULL AND ${table.arrivalHours} IS NOT NULL AND ${table.departureHours} IS NULL`,
-      ),
     check(
       'machine_assignment_arrival_shape',
       sql`((${table.arrivalHours} IS NULL) = (${table.arrivalAt} IS NULL) AND (${table.arrivalHours} IS NULL) = (${table.arrivalByUserId} IS NULL)) AND (${table.arrivalTelematicsHours} IS NULL) = (${table.arrivalTelematicsAt} IS NULL)`,

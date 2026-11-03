@@ -17,6 +17,7 @@ import {
   toStintHoursEditInput,
 } from '@pkg/schema/contracting';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import type { z } from 'zod';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
@@ -98,7 +99,6 @@ function CaptureHoursDialog({
     stint,
     noImplementLabel: 'No implement',
     noDriverLabel: 'No driver',
-    freeImplementsOnly: true,
   });
   const arrivalHours = stint?.arrival?.hours ?? null;
   const canSave = (values: CaptureValues) =>
@@ -127,19 +127,19 @@ function CaptureHoursDialog({
       validator={CaptureValues}
       canSubmit={canSave}
       onBeforeCreate={canSave}
-      onCreate={(values) =>
-        stint
-          ? capture.mutateAsync(
-              toStintHoursCaptureInput(
-                { assignmentId: stint.id, role: side },
-                values,
-                arrival && changesAssignment(stint, values)
-                  ? { implementId: values.implementId || null, driverUserId: values.driverUserId || null }
-                  : undefined,
-              ),
-            )
-          : Promise.resolve()
-      }
+      onCreate={async (values) => {
+        if (!stint) return;
+        const { warnings } = await capture.mutateAsync(
+          toStintHoursCaptureInput(
+            { assignmentId: stint.id, role: side },
+            values,
+            arrival && changesAssignment(stint, values)
+              ? { implementId: values.implementId || null, driverUserId: values.driverUserId || null }
+              : undefined,
+          ),
+        );
+        for (const warning of warnings) toast.warning(warning);
+      }}
       onCreated={onClose}
     >
       {(form) => (
@@ -309,7 +309,10 @@ function EditHoursDialog({ stint, job, onClose }: { stint: Assignment | null; jo
   );
 }
 
-/** Captures a stint's arrival or departure hours, or edits both; the server's sentence shows on a refusal. */
+/**
+ * Captures a stint's arrival or departure hours, or edits both; the server's sentence shows on a refusal, and its
+ * warning for a Machine or Implement still on site on another Job after the save.
+ */
 export function StintHoursDialog({
   target,
   job,

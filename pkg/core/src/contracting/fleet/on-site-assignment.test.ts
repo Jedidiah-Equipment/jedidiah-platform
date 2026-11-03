@@ -3,26 +3,29 @@ import { parseJobNumber } from '@pkg/domain/contracting';
 import { eq } from 'drizzle-orm';
 import { expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
+import { getBreakdownReportContext } from '../breakdowns/breakdown-service.js';
 import { createJob } from '../jobs/job-service.js';
 import { admin, captureHours, foremanId, plannedStint, seedJobFixtures } from '../test/job-fixtures.js';
 import { createCategory } from './category-service.js';
-import { createImplement } from './implement-service.js';
+import { createImplement, listFieldImplements } from './implement-service.js';
+import { listFieldMachines } from './machine-service.js';
 import { onSiteAssignment } from './on-site-assignment.js';
 
 const test = createTester(async ({ db }) => {
   const fixtures = await seedJobFixtures(db);
-  const job = await createJob({
-    db,
-    actor: admin,
-    input: {
-      customerId: fixtures.customer.id,
-      farmId: fixtures.farm.id,
-      workTypeId: fixtures.workType.id,
-      description: null,
-      foremanUserId: foremanId,
-    },
-  });
-  return { ...fixtures, job };
+  const openJob = () =>
+    createJob({
+      db,
+      actor: admin,
+      input: {
+        customerId: fixtures.customer.id,
+        farmId: fixtures.farm.id,
+        workTypeId: fixtures.workType.id,
+        description: null,
+        foremanUserId: foremanId,
+      },
+    });
+  return { ...fixtures, job: await openJob(), openJob };
 });
 
 const capture = (
@@ -86,4 +89,42 @@ test('two sequential stints on one Job answer the current one', async ({ context
   const second = await plannedStint(db, admin, { jobId: job.id, machineId: excavator.id, implementId: null });
   await capture(db, { id: second.id }, 'arrival', 110);
   expect(await onSiteAssignment({ db, subject })).toMatchObject({ stintId: second.id, jobId: job.id });
+});
+
+test('on site on two Jobs, every reader names the latest arrival capture', async ({ context }) => {
+  const { db, excavator, job, openJob } = context;
+  const category = await createCategory({
+    db,
+    actorUserId: admin.userId,
+    input: { name: 'Rippers', kind: 'implement' },
+  });
+  const ripper = await createImplement({
+    db,
+    actorUserId: admin.userId,
+    input: { code: 'RIP-1', categoryId: category.id, notes: null },
+  });
+  const backLoaded = await openJob();
+  const current = await plannedStint(db, admin, { jobId: job.id, machineId: excavator.id, implementId: ripper.id });
+  await capture(db, current, 'arrival', 500);
+  const older = await plannedStint(db, admin, {
+    jobId: backLoaded.id,
+    machineId: excavator.id,
+    implementId: ripper.id,
+  });
+  await capture(db, older, 'arrival', 100);
+
+  const machine = { kind: 'machine', id: excavator.id } as const;
+  const implement = { kind: 'implement', id: ripper.id } as const;
+  expect(await onSiteAssignment({ db, subject: machine })).toMatchObject({ jobId: backLoaded.id });
+  expect(await onSiteAssignment({ db, subject: implement })).toMatchObject({ jobId: backLoaded.id });
+  expect(await onSiteAssignment({ db, subject: machine, otherThanJobId: backLoaded.id })).toMatchObject({
+    jobId: job.id,
+  });
+  const fieldMachine = (await listFieldMachines({ db, actor: admin })).find((row) => row.id === excavator.id);
+  expect(fieldMachine).toMatchObject({ busyOnJob: { id: backLoaded.id }, onSiteJobNumber: backLoaded.jobNumber });
+  const fieldImplement = (await listFieldImplements({ db })).find((row) => row.id === ripper.id);
+  expect(fieldImplement?.onSiteJobNumber).toBe(backLoaded.jobNumber);
+  expect(await getBreakdownReportContext({ db, actor: admin, subject: machine })).toMatchObject({
+    defaultJob: { jobNumber: backLoaded.jobNumber },
+  });
 });

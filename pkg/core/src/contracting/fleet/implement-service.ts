@@ -17,7 +17,7 @@ import {
   type ImplementCreateInput,
   type ImplementPatchInput,
 } from '@pkg/schema/contracting';
-import { and, asc, eq, ilike, inArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, ilike, inArray, sql } from 'drizzle-orm';
 import { defineAuditDescriptor, recordAuditCreate } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
 import { stintOnSite } from '../jobs/job-sql.js';
@@ -63,7 +63,10 @@ export async function listFieldImplements({ db }: { db: Db }) {
   const implements_ = await listImplements({ db, input: { status: 'active', search: '' } });
   const onSite = implements_.length
     ? await db
-        .select({ implementId: contractingMachineAssignments.implementId, jobCode: contractingJobs.code })
+        .selectDistinctOn([contractingMachineAssignments.implementId], {
+          implementId: contractingMachineAssignments.implementId,
+          jobCode: contractingJobs.code,
+        })
         .from(contractingMachineAssignments)
         .innerJoin(contractingJobs, eq(contractingJobs.id, contractingMachineAssignments.jobId))
         .where(
@@ -74,6 +77,12 @@ export async function listFieldImplements({ db }: { db: Db }) {
             ),
             stintOnSite(contractingMachineAssignments),
           ),
+        )
+        // On site on several Jobs, an Implement names its latest arrival.
+        .orderBy(
+          contractingMachineAssignments.implementId,
+          desc(contractingMachineAssignments.arrivalAt),
+          desc(contractingMachineAssignments.id),
         )
     : [];
   const jobByImplement = new Map(

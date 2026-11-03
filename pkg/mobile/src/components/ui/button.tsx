@@ -8,6 +8,7 @@ export function Button({
   onPress,
   disabled = false,
   icon,
+  iconClassName,
   trailingIcon,
   primary = false,
   destructive = false,
@@ -15,6 +16,8 @@ export function Button({
 }: {
   title: string;
   icon?: TablerIcon;
+  /** A colour for the leading icon alone, such as an urgency flag's. */
+  iconClassName?: string;
   /** After the title, such as the chevron of a button that opens another screen. */
   trailingIcon?: TablerIcon;
   onPress: () => void;
@@ -34,7 +37,7 @@ export function Button({
       className={`flex-row items-center justify-center gap-2 rounded-xl border border-border ${compact ? 'px-3 py-2' : 'px-4 py-3'} ${primary ? 'bg-primary' : 'bg-surface'} ${disabled ? 'opacity-50' : ''}`}
       onPress={onPress}
     >
-      {icon ? <Icon className={foreground} icon={icon} size={16} /> : null}
+      {icon ? <Icon className={iconClassName ?? foreground} icon={icon} size={16} /> : null}
       <Text className={`text-center text-sm ${foreground}`} weight="semibold">
         {title}
       </Text>

@@ -2,7 +2,7 @@ import { getFirstName } from '@pkg/domain';
 import { useStore } from '@tanstack/react-form';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
-import { useAppForm } from '@/components/form';
+import { useAppForm, withForm } from '@/components/form';
 import { FieldShell } from '@/components/form/fields/FieldShell';
 import { Text } from '@/components/ui/text';
 import { implementOption } from '@/contracting/components/implement-option';
@@ -18,15 +18,56 @@ export type PlannedStint = {
 /** The arrival form's "change the planned Implement and Driver" state; `value` is undefined while the plan is kept. */
 export function useStintOverrides(planned: PlannedStint | null) {
   const [changing, setChanging] = useState(false);
-  const form = useAppForm({
-    defaultValues: { implementId: planned?.implementId ?? '', driverUserId: planned?.driverUserId ?? '' },
-  });
+  const form = useAppForm({ defaultValues: stintResourceDefaults(planned) });
   const values = useStore(form.store, (state) => state.values);
   const value = changing
     ? { implementId: values.implementId || null, driverUserId: values.driverUserId || null }
     : undefined;
   return { form, changing, setChanging, value };
 }
+
+export const stintResourceDefaults = (stint: Pick<PlannedStint, 'implementId' | 'driverUserId'> | null) => ({
+  implementId: stint?.implementId ?? '',
+  driverUserId: stint?.driverUserId ?? '',
+});
+
+/** A stint's Implement and Driver pickers, for the arrival form and the change sheet alike. */
+export const StintResourceFields = withForm({
+  defaultValues: stintResourceDefaults(null),
+  render: function StintResourceFieldsRender({ form }) {
+    const implementsQuery = useImplements();
+    const driversQuery = useDrivers();
+    return (
+      <View className="gap-3">
+        <form.AppField name="implementId">
+          {(field) => (
+            <field.SearchSelectField
+              label="Implement"
+              placeholder="No implement"
+              searchPlaceholder="Search by code or category…"
+              emptyMessage="No Implements match."
+              options={[{ label: 'No implement', value: '' }, ...(implementsQuery.data ?? []).map(implementOption)]}
+            />
+          )}
+        </form.AppField>
+        <form.AppField name="driverUserId">
+          {(field) => (
+            <field.SearchSelectField
+              label="Driver"
+              placeholder="No driver"
+              searchPlaceholder="Search drivers…"
+              emptyMessage="No drivers match."
+              options={[
+                { label: 'No driver', value: '' },
+                ...(driversQuery.data ?? []).map((row) => ({ label: row.name, value: row.id })),
+              ]}
+            />
+          )}
+        </form.AppField>
+      </View>
+    );
+  },
+});
 
 export function StintOverrideCard({
   planned,
@@ -35,8 +76,6 @@ export function StintOverrideCard({
   planned: PlannedStint;
   overrides: ReturnType<typeof useStintOverrides>;
 }) {
-  const implementsQuery = useImplements();
-  const driversQuery = useDrivers();
   return (
     <FieldShell label="Implement & driver">
       <View className="flex-row items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3">
@@ -57,35 +96,7 @@ export function StintOverrideCard({
           </Text>
         </Pressable>
       </View>
-      {overrides.changing ? (
-        <View className="gap-3">
-          <overrides.form.AppField name="implementId">
-            {(field) => (
-              <field.SearchSelectField
-                label="Implement"
-                placeholder="No implement"
-                searchPlaceholder="Search by code or category…"
-                emptyMessage="No Implements match."
-                options={[{ label: 'No implement', value: '' }, ...(implementsQuery.data ?? []).map(implementOption)]}
-              />
-            )}
-          </overrides.form.AppField>
-          <overrides.form.AppField name="driverUserId">
-            {(field) => (
-              <field.SearchSelectField
-                label="Driver"
-                placeholder="No driver"
-                searchPlaceholder="Search drivers…"
-                emptyMessage="No drivers match."
-                options={[
-                  { label: 'No driver', value: '' },
-                  ...(driversQuery.data ?? []).map((row) => ({ label: row.name, value: row.id })),
-                ]}
-              />
-            )}
-          </overrides.form.AppField>
-        </View>
-      ) : null}
+      {overrides.changing ? <StintResourceFields form={overrides.form} /> : null}
     </FieldShell>
   );
 }

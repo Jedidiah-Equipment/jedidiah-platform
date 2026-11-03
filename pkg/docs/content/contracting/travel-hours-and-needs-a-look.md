@@ -19,4 +19,4 @@ Travel set by hand has been looked at, so it clears the Travel reason. The marks
 
 ## Dismissed reasons
 
-A reason can be right as it stands: the Machine really did travel that far, or JD Link's last report is old. Management then dismisses it, once, for everyone on the web and the phone. A dismissed reason stays on the Machine, faded, with who dismissed it; it no longer marks the Machine amber, and the Jobs list and Dashboard stop counting it. It comes back by itself when the hours or Travel it is about change. Foremen see reasons but cannot dismiss them.
+A reason can be right as it stands: the Machine really did travel that far, or JD Link's last report is old. Management then dismisses it, once, for everyone on the web and the phone. On the web a dismissed reason stays on the Machine, faded, with who dismissed it; the phone hides it. Either way it no longer marks the Machine amber, and the Jobs list and Dashboard stop counting it. It comes back by itself when the hours or Travel it is about change. Foremen see reasons but cannot dismiss them.

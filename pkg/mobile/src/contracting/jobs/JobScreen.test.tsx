@@ -16,6 +16,7 @@ vi.mock('@tabler/icons-react-native', () => ({
 }));
 vi.mock('@/components/TopToolbar', () => ({ SecondaryToolbar: 'Toolbar' }));
 vi.mock('@/components/SubTabControl', () => ({ SubTabControl: 'Tabs' }));
+vi.mock('@/components/ui/overflow-menu', () => ({ OverflowMenu: 'OverflowMenu' }));
 vi.mock('@/components/ui/button', () => ({ Button: 'Button' }));
 vi.mock('@/components/ui/icon', () => ({ Icon: 'Icon' }));
 vi.mock('@/components/ui/status-badge', () => ({ StatusBadge: 'Badge' }));
@@ -32,6 +33,8 @@ vi.mock('@/lib/document-actions', () => ({ shareDocument: vi.fn() }));
 vi.mock('@/lib/observability', () => ({ captureException: vi.fn() }));
 vi.mock('@/contracting/workshop/use-breakdowns', () => ({ useJobBreakdowns: () => ({ data: undefined }) }));
 vi.mock('./AttentionDialog', () => ({ AttentionDialog: 'AttentionDialog' }));
+vi.mock('./ChangeStintResourcesSheet', () => ({ ChangeStintResourcesSheet: 'ChangeStintResourcesSheet' }));
+vi.mock('./TravelHoursSheet', () => ({ TravelHoursSheet: 'TravelHoursSheet' }));
 vi.mock('./MeasuresSheet', () => ({ MeasuresSheet: 'MeasuresSheet' }));
 vi.mock('./RemoveStintDialog', () => ({ RemoveStintDialog: 'RemoveStintDialog' }));
 vi.mock('./use-jobs', () => ({ useJob: () => ({ data: undefined, canRead: false }) }));

@@ -127,6 +127,28 @@ export function useStintHoursWrites() {
   };
 }
 
+/** Changes a stint's Implement or Driver; an Implement moves which Job its Breakdowns and the fleet show it on. */
+export function usePatchStint() {
+  const trpc = useTRPC();
+  const invalidate = useInvalidateRoots();
+  return useMutation(
+    trpc.contractingJobs.assignments.patch.mutationOptions({
+      onSuccess: () => invalidate('contractingJobs', 'contractingReports', 'contractingBreakdowns', 'contractingFleet'),
+    }),
+  );
+}
+
+/** Sets a stint's Travel Hours by hand; nothing recalculates them after. */
+export function useSetTravel() {
+  const trpc = useTRPC();
+  const invalidate = useInvalidateRoots();
+  return useMutation(
+    trpc.contractingJobs.assignments.setTravel.mutationOptions({
+      onSuccess: () => invalidate('contractingJobs', 'contractingReports'),
+    }),
+  );
+}
+
 /** Takes one stint off its Job, with whatever hours it had. */
 export function useRemoveStint() {
   const trpc = useTRPC();

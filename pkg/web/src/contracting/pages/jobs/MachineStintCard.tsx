@@ -27,12 +27,13 @@ import type {
 import {
   IconAlertTriangle,
   IconCheck,
+  IconDots,
   IconFlagFilled,
   IconPencil,
   IconPlayerPlay,
   IconPlayerStop,
-  IconPlus,
   IconRuler2,
+  IconTrash,
   IconX,
 } from '@tabler/icons-react';
 import { useMutation } from '@tanstack/react-query';
@@ -46,6 +47,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu.js';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
@@ -56,7 +58,7 @@ import { useTRPC } from '@/lib/trpc.js';
 import { cn } from '@/lib/utils.js';
 import { AddMeasureDialog } from './AddMeasureDialog.js';
 import { AssignmentEditDialog } from './AssignmentEditDialog.js';
-import { RemoveStintButton } from './RemoveStintButton.js';
+import { RemoveStintDialog } from './RemoveStintDialog.js';
 import type { MachineDialog } from './types.js';
 import { useJobWrite } from './use-job-write.js';
 
@@ -250,23 +252,32 @@ function BreakdownRow({ breakdown }: { breakdown: BreakdownSummary }) {
   );
 }
 
-/** The plus under the timeline: adds a Measure or reports a Code Green or Code Red. */
-function AddMenu({
+/** The menu under the timeline: adds a Measure, reports a Code Green or Code Red, or removes the stint. */
+function StintMenu({
   stint,
   onMeasure,
+  onRemove,
   canMeasure,
   canReport,
+  canRemove,
   onOpen,
-}: { stint: Assignment; onMeasure: () => void; canMeasure: boolean; canReport: boolean } & Opens) {
-  if (!canMeasure && !canReport) return null;
+}: {
+  stint: Assignment;
+  onMeasure: () => void;
+  onRemove: () => void;
+  canMeasure: boolean;
+  canReport: boolean;
+  canRemove: boolean;
+} & Opens) {
+  if (!canMeasure && !canReport && !canRemove) return null;
   const report = (urgency: BreakdownUrgency) => onOpen({ kind: 'breakdown', stintId: stint.id, urgency });
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        aria-label={`Add to ${stint.machineCode}`}
+        aria-label={`${stint.machineCode} actions`}
         render={<Button size="icon-sm" type="button" variant="outline" />}
       >
-        <IconPlus aria-hidden="true" />
+        <IconDots aria-hidden="true" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-44">
         {canMeasure ? (
@@ -284,6 +295,15 @@ function AddMenu({
             <DropdownMenuItem onClick={() => report('code-red')}>
               <IconFlagFilled aria-hidden="true" className={breakdownUrgencyColorClassNames['code-red'].icon} />
               {breakdownUrgencyLabels['code-red']}
+            </DropdownMenuItem>
+          </>
+        ) : null}
+        {canRemove ? (
+          <>
+            {canMeasure || canReport ? <DropdownMenuSeparator /> : null}
+            <DropdownMenuItem onClick={onRemove} variant="destructive">
+              <IconTrash aria-hidden="true" />
+              Remove machine
             </DropdownMenuItem>
           </>
         ) : null}
@@ -307,10 +327,12 @@ export function MachineStintCard({
   thresholds: AttentionThresholds;
 } & Opens) {
   const [measuring, setMeasuring] = useState(false);
+  const [removing, setRemoving] = useState(false);
   const readsMachines = useCan('contracting_machine:read').can;
   const { stint, number, sheet: stintSheet } = entry;
   const canMeasure = stintSheet.can('editMeasures');
   const canReport = sheet.can('reportBreakdown');
+  const canRemove = stintSheet.can('remove');
   const phases = breakdownPhases(stint, breakdowns);
   const breakdownRows = (phase: readonly BreakdownSummary[]) =>
     phase.map((breakdown) => <BreakdownRow breakdown={breakdown} key={breakdown.id} />);
@@ -343,18 +365,15 @@ export function MachineStintCard({
             {stint.categoryName} · {stintLabel}
           </span>
         </div>
-        <div className="flex items-start gap-2">
-          <Badge
-            className={cn(
-              assignmentStateColorClassNames[stint.state].chip,
-              assignmentStateColorClassNames[stint.state].text,
-            )}
-            variant="outline"
-          >
-            {assignmentStateLabels[stint.state]}
-          </Badge>
-          {stintSheet.can('remove') ? <RemoveStintButton stint={stint} /> : null}
-        </div>
+        <Badge
+          className={cn(
+            assignmentStateColorClassNames[stint.state].chip,
+            assignmentStateColorClassNames[stint.state].text,
+          )}
+          variant="outline"
+        >
+          {assignmentStateLabels[stint.state]}
+        </Badge>
       </CardHeader>
       <CardContent className="flex flex-1 flex-col">
         <Timeline className="mb-3">
@@ -394,15 +413,18 @@ export function MachineStintCard({
         </Timeline>
         <StintAttention canDismiss={stintSheet.can('dismissAttention')} stint={stint} thresholds={thresholds} />
         <div className="-mt-1 mb-4 flex justify-end">
-          <AddMenu
+          <StintMenu
             canMeasure={canMeasure}
+            canRemove={canRemove}
             canReport={canReport}
             onMeasure={() => setMeasuring(true)}
             onOpen={onOpen}
+            onRemove={() => setRemoving(true)}
             stint={stint}
           />
         </div>
         {canMeasure ? <AddMeasureDialog onOpenChange={setMeasuring} open={measuring} stint={stint} /> : null}
+        {canRemove ? <RemoveStintDialog onOpenChange={setRemoving} open={removing} stint={stint} /> : null}
         <div className="mt-auto flex min-h-7 flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-border pt-3 text-xs text-muted-foreground">
           {stint.workHours !== null ? (
             <span>

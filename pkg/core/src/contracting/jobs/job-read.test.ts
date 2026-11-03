@@ -80,7 +80,7 @@ test('lists only the Jobs needing a look when asked, the SQL agreeing with the d
   // 10 h of Travel after the clean Job's departure: over the default 4 h threshold.
   await leftStint(db, over.id, excavator.id, 120, 125);
   const clamped = await newJob(context);
-  // Snapshotted clamped from a negative before Travel was measured by meter value.
+  // A stint holding a clamp from an earlier snapshot.
   const { id: clampedStint } = await leftStint(db, clamped.id, excavator.id, 125, 128);
   await db
     .update(contractingMachineAssignments)

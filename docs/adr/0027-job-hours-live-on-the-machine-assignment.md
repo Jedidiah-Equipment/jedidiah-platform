@@ -11,7 +11,7 @@ A Machine Assignment's arrival and departure hours used to be Hour Readings in t
 
 ## Consequences
 
-- The "no hour can vanish between Jobs" invariant is given up on purpose. Travel can double-count or miss when Jobs are captured out of order; the clamp stores zero with a badge, and management corrects Travel by hand.
+- The "no hour can vanish between Jobs" invariant is given up on purpose. Travel measured against the highest departure below the arrival can still double-count or miss when the meter ranges of Jobs overlap; management corrects Travel by hand.
 - A Job Hours edit, by the Foreman while his Job is open or by management until it is Invoiced with a reason once there is a Job Card, recomputes Travel until it is set by hand, and returns a Priced Job to Completed.
 - The only Completion gate on hours is that no Assignment is still on site; Travel and the John Deere difference never block.
 - Reports per Machine read the ledger, so an unlinked Machine with no spot readings shows no Daily Hours; a Job's hours are spread evenly over its dates and marked estimated. Utilisation is coarser.

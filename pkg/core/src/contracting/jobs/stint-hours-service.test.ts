@@ -78,7 +78,7 @@ const openJob = (
   });
 
 describe('capturing Job Hours', () => {
-  test('an arrival starts the Job and snapshots Travel against the last departure; a retry writes nothing', async ({
+  test('an arrival starts the Job and snapshots Travel against the departure below it; a retry writes nothing', async ({
     context,
   }) => {
     const { db, excavator } = context;
@@ -109,7 +109,7 @@ describe('capturing Job Hours', () => {
     expect((await getJob({ db, id: first.id })).assignments[0]).toMatchObject({ travelHours: 0, travelClamped: false });
   });
 
-  test('a back-loaded Job snapshots Travel against the highest departure at or below its arrival, and the next live arrival ignores it', async ({
+  test('a Job captured after the fact snapshots Travel against the highest departure at or below its arrival, and the next live arrival ignores it', async ({
     context,
   }) => {
     const { db, excavator } = context;

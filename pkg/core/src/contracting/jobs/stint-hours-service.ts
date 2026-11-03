@@ -46,10 +46,7 @@ const snapshotColumns = (side: 'arrival' | 'departure', telematics: { hours: num
     ? { arrivalTelematicsHours: telematics?.hours ?? null, arrivalTelematicsAt: telematics?.at ?? null }
     : { departureTelematicsHours: telematics?.hours ?? null, departureTelematicsAt: telematics?.at ?? null };
 
-/**
- * Travel as an arrival snapshots it: against the Machine's highest departure at or below the arrival on any other stint,
- * by meter value rather than capture order, so a back-loaded Job neither reads nor skews the live ones.
- */
+/** Travel as an arrival snapshots it: against the Machine's highest departure at or below it on any other stint. */
 async function travelSnapshot(tx: DatabaseTransaction, stint: StintRow, arrivalHours: number) {
   const [previous] = await tx
     .select({ departureHours: contractingMachineAssignments.departureHours })

@@ -1,0 +1,32 @@
+{
+  "business": "equipment",
+  "releasedAt": "2026-11-04T13:56:26.385Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Start new quotes with Ex factory delivery",
+          "description": "New quotes now default to Ex factory instead of delivery included."
+        },
+        {
+          "title": "Add people who do not sign in by name only",
+          "description": "When creating a user with a role that cannot sign in, you no longer need to enter an email address or password."
+        },
+        {
+          "title": "Search column filter options",
+          "description": "Type in a column's dropdown filter to find the option you need."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Start new quotes with Ex factory delivery",
+          "description": "New quotes now default to Ex factory instead of delivery included."
+        }
+      ]
+    }
+  ]
+}

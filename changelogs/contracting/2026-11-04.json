@@ -1,0 +1,44 @@
+{
+  "business": "contracting",
+  "releasedAt": "2026-11-04T13:56:26.385Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Correct or delete spot readings",
+          "description": "Management can open a spot reading in Machine History to correct its hours or reading date and time, or delete it. The Audit Log keeps a record of the change."
+        },
+        {
+          "title": "Find jobs by driver",
+          "description": "The new Drivers column shows who is driving on site. Filter it to find jobs a driver has worked on or is planned for."
+        },
+        {
+          "title": "Find machines by default driver",
+          "description": "Filter the Driver column in Machines to see the machines assigned to a default driver."
+        },
+        {
+          "title": "Add people who do not sign in by name only",
+          "description": "When creating a user with a role that cannot sign in, you no longer need to enter an email address or password."
+        },
+        {
+          "title": "Search column filter options",
+          "description": "Type in a column's dropdown filter to find the option you need."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Search for machines by driver",
+          "description": "Search the Machines list by the default driver's name, alongside code, make or model."
+        },
+        {
+          "title": "Receive service alerts after reading corrections",
+          "description": "A corrected spot reading now triggers a Service Due Soon notification when it brings the machine within the service threshold."
+        }
+      ]
+    }
+  ]
+}

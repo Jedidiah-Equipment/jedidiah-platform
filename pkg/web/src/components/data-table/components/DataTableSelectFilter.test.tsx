@@ -52,6 +52,7 @@ it('searches a select filter by the labels it shows, and picking one filters the
   await act(async () => document.querySelector<HTMLElement>('[aria-label="Filter Driver"]')?.click());
   const input = document.querySelector<HTMLInputElement>('[data-slot="popover-content"] input');
   if (!input) throw new Error('The Driver filter did not open');
+  expect(input.getAttribute('aria-label')).toBe('Filter Driver');
   await act(async () => {
     input.focus();
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(input, 'andile');

@@ -189,6 +189,7 @@ function DataTableSelectFilter<TData extends RowData>({
     <div className="flex items-center gap-2">
       <div className="min-w-0 flex-1">
         <SearchableCombobox
+          aria-label={`Filter ${label}`}
           inputId={inputId}
           onValueChange={(next) => column.setFilterValue(next || undefined)}
           options={column.columnDef.meta?.filterOptions ?? []}

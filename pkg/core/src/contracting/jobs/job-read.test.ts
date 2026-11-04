@@ -8,7 +8,16 @@ import { createTester } from '../../test/create-tester.js';
 import { createCustomer } from '../customers/customer-service.js';
 import { createFarm } from '../customers/farm-service.js';
 import { getContractingSettings, updateContractingSettings } from '../settings/settings-service.js';
-import { admin, adminId, foreman, foremanId, leftStint, plannedStint, seedJobFixtures } from '../test/job-fixtures.js';
+import {
+  admin,
+  adminId,
+  captureHours,
+  foreman,
+  foremanId,
+  leftStint,
+  plannedStint,
+  seedJobFixtures,
+} from '../test/job-fixtures.js';
 import { listJobs } from './job-queues.js';
 import { getJob } from './job-read.js';
 import { createJob } from './job-service.js';
@@ -200,6 +209,59 @@ test("lists only the Jobs a Driver went on, by the Assignment's Driver and never
   expect(await listed('driver-andile-n', ['upcoming'])).toEqual([planned.id]);
   // The tipper's default Driver never went on its Assignment, so that Job stays out.
   expect(await listed('driver-andile-m')).toEqual([]);
+});
+
+test("lists each Job's on-site Drivers by name, never a planned or departed Assignment's", async ({ context }) => {
+  const { db, excavator, tipper } = context;
+  const now = new Date();
+  const driver = (id: string, name: string) => ({
+    id,
+    name,
+    email: `${id}@example.com`,
+    emailVerified: false,
+    contractingRole: 'driver' as const,
+    createdAt: now,
+    updatedAt: now,
+  });
+  await db
+    .insert(user)
+    .values([
+      driver('driver-zola', 'Zola Dube'),
+      driver('driver-andile', 'Andile Nkosi'),
+      driver('driver-sandile', 'Sandile Khumalo'),
+    ]);
+  const departed = await newJob(context);
+  const left = await leftStint(db, departed.id, excavator.id, 100, 110);
+  await db
+    .update(contractingMachineAssignments)
+    .set({ driverUserId: 'driver-sandile' })
+    .where(eq(contractingMachineAssignments.id, left.id));
+  const running = await newJob(context);
+  for (const [machineId, driverUserId] of [
+    [excavator.id, 'driver-zola'],
+    [tipper.id, 'driver-andile'],
+  ] as const) {
+    const stint = await plannedStint(db, admin, { jobId: running.id, machineId, implementId: null, driverUserId });
+    await captureHours(db, stint.id, 'arrival', 120);
+  }
+  await plannedStint(db, admin, {
+    jobId: running.id,
+    machineId: excavator.id,
+    implementId: null,
+    driverUserId: 'driver-sandile',
+  });
+
+  const { items } = await listJobs({
+    db,
+    actor: admin,
+    input: JobListInput.parse({ queues: ['active', 'looks-finished'] }),
+  });
+  const drivers = new Map(items.map((item) => [item.id, item.onSiteDrivers]));
+  expect(drivers.get(running.id)).toEqual([
+    { id: 'driver-andile', name: 'Andile Nkosi' },
+    { id: 'driver-zola', name: 'Zola Dube' },
+  ]);
+  expect(drivers.get(departed.id)).toEqual([]);
 });
 
 test("lists only one Customer's Jobs when asked", async ({ context }) => {

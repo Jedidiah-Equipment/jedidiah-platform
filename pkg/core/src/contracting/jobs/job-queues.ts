@@ -102,6 +102,7 @@ export async function listJobs({
         plannedStints: jobSql.stintCount('planned'),
         onSiteStints: jobSql.stintCount('on-site'),
         leftStints: jobSql.stintCount('left'),
+        onSiteDrivers: jobSql.onSiteDrivers,
         looksFinished: jobSql.looksFinished,
         assignmentAttention,
         total: sql<number>`count(*) over ()`.mapWith(Number),

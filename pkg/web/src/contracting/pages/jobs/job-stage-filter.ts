@@ -48,20 +48,14 @@ export const NEEDS_A_LOOK = 'needs-a-look';
 const needsALookPicked = (columnFilters: ColumnFiltersState) =>
   columnFilters.some((filter) => filter.id === ATTENTION_COLUMN_ID && filter.value === NEEDS_A_LOOK);
 
-/** Not a column: the Driver filter sits beside the search, kept with the column filters so it persists with them. */
-const DRIVER_FILTER_ID = 'driver';
+/** The Drivers column: it shows who is on site, and filters to the Jobs a Driver went on in any state. */
+export const DRIVER_COLUMN_ID = 'driver';
 
-/** The Driver picked in the Driver filter, or `''` when none is. */
+/** The Driver picked in the Drivers column filter, or `''` when none is. */
 export function pickedDriver(columnFilters: ColumnFiltersState): string {
-  const value = columnFilters.find((filter) => filter.id === DRIVER_FILTER_ID)?.value;
+  const value = columnFilters.find((filter) => filter.id === DRIVER_COLUMN_ID)?.value;
   return typeof value === 'string' ? value : '';
 }
-
-/** Picks this Driver, keeping every other filter; `''` clears the pick. */
-export const pickDriver = (columnFilters: ColumnFiltersState, driverUserId: string): ColumnFiltersState => [
-  ...columnFilters.filter((filter) => filter.id !== DRIVER_FILTER_ID),
-  ...(driverUserId ? [{ id: DRIVER_FILTER_ID, value: driverUserId }] : []),
-];
 
 export const jobListFilters = (columnFilters: ColumnFiltersState, unpicked?: readonly JobQueue[]) => {
   const driverUserId = pickedDriver(columnFilters);
@@ -73,7 +67,7 @@ export const jobListFilters = (columnFilters: ColumnFiltersState, unpicked?: rea
 };
 
 // The Dashboard counts every Driver's Jobs, so a hand-off clears the Driver pick too.
-const handOffDrops = new Set([STAGE_COLUMN_ID, ATTENTION_COLUMN_ID, DRIVER_FILTER_ID]);
+const handOffDrops = new Set([STAGE_COLUMN_ID, ATTENTION_COLUMN_ID, DRIVER_COLUMN_ID]);
 const withoutHandOffFilters = (columnFilters: ColumnFiltersState) =>
   columnFilters.filter((filter) => !handOffDrops.has(filter.id));
 

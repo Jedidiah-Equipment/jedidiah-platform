@@ -212,10 +212,11 @@ pnpm release:production:check -- --agent claude
 
 ## Agent skills
 
-Agent skills are managed with the [Vercel Labs skills CLI](https://github.com/vercel-labs/skills):
+Shared agent skills are installed globally with the [Vercel Labs skills CLI](https://github.com/vercel-labs/skills);
+only the repo's own `use-slot` lives in `.agents/skills/` (see [`.agents/README.md`](.agents/README.md)):
 
 ```sh
-npx skills add abc -g -y
+npx skills add <owner/repo> --skill <name> -g -a codex -a claude-code -y
 npx skills list -g
-npx skills update
+npx skills update -g
 ```

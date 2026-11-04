@@ -17,7 +17,7 @@ import { markPriced, setStintRate } from '../jobs/pricing-service.js';
 import { captureStintHours, editStintHours } from '../jobs/stint-hours-service.js';
 import { createMeasureType } from '../rate-card/measure-type-service.js';
 import { createRate } from '../rate-card/rate-service.js';
-import { amendReadings, getReading } from '../readings/reading-service.js';
+import { amendReading, getReading } from '../readings/reading-service.js';
 import { createWorkType } from '../work-types/work-type-service.js';
 
 export const adminId = 'fixture-admin';
@@ -170,12 +170,7 @@ export async function pricedJob(
 }
 
 /** Amends a spot reading's hours at the Read At it already has. */
-export async function amendHours(db: Db, actor: JobActor, id: string, value: number, reason = 'Misread') {
+export async function amendHours(db: Db, actor: JobActor, id: string, value: number) {
   const { capturedAt } = await getReading({ db, id });
-  const [amended] = await amendReadings({
-    db,
-    actor,
-    input: { amendments: [{ id, value, capturedAt: capturedAt.toISOString() }], reason },
-  });
-  return amended;
+  return amendReading({ db, actor, input: { id, value, capturedAt: capturedAt.toISOString() } });
 }

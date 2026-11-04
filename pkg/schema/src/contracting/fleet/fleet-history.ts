@@ -5,6 +5,7 @@ import { UUID } from '../../common/uuid.js';
 import { BreakdownSubjectRef } from '../breakdowns/breakdown.js';
 import { breakdownStatuses, breakdownUrgencies } from '../breakdowns/breakdown-enums.js';
 import { jobHoursRoles } from '../jobs/stint-hours.js';
+import { ReadingValue } from '../readings/reading-value.js';
 
 /** A History row's hours: a spot or Telematics Reading from the ledger, or one of a stint's Job Hours. */
 export const fleetHistoryReadingRoles = ['spot', ...jobHoursRoles] as const;
@@ -44,6 +45,8 @@ export const FleetHistoryRow = z.object({
       z.object({ to: z.literal('breakdown'), id: UUID }),
       z.object({ to: z.literal('job'), jobNumber: z.string() }),
       z.object({ to: z.literal('service') }),
+      /** A spot reading, read at `at`, opened to amend or delete it; served only to whoever may. */
+      z.object({ to: z.literal('spot-reading'), value: ReadingValue }),
     ])
     .nullable(),
 });

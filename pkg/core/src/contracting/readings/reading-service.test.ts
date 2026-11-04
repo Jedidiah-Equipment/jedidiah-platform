@@ -1,13 +1,14 @@
-import { user } from '@pkg/db';
+import { auditEvents, user } from '@pkg/db';
 import { accessForRole } from '@pkg/domain/testing';
 import { MachineCreateInput } from '@pkg/schema/contracting';
+import { and, eq } from 'drizzle-orm';
 import { expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
 import { createCategory } from '../fleet/category-service.js';
 import { createMachine, getMachine, patchMachine, retireMachine } from '../fleet/machine-service.js';
 import { getContractingSettings, updateContractingSettings } from '../settings/settings-service.js';
 import { amendHours } from '../test/job-fixtures.js';
-import { captureReading, latestReading, listReadingsByMachine } from './reading-service.js';
+import { captureReading, deleteReading, latestReading, listReadingsByMachine } from './reading-service.js';
 
 const test = createTester(async ({ db }) => {
   const actorUserId = 'reading-actor';
@@ -28,24 +29,38 @@ const test = createTester(async ({ db }) => {
   return { actor: accessForRole('contracting-manager', actorUserId), actorUserId, machineId: machine.id };
 });
 
-test('amends a spot reading with a reason, audited, and refuses one outside its neighbours', async ({ context }) => {
+test('amends a spot reading without a reason and refuses one outside its neighbours', async ({ context }) => {
   const { db, actor, actorUserId, machineId } = context;
   const spot = (value: number, capturedAt: string) =>
     captureReading({ db, actor, input: { machineId, value, capturedAt } });
   await spot(100, '2026-09-06T08:00:00Z');
   const { reading: previous } = await spot(112, '2026-09-07T08:00:00Z');
   await spot(120, '2026-09-08T08:00:00Z');
-  await expect(amendHours(db, actor, previous.id, 110, ' ')).rejects.toThrow();
-  await expect(amendHours(db, actor, previous.id, 121, 'Misread')).rejects.toMatchObject({
-    code: 'reading.invalid_amendment',
-    refusal: { readingId: previous.id },
-  });
-  await amendHours(db, actor, previous.id, 110, 'Tenths drum misread');
-  expect((await listReadingsByMachine({ db, machineId })).find((row) => row.id === previous.id)).toMatchObject({
+  await expect(amendHours(db, actor, previous.id, 121)).rejects.toMatchObject({ code: 'reading.invalid_amendment' });
+  expect(await amendHours(db, actor, previous.id, 110)).toMatchObject({
     value: 110,
     amendedBy: actorUserId,
-    amendmentReason: 'Tenths drum misread',
     amendedAt: expect.any(Date),
+  });
+});
+
+test('deletes a spot reading, leaving its value in the Audit Log', async ({ context }) => {
+  const { db, actor, actorUserId, machineId } = context;
+  await captureReading({ db, actor, input: { machineId, value: 100, capturedAt: '2026-09-06T08:00:00Z' } });
+  const { reading: accidental } = await captureReading({
+    db,
+    actor,
+    input: { machineId, value: 110, capturedAt: '2026-09-07T08:00:00Z' },
+  });
+  await deleteReading({ db, actor, input: { id: accidental.id } });
+  expect(await latestReading({ db, machineId })).toMatchObject({ value: 100 });
+  const [deleted] = await db
+    .select({ actorUserId: auditEvents.actorUserId, changes: auditEvents.changes })
+    .from(auditEvents)
+    .where(and(eq(auditEvents.entityId, accidental.id), eq(auditEvents.action, 'deleted')));
+  expect(deleted).toMatchObject({ actorUserId, changes: { value: { from: 110, to: null } } });
+  await expect(deleteReading({ db, actor, input: { id: accidental.id } })).rejects.toMatchObject({
+    code: 'reading.not_found',
   });
 });
 

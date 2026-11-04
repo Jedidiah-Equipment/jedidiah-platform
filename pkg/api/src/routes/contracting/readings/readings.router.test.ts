@@ -1,11 +1,9 @@
 import { captureReading } from '@pkg/core/contracting';
 import { user } from '@pkg/db';
 import { accessForRole } from '@pkg/domain/testing';
-import { TRPCError } from '@trpc/server';
 import { expect } from 'vitest';
 import { createTester } from '@/test/create-tester.js';
 import { mockSession } from '@/test/test-utils.js';
-import { getTRPCPublicMetadata } from '@/trpc/errors.js';
 
 const test = createTester(async ({ db }) => {
   await db.insert(user).values({
@@ -18,7 +16,7 @@ const test = createTester(async ({ db }) => {
   });
   return { db };
 });
-test('names the reading an amendment was refused on', async ({ context }) => {
+test('management amends and deletes a spot reading, and a Foreman can do neither', async ({ context }) => {
   const managerSession = mockSession(null);
   managerSession.user.contractingRole = 'contracting-manager';
   const manager = context.createCaller(managerSession);
@@ -34,11 +32,18 @@ test('names the reading an amendment was refused on', async ({ context }) => {
     captureReading({ db: context.db, actor, input: { machineId: machine.id, value, capturedAt } });
   await spot(100, '2026-09-07T08:00:00Z');
   const { reading: later } = await spot(101, '2026-09-07T09:00:00Z');
-  const refusal = await manager.contractingReadings
-    .amend({ amendments: [{ id: later.id, value: 99, capturedAt: '2026-09-07T09:00:00Z' }], reason: 'Misread' })
-    .catch((error: unknown) => error);
-  expect(refusal).toBeInstanceOf(TRPCError);
-  expect(getTRPCPublicMetadata(refusal as TRPCError)).toMatchObject({ readingId: later.id });
+  const foremanSession = mockSession(null);
+  foremanSession.user.contractingRole = 'foreman';
+  const foreman = context.createCaller(foremanSession);
+  const amendment = { id: later.id, value: 102, capturedAt: '2026-09-07T09:00:00Z' };
+  await expect(foreman.contractingReadings.amend(amendment)).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  await expect(foreman.contractingReadings.delete({ id: later.id })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  await expect(manager.contractingReadings.amend({ ...amendment, value: 99 })).rejects.toMatchObject({
+    code: 'CONFLICT',
+  });
+  expect(await manager.contractingReadings.amend(amendment)).toMatchObject({ value: 102 });
+  await manager.contractingReadings.delete({ id: later.id });
+  expect(await manager.contractingReadings.latest({ machineId: machine.id })).toMatchObject({ value: 100 });
 });
 
 test('foremen can find active Machines and read field history without fleet management', async ({ context }) => {

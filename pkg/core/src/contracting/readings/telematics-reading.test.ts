@@ -8,7 +8,13 @@ import { createTester } from '../../test/create-tester.js';
 import { createCategory } from '../fleet/category-service.js';
 import { createMachine, patchMachine, retireMachine } from '../fleet/machine-service.js';
 import { amendHours } from '../test/job-fixtures.js';
-import { captureReading, estimateReadAtFor, latestReading, listReadingsByMachine } from './reading-service.js';
+import {
+  captureReading,
+  deleteReading,
+  estimateReadAtFor,
+  latestReading,
+  listReadingsByMachine,
+} from './reading-service.js';
 import {
   latestTelematicsReading,
   recordTelematicsReading,
@@ -166,12 +172,16 @@ test('marks nothing it contradicts: a captured reading above a report stays as i
   expect((await listReadingsByMachine({ db, machineId })).find((row) => row.id === early.id)).toEqual(early);
 });
 
-test('refuses to amend a John Deere reading', async ({ context }) => {
+test('refuses to amend or delete a John Deere reading', async ({ context }) => {
   const { db, actor, machineId } = context;
   const stored = written(await reportFor(context)(1000, '2026-09-07T08:00:00Z'));
-  await expect(amendHours(db, actor, stored.reading.id, 999, 'Wrong')).rejects.toMatchObject({
-    code: 'reading.invalid_amendment',
+  await expect(amendHours(db, actor, stored.reading.id, 999)).rejects.toMatchObject({
+    code: 'reading.telematics',
     message: 'A Telematics Reading cannot be amended.',
+  });
+  await expect(deleteReading({ db, actor, input: { id: stored.reading.id } })).rejects.toMatchObject({
+    code: 'reading.telematics',
+    message: 'A Telematics Reading cannot be deleted.',
   });
   expect(await listReadingsByMachine({ db, machineId })).toMatchObject([{ value: 1000, amendedBy: null }]);
 });

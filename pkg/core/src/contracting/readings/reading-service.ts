@@ -6,11 +6,12 @@ import {
   type EstimateFacts,
   estimateReadAt,
   FUTURE_READ_AT_TOLERANCE_MS,
+  isReported,
   type JobActor,
   judgeCapture,
   namesReadAt,
   proposesReadAt,
-  resolveReadingAmendments,
+  resolveReadingAmendment,
 } from '@pkg/domain/contracting';
 import {
   LatestReading,
@@ -18,9 +19,10 @@ import {
   ReadAtEstimateInput,
   ReadingAmendInput,
   ReadingCaptureInput,
+  ReadingDeleteInput,
 } from '@pkg/schema/contracting';
-import { and, eq, gt, inArray, lte } from 'drizzle-orm';
-import { recordAuditCreate } from '../../audit/audit-writer.js';
+import { and, eq, gt, lte } from 'drizzle-orm';
+import { recordAuditCreate, recordAuditDelete } from '../../audit/audit-writer.js';
 import { serviceDueSoonEdge } from '../fleet/machine-service.js';
 import { type ReadingRow as Row, readingDescriptor, updateAudited } from './reading-audit.js';
 import { amendmentRefused, readingNotFound as notFound, ReadingError } from './reading-errors.js';
@@ -224,59 +226,60 @@ const toNeighbour = ({ id, value, capturedAt, telematicsProvider }: Row): Captur
   telematicsProvider,
 });
 
-export async function amendReadings({ db, actor, input: raw }: { db: Db; actor: JobActor; input: ReadingAmendInput }) {
-  const actorUserId = actor.userId;
+/** Locks the Machine a reading is on, serializing every amendment and deletion with its captures. */
+async function lockMachineOf(tx: DatabaseTransaction, id: string) {
+  const [target] = await tx
+    .select({ machineId: contractingHourReadings.machineId })
+    .from(contractingHourReadings)
+    .where(eq(contractingHourReadings.id, id));
+  if (!target) throw notFound();
+  await tx
+    .select({ id: contractingMachines.id })
+    .from(contractingMachines)
+    .where(eq(contractingMachines.id, target.machineId))
+    .for('update');
+  return target.machineId;
+}
+
+/** A spot reading as read under its Machine lock; a Telematics Reading is John Deere's, never anyone's to change. */
+function spotReadingFor(row: Row | undefined, change: 'amended' | 'deleted'): Row {
+  if (!row) throw notFound();
+  if (isReported(row)) throw new ReadingError('reading.telematics', `A Telematics Reading cannot be ${change}.`);
+  return row;
+}
+
+/** Corrects a spot reading's hours or Read At, judged again at its new place in time. */
+export async function amendReading({ db, actor, input: raw }: { db: Db; actor: JobActor; input: ReadingAmendInput }) {
   const input = ReadingAmendInput.parse(raw);
-  const amendments = input.amendments.map((amendment) => ({
-    ...amendment,
-    capturedAt: new Date(amendment.capturedAt),
-  }));
-  const ids = new Set(amendments.map((amendment) => amendment.id));
-  if (ids.size !== amendments.length) throw new ReadingError('reading.invalid_amendment', 'Amend each reading once.');
+  const change = { value: input.value, capturedAt: new Date(input.capturedAt) };
   return db.transaction(async (tx) => {
-    const targets = await tx
+    const machineId = await lockMachineOf(tx, input.id);
+    const ledger = await tx
       .select()
       .from(contractingHourReadings)
-      .where(inArray(contractingHourReadings.id, [...ids]));
-    if (targets.length !== ids.size) throw notFound();
-    if (targets.some((row) => row.method === 'telematics'))
-      throw new ReadingError('reading.invalid_amendment', 'A Telematics Reading cannot be amended.');
-    const machineIds = new Set(targets.map((row) => row.machineId));
-    const [machineId] = machineIds;
-    if (machineIds.size !== 1 || !machineId)
-      throw new ReadingError('reading.invalid_amendment', 'Amend one Machine at a time.');
-    const [machine] = await tx
-      .select()
-      .from(contractingMachines)
-      .where(eq(contractingMachines.id, machineId))
-      .for('update');
-    if (!machine) throw notFound();
-    const rows = await tx
-      .select()
-      .from(contractingHourReadings)
-      .where(eq(contractingHourReadings.machineId, machineId))
-      .orderBy(...oldestFirst);
+      .where(eq(contractingHourReadings.machineId, machineId));
+    const before = spotReadingFor(
+      ledger.find((row) => row.id === input.id),
+      'amended',
+    );
     const now = new Date();
-    const resolution = resolveReadingAmendments(rows, amendments, now);
+    const resolution = resolveReadingAmendment(ledger, before, change, now);
     if (!resolution.ok) throw amendmentRefused(resolution);
-    const before = new Map(rows.map((row) => [row.id, row]));
-    for (const amendment of amendments) {
-      const row = before.get(amendment.id);
-      if (!row) continue;
-      await updateAudited(tx, actorUserId, row, {
-        value: amendment.value,
-        capturedAt: amendment.capturedAt,
-        amendedBy: actorUserId,
-        amendedAt: now,
-        amendmentReason: input.reason,
-      });
-    }
-    const amended = await tx
-      .select()
-      .from(contractingHourReadings)
-      .where(inArray(contractingHourReadings.id, [...ids]));
-    const byId = new Map(amended.map((row) => [row.id, row]));
-    return [...ids].flatMap((id) => byId.get(id) ?? []);
+    return updateAudited(tx, actor.userId, before, { ...change, amendedBy: actor.userId, amendedAt: now });
+  });
+}
+
+/** Takes a spot reading off the ledger, such as one captured by accident; the Audit Log keeps what it said. */
+export async function deleteReading({ db, actor, input: raw }: { db: Db; actor: JobActor; input: ReadingDeleteInput }) {
+  const input = ReadingDeleteInput.parse(raw);
+  await db.transaction(async (tx) => {
+    await lockMachineOf(tx, input.id);
+    const row = spotReadingFor(
+      await tx.query.contractingHourReadings.findFirst({ where: eq(contractingHourReadings.id, input.id) }),
+      'deleted',
+    );
+    await tx.delete(contractingHourReadings).where(eq(contractingHourReadings.id, row.id));
+    await recordAuditDelete({ db: tx, actorUserId: actor.userId, descriptor: readingDescriptor, input: row });
   });
 }
 

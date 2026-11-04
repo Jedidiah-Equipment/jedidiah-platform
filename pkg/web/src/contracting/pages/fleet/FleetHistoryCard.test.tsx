@@ -13,6 +13,10 @@ import { FleetHistoryCard, historyListFilters } from './FleetHistoryCard.js';
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 vi.mock('@tanstack/react-router', () => ({ useNavigate: () => vi.fn() }));
+vi.mock('@/hooks/use-api-mutation-error-toast.js', () => ({
+  useApiMutationErrorReport: () => () => undefined,
+  useApiMutationErrorToast: () => () => undefined,
+}));
 
 const subject = { kind: 'machine', id: '11111111-1111-4111-8111-111111111111' } as const;
 

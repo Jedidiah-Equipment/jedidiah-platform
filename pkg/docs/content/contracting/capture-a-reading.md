@@ -24,3 +24,12 @@ Management can capture a spot reading from the office, from a meter value someon
 
 1. Open **Fleet → Machines** and open the Machine.
 2. Choose **Capture hours**, then follow the same steps as on the phone: **Today** or **Earlier**, the **Hours on the meter**, the date to check, **Date looks good**, an optional **Comment**, and **Save reading**.
+
+## Correct or delete a spot reading
+
+Management can correct a spot reading typed wrong, or delete one captured by accident, such as on the wrong Machine. JD Link readings cannot be changed. No reason is asked: the [Audit Log](./trace-a-change-in-the-audit-log) keeps who changed the reading and what it said.
+
+1. Open **Fleet → Machines** and open the Machine.
+2. In **History**, choose the spot reading.
+3. To correct it, change the **Hours on the meter** or the **Read At**, then choose **Save reading**. The corrected reading must still fit between the Machine's readings before and after it; if it does not, the reason is shown and nothing is saved.
+4. To remove it, choose **Delete reading**, then **Delete**.

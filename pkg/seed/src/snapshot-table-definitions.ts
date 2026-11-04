@@ -461,7 +461,6 @@ export const snapshotTableDefinitions = [
       'comment',
       'amendedBy',
       'amendedAt',
-      'amendmentReason',
       'createdAt',
     ],
   },

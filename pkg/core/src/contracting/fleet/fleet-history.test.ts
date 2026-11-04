@@ -184,6 +184,24 @@ test('lists readings, Breakdowns and services as one newest-first timeline, a se
   });
 });
 
+test('opens a spot reading to amend for whoever may, and never a John Deere reading', async ({ context }) => {
+  await context.db.insert(contractingHourReadings).values({
+    machineId: context.machineId,
+    value: 1003.5,
+    capturedAt: new Date('2026-09-04T08:00:00Z'),
+    method: 'manual',
+    capturedByUserId: adminId,
+  });
+  const opens = async (actor: typeof admin) =>
+    (await history(context, { kinds: ['reading'] }, actor)).items.map((row) => row.opens?.to ?? null);
+  expect((await history(context, { kinds: ['reading'] })).items[0]?.opens).toEqual({
+    to: 'spot-reading',
+    value: 1003.5,
+  });
+  expect(await opens(admin)).toEqual(['spot-reading', null, 'job', 'job']);
+  expect(await opens(foreman)).toEqual([null, null, 'job', 'job']);
+});
+
 test('pages, sorts, searches and filters in SQL', async ({ context }) => {
   const firstPage = await history(context, { limit: 2 });
   expect(firstPage).toMatchObject({ total: 5, nextCursor: 2 });

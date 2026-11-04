@@ -27,6 +27,7 @@ import { ACTIVITY_EVENT_ICONS } from '@/contracting/components/activity/Activity
 import { BreakdownStatusBadge, BreakdownUrgencyIcon } from '@/contracting/components/BreakdownSubjectLabel.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
+import { type SpotReading, SpotReadingDialog } from './SpotReadingDialog.js';
 
 const WHEN_COLUMN_ID = 'at';
 const KIND_COLUMN_ID = 'kind';
@@ -76,7 +77,7 @@ function HistoryWhatHappened({ row }: { row: FleetHistoryRow }) {
 
 /**
  * One newest-first timeline of what happened to a Machine or Implement: readings, Breakdowns and services, paged,
- * sorted and filtered on the server. It opens unfiltered every time.
+ * sorted and filtered on the server. It opens unfiltered every time; management opens a spot reading to amend it.
  */
 export function FleetHistoryCard({
   subject: { kind: subjectKind, id: subjectId },
@@ -88,6 +89,7 @@ export function FleetHistoryCard({
 }) {
   const trpc = useTRPC();
   const navigate = useNavigate();
+  const [amending, setAmending] = useState<SpotReading | null>(null);
   const subject = useMemo(() => ({ kind: subjectKind, id: subjectId }), [subjectKind, subjectId]);
   const [useHistoryTableStore] = useState(() =>
     createDataTableStore({ sorting: [{ id: WHEN_COLUMN_ID, desc: true }] }),
@@ -195,13 +197,15 @@ export function FleetHistoryCard({
             onLoadMore: () => void historyQuery.fetchNextPage(),
           }}
           canOpenRow={({ opens }) => opens !== null && (opens.to !== 'service' || onOpenService !== undefined)}
-          onRowClick={({ opens }) => {
+          onRowClick={({ id, at, opens }) => {
             if (opens?.to === 'breakdown') void navigate({ to: '/contracting/workshop/$id', params: { id: opens.id } });
             else if (opens?.to === 'job')
               void navigate({ to: '/contracting/jobs/$code', params: { code: opens.jobNumber } });
             else if (opens?.to === 'service') onOpenService?.();
+            else if (opens?.to === 'spot-reading') setAmending({ id, at, value: opens.value });
           }}
         />
+        <SpotReadingDialog reading={amending} onClose={() => setAmending(null)} />
       </CardContent>
     </Card>
   );

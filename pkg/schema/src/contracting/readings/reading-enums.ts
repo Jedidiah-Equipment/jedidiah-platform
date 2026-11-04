@@ -12,6 +12,7 @@ export const readingErrorCodes = [
   'reading.below_latest',
   'reading.above_next',
   'reading.invalid_amendment',
+  'reading.telematics',
   'reading.forbidden',
   'reading.future_read_at',
   'reading.outruns_clock',

@@ -156,7 +156,7 @@ export const emptyQuoteFormValues: QuoteFormValues = {
   cancellationReason: '',
   depositPercent: 0,
   deliveryPrice: 0,
-  deliveryTerms: 'included',
+  deliveryTerms: 'ex_factory',
   discountPercent: 0,
   notes: '',
   documentNotes: '',

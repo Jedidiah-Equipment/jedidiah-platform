@@ -77,10 +77,10 @@ function computeQuoteWorkItemsTotal(workItems: readonly WorkItemPricingInput[] |
 /** Only an additional charge puts money on the Quote; every other term delivers (or does not) for nothing. */
 export function computeAdditionalDeliveryPrice({
   deliveryPrice = 0,
-  deliveryTerms = 'included',
+  deliveryTerms,
 }: {
   deliveryPrice?: number;
-  deliveryTerms?: QuoteDeliveryTerms;
+  deliveryTerms?: QuoteDeliveryTerms | undefined;
 }): number {
   return deliveryTerms === 'additional_charge' ? deliveryPrice : 0;
 }
@@ -91,7 +91,7 @@ export function computeQuoteVatAmount(subtotal: number, vatPercent: number = VAT
 
 function computeQuoteTotal({
   deliveryPrice = 0,
-  deliveryTerms = 'included',
+  deliveryTerms,
   discountPercent,
   quotedBasePrice,
   selectedAssemblyPrices = [],

@@ -178,7 +178,7 @@ describe('createQuote contract', () => {
         phone: null,
         type: 'inline',
       },
-      deliveryTerms: 'included',
+      deliveryTerms: 'ex_factory',
       deliveryPrice: 0,
       depositPercent: 0,
       discountPercent: 0,

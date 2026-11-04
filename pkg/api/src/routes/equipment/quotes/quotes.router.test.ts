@@ -958,7 +958,7 @@ describe('quotes.update', () => {
     expect(updated).not.toHaveProperty('total');
     expect(updateEvent?.changes).toMatchObject({
       deliveryTerms: {
-        from: 'included',
+        from: 'ex_factory',
         to: 'additional_charge',
       },
       depositPercent: {

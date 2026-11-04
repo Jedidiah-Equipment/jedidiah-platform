@@ -241,8 +241,8 @@ describe('QuoteCreateInput', () => {
     ).toThrow();
   });
 
-  it('defaults delivery terms to included in the sale price', () => {
-    expect(QuoteCreateInput.parse(baseCreateInput)).toMatchObject({ deliveryPrice: 0, deliveryTerms: 'included' });
+  it('defaults delivery terms to ex factory', () => {
+    expect(QuoteCreateInput.parse(baseCreateInput)).toMatchObject({ deliveryPrice: 0, deliveryTerms: 'ex_factory' });
   });
 
   it('rejects a delivery price unless delivery is an additional charge', () => {
@@ -328,6 +328,12 @@ describe('QuoteUpdateInput', () => {
         status: 'cancelled',
       }),
     ).toMatchObject({ cancellationReason: 'Superseded by a revised quote', status: 'cancelled' });
+  });
+
+  it('keeps the saved delivery terms and never defaults an omitted one', () => {
+    expect(QuoteUpdateInput.parse(baseUpdateInput())).toMatchObject({ deliveryTerms: 'included' });
+    const { deliveryTerms: _omitted, ...withoutTerms } = baseUpdateInput();
+    expect(QuoteUpdateInput.safeParse(withoutTerms).success).toBe(false);
   });
 
   it('parses a product offering update', () => {

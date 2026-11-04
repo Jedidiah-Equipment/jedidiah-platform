@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
 import { Dialog } from '@/components/ui/dialog.js';
-import { UserCreateForm } from './UserCreateForm.js';
+import { UserCreateForm, UserCreateFormValues } from './UserCreateForm.js';
 
 describe('UserCreateForm', () => {
   it('offers the shared-device setting to role managers', () => {
@@ -28,7 +28,33 @@ describe('UserCreateForm', () => {
     expect(contracting).not.toContain('Equipment role');
     expect(contracting).toContain('Foreman');
   });
+
+  it('asks for no email or password while the chosen role cannot sign in', () => {
+    const driver = { ...nameOnly, contractingRole: 'driver' as const };
+
+    expect(UserCreateFormValues.safeParse(driver).success).toBe(true);
+  });
+
+  it('still requires email and password for a role that can sign in', () => {
+    const foreman = { ...nameOnly, contractingRole: 'foreman' as const };
+
+    expect(UserCreateFormValues.safeParse(foreman).error?.issues.map((issue) => issue.path)).toEqual([
+      ['email'],
+      ['password'],
+    ]);
+  });
 });
+
+const nameOnly: UserCreateFormValues = {
+  contractingRole: null,
+  email: '',
+  emailVerified: true,
+  equipmentRole: null,
+  isDevice: false,
+  name: 'Sipho',
+  password: '',
+  phoneNumber: null,
+};
 
 function render({
   business = 'equipment',

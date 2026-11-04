@@ -12,12 +12,13 @@ import {
   suggestImplementCode,
 } from '@pkg/core/contracting';
 import { type Db, eq, user } from '@pkg/db';
+import { placeholderEmail } from '@pkg/domain';
 import { implementCodePrefix } from '@pkg/domain/contracting';
 import { AuthId } from '@pkg/schema';
 import { type Category, type Implement, type Machine, MachineCreateInput } from '@pkg/schema/contracting';
 import type { Auth } from '@/auth/auth.js';
 import type { FleetImportData, FleetImportImplement, FleetImportMachine } from './fleet-import-csv.js';
-import { categoryKey, naturalKey as key, placeholderEmail } from './fleet-import-keys.js';
+import { categoryKey, naturalKey as key } from './fleet-import-keys.js';
 
 export type FleetImportCounts = { created: number; updated: number; unchanged: number; skipped: number };
 export type FleetImportSummary = {

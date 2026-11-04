@@ -1,5 +1,7 @@
+import { isRoleSlotsSignInEligible, placeholderEmail } from '@pkg/domain';
 import type { UserAccount } from '@pkg/schema';
 
+import type { UserCreateFormValues } from './UserCreateForm.js';
 import type { UserEditFormValues } from './UserEditForm.js';
 
 type ProfileUpdateData = Partial<
@@ -50,4 +52,23 @@ export function buildProfileUpdateData({
   }
 
   return data;
+}
+
+type CreateUserCredentials = Pick<UserCreateFormValues, 'email' | 'emailVerified' | 'password'>;
+
+/**
+ * A person who can't sign in is added by name alone, but Better Auth still wants an address and a
+ * password: a placeholder address, suffixed so two people sharing a name stay apart, and a password
+ * nobody keeps.
+ */
+export function createUserCredentials(value: UserCreateFormValues): CreateUserCredentials {
+  if (isRoleSlotsSignInEligible(value)) {
+    return { email: value.email, emailVerified: value.emailVerified, password: value.password };
+  }
+
+  return {
+    email: placeholderEmail(value.name, crypto.randomUUID().slice(0, 6)),
+    emailVerified: false,
+    password: crypto.randomUUID(),
+  };
 }

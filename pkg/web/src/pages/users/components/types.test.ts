@@ -1,7 +1,8 @@
 import { AuthId, type UserAccount } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
 
-import { buildProfileUpdateData } from './types.js';
+import { buildProfileUpdateData, createUserCredentials } from './types.js';
+import type { UserCreateFormValues } from './UserCreateForm.js';
 import type { UserEditFormValues } from './UserEditForm.js';
 
 const baselineUser: UserAccount = {
@@ -63,5 +64,34 @@ describe('buildProfileUpdateData', () => {
         value: baselineUser,
       }),
     ).toEqual({});
+  });
+});
+
+describe('createUserCredentials', () => {
+  const person: UserCreateFormValues = {
+    contractingRole: 'driver',
+    email: '',
+    emailVerified: true,
+    equipmentRole: null,
+    isDevice: false,
+    name: 'Sipho',
+    password: '',
+    phoneNumber: null,
+  };
+
+  it('gives a person who cannot sign in an unverified placeholder address of their own', () => {
+    const first = createUserCredentials(person);
+    const second = createUserCredentials(person);
+
+    expect(first.email).toMatch(/^sipho-[0-9a-f]{6}@fleet\.jedidiah\.invalid$/);
+    expect(first.emailVerified).toBe(false);
+    expect(first.password).not.toBe('');
+    expect(second.email).not.toBe(first.email);
+  });
+
+  it("keeps a sign-in role's own email and password", () => {
+    const foreman = { ...person, contractingRole: 'foreman' as const, email: 'f@example.com', password: 'secret' };
+
+    expect(createUserCredentials(foreman)).toEqual({ email: 'f@example.com', emailVerified: true, password: 'secret' });
   });
 });

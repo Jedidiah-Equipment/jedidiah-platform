@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { placeholderEmail } from '@pkg/domain';
 import { PhoneNumber } from '@pkg/schema';
 import {
   CategoryColour,
@@ -11,7 +12,7 @@ import {
   ServiceIntervalHours,
 } from '@pkg/schema/contracting';
 import { z } from 'zod';
-import { categoryKey, naturalKey as key, placeholderEmail } from './fleet-import-keys.js';
+import { categoryKey, naturalKey as key } from './fleet-import-keys.js';
 
 export type FleetImportFileName = 'categories' | 'implements' | 'machines' | 'people';
 export type FleetImportFiles = Record<FleetImportFileName, string>;

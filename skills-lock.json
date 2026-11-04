@@ -43,6 +43,12 @@
       "skillPath": "skills/engineering/domain-modeling/SKILL.md",
       "computedHash": "b3eb40152b81f0c98fd2095a023c019452dbdce56f7540cc67fece2972db8369"
     },
+    "execute-test-plan": {
+      "source": "deanvanniekerk/skills",
+      "sourceType": "github",
+      "skillPath": "skills/execute-test-plan/SKILL.md",
+      "computedHash": "851235efadc4b86cb0c6c8de4934904b2bf808e1505c80a98a473b8338da1d01"
+    },
     "gh-address-comments": {
       "source": "openai/skills",
       "sourceType": "github",
@@ -108,6 +114,12 @@
       "sourceType": "github",
       "skillPath": "skills/prune-tests/SKILL.md",
       "computedHash": "99cb89be9b6c8a38422fcb0b6fa5f1181364b521b9e1ab8aa42b5575759cc88b"
+    },
+    "quality-control": {
+      "source": "deanvanniekerk/skills",
+      "sourceType": "github",
+      "skillPath": "skills/quality-control/SKILL.md",
+      "computedHash": "4806ac13a5554d2dad81d9d1cad883da59aaa0fcc11ea1a27d1360671b4b5acd"
     },
     "research": {
       "source": "mattpocock/skills",

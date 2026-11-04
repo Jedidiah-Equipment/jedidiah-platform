@@ -8,7 +8,10 @@ export function isMachineCategoryFilter(value: unknown): value is string {
   return typeof value === 'string' && value.length > 0;
 }
 
-type MachineListItem = Pick<Machine, 'id' | 'code' | 'make' | 'model' | 'categoryId' | 'categoryName'>;
+type MachineListItem = Pick<
+  Machine,
+  'id' | 'code' | 'make' | 'model' | 'categoryId' | 'categoryName' | 'currentDriverName'
+>;
 
 export function getMachineCategories(machines: readonly MachineListItem[]) {
   return [
@@ -38,7 +41,9 @@ export function getVisibleMachines<T extends MachineListItem>(
     .filter(
       (machine) =>
         (category === 'all' || machine.categoryId === category) &&
-        [machine.code, machine.make, machine.model].some((value) => value?.toLowerCase().includes(term)),
+        [machine.code, machine.make, machine.model, machine.currentDriverName].some((value) =>
+          value?.toLowerCase().includes(term),
+        ),
     )
     .sort(
       (a, b) =>

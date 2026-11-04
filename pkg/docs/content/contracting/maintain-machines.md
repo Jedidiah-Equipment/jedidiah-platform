@@ -1,7 +1,7 @@
 # Maintain Machines
 
 1. Switch to **Jedidiah Contracting** if you have access to both businesses, then open **Fleet → Machines**.
-2. Search by Code or filter the **Category** column. **Active fleet** lists every Machine in service, and **Busy with** shows the customer and farm of the Job one is on site on; choose **Retired** to find a retired Machine.
+2. Search by Code or filter the **Category** column. Filter the **Driver** column to list the Machines a driver is the default Driver on. **Active fleet** lists every Machine in service, and **Busy with** shows the customer and farm of the Job one is on site on; choose **Retired** to find a retired Machine.
 3. Choose **New machine**. Enter its **Code**, choose or type its **Make** and **Model**, and select a **Category**. If no Category exists yet, add one in [Categories](./maintain-categories).
 4. Choose **Save**. Codes display uppercase; a Code already used by another Machine is rejected regardless of letter case.
 5. On the Machine's details, enter its registration, year, notes, and optional **Default Driver**, the Driver filled in each time the Machine is added to a Job. Drivers must already exist as people with the Contracting driver role; shared Device Accounts cannot be assigned. Clear **Default Driver** before changing that person’s role or marking them as a Device Account. **Serial number** and **John Deere** are filled by [linking the Machine to John Deere](./connect-john-deere#link-a-machine).

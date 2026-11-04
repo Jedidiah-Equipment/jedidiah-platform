@@ -58,13 +58,19 @@ export const stintCount = (state: AssignmentState) => sql<number>`(
     and ${assignmentInState[state](summaryAssignment)}
 )`;
 
-/** The Machine has an Assignment on the Job, in any state. */
-export const hasMachine = (machineId: string) => sql<boolean>`exists (
+const hasAssignmentWhere = (condition: SQL) => sql<boolean>`exists (
   select 1
   from contracting.machine_assignment summary_assignment
   where summary_assignment.job_id = ${contractingJobs.id}
-    and summary_assignment.machine_id = ${machineId}
+    and ${condition}
 )`;
+
+/** The Machine has an Assignment on the Job, in any state. */
+export const hasMachine = (machineId: string) => hasAssignmentWhere(sql`${summaryAssignment.machineId} = ${machineId}`);
+
+/** The Assignment's Driver, never the Machine's default, went on the Job, in any state. */
+export const hasDriver = (driverUserId: string) =>
+  hasAssignmentWhere(sql`${summaryAssignment.driverUserId} = ${driverUserId}`);
 
 /** Parameter-free, so the queue counts can group by it. */
 export const looksFinished = sql<boolean>`(

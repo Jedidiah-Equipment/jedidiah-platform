@@ -83,6 +83,7 @@ export async function listJobs({
     readableBy(reader),
     input.needsALook ? needsALook : undefined,
     input.machineId ? jobSql.hasMachine(input.machineId) : undefined,
+    input.driverUserId ? jobSql.hasDriver(input.driverUserId) : undefined,
     input.customerId ? eq(contractingJobs.customerId, input.customerId) : undefined,
     createGlobalSearchCondition(input.search, [
       jobSql.jobNumberText,

@@ -5,8 +5,24 @@ import { getMachineCategories, getVisibleMachines, normalizeMachineCategory } fr
 const hauler = UUID.parse('00000000-0000-4000-8000-000000000001');
 const loader = UUID.parse('00000000-0000-4000-8000-000000000002');
 const machines = [
-  { id: hauler, code: 'BEL14-10', make: 'Bell', model: '1406', categoryId: hauler, categoryName: 'Hauler' },
-  { id: loader, code: 'BEL14-2', make: 'Bell', model: '1406', categoryId: hauler, categoryName: 'Hauler' },
+  {
+    id: hauler,
+    code: 'BEL14-10',
+    make: 'Bell',
+    model: '1406',
+    categoryId: hauler,
+    categoryName: 'Hauler',
+    currentDriverName: 'Andile Nkosi',
+  },
+  {
+    id: loader,
+    code: 'BEL14-2',
+    make: 'Bell',
+    model: '1406',
+    categoryId: hauler,
+    categoryName: 'Hauler',
+    currentDriverName: 'Andile Mokoena',
+  },
   {
     id: UUID.parse('00000000-0000-4000-8000-000000000003'),
     code: 'CAT-1',
@@ -14,6 +30,7 @@ const machines = [
     model: '950',
     categoryId: loader,
     categoryName: 'Front End Loader',
+    currentDriverName: null,
   },
 ];
 
@@ -41,6 +58,13 @@ describe('Machine catalog', () => {
     expect(
       getVisibleMachines(machines, { search: 'caterpillar', category: 'all', sort: 'code' }).map((row) => row.code),
     ).toEqual(['CAT-1']);
+  });
+
+  it("finds a driver's Machines by the default Driver's name", () => {
+    const found = (search: string) =>
+      getVisibleMachines(machines, { search, category: 'all', sort: 'code' }).map((row) => row.code);
+    expect(found('andile')).toEqual(['BEL14-2', 'BEL14-10']);
+    expect(found('nkosi')).toEqual(['BEL14-10']);
   });
 
   it('deduplicates and orders Category options and falls back when a saved Category is absent', () => {

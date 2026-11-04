@@ -79,6 +79,8 @@ export const JobListInput = createSearchedSortedCursorQueryInput({
     needsALook: z.boolean().optional(),
     /** Keep only Jobs this Machine has an Assignment on, in any state: planned, on site, or left. */
     machineId: UUID.optional(),
+    /** Keep only Jobs with a Machine Assignment whose Driver is this person, in any state: planned, on site, or left. */
+    driverUserId: AuthId.optional(),
     /** Keep only this Customer's Jobs. */
     customerId: UUID.optional(),
   },

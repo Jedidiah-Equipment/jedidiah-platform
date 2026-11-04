@@ -1,5 +1,6 @@
 import type { Db } from '@pkg/db';
-import { contractingJobs, contractingMachineAssignments } from '@pkg/db/contracting';
+import { user } from '@pkg/db';
+import { contractingJobs, contractingMachineAssignments, contractingMachines } from '@pkg/db/contracting';
 import { JobListInput } from '@pkg/schema/contracting';
 import { eq } from 'drizzle-orm';
 import { expect } from 'vitest';
@@ -148,6 +149,57 @@ test('lists only the Jobs a Machine has an Assignment on when asked, in any stat
   await db.update(contractingJobs).set({ foremanUserId: null }).where(eq(contractingJobs.id, planned.id));
   // Still reader-scoped: the Foreman's own Jobs only.
   expect(await listed(excavator.id, foreman)).toEqual([left.id]);
+});
+
+test("lists only the Jobs a Driver went on, by the Assignment's Driver and never the Machine's default", async ({
+  context,
+}) => {
+  const { db, excavator, tipper } = context;
+  const now = new Date();
+  const driver = (id: string, name: string) => ({
+    id,
+    name,
+    email: `${id}@example.com`,
+    emailVerified: false,
+    contractingRole: 'driver' as const,
+    createdAt: now,
+    updatedAt: now,
+  });
+  await db
+    .insert(user)
+    .values([driver('driver-andile-n', 'Andile Nkosi'), driver('driver-andile-m', 'Andile Mokoena')]);
+  await db
+    .update(contractingMachines)
+    .set({ currentDriverUserId: 'driver-andile-m' })
+    .where(eq(contractingMachines.id, tipper.id));
+  const job = () => newJob(context);
+  const planned = await job();
+  await plannedStint(db, admin, {
+    jobId: planned.id,
+    machineId: excavator.id,
+    implementId: null,
+    driverUserId: 'driver-andile-n',
+  });
+  const left = await job();
+  const stint = await leftStint(db, left.id, excavator.id, 100, 110);
+  await db
+    .update(contractingMachineAssignments)
+    .set({ driverUserId: 'driver-andile-n' })
+    .where(eq(contractingMachineAssignments.id, stint.id));
+  const someoneElse = await job();
+  await plannedStint(db, admin, { jobId: someoneElse.id, machineId: tipper.id, implementId: null, driverUserId: null });
+
+  const listed = async (
+    driverUserId: string,
+    queues: JobListInput['queues'] = ['upcoming', 'active', 'looks-finished'],
+  ) =>
+    (await listJobs({ db, actor: admin, input: JobListInput.parse({ queues, driverUserId }) })).items.map(
+      (item) => item.id,
+    );
+  expect(new Set(await listed('driver-andile-n'))).toEqual(new Set([planned.id, left.id]));
+  expect(await listed('driver-andile-n', ['upcoming'])).toEqual([planned.id]);
+  // The tipper's default Driver never went on its Assignment, so that Job stays out.
+  expect(await listed('driver-andile-m')).toEqual([]);
 });
 
 test("lists only one Customer's Jobs when asked", async ({ context }) => {

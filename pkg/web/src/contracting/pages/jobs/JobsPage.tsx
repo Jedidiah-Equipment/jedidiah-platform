@@ -24,7 +24,11 @@ import type { ColumnFiltersState } from '@tanstack/react-table';
 import { useCallback, useMemo, useState } from 'react';
 import { DateDisplay } from '@/components/common/DateDisplay.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
-import { SearchableCombobox, type SearchableComboboxCreate } from '@/components/common/SearchableCombobox.js';
+import {
+  SearchableCombobox,
+  type SearchableComboboxCreate,
+  withCurrentOption,
+} from '@/components/common/SearchableCombobox.js';
 import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/components/data-table/cursor-query.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
@@ -398,8 +402,12 @@ export function JobsTable({ scope }: { scope?: JobsScope }) {
               <div className="w-56">
                 <SearchableCombobox
                   inputId="jobs-driver"
-                  // Full names: first names collide in the fleet.
-                  options={(drivers.data ?? []).map((person) => ({ value: person.id, label: person.name }))}
+                  // Full names: first names collide in the fleet. A saved pick no longer listed stays on show.
+                  options={withCurrentOption(
+                    (drivers.data ?? []).map((person) => ({ value: person.id, label: person.name })),
+                    pickedDriver(tableController.columnFilters),
+                    'Unavailable driver',
+                  )}
                   placeholder="Any driver"
                   value={pickedDriver(tableController.columnFilters)}
                   onValueChange={(driverUserId) =>

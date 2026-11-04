@@ -3,8 +3,9 @@ import { formatDate } from '@pkg/domain';
 import { IconArrowDown, IconArrowsSort, IconArrowUp, IconCalendar, IconFilter, IconX } from '@tabler/icons-react';
 import type { RowData } from '@tanstack/react-table';
 import { flexRender } from '@tanstack/react-table';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import type { DateRange } from 'react-day-picker';
+import { SearchableCombobox } from '@/components/common/SearchableCombobox.js';
 import { Button } from '@/components/ui/button.js';
 import { Calendar } from '@/components/ui/calendar.js';
 import {
@@ -20,7 +21,6 @@ import {
 } from '@/components/ui/combobox.js';
 import { Input } from '@/components/ui/input.js';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover.js';
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
 import { cn } from '@/lib/utils.js';
 import { toDateRangeFilterValue, toMultiSelectFilterValue } from '../column-filter-values.js';
 import type { DataTableColumnInstance, DataTableHeaderInstance } from '../features.js';
@@ -181,27 +181,21 @@ function DataTableSelectFilter<TData extends RowData>({
   column,
   label,
 }: Pick<DataTableFilterControlProps<TData>, 'column' | 'label'>) {
-  const options = column.columnDef.meta?.filterOptions ?? [];
-  const filterValue = typeof column.getFilterValue() === 'string' ? column.getFilterValue() : '';
-  const selectedOption = options.find((option) => option.value === filterValue);
+  const inputId = useId();
+  const filterValue = column.getFilterValue();
+  const value = typeof filterValue === 'string' ? filterValue : '';
 
   return (
     <div className="flex items-center gap-2">
-      <Select onValueChange={(value) => column.setFilterValue(value || undefined)} value={filterValue}>
-        <SelectTrigger aria-label={`Filter ${label}`} className="h-7 min-w-0 flex-1" size="sm">
-          <SelectValue placeholder="All">{selectedOption?.label ?? null}</SelectValue>
-        </SelectTrigger>
-        <SelectContent align="end">
-          <SelectGroup>
-            {options.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectGroup>
-        </SelectContent>
-      </Select>
-      <ClearFilterButton disabled={!filterValue} label={label} onClear={() => column.setFilterValue(undefined)} />
+      <div className="min-w-0 flex-1">
+        <SearchableCombobox
+          inputId={inputId}
+          onValueChange={(next) => column.setFilterValue(next || undefined)}
+          options={column.columnDef.meta?.filterOptions ?? []}
+          value={value}
+        />
+      </div>
+      <ClearFilterButton disabled={!value} label={label} onClear={() => column.setFilterValue(undefined)} />
     </div>
   );
 }

@@ -24,6 +24,8 @@
     Load more button (`pageSize`, default 25). Follow `src/equipment/pages/inventory/buy-list/components/BuyListTable.tsx`.
     Reach for it over `complete` when one server snapshot must stay whole — sorting, searching and
     row selection still span every row — but the row count would flood the DOM.
+- Filter a column with `meta.filterVariant`; `select` and `multi-select` both open the shared searchable combobox
+  (scrolls at a capped height). Never put a plain `Select` or a picker beside the search to filter a list.
 - For TanStack Form descendants, use `useTypedAppFormContext` from `src/components/form/hooks/use-app-form.ts`.
 - Keep `vite.config.ts` `resolve.dedupe: ['react', 'react-dom']`. `pkg/mobile` pins a different React version than web; without deduping a second React copy leaks into the bundle and breaks hooks ("Invalid hook call" / `useRef` of null). If you still see that error after a branch switch, clear the stale Vite cache (`rm -rf node_modules/.vite`) and restart the dev server.
 

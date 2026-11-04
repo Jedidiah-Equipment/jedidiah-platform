@@ -8,14 +8,13 @@ scripted change, not something the app offers.
 
 ## Adding a contracting person
 
-1. Click **New user** and enter the person's **Full Name**.
-2. Enter their **Email**. For a non-login Driver or Mechanic, use a unique placeholder such as
-   `firstname.lastname@people.jedidiah.local`; add a number if two people share a name.
-3. Select their **Contracting role**: **Driver**, **Mechanic**, **Foreman**, **Contracting Manager**,
+1. Click **New user** and enter the person's **Full Name**, and their **Phone number** if they have one.
+2. Select their **Contracting role**: **Driver**, **Mechanic**, **Foreman**, **Contracting Manager**,
    **Workshop Manager**, **Contracting Invoicing**, or **Contracting Administrator** as appropriate. The default
    is **Foreman**, and only Contracting roles are offered.
-4. Enter a **Password**, using a randomly generated password for a non-login person. Email and password are
-   required even for Drivers and Mechanics; a person whose only roles are permissionless cannot sign in.
+3. For a Driver or Mechanic, that is all: they never sign in, so **Email**, **Email verified** and **Password**
+   are hidden. Two people may share a name.
+4. For any other role, enter their **Email** and a **Password**.
 5. Click **Create user**.
 
 ## Removing access

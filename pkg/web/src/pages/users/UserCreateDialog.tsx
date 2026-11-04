@@ -12,6 +12,7 @@ import { useAccess } from '@/hooks/use-access.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 import { useUserAdminInvalidation } from '@/hooks/use-user-admin-invalidation.js';
 import { authClient } from '@/lib/auth-client.js';
+import { createUserCredentials } from './components/types.js';
 import { UserCreateForm, type UserCreateFormValues } from './components/UserCreateForm.js';
 import { unwrapAuthResult } from './user-admin-client.js';
 import type { UserAdminExtension } from './user-admin-extension.js';
@@ -39,7 +40,7 @@ export const UserCreateDialog: React.FC<UserCreateDialogProps> = ({ business, ex
         <DialogContent className="sm:max-w-[560px]">
           <DialogHeader>
             <DialogTitle>New user</DialogTitle>
-            <DialogDescription>Create a user with email/password access.</DialogDescription>
+            <DialogDescription>Create a user. Someone who never signs in needs only a name.</DialogDescription>
           </DialogHeader>
           {isOpen ? (
             <UserCreateDialogForm business={business} extension={extension} onCreated={() => setIsOpen(false)} />
@@ -67,6 +68,7 @@ const UserCreateDialogForm: React.FC<UserCreateDialogProps & { onCreated: () => 
 
   const createUserMutation = useMutation({
     mutationFn: async (value: UserCreateFormValues) => {
+      const credentials = createUserCredentials(value);
       const result = unwrapAuthResult<{ user: { id: string } }>(
         await authClient.admin.createUser({
           // Shared-device state belongs in Better Auth's user insert so a later request cannot
@@ -76,13 +78,13 @@ const UserCreateDialogForm: React.FC<UserCreateDialogProps & { onCreated: () => 
             ...(business === 'equipment'
               ? { equipmentRole: value.equipmentRole }
               : { contractingRole: value.contractingRole }),
-            emailVerified: value.emailVerified,
+            emailVerified: credentials.emailVerified,
             isDevice: canSetRole ? value.isDevice : false,
             phoneNumber: value.phoneNumber,
           },
-          email: value.email,
+          email: credentials.email,
           name: value.name,
-          password: value.password,
+          password: credentials.password,
         }),
       );
 

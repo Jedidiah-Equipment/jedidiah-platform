@@ -1,21 +1,32 @@
+import { isRoleSlotsSignInEligible } from '@pkg/domain';
 import { type Business, UserAccount, UserPassword } from '@pkg/schema';
-import { revalidateLogic } from '@tanstack/react-form';
+import { revalidateLogic, useStore } from '@tanstack/react-form';
 import type React from 'react';
-import type { z } from 'zod';
+import { z } from 'zod';
 
 import { useAppForm } from '@/components/form/index.js';
 import { FieldGroup } from '@/components/ui/field.js';
 import { BusinessRoleField } from './BusinessRoleField.js';
 import { SubmitFooter } from './UserFormFooter.js';
 
+const SignInCredentials = UserAccount.pick({ email: true }).extend({ password: UserPassword });
+
 export type UserCreateFormValues = z.infer<typeof UserCreateFormValues>;
 export const UserCreateFormValues = UserAccount.omit({
   assistantEnabled: true,
+  email: true,
   id: true,
   thumbnailDataUrl: true,
-}).extend({
-  password: UserPassword,
-});
+})
+  .extend({ email: z.string(), password: z.string() })
+  .superRefine((value, ctx) => {
+    if (!isRoleSlotsSignInEligible(value)) {
+      return;
+    }
+    for (const issue of SignInCredentials.safeParse(value).error?.issues ?? []) {
+      ctx.addIssue({ code: 'custom', message: issue.message, path: issue.path });
+    }
+  });
 
 /** A new user starts in the business creating them, in the role most of its people hold. */
 const defaultRoleSlots = {
@@ -58,6 +69,7 @@ export const UserCreateForm: React.FC<UserCreateFormProps> = ({
       await onSubmit(value);
     },
   });
+  const canSignIn = useStore(form.store, (state) => isRoleSlotsSignInEligible(state.values));
 
   return (
     <form
@@ -71,9 +83,11 @@ export const UserCreateForm: React.FC<UserCreateFormProps> = ({
         <form.AppField name="name">
           {(field) => <field.TextField autoComplete="name" label="Full Name" />}
         </form.AppField>
-        <form.AppField name="email">
-          {(field) => <field.TextField autoComplete="email" label="Email" type="email" />}
-        </form.AppField>
+        {canSignIn ? (
+          <form.AppField name="email">
+            {(field) => <field.TextField autoComplete="email" label="Email" type="email" />}
+          </form.AppField>
+        ) : null}
         <form.AppField name="phoneNumber">{(field) => <field.PhoneNumberField label="Phone number" />}</form.AppField>
         {/* A shared device is the Equipment stores tablet; Contracting has no device accounts. */}
         {canSetRole && business === 'equipment' ? (
@@ -94,10 +108,16 @@ export const UserCreateForm: React.FC<UserCreateFormProps> = ({
           form={form}
         />
         {extraFields}
-        <form.AppField name="emailVerified">{(field) => <field.CheckboxField label="Email verified" />}</form.AppField>
-        <form.AppField name="password">
-          {(field) => <field.PasswordField autoComplete="new-password" label="Password" />}
-        </form.AppField>
+        {canSignIn ? (
+          <>
+            <form.AppField name="emailVerified">
+              {(field) => <field.CheckboxField label="Email verified" />}
+            </form.AppField>
+            <form.AppField name="password">
+              {(field) => <field.PasswordField autoComplete="new-password" label="Password" />}
+            </form.AppField>
+          </>
+        ) : null}
       </FieldGroup>
       <SubmitFooter isPending={isPending} label="Create user" />
     </form>

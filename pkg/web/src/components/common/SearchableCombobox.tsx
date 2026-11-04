@@ -44,6 +44,7 @@ export const SEARCHABLE_COMBOBOX_CREATE_VALUE = '__searchable_combobox_create__'
 
 type SearchableComboboxProps = {
   'aria-invalid'?: boolean | undefined;
+  'aria-label'?: string | undefined;
   create?: SearchableComboboxCreate | undefined;
   disabled?: boolean;
   emptyMessage?: string | undefined;
@@ -58,6 +59,7 @@ type SearchableComboboxProps = {
 
 export function SearchableCombobox({
   'aria-invalid': ariaInvalid,
+  'aria-label': ariaLabel,
   create,
   disabled = false,
   emptyMessage = 'No options found.',
@@ -121,6 +123,7 @@ export function SearchableCombobox({
     >
       <ComboboxInput
         aria-invalid={ariaInvalid}
+        aria-label={ariaLabel}
         className="w-full"
         disabled={isDisabled}
         id={inputId}

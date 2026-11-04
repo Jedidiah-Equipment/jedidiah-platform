@@ -11,7 +11,6 @@ import { SubmitFooter } from './UserFormFooter.js';
 
 const SignInCredentials = UserAccount.pick({ email: true }).extend({ password: UserPassword });
 
-/** Email and password are asked for, and required, only while the chosen roles can sign in. */
 export type UserCreateFormValues = z.infer<typeof UserCreateFormValues>;
 export const UserCreateFormValues = UserAccount.omit({
   assistantEnabled: true,

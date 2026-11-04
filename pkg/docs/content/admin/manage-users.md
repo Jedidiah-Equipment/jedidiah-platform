@@ -7,12 +7,12 @@ role in both businesses is a scripted change, not something the app offers.
 
 ## Adding an Equipment person
 
-1. Click **New user** and enter the person's **Full Name** and **Email**.
+1. Click **New user** and enter the person's **Full Name**.
 2. Select their **Equipment role**, replacing the default **Sales**. Only Equipment roles are offered. For a dedicated app review account, choose **App Store Tester**, which grants Product, Product Range, and Product Unit reads only.
 3. Tick **Quote salesperson** if they sell, so Quotes can name them.
 4. Select their **Departments** if they belong to any.
-5. Enter a **Password** and click **Create user**. A **Bay Operator** never signs in, so they need no email or
-   password: those fields are hidden for that role.
+5. Enter their **Email** and a **Password**, then click **Create user**. A **Bay Operator** never signs in, so
+   needs no email or password.
 
 App Store Tester has no write permissions. Feedback submission is an existing exception available to every signed-in Equipment role; the role configuration alone does not block it.
 

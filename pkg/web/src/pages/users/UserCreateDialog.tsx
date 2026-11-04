@@ -40,9 +40,7 @@ export const UserCreateDialog: React.FC<UserCreateDialogProps> = ({ business, ex
         <DialogContent className="sm:max-w-[560px]">
           <DialogHeader>
             <DialogTitle>New user</DialogTitle>
-            <DialogDescription>
-              Create a user. Someone who never signs in, such as a Driver, needs only a name.
-            </DialogDescription>
+            <DialogDescription>Create a user. Someone who never signs in needs only a name.</DialogDescription>
           </DialogHeader>
           {isOpen ? (
             <UserCreateDialogForm business={business} extension={extension} onCreated={() => setIsOpen(false)} />

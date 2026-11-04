@@ -685,7 +685,7 @@ describe('generateQuoteDocument', () => {
     expect(rendered.document.staleSelectionNotes).toEqual(['Deleted Light Bar unavailable']);
     expect(rendered.document.notes).toEqual(['Confirm customer details before order processing.']);
     expect(rendered.document.paymentTerms).toBe('0% deposit');
-    expect(rendered.document.delivery).toBe('Included in sale price');
+    expect(rendered.document.delivery).toBe('Ex factory (collection by customer)');
     expect(rendered.document.leadTime).toBe('14 working days');
     expect(rendered.document.subtotal).toBe(1_250);
     expect(rendered.document.vatAmount).toBe(187.5);

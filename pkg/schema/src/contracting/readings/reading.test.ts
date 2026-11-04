@@ -16,16 +16,11 @@ describe('ReadingCaptureInput', () => {
 });
 
 describe('readingRefusalOf', () => {
-  const readingId = '00000000-0000-4000-8000-000000000001';
-
-  it('reads the refused reading', () => {
-    expect(readingRefusalOf({ appCode: 'reading.invalid_amendment', readingId })).toMatchObject({ readingId });
-  });
-
-  it('keeps every key it can read when one it cannot is beside them, and reads nothing from anything else', () => {
-    const refusal = readingRefusalOf({ readingId, suggestedReadAt: { readAt: 'not a time' } });
-    expect(refusal.readingId).toBe(readingId);
-    expect(refusal.suggestedReadAt).toBeUndefined();
+  it('reads the proposed Read At, and nothing from anything it cannot read', () => {
+    expect(readingRefusalOf({ appCode: 'reading.below_latest', suggestedReadAt: { kind: 'now' } })).toEqual({
+      suggestedReadAt: { kind: 'now' },
+    });
+    expect(readingRefusalOf({ suggestedReadAt: { readAt: 'not a time' } })).toEqual({});
     expect(readingRefusalOf(undefined)).toEqual({});
     expect(readingRefusalOf('refused')).toEqual({});
   });

@@ -20,6 +20,7 @@ import {
   breakdownUrgencyLabels,
   fleetHistoryKindLabels,
   formatJobNumber,
+  isReported,
   meterReadPermissions,
   readingRoleLabels,
   readingSourceLabel,
@@ -245,7 +246,7 @@ export async function listFleetHistory({
       .orderBy(...order)
       .$dynamic();
   const { rows, total, nextCursor } = await paginateWithWindowTotal(matching, input);
-  const loaded = await loadHistoryRows(db, rows);
+  const loaded = await loadHistoryRows(db, rows, hasPermission(actor, 'contracting_reading:update'));
   const items = rows.flatMap((row) => loaded.get(historyKey(row)) ?? []);
   return { items, nextCursor, total };
 }
@@ -258,8 +259,8 @@ const historyKey = ({ kind, id, role }: HistoryKey) => `${kind}:${role ?? ''}:${
 const idsOf = (rows: readonly HistoryKey[], kind: FleetHistoryKind, role?: FleetHistoryReadingRole) =>
   rows.filter((row) => row.kind === kind && (role === undefined || row.role === role)).map((row) => row.id);
 
-/** What each listed row says, keyed by `historyKey`. */
-async function loadHistoryRows(db: Db, rows: readonly HistoryKey[]) {
+/** What each listed row says, keyed by `historyKey`; a spot reading opens to amend for whoever may amend it. */
+async function loadHistoryRows(db: Db, rows: readonly HistoryKey[], amendsReadings: boolean) {
   const readingIds = idsOf(rows, 'reading', 'spot');
   const stintIds = [...new Set([...idsOf(rows, 'reading', 'arrival'), ...idsOf(rows, 'reading', 'departure')])];
   const breakdownIds = idsOf(rows, 'breakdown');
@@ -323,7 +324,7 @@ async function loadHistoryRows(db: Db, rows: readonly HistoryKey[]) {
         source: readingSourceLabel(reading),
         readingRole: 'spot',
         breakdown: null,
-        opens: null,
+        opens: amendsReadings && !isReported(reading) ? { to: 'spot-reading', value: reading.value } : null,
       }),
     );
   for (const stint of stintRows) {

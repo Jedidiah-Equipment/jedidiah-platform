@@ -206,9 +206,10 @@ dash and the phone), and a capture that would is refused naming both readings. C
 server judges every capture under the Machine lock, and a Foreman without signal keeps a Field Note instead. Every
 way a capture is refused is one rule in one ordered table; the phone and the web stop only what that table says the
 server would refuse, and show its sentence when it does. A reading may carry the capturer's optional **capture
-comment**. Management amends spot readings with a mandatory reason; the amended reading is judged again at its place
-in time. Hours are never collected from paper, stickers or memory ahead of use, because a value taken off site has no
-known currency.
+comment**. Management amends a spot reading on the web, or deletes one captured by accident, and gives no reason:
+the Audit Log keeps who changed it and what it said. The amended reading is judged again at its place in time; a
+deleted one leaves the ledger. Hours are never collected from paper, stickers or memory ahead of use, because a value
+taken off site has no known currency.
 
 **Known Hours** is a Machine's best-known meter value: the higher of the ledger's latest reading and the Machine's
 latest Job Hours, with its source (John Deere, a spot reading, or a Job) and when. It is what Service Due Soon, the
@@ -289,7 +290,7 @@ come within the Machine's **Service Alert Hours** of Next Service Due — its ow
 **Service Due Soon threshold** in Settings (100 h unless changed) when it has none — kept honest mid-job by Job Hours, spot
 readings from the field and Telematics Readings. It notifies the workshop-manager, contracting-manager, contracting-admin and super-admin
 roles by push notification once, at the
-capture or Telematics Reading that first brings Known Hours within the threshold; closing a Service Record moves the
+capture, amendment or Telematics Reading that first brings Known Hours within the threshold; closing a Service Record moves the
 due point on and re-arms it.
 
 **Due for Service** is a derived state: a Machine whose Service Due Soon status is due soon or overdue and
@@ -327,7 +328,7 @@ checks are UX only.
   the Rate Card, fleet, invoice stamping, all of it — without user administration and without any
   Equipment reach.
 - **contracting-manager**: all operations — Job create/edit/assign/complete/cancel, Job Hours and
-  spot reading amendments, Travel Hours, breakdowns and servicing, fleet management — but no Pricing and
+  amending and deleting spot readings, Travel Hours, breakdowns and servicing, fleet management — but no Pricing and
   no Rate Card; sees priced amounts.
 - **workshop-manager**: reads everything contracting; writes Breakdowns (mechanic assignment,
   transitions, close-out) and Servicing (records, interval and due fields); reports Breakdowns.

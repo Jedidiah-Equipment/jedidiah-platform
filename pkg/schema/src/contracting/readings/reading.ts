@@ -19,17 +19,14 @@ export const ReadingCaptureInput = z
   })
   .strict();
 export type ReadingCaptureInput = z.infer<typeof ReadingCaptureInput>;
-export const ReadingAmendment = z
+/** A spot reading's corrected hours and Read At; no reason is asked, since the Audit Log keeps what it said. */
+export const ReadingAmendInput = z
   .object({ id: UUID, value: ReadingValue, capturedAt: z.iso.datetime({ offset: true }) })
   .strict();
-export type ReadingAmendment = z.infer<typeof ReadingAmendment>;
-/** The most readings one amend carries: the set is judged and written under the Machine lock. */
-export const READING_AMENDMENTS_MAX = 8;
-/** One reason over a set of one Machine's spot readings. */
-export const ReadingAmendInput = z
-  .object({ amendments: ReadingAmendment.array().min(1).max(READING_AMENDMENTS_MAX), reason: ReadingReason })
-  .strict();
 export type ReadingAmendInput = z.infer<typeof ReadingAmendInput>;
+/** A spot reading taken off the ledger, such as one captured on the wrong Machine. */
+export const ReadingRemoveInput = z.object({ id: UUID }).strict();
+export type ReadingRemoveInput = z.infer<typeof ReadingRemoveInput>;
 export const ReadingMachineInput = z.object({ machineId: UUID });
 
 export const HourReading = z.object({
@@ -47,7 +44,6 @@ export const HourReading = z.object({
   comment: z.string().nullable(),
   amendedBy: AuthId.nullable(),
   amendedAt: DateIso.nullable(),
-  amendmentReason: z.string().nullable(),
 });
 export type HourReading = z.infer<typeof HourReading>;
 /** The Machine's latest reading, the one a capture is judged against. */
@@ -84,21 +80,10 @@ export type ReadAtEstimate = z.infer<typeof ReadAtEstimate>;
 
 /**
  * What a Reading refusal carries beside its sentence and `appCode`: the Read At the ledger puts a refused value at
- * (only ever a `telematics` or `human` estimate), and the reading an amendment of several was refused on.
+ * (only ever a `telematics` or `human` estimate).
  */
-export const ReadingRefusal = z.object({
-  suggestedReadAt: ReadAtEstimate.optional(),
-  readingId: UUID.optional(),
-});
+export const ReadingRefusal = z.object({ suggestedReadAt: ReadAtEstimate.optional() });
 export type ReadingRefusal = z.infer<typeof ReadingRefusal>;
 
-/** Each key read on its own, so one this client cannot read never costs it the others. */
-const ReadingRefusalReader = z
-  .object({
-    suggestedReadAt: ReadingRefusal.shape.suggestedReadAt.catch(undefined),
-    readingId: ReadingRefusal.shape.readingId.catch(undefined),
-  })
-  .catch({});
-
 /** A Reading refusal's context from whatever the transport carried; anything unreadable carries none. */
-export const readingRefusalOf = (data: unknown): ReadingRefusal => ReadingRefusalReader.parse(data);
+export const readingRefusalOf = (data: unknown): ReadingRefusal => ReadingRefusal.catch({}).parse(data);

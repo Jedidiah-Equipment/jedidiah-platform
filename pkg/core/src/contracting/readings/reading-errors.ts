@@ -16,7 +16,11 @@ export const isReadingError = (error: unknown): error is ReadingError => error i
 
 export const readingNotFound = () => new ReadingError('reading.not_found', 'Hour Reading not found.');
 
-const amendmentRefusalCodes: Record<Exclude<ReadingAmendmentRefusal, 'not_found'>, ReadingErrorCode> = {
+/** A Telematics Reading is John Deere's, never anyone's to change. */
+export const telematicsUnchangeable = (change: 'amended' | 'deleted') =>
+  new ReadingError('reading.telematics_unchangeable', `A Telematics Reading cannot be ${change}.`);
+
+const amendmentRefusalCodes: Record<ReadingAmendmentRefusal, ReadingErrorCode> = {
   out_of_range: 'reading.invalid_amendment',
   contradicts_telematics: 'reading.invalid_amendment',
   outruns_clock: 'reading.outruns_clock',
@@ -25,15 +29,5 @@ const amendmentRefusalCodes: Record<Exclude<ReadingAmendmentRefusal, 'not_found'
 };
 
 /** An amendment the ledger refused, in Reading terms. */
-export const amendmentRefused = ({
-  reason,
-  id,
-  message,
-}: {
-  reason: ReadingAmendmentRefusal;
-  id: string;
-  message: string;
-}) =>
-  reason === 'not_found'
-    ? readingNotFound()
-    : new ReadingError(amendmentRefusalCodes[reason], message, { readingId: id });
+export const amendmentRefused = ({ reason, message }: { reason: ReadingAmendmentRefusal; message: string }) =>
+  new ReadingError(amendmentRefusalCodes[reason], message);

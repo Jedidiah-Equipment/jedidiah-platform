@@ -6,11 +6,12 @@ import {
   type EstimateFacts,
   estimateReadAt,
   FUTURE_READ_AT_TOLERANCE_MS,
+  isReported,
   type JobActor,
   judgeCapture,
   namesReadAt,
   proposesReadAt,
-  resolveReadingAmendments,
+  resolveReadingAmendment,
 } from '@pkg/domain/contracting';
 import {
   LatestReading,
@@ -18,12 +19,18 @@ import {
   ReadAtEstimateInput,
   ReadingAmendInput,
   ReadingCaptureInput,
+  ReadingRemoveInput,
 } from '@pkg/schema/contracting';
-import { and, eq, gt, inArray, lte } from 'drizzle-orm';
-import { recordAuditCreate } from '../../audit/audit-writer.js';
+import { and, eq, gt, lte } from 'drizzle-orm';
+import { recordAuditCreate, recordAuditDelete } from '../../audit/audit-writer.js';
 import { serviceDueSoonEdge } from '../fleet/machine-service.js';
 import { type ReadingRow as Row, readingDescriptor, updateAudited } from './reading-audit.js';
-import { amendmentRefused, readingNotFound as notFound, ReadingError } from './reading-errors.js';
+import {
+  amendmentRefused,
+  readingNotFound as notFound,
+  ReadingError,
+  telematicsUnchangeable,
+} from './reading-errors.js';
 import { afterInLedger, newestFirst, oldestFirst } from './reading-sql.js';
 import { readingToWire } from './reading-wire.js';
 
@@ -39,10 +46,10 @@ export async function listReadingsByMachine({ db, machineId }: { db: Db; machine
 }
 
 /**
- * `serviceDueSoonCrossed` is true when this capture, never a replay, took the Machine into Service Due Soon; the
- * caller decides who hears of it, once the write has committed.
+ * `serviceDueSoonCrossed` is true when this capture or amendment, never a replay, took the Machine into Service Due
+ * Soon; the caller decides who hears of it, once the write has committed.
  */
-export type ReadingCapture = { reading: Row; serviceDueSoonCrossed: boolean };
+export type ReadingWrite = { reading: Row; serviceDueSoonCrossed: boolean };
 
 export async function captureReading({
   db,
@@ -54,11 +61,11 @@ export async function captureReading({
   actor: JobActor;
   input: ReadingCaptureInput;
   now?: Date;
-}): Promise<ReadingCapture> {
+}): Promise<ReadingWrite> {
   const actorUserId = actor.userId;
   const input = ReadingCaptureInput.parse(raw);
   // A mobile retry of an already delivered capture returns the stored row instead of a duplicate.
-  async function replay(db: Db | DatabaseTransaction): Promise<ReadingCapture | null> {
+  async function replay(db: Db | DatabaseTransaction): Promise<ReadingWrite | null> {
     if (!input.localId) return null;
     const row = await db.query.contractingHourReadings.findFirst({
       where: eq(contractingHourReadings.id, input.localId),
@@ -74,7 +81,7 @@ export async function captureReading({
   }
   const delivered = await replay(db);
   if (delivered) return delivered;
-  return db.transaction(async (tx): Promise<ReadingCapture> => {
+  return db.transaction(async (tx): Promise<ReadingWrite> => {
     const [machine] = await tx
       .select()
       .from(contractingMachines)
@@ -224,59 +231,74 @@ const toNeighbour = ({ id, value, capturedAt, telematicsProvider }: Row): Captur
   telematicsProvider,
 });
 
-export async function amendReadings({ db, actor, input: raw }: { db: Db; actor: JobActor; input: ReadingAmendInput }) {
-  const actorUserId = actor.userId;
+/** Locks the Machine a reading is on, serializing every amendment and deletion with its captures. */
+async function lockMachineOf(tx: DatabaseTransaction, id: string) {
+  const [target] = await tx
+    .select({ machineId: contractingHourReadings.machineId })
+    .from(contractingHourReadings)
+    .where(eq(contractingHourReadings.id, id));
+  if (!target) throw notFound();
+  const [machine] = await tx
+    .select()
+    .from(contractingMachines)
+    .where(eq(contractingMachines.id, target.machineId))
+    .for('update');
+  if (!machine) throw notFound();
+  return machine;
+}
+
+/** A spot reading as read under its Machine lock; a Telematics Reading is refused. */
+function spotReadingFor(row: Row | undefined, change: 'amended' | 'deleted'): Row {
+  if (!row) throw notFound();
+  if (isReported(row)) throw telematicsUnchangeable(change);
+  return row;
+}
+
+/** Corrects a spot reading's hours or Read At, judged again at its new place in time. */
+export async function amendReading({
+  db,
+  actor,
+  input: raw,
+}: {
+  db: Db;
+  actor: JobActor;
+  input: ReadingAmendInput;
+}): Promise<ReadingWrite> {
   const input = ReadingAmendInput.parse(raw);
-  const amendments = input.amendments.map((amendment) => ({
-    ...amendment,
-    capturedAt: new Date(amendment.capturedAt),
-  }));
-  const ids = new Set(amendments.map((amendment) => amendment.id));
-  if (ids.size !== amendments.length) throw new ReadingError('reading.invalid_amendment', 'Amend each reading once.');
+  const change = { value: input.value, capturedAt: new Date(input.capturedAt) };
   return db.transaction(async (tx) => {
-    const targets = await tx
-      .select()
-      .from(contractingHourReadings)
-      .where(inArray(contractingHourReadings.id, [...ids]));
-    if (targets.length !== ids.size) throw notFound();
-    if (targets.some((row) => row.method === 'telematics'))
-      throw new ReadingError('reading.invalid_amendment', 'A Telematics Reading cannot be amended.');
-    const machineIds = new Set(targets.map((row) => row.machineId));
-    const [machineId] = machineIds;
-    if (machineIds.size !== 1 || !machineId)
-      throw new ReadingError('reading.invalid_amendment', 'Amend one Machine at a time.');
-    const [machine] = await tx
-      .select()
-      .from(contractingMachines)
-      .where(eq(contractingMachines.id, machineId))
-      .for('update');
-    if (!machine) throw notFound();
-    const rows = await tx
-      .select()
-      .from(contractingHourReadings)
-      .where(eq(contractingHourReadings.machineId, machineId))
-      .orderBy(...oldestFirst);
+    const machine = await lockMachineOf(tx, input.id);
+    const [ledger, edge] = await Promise.all([
+      tx.select().from(contractingHourReadings).where(eq(contractingHourReadings.machineId, machine.id)),
+      serviceDueSoonEdge(tx, machine),
+    ]);
+    const before = spotReadingFor(
+      ledger.find((row) => row.id === input.id),
+      'amended',
+    );
     const now = new Date();
-    const resolution = resolveReadingAmendments(rows, amendments, now);
+    const resolution = resolveReadingAmendment(ledger, before, change, now);
     if (!resolution.ok) throw amendmentRefused(resolution);
-    const before = new Map(rows.map((row) => [row.id, row]));
-    for (const amendment of amendments) {
-      const row = before.get(amendment.id);
-      if (!row) continue;
-      await updateAudited(tx, actorUserId, row, {
-        value: amendment.value,
-        capturedAt: amendment.capturedAt,
-        amendedBy: actorUserId,
-        amendedAt: now,
-        amendmentReason: input.reason,
-      });
-    }
-    const amended = await tx
-      .select()
-      .from(contractingHourReadings)
-      .where(inArray(contractingHourReadings.id, [...ids]));
-    const byId = new Map(amended.map((row) => [row.id, row]));
-    return [...ids].flatMap((id) => byId.get(id) ?? []);
+    const reading = await updateAudited(tx, actor.userId, before, {
+      ...change,
+      amendedBy: actor.userId,
+      amendedAt: now,
+    });
+    return { reading, serviceDueSoonCrossed: await edge.crossed() };
+  });
+}
+
+/** Takes a spot reading off the ledger, such as one captured by accident; the Audit Log keeps what it said. */
+export async function removeReading({ db, actor, input: raw }: { db: Db; actor: JobActor; input: ReadingRemoveInput }) {
+  const input = ReadingRemoveInput.parse(raw);
+  await db.transaction(async (tx) => {
+    await lockMachineOf(tx, input.id);
+    const row = spotReadingFor(
+      await tx.query.contractingHourReadings.findFirst({ where: eq(contractingHourReadings.id, input.id) }),
+      'deleted',
+    );
+    await tx.delete(contractingHourReadings).where(eq(contractingHourReadings.id, row.id));
+    await recordAuditDelete({ db: tx, actorUserId: actor.userId, descriptor: readingDescriptor, input: row });
   });
 }
 

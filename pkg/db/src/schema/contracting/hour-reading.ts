@@ -28,7 +28,6 @@ export const contractingHourReadings = contractingSchema.table(
     comment: text('comment'),
     amendedBy: text('amended_by').references(() => user.id),
     amendedAt: timestamp('amended_at', { withTimezone: true }),
-    amendmentReason: text('amendment_reason'),
     /** Acceptance time — when the server took the reading. Read At (`capturedAt`) may be backdated; this never is. */
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
@@ -44,9 +43,6 @@ export const contractingHourReadings = contractingSchema.table(
       'hour_reading_method',
       sql`(${table.method} = 'manual' AND ${table.capturedByUserId} IS NOT NULL AND ${table.telematicsProvider} IS NULL AND ${table.telematicsLinkId} IS NULL) OR (${table.method} = 'telematics' AND ${table.capturedByUserId} IS NULL AND ${table.telematicsProvider} IS NOT NULL AND ${table.telematicsLinkId} IS NOT NULL AND ${table.comment} IS NULL AND ${table.amendedBy} IS NULL)`,
     ),
-    check(
-      'hour_reading_amendment',
-      sql`(${table.amendedBy} IS NULL AND ${table.amendedAt} IS NULL AND ${table.amendmentReason} IS NULL) OR (${table.amendedBy} IS NOT NULL AND ${table.amendedAt} IS NOT NULL AND ${table.amendmentReason} IS NOT NULL AND length(btrim(${table.amendmentReason})) > 0)`,
-    ),
+    check('hour_reading_amendment', sql`(${table.amendedBy} IS NULL) = (${table.amendedAt} IS NULL)`),
   ],
 );

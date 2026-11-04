@@ -81,9 +81,10 @@ describe('the Dashboard hand-offs', () => {
     { id: 'stage', value: ['upcoming', 'active'] },
     { id: 'attention', value: 'needs-a-look' },
     { id: 'foreman', value: ['sipho'] },
+    { id: 'driver', value: 'andile-n' },
   ];
 
-  it('focuses on one stage, dropping the attention pick and keeping the other filters', () => {
+  it('focuses on one stage, dropping the attention and Driver picks and keeping the other filters', () => {
     expect(focusOnStage(saved, 'looks-finished')).toEqual([
       { id: 'foreman', value: ['sipho'] },
       { id: 'stage', value: ['looks-finished'] },

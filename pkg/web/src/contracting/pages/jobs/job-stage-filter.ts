@@ -49,7 +49,7 @@ const needsALookPicked = (columnFilters: ColumnFiltersState) =>
   columnFilters.some((filter) => filter.id === ATTENTION_COLUMN_ID && filter.value === NEEDS_A_LOOK);
 
 /** Not a column: the Driver filter sits beside the search, kept with the column filters so it persists with them. */
-export const DRIVER_FILTER_ID = 'driver';
+const DRIVER_FILTER_ID = 'driver';
 
 /** The Driver picked in the Driver filter, or `''` when none is. */
 export function pickedDriver(columnFilters: ColumnFiltersState): string {
@@ -72,17 +72,19 @@ export const jobListFilters = (columnFilters: ColumnFiltersState, unpicked?: rea
   };
 };
 
-const withoutStageOrAttention = (columnFilters: ColumnFiltersState) =>
-  columnFilters.filter((filter) => filter.id !== STAGE_COLUMN_ID && filter.id !== ATTENTION_COLUMN_ID);
+// The Dashboard counts every Driver's Jobs, so a hand-off clears the Driver pick too.
+const handOffDrops = new Set([STAGE_COLUMN_ID, ATTENTION_COLUMN_ID, DRIVER_FILTER_ID]);
+const withoutHandOffFilters = (columnFilters: ColumnFiltersState) =>
+  columnFilters.filter((filter) => !handOffDrops.has(filter.id));
 
-/** The Dashboard opens a Job list on one stage this way; every other filter is kept. */
+/** The Dashboard opens a Job list on one stage this way; every filter but the Driver is kept. */
 export const focusOnStage = (columnFilters: ColumnFiltersState, stage: JobQueue): ColumnFiltersState => [
-  ...withoutStageOrAttention(columnFilters),
+  ...withoutHandOffFilters(columnFilters),
   { id: STAGE_COLUMN_ID, value: [stage] },
 ];
 
 /** The Dashboard opens the Jobs list on the Jobs needing a look, across every open stage, this way. */
 export const focusOnNeedsALook = (columnFilters: ColumnFiltersState): ColumnFiltersState => [
-  ...withoutStageOrAttention(columnFilters),
+  ...withoutHandOffFilters(columnFilters),
   { id: ATTENTION_COLUMN_ID, value: NEEDS_A_LOOK },
 ];

@@ -16,6 +16,10 @@ export const isReadingError = (error: unknown): error is ReadingError => error i
 
 export const readingNotFound = () => new ReadingError('reading.not_found', 'Hour Reading not found.');
 
+/** A Telematics Reading is John Deere's, never anyone's to change. */
+export const telematicsUnchangeable = (change: 'amended' | 'deleted') =>
+  new ReadingError('reading.telematics_unchangeable', `A Telematics Reading cannot be ${change}.`);
+
 const amendmentRefusalCodes: Record<ReadingAmendmentRefusal, ReadingErrorCode> = {
   out_of_range: 'reading.invalid_amendment',
   contradicts_telematics: 'reading.invalid_amendment',

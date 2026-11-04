@@ -21,7 +21,7 @@ type SpotReadingValues = z.infer<typeof SpotReadingValues>;
 export type SpotReading = { id: string; at: string; value: number };
 
 /**
- * Corrects a spot reading's hours or Read At, or deletes it; the server judges the correction at its new place in time
+ * Amends a spot reading's hours or Read At, or deletes it; the server judges the correction at its new place in time
  * and its sentence shows on a refusal.
  */
 export function SpotReadingDialog({ reading, onClose }: { reading: SpotReading | null; onClose: () => void }) {
@@ -29,7 +29,7 @@ export function SpotReadingDialog({ reading, onClose }: { reading: SpotReading |
   const { invalidateReadings } = useQueryInvalidation();
   const write = useContractingWrite(invalidateReadings);
   const amend = useMutation(trpc.contractingReadings.amend.mutationOptions(write.dialog));
-  const remove = useMutation(trpc.contractingReadings.delete.mutationOptions(write.dialog));
+  const remove = useMutation(trpc.contractingReadings.remove.mutationOptions(write.dialog));
   useResetOnOpen(amend, !!reading);
   useResetOnOpen(remove, !!reading);
   const readAt = reading ? new Date(reading.at) : null;
@@ -40,7 +40,7 @@ export function SpotReadingDialog({ reading, onClose }: { reading: SpotReading |
       onOpenChange={(open) => {
         if (!open) onClose();
       }}
-      title="Edit reading"
+      title="Amend reading"
       contentClassName="sm:max-w-md"
       submitLabel="Save reading"
       defaultValues={{

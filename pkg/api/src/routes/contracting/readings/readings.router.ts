@@ -1,10 +1,10 @@
 import {
   amendReading,
-  deleteReading,
   estimateReadAtFor,
   latestReading,
   latestTelematicsReading,
   listFieldMachines,
+  removeReading,
 } from '@pkg/core/contracting';
 import { meterReadPermissions } from '@pkg/domain/contracting';
 import {
@@ -15,8 +15,8 @@ import {
   ReadAtEstimate,
   ReadAtEstimateInput,
   ReadingAmendInput,
-  ReadingDeleteInput,
   ReadingMachineInput,
+  ReadingRemoveInput,
 } from '@pkg/schema/contracting';
 import { mapCoreErrors } from '../../../trpc/errors.js';
 import { authorizedProcedure, router } from '../../../trpc/init.js';
@@ -45,9 +45,9 @@ export const contractingReadingsRouter = router({
     .mutation(({ ctx, input }) =>
       mapCoreErrors(() => amendReading({ db: ctx.db, actor: ctx.access, input }), readingErrorFamily),
     ),
-  delete: authorizedProcedure('contracting_reading:update')
-    .input(ReadingDeleteInput)
+  remove: authorizedProcedure('contracting_reading:update')
+    .input(ReadingRemoveInput)
     .mutation(({ ctx, input }) =>
-      mapCoreErrors(() => deleteReading({ db: ctx.db, actor: ctx.access, input }), readingErrorFamily),
+      mapCoreErrors(() => removeReading({ db: ctx.db, actor: ctx.access, input }), readingErrorFamily),
     ),
 });

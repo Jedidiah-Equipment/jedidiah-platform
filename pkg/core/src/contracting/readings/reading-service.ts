@@ -19,13 +19,18 @@ import {
   ReadAtEstimateInput,
   ReadingAmendInput,
   ReadingCaptureInput,
-  ReadingDeleteInput,
+  ReadingRemoveInput,
 } from '@pkg/schema/contracting';
 import { and, eq, gt, lte } from 'drizzle-orm';
 import { recordAuditCreate, recordAuditDelete } from '../../audit/audit-writer.js';
 import { serviceDueSoonEdge } from '../fleet/machine-service.js';
 import { type ReadingRow as Row, readingDescriptor, updateAudited } from './reading-audit.js';
-import { amendmentRefused, readingNotFound as notFound, ReadingError } from './reading-errors.js';
+import {
+  amendmentRefused,
+  readingNotFound as notFound,
+  ReadingError,
+  telematicsUnchangeable,
+} from './reading-errors.js';
 import { afterInLedger, newestFirst, oldestFirst } from './reading-sql.js';
 import { readingToWire } from './reading-wire.js';
 
@@ -241,10 +246,10 @@ async function lockMachineOf(tx: DatabaseTransaction, id: string) {
   return target.machineId;
 }
 
-/** A spot reading as read under its Machine lock; a Telematics Reading is John Deere's, never anyone's to change. */
+/** A spot reading as read under its Machine lock; a Telematics Reading is refused. */
 function spotReadingFor(row: Row | undefined, change: 'amended' | 'deleted'): Row {
   if (!row) throw notFound();
-  if (isReported(row)) throw new ReadingError('reading.telematics', `A Telematics Reading cannot be ${change}.`);
+  if (isReported(row)) throw telematicsUnchangeable(change);
   return row;
 }
 
@@ -270,8 +275,8 @@ export async function amendReading({ db, actor, input: raw }: { db: Db; actor: J
 }
 
 /** Takes a spot reading off the ledger, such as one captured by accident; the Audit Log keeps what it said. */
-export async function deleteReading({ db, actor, input: raw }: { db: Db; actor: JobActor; input: ReadingDeleteInput }) {
-  const input = ReadingDeleteInput.parse(raw);
+export async function removeReading({ db, actor, input: raw }: { db: Db; actor: JobActor; input: ReadingRemoveInput }) {
+  const input = ReadingRemoveInput.parse(raw);
   await db.transaction(async (tx) => {
     await lockMachineOf(tx, input.id);
     const row = spotReadingFor(

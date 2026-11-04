@@ -25,8 +25,8 @@ export const ReadingAmendInput = z
   .strict();
 export type ReadingAmendInput = z.infer<typeof ReadingAmendInput>;
 /** A spot reading taken off the ledger, such as one captured on the wrong Machine. */
-export const ReadingDeleteInput = z.object({ id: UUID }).strict();
-export type ReadingDeleteInput = z.infer<typeof ReadingDeleteInput>;
+export const ReadingRemoveInput = z.object({ id: UUID }).strict();
+export type ReadingRemoveInput = z.infer<typeof ReadingRemoveInput>;
 export const ReadingMachineInput = z.object({ machineId: UUID });
 
 export const HourReading = z.object({

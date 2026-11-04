@@ -8,7 +8,7 @@ import { createCategory } from '../fleet/category-service.js';
 import { createMachine, getMachine, patchMachine, retireMachine } from '../fleet/machine-service.js';
 import { getContractingSettings, updateContractingSettings } from '../settings/settings-service.js';
 import { amendHours } from '../test/job-fixtures.js';
-import { captureReading, deleteReading, latestReading, listReadingsByMachine } from './reading-service.js';
+import { captureReading, latestReading, listReadingsByMachine, removeReading } from './reading-service.js';
 
 const test = createTester(async ({ db }) => {
   const actorUserId = 'reading-actor';
@@ -52,14 +52,14 @@ test('deletes a spot reading, leaving its value in the Audit Log', async ({ cont
     actor,
     input: { machineId, value: 110, capturedAt: '2026-09-07T08:00:00Z' },
   });
-  await deleteReading({ db, actor, input: { id: accidental.id } });
+  await removeReading({ db, actor, input: { id: accidental.id } });
   expect(await latestReading({ db, machineId })).toMatchObject({ value: 100 });
   const [deleted] = await db
     .select({ actorUserId: auditEvents.actorUserId, changes: auditEvents.changes })
     .from(auditEvents)
     .where(and(eq(auditEvents.entityId, accidental.id), eq(auditEvents.action, 'deleted')));
   expect(deleted).toMatchObject({ actorUserId, changes: { value: { from: 110, to: null } } });
-  await expect(deleteReading({ db, actor, input: { id: accidental.id } })).rejects.toMatchObject({
+  await expect(removeReading({ db, actor, input: { id: accidental.id } })).rejects.toMatchObject({
     code: 'reading.not_found',
   });
 });

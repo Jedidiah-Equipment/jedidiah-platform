@@ -10,10 +10,10 @@ import { createMachine, patchMachine, retireMachine } from '../fleet/machine-ser
 import { amendHours } from '../test/job-fixtures.js';
 import {
   captureReading,
-  deleteReading,
   estimateReadAtFor,
   latestReading,
   listReadingsByMachine,
+  removeReading,
 } from './reading-service.js';
 import {
   latestTelematicsReading,
@@ -176,11 +176,11 @@ test('refuses to amend or delete a John Deere reading', async ({ context }) => {
   const { db, actor, machineId } = context;
   const stored = written(await reportFor(context)(1000, '2026-09-07T08:00:00Z'));
   await expect(amendHours(db, actor, stored.reading.id, 999)).rejects.toMatchObject({
-    code: 'reading.telematics',
+    code: 'reading.telematics_unchangeable',
     message: 'A Telematics Reading cannot be amended.',
   });
-  await expect(deleteReading({ db, actor, input: { id: stored.reading.id } })).rejects.toMatchObject({
-    code: 'reading.telematics',
+  await expect(removeReading({ db, actor, input: { id: stored.reading.id } })).rejects.toMatchObject({
+    code: 'reading.telematics_unchangeable',
     message: 'A Telematics Reading cannot be deleted.',
   });
   expect(await listReadingsByMachine({ db, machineId })).toMatchObject([{ value: 1000, amendedBy: null }]);

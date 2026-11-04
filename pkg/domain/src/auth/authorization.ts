@@ -124,7 +124,7 @@ export const permissionLabels = {
   'contracting_machine:read': 'View Contracting fleet',
   'contracting_machine:update': 'Manage Contracting fleet',
   'contracting_reading:capture': 'Capture machine hour readings',
-  'contracting_reading:update': 'Amend spot readings and Job hours',
+  'contracting_reading:update': 'Amend or delete spot readings and amend Job hours',
   'contracting_travel:set': 'Set Travel Hours on a Machine Assignment',
   'contracting_attention:dismiss': 'Dismiss needs-a-look warnings',
   'contracting_breakdown:read': 'View breakdowns',

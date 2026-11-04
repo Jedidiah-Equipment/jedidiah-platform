@@ -84,5 +84,5 @@ test('deletes the reading once confirmed', async () => {
   await act(async () => button('Delete reading')?.click());
   await act(async () => button('Delete')?.click());
   await vi.waitFor(() => expect(onClose).toHaveBeenCalled());
-  expect(posted['contractingReadings.delete']).toEqual({ id: spot.id });
+  expect(posted['contractingReadings.remove']).toEqual({ id: spot.id });
 });

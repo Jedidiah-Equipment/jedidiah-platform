@@ -61,7 +61,7 @@ export const readingErrorFamily = defineCoreErrorFamily<ReadingError>({
     'reading.not_found': 'NOT_FOUND',
     'reading.outruns_clock': 'CONFLICT',
     'reading.retired_machine': 'CONFLICT',
-    'reading.telematics': 'CONFLICT',
+    'reading.telematics_unchangeable': 'CONFLICT',
   },
   is: isReadingError,
   // The refusal's context as `ReadingRefusal` carries it, or nothing when it has none.

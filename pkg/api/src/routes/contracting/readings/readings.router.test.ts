@@ -37,12 +37,12 @@ test('management amends and deletes a spot reading, and a Foreman can do neither
   const foreman = context.createCaller(foremanSession);
   const amendment = { id: later.id, value: 102, capturedAt: '2026-09-07T09:00:00Z' };
   await expect(foreman.contractingReadings.amend(amendment)).rejects.toMatchObject({ code: 'FORBIDDEN' });
-  await expect(foreman.contractingReadings.delete({ id: later.id })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  await expect(foreman.contractingReadings.remove({ id: later.id })).rejects.toMatchObject({ code: 'FORBIDDEN' });
   await expect(manager.contractingReadings.amend({ ...amendment, value: 99 })).rejects.toMatchObject({
     code: 'CONFLICT',
   });
   expect(await manager.contractingReadings.amend(amendment)).toMatchObject({ value: 102 });
-  await manager.contractingReadings.delete({ id: later.id });
+  await manager.contractingReadings.remove({ id: later.id });
   expect(await manager.contractingReadings.latest({ machineId: machine.id })).toMatchObject({ value: 100 });
 });
 

@@ -1,31 +1,14 @@
 # Repo-local skills
 
-Keep skills and their supporting files in `skills/<name>/`. Codex discovers this directory directly;
-Claude Code uses the committed `.claude/skills -> ../.agents/skills` symlink. A fresh checkout includes
-the skills without a global installation.
+Only `use-slot` lives here: it is private to this repo and edited here directly. Codex discovers
+`.agents/skills/` directly; Claude Code uses the committed `.claude/skills -> ../.agents/skills` symlink.
 
-`../skills-lock.json` links every skill to its upstream GitHub source. `use-slot` is the exception: it is
-private to this repo, has no lock entry, and is edited here directly.
-
-Inspect the project installation with:
-
-```sh
-npx skills list --agent codex claude-code
-```
-
-Add an upstream skill with:
+Every shared engineering skill (Matt Pocock's workflows, the owner's personal skills from
+[deanvanniekerk/skills](https://github.com/deanvanniekerk/skills), `babysit`, the thermonuclear review,
+`gh-address-comments`) is installed globally with the Skills CLI in `~/.agents/skills/`, linked into
+`~/.claude/skills/`. Inspect and update them with:
 
 ```sh
-npx skills add owner/repo --skill skill-name --agent codex claude-code --yes
+npx skills list -g
+npx skills update -g
 ```
-
-Update every linked skill with:
-
-```sh
-npx skills update -p -y
-```
-
-Change a linked skill upstream, not here: an update replaces its local files. Review the diff after
-every update or import.
-Keep supporting resources and license notices alongside imported skills; Matt Pocock's MIT notice is
-in `LICENSE-MATT-POCOCK.txt`.

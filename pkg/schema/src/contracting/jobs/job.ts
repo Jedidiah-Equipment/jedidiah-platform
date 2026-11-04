@@ -8,6 +8,7 @@ import { OpenBreakdown } from '../breakdowns/open-breakdown.js';
 import { CategoryColour, CategoryIconKey, FleetCode, FleetName } from '../fleet/fleet.js';
 import { RateBasis } from '../rate-card/rate-card.js';
 import { JohnDeereDifferenceThresholdHours, TravelFlagThresholdHours } from '../settings/settings.js';
+import { FieldDriver } from './field.js';
 import { AssignmentActions, JobActions } from './job-actions.js';
 import { assignmentAttentionKinds, assignmentStates, discountKinds, jobQueues, jobStatuses } from './job-enums.js';
 import { JobHoursValue } from './stint-hours.js';
@@ -262,6 +263,8 @@ export const JobSummary = z.object({
   ...jobSummaryShape,
   /** The unsolved Breakdowns the reader may see: Code Red first, each urgency newest first. */
   openBreakdowns: OpenBreakdown.array(),
+  /** The Drivers on the Job's on-site Assignments, each once, by name. */
+  onSiteDrivers: FieldDriver.array(),
 });
 export type JobSummary = z.infer<typeof JobSummary>;
 export const JobListResult = createCursorQueryResult(JobSummary);

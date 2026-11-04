@@ -8,7 +8,6 @@ import {
   jobListFilters,
   jobsQuickFilterStages,
   listedStages,
-  pickDriver,
   quickFilterStages,
   toggleStages,
 } from './job-stage-filter.js';
@@ -102,11 +101,10 @@ describe('the Dashboard hand-offs', () => {
   });
 });
 
-describe('the Driver filter', () => {
-  it('asks for the picked Driver alongside the stages, and clears without touching the other filters', () => {
-    const picked = pickDriver(stage(['active']), 'andile-n');
+describe('the Drivers column filter', () => {
+  it('asks for the picked Driver alongside the stages', () => {
+    const picked = [...stage(['active']), { id: 'driver', value: 'andile-n' }];
     expect(jobListFilters(picked)).toEqual({ queues: ['active'], driverUserId: 'andile-n' });
-    expect(jobListFilters(pickDriver(picked, 'andile-m'))).toEqual({ queues: ['active'], driverUserId: 'andile-m' });
-    expect(pickDriver(picked, '')).toEqual(stage(['active']));
+    expect(jobListFilters(stage(['active']))).toEqual({ queues: ['active'] });
   });
 });

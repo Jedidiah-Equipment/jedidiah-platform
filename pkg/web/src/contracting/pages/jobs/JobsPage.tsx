@@ -50,15 +50,16 @@ import { JobStageQuickFilters } from './JobStageQuickFilters.js';
 import { JobQueueBadge } from './JobStatusBadge.js';
 import {
   ATTENTION_COLUMN_ID,
+  DRIVER_COLUMN_ID,
   focusOnNeedsALook,
   focusOnStage,
   jobListFilters,
   jobsQuickFilterStages,
   NEEDS_A_LOOK,
-  pickDriver,
   pickedDriver,
   STAGE_COLUMN_ID,
 } from './job-stage-filter.js';
+import { OnSiteDrivers } from './OnSiteDrivers.js';
 import { useJobWrite } from './use-job-write.js';
 
 function machineSummary(job: JobSummary) {
@@ -188,6 +189,17 @@ export function JobsTable({ scope }: { scope?: JobsScope }) {
   const { items: jobs, total } = useCombinedCursorQueryPages(jobsQuery.data?.pages);
   const foremen = useQuery(trpc.contractingJobs.options.foremen.queryOptions(undefined, { enabled: canAssign }));
   const drivers = useQuery(trpc.contractingJobs.field.drivers.queryOptions(undefined, { enabled: canAssign }));
+  const pickedDriverUserId = pickedDriver(tableController.columnFilters);
+  // Full names: first names collide in the fleet. A saved pick no longer listed stays on show.
+  const driverFilterOptions = useMemo(
+    () =>
+      withCurrentOption(
+        (drivers.data ?? []).map((person) => ({ value: person.id, label: person.name })),
+        pickedDriverUserId,
+        'Unavailable driver',
+      ),
+    [drivers.data, pickedDriverUserId],
+  );
   const assign = useMutation(trpc.contractingJobs.jobs.patch.mutationOptions(write.card('Unable to assign Foreman.')));
   const openJob = useCallback(
     (job: JobSummary, hash?: string) =>
@@ -265,6 +277,20 @@ export function JobsTable({ scope }: { scope?: JobsScope }) {
                 ? `${formatNumber(row.original.onSiteStints)} currently on site`
                 : 'No machine on site'}
             </div>
+          </div>
+        ),
+      },
+      {
+        id: DRIVER_COLUMN_ID,
+        // A column filters only with an accessor; the server owns the filtering itself.
+        accessorFn: (job) => job.onSiteDrivers.map((driver) => driver.id).join(' '),
+        header: 'Drivers',
+        enableColumnFilter: canAssign,
+        enableSorting: false,
+        meta: { filterOptions: driverFilterOptions, filterVariant: 'select' },
+        cell: ({ row }) => (
+          <div className="min-w-28">
+            <OnSiteDrivers drivers={row.original.onSiteDrivers} />
           </div>
         ),
       },
@@ -348,7 +374,7 @@ export function JobsTable({ scope }: { scope?: JobsScope }) {
         },
       },
     ],
-    [canAssignForeman, canPrice, scopeKind, foremen.data, assign.mutate, openJob],
+    [canAssign, canAssignForeman, canPrice, scopeKind, foremen.data, driverFilterOptions, assign.mutate, openJob],
   );
   const table = useDataTable({
     columns,
@@ -393,31 +419,6 @@ export function JobsTable({ scope }: { scope?: JobsScope }) {
           onLoadMore: () => void jobsQuery.fetchNextPage(),
         }}
         onRowClick={(job) => openJob(job)}
-        rightSection={
-          canAssign ? (
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium" htmlFor="jobs-driver">
-                Driver
-              </label>
-              <div className="w-56">
-                <SearchableCombobox
-                  inputId="jobs-driver"
-                  // Full names: first names collide in the fleet. A saved pick no longer listed stays on show.
-                  options={withCurrentOption(
-                    (drivers.data ?? []).map((person) => ({ value: person.id, label: person.name })),
-                    pickedDriver(tableController.columnFilters),
-                    'Unavailable driver',
-                  )}
-                  placeholder="Any driver"
-                  value={pickedDriver(tableController.columnFilters)}
-                  onValueChange={(driverUserId) =>
-                    tableController.setColumnFilters((current) => pickDriver(current, driverUserId))
-                  }
-                />
-              </div>
-            </div>
-          ) : undefined
-        }
         table={table}
         total={total}
         totalLabel={(value) => countPhrase(value, 'Job', 'Jobs')}

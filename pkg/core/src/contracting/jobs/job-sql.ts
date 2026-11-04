@@ -72,6 +72,18 @@ export const hasMachine = (machineId: string) => hasAssignmentWhere(sql`${summar
 export const hasDriver = (driverUserId: string) =>
   hasAssignmentWhere(sql`${summaryAssignment.driverUserId} = ${driverUserId}`);
 
+/** The Drivers on the Job's on-site Assignments, never a Machine's default, each once, by name. */
+export const onSiteDrivers = sql<{ id: string; name: string }[]>`coalesce((
+  select json_agg(json_build_object('id', driver.id, 'name', driver.name) order by driver.name, driver.id)
+  from "user" driver
+  where driver.id in (
+    select summary_assignment.driver_user_id
+    from contracting.machine_assignment summary_assignment
+    where summary_assignment.job_id = ${contractingJobs.id}
+      and ${stintOnSite(summaryAssignment)}
+  )
+), '[]'::json)`;
+
 /** Parameter-free, so the queue counts can group by it. */
 export const looksFinished = sql<boolean>`(
   ${contractingJobs.status} = 'active'

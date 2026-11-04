@@ -172,5 +172,5 @@ export async function pricedJob(
 /** Amends a spot reading's hours at the Read At it already has. */
 export async function amendHours(db: Db, actor: JobActor, id: string, value: number) {
   const { capturedAt } = await getReading({ db, id });
-  return amendReading({ db, actor, input: { id, value, capturedAt: capturedAt.toISOString() } });
+  return (await amendReading({ db, actor, input: { id, value, capturedAt: capturedAt.toISOString() } })).reading;
 }

@@ -46,10 +46,10 @@ export async function listReadingsByMachine({ db, machineId }: { db: Db; machine
 }
 
 /**
- * `serviceDueSoonCrossed` is true when this capture, never a replay, took the Machine into Service Due Soon; the
- * caller decides who hears of it, once the write has committed.
+ * `serviceDueSoonCrossed` is true when this capture or amendment, never a replay, took the Machine into Service Due
+ * Soon; the caller decides who hears of it, once the write has committed.
  */
-export type ReadingCapture = { reading: Row; serviceDueSoonCrossed: boolean };
+export type ReadingWrite = { reading: Row; serviceDueSoonCrossed: boolean };
 
 export async function captureReading({
   db,
@@ -61,11 +61,11 @@ export async function captureReading({
   actor: JobActor;
   input: ReadingCaptureInput;
   now?: Date;
-}): Promise<ReadingCapture> {
+}): Promise<ReadingWrite> {
   const actorUserId = actor.userId;
   const input = ReadingCaptureInput.parse(raw);
   // A mobile retry of an already delivered capture returns the stored row instead of a duplicate.
-  async function replay(db: Db | DatabaseTransaction): Promise<ReadingCapture | null> {
+  async function replay(db: Db | DatabaseTransaction): Promise<ReadingWrite | null> {
     if (!input.localId) return null;
     const row = await db.query.contractingHourReadings.findFirst({
       where: eq(contractingHourReadings.id, input.localId),
@@ -81,7 +81,7 @@ export async function captureReading({
   }
   const delivered = await replay(db);
   if (delivered) return delivered;
-  return db.transaction(async (tx): Promise<ReadingCapture> => {
+  return db.transaction(async (tx): Promise<ReadingWrite> => {
     const [machine] = await tx
       .select()
       .from(contractingMachines)
@@ -238,12 +238,13 @@ async function lockMachineOf(tx: DatabaseTransaction, id: string) {
     .from(contractingHourReadings)
     .where(eq(contractingHourReadings.id, id));
   if (!target) throw notFound();
-  await tx
-    .select({ id: contractingMachines.id })
+  const [machine] = await tx
+    .select()
     .from(contractingMachines)
     .where(eq(contractingMachines.id, target.machineId))
     .for('update');
-  return target.machineId;
+  if (!machine) throw notFound();
+  return machine;
 }
 
 /** A spot reading as read under its Machine lock; a Telematics Reading is refused. */
@@ -254,15 +255,23 @@ function spotReadingFor(row: Row | undefined, change: 'amended' | 'deleted'): Ro
 }
 
 /** Corrects a spot reading's hours or Read At, judged again at its new place in time. */
-export async function amendReading({ db, actor, input: raw }: { db: Db; actor: JobActor; input: ReadingAmendInput }) {
+export async function amendReading({
+  db,
+  actor,
+  input: raw,
+}: {
+  db: Db;
+  actor: JobActor;
+  input: ReadingAmendInput;
+}): Promise<ReadingWrite> {
   const input = ReadingAmendInput.parse(raw);
   const change = { value: input.value, capturedAt: new Date(input.capturedAt) };
   return db.transaction(async (tx) => {
-    const machineId = await lockMachineOf(tx, input.id);
-    const ledger = await tx
-      .select()
-      .from(contractingHourReadings)
-      .where(eq(contractingHourReadings.machineId, machineId));
+    const machine = await lockMachineOf(tx, input.id);
+    const [ledger, edge] = await Promise.all([
+      tx.select().from(contractingHourReadings).where(eq(contractingHourReadings.machineId, machine.id)),
+      serviceDueSoonEdge(tx, machine),
+    ]);
     const before = spotReadingFor(
       ledger.find((row) => row.id === input.id),
       'amended',
@@ -270,7 +279,12 @@ export async function amendReading({ db, actor, input: raw }: { db: Db; actor: J
     const now = new Date();
     const resolution = resolveReadingAmendment(ledger, before, change, now);
     if (!resolution.ok) throw amendmentRefused(resolution);
-    return updateAudited(tx, actor.userId, before, { ...change, amendedBy: actor.userId, amendedAt: now });
+    const reading = await updateAudited(tx, actor.userId, before, {
+      ...change,
+      amendedBy: actor.userId,
+      amendedAt: now,
+    });
+    return { reading, serviceDueSoonCrossed: await edge.crossed() };
   });
 }
 

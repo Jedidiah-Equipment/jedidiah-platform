@@ -290,7 +290,7 @@ come within the Machine's **Service Alert Hours** of Next Service Due — its ow
 **Service Due Soon threshold** in Settings (100 h unless changed) when it has none — kept honest mid-job by Job Hours, spot
 readings from the field and Telematics Readings. It notifies the workshop-manager, contracting-manager, contracting-admin and super-admin
 roles by push notification once, at the
-capture or Telematics Reading that first brings Known Hours within the threshold; closing a Service Record moves the
+capture, amendment or Telematics Reading that first brings Known Hours within the threshold; closing a Service Record moves the
 due point on and re-arms it.
 
 **Due for Service** is a derived state: a Machine whose Service Due Soon status is due soon or overdue and

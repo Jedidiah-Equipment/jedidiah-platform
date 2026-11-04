@@ -1,5 +1,6 @@
-import { captureReading } from '@pkg/core/contracting';
+import { captureReading, patchMachine } from '@pkg/core/contracting';
 import { user } from '@pkg/db';
+import type { ContractingPushEvent } from '@pkg/domain/contracting';
 import { accessForRole } from '@pkg/domain/testing';
 import { expect } from 'vitest';
 import { createTester } from '@/test/create-tester.js';
@@ -44,6 +45,37 @@ test('management amends and deletes a spot reading, and a Foreman can do neither
   expect(await manager.contractingReadings.amend(amendment)).toMatchObject({ value: 102 });
   await manager.contractingReadings.remove({ id: later.id });
   expect(await manager.contractingReadings.latest({ machineId: machine.id })).toMatchObject({ value: 100 });
+});
+
+test('schedules Service Due Soon after the amendment that corrected a reading into it', async ({ context }) => {
+  const pushes: ContractingPushEvent[] = [];
+  const managerSession = mockSession(null);
+  managerSession.user.contractingRole = 'contracting-manager';
+  const manager = context.createCaller(managerSession, {
+    contracting: { push: { schedule: (event) => pushes.push(event) } },
+  });
+  const category = await manager.contractingFleet.categories.create({ name: 'Tractors', kind: 'machine' });
+  const machine = await manager.contractingFleet.machines.create({
+    code: 'DUE-1',
+    make: 'Deere',
+    model: '6140',
+    categoryId: category.id,
+  });
+  await patchMachine({
+    db: context.db,
+    actorUserId: managerSession.user.id,
+    input: { id: machine.id, nextServiceDueHours: 1500 },
+  });
+  const capturedAt = '2026-09-07T08:00:00Z';
+  const { reading: typo } = await captureReading({
+    db: context.db,
+    actor: accessForRole('contracting-manager', managerSession.user.id),
+    input: { machineId: machine.id, value: 1350, capturedAt },
+  });
+  await manager.contractingReadings.amend({ id: typo.id, value: 1360, capturedAt });
+  expect(pushes).toEqual([]);
+  await manager.contractingReadings.amend({ id: typo.id, value: 1450, capturedAt });
+  expect(pushes).toEqual([{ kind: 'machine.service-due-soon', machineId: machine.id }]);
 });
 
 test('foremen can find active Machines and read field history without fleet management', async ({ context }) => {

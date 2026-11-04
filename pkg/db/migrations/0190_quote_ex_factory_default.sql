@@ -1,0 +1,1 @@
+ALTER TABLE "equipment"."quote" ALTER COLUMN "delivery_terms" SET DEFAULT 'ex_factory';

@@ -45,7 +45,7 @@ export const quotes = equipmentSchema.table(
     statusChangedAt: timestamp('status_changed_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
     discountPercent: numeric('discount_percent', { mode: 'number', precision: 5, scale: 2 }).notNull().default(0),
     depositPercent: numeric('deposit_percent', { mode: 'number', precision: 5, scale: 2 }).notNull().default(0),
-    deliveryTerms: text('delivery_terms').notNull().default('included').$type<QuoteDeliveryTerms>(),
+    deliveryTerms: text('delivery_terms').notNull().default('ex_factory').$type<QuoteDeliveryTerms>(),
     deliveryPrice: numeric('delivery_price', { mode: 'number', precision: 12, scale: 2 }).notNull().default(0),
     validUntil: date('valid_until', { mode: 'string' }),
     preferredDeliveryDate: date('preferred_delivery_date', { mode: 'string' }),

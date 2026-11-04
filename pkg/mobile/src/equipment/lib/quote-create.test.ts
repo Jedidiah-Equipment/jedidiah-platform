@@ -32,7 +32,7 @@ describe('mobile quote creation', () => {
       cancellationReason: null,
       customer: { customerId: '4ffcb2c6-4e69-4108-a6a5-710accee0b48', type: 'existing' },
       deliveryPrice: 0,
-      deliveryTerms: 'included',
+      deliveryTerms: 'ex_factory',
       depositPercent: 0,
       discountPercent: 0,
       documentNotes: null,

@@ -81,7 +81,7 @@ export const CreateQuoteInput = z
     deliveryPrice: Price.default(0).describe(
       'The additional delivery charge. Required above zero when deliveryTerms is additional_charge and must be zero otherwise.',
     ),
-    deliveryTerms: QuoteDeliveryTerms.default('included').describe(
+    deliveryTerms: QuoteDeliveryTerms.default('ex_factory').describe(
       'Delivery Terms: included (in the sale price), additional_charge (priced separately via deliveryPrice), ex_factory (the customer collects), or tbc (delivery not yet costed; the Quote cannot be accepted until it is settled).',
     ),
     depositPercent: QuoteDepositPercent.default(0),

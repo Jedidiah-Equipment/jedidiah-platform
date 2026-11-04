@@ -282,7 +282,7 @@ describe('toQuoteCreateInput', () => {
     expect(input.customer).toEqual({ type: 'existing', customerId: CUSTOMER_ID });
     expect(input.discountPercent).toBe(0);
     expect(input.depositPercent).toBe(0);
-    expect(input.deliveryTerms).toBe('included');
+    expect(input.deliveryTerms).toBe('ex_factory');
     expect(input.deliveryPrice).toBe(0);
     expect(input.validUntil).toBeNull();
     expect(input.preferredDeliveryDate).toBeNull();

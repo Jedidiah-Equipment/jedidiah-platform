@@ -51,6 +51,8 @@ import {
   jobListFilters,
   jobsQuickFilterStages,
   NEEDS_A_LOOK,
+  pickDriver,
+  pickedDriver,
   STAGE_COLUMN_ID,
 } from './job-stage-filter.js';
 import { useJobWrite } from './use-job-write.js';
@@ -181,6 +183,7 @@ export function JobsTable({ scope }: { scope?: JobsScope }) {
   );
   const { items: jobs, total } = useCombinedCursorQueryPages(jobsQuery.data?.pages);
   const foremen = useQuery(trpc.contractingJobs.options.foremen.queryOptions(undefined, { enabled: canAssign }));
+  const drivers = useQuery(trpc.contractingJobs.field.drivers.queryOptions(undefined, { enabled: canAssign }));
   const assign = useMutation(trpc.contractingJobs.jobs.patch.mutationOptions(write.card('Unable to assign Foreman.')));
   const openJob = useCallback(
     (job: JobSummary, hash?: string) =>
@@ -361,7 +364,7 @@ export function JobsTable({ scope }: { scope?: JobsScope }) {
   });
   return (
     <>
-      <ErrorMessage error={queues.error ?? foremen.error} fallbackMessage="Unable to load Jobs." />
+      <ErrorMessage error={queues.error ?? foremen.error ?? drivers.error} fallbackMessage="Unable to load Jobs." />
       {scopeKind ? null : (
         <JobStageQuickFilters
           label="Job stages"
@@ -386,6 +389,27 @@ export function JobsTable({ scope }: { scope?: JobsScope }) {
           onLoadMore: () => void jobsQuery.fetchNextPage(),
         }}
         onRowClick={(job) => openJob(job)}
+        rightSection={
+          canAssign ? (
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium" htmlFor="jobs-driver">
+                Driver
+              </label>
+              <div className="w-56">
+                <SearchableCombobox
+                  inputId="jobs-driver"
+                  // Full names: first names collide in the fleet.
+                  options={(drivers.data ?? []).map((person) => ({ value: person.id, label: person.name }))}
+                  placeholder="Any driver"
+                  value={pickedDriver(tableController.columnFilters)}
+                  onValueChange={(driverUserId) =>
+                    tableController.setColumnFilters((current) => pickDriver(current, driverUserId))
+                  }
+                />
+              </div>
+            </div>
+          ) : undefined
+        }
         table={table}
         total={total}
         totalLabel={(value) => countPhrase(value, 'Job', 'Jobs')}

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildMachine } from '@/contracting/test/fleet-fixtures.js';
 import {
   busyFilterMatches,
+  driverFilterOptions,
   implementPatchInput,
   machineFormValues,
   machinePatchInput,
@@ -72,5 +73,25 @@ describe('busyFilterMatches', () => {
     expect(busyFilterMatches(inYard, 'in-yard')).toBe(true);
     expect(busyFilterMatches(onJob, 'in-yard')).toBe(false);
     expect(busyFilterMatches(retired, 'in-yard')).toBe(false);
+  });
+});
+
+describe('driverFilterOptions', () => {
+  it('offers each Driver on the listed Machines once, by full name', () => {
+    const machine = (currentDriverUserId: string | null, currentDriverName: string | null) => ({
+      currentDriverUserId,
+      currentDriverName,
+    });
+    expect(
+      driverFilterOptions([
+        machine('andile-n', 'Andile Nkosi'),
+        machine(null, null),
+        machine('andile-m', 'Andile Mokoena'),
+        machine('andile-n', 'Andile Nkosi'),
+      ]),
+    ).toEqual([
+      { value: 'andile-m', label: 'Andile Mokoena' },
+      { value: 'andile-n', label: 'Andile Nkosi' },
+    ]);
   });
 });

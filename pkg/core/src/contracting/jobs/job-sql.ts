@@ -66,6 +66,14 @@ export const hasMachine = (machineId: string) => sql<boolean>`exists (
     and summary_assignment.machine_id = ${machineId}
 )`;
 
+/** The Assignment's Driver, never the Machine's default, went on the Job, in any state. */
+export const hasDriver = (driverUserId: string) => sql<boolean>`exists (
+  select 1
+  from contracting.machine_assignment summary_assignment
+  where summary_assignment.job_id = ${contractingJobs.id}
+    and summary_assignment.driver_user_id = ${driverUserId}
+)`;
+
 /** Parameter-free, so the queue counts can group by it. */
 export const looksFinished = sql<boolean>`(
   ${contractingJobs.status} = 'active'

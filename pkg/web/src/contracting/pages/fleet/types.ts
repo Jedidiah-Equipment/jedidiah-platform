@@ -116,5 +116,17 @@ export const busyFilterOptions: { label: string; value: BusyFilterValue }[] = [
   { label: 'On Job', value: 'on-job' },
   { label: 'In Yard', value: 'in-yard' },
 ];
+/** One option per Driver on the listed Machines, by full name because first names collide in the fleet. */
+export function driverFilterOptions(
+  machines: readonly { currentDriverUserId: string | null; currentDriverName: string | null }[],
+): { label: string; value: string }[] {
+  const byId = new Map<string, string>();
+  for (const { currentDriverUserId, currentDriverName } of machines)
+    if (currentDriverUserId && currentDriverName) byId.set(currentDriverUserId, currentDriverName);
+  return [...byId]
+    .map(([value, label]) => ({ value, label }))
+    .sort((left, right) => left.label.localeCompare(right.label));
+}
+
 export const busyFilterMatches = (machine: { busyOnJob: object | null; retiredAt: string | null }, value: unknown) =>
   value === 'on-job' ? machine.busyOnJob !== null : !machine.busyOnJob && !machine.retiredAt;

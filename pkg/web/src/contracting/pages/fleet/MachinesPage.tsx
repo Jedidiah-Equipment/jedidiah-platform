@@ -27,6 +27,7 @@ import {
   busyFilterMatches,
   busyFilterOptions,
   createMachineInput,
+  driverFilterOptions,
   fleetStatusLabels,
   fleetStatusOptions,
   MachineCreateValues,
@@ -103,6 +104,9 @@ export function MachinesPage({
         accessorKey: 'currentDriverName',
         header: 'Driver',
         enableGlobalFilter: false,
+        enableColumnFilter: true,
+        filterFn: (row, _columnId, value) => row.original.currentDriverUserId === value,
+        meta: { filterVariant: 'select', filterOptions: driverFilterOptions(query.data ?? []) },
         cell: ({ row }) => (row.original.currentDriverName ? getFirstName(row.original.currentDriverName) : null),
       },
       {
@@ -188,7 +192,7 @@ export function MachinesPage({
         ),
       },
     ],
-    [categories.data, readsJobs],
+    [categories.data, query.data, readsJobs],
   );
   return (
     <>

@@ -48,10 +48,29 @@ export const NEEDS_A_LOOK = 'needs-a-look';
 const needsALookPicked = (columnFilters: ColumnFiltersState) =>
   columnFilters.some((filter) => filter.id === ATTENTION_COLUMN_ID && filter.value === NEEDS_A_LOOK);
 
-export const jobListFilters = (columnFilters: ColumnFiltersState, unpicked?: readonly JobQueue[]) => ({
-  queues: listedStages(columnFilters, unpicked),
-  ...(needsALookPicked(columnFilters) ? { needsALook: true } : {}),
-});
+/** Not a column: the Driver filter sits beside the search, kept with the column filters so it persists with them. */
+export const DRIVER_FILTER_ID = 'driver';
+
+/** The Driver picked in the Driver filter, or `''` when none is. */
+export function pickedDriver(columnFilters: ColumnFiltersState): string {
+  const value = columnFilters.find((filter) => filter.id === DRIVER_FILTER_ID)?.value;
+  return typeof value === 'string' ? value : '';
+}
+
+/** Picks this Driver, keeping every other filter; `''` clears the pick. */
+export const pickDriver = (columnFilters: ColumnFiltersState, driverUserId: string): ColumnFiltersState => [
+  ...columnFilters.filter((filter) => filter.id !== DRIVER_FILTER_ID),
+  ...(driverUserId ? [{ id: DRIVER_FILTER_ID, value: driverUserId }] : []),
+];
+
+export const jobListFilters = (columnFilters: ColumnFiltersState, unpicked?: readonly JobQueue[]) => {
+  const driverUserId = pickedDriver(columnFilters);
+  return {
+    queues: listedStages(columnFilters, unpicked),
+    ...(needsALookPicked(columnFilters) ? { needsALook: true } : {}),
+    ...(driverUserId ? { driverUserId } : {}),
+  };
+};
 
 const withoutStageOrAttention = (columnFilters: ColumnFiltersState) =>
   columnFilters.filter((filter) => filter.id !== STAGE_COLUMN_ID && filter.id !== ATTENTION_COLUMN_ID);

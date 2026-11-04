@@ -36,7 +36,7 @@ export function MachineCatalogControls({
         <ListSearchControl
           accessibilityLabel="Search Machines"
           onChangeText={onSearchChange}
-          placeholder="Search by code, make, or model…"
+          placeholder="Search by code, make, model, or driver…"
           value={search}
         />
       }

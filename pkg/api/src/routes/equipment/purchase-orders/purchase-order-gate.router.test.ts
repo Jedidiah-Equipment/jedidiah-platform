@@ -213,28 +213,30 @@ function expectAgreement(
   expect(refusalOf(error), label).toEqual({ action, reason: verdict.reason });
 }
 
+type Attempt = readonly [
+  label: string,
+  action: PurchaseOrderActionName,
+  write: (admin: AppRouterCaller, order: Order, context: Context) => Promise<unknown>,
+  inputFailure?: string,
+];
+
+const attempts: Attempt[] = [
+  ...(Object.entries(writes) as [PurchaseOrderActionName, Attempt[2]][]).map(
+    ([action, write]): Attempt => [action, action, write],
+  ),
+  ['arrive', 'receive', arrive],
+  ['credit note', 'fileDocuments', fileCreditNote, 'credit_note.return_not_found'],
+];
+
+// One write per test: a state that built an order per write ran long enough to time out on a busy machine.
 describe('Purchase Order Actions served on the order agree with what every write does', () => {
-  test.for(states)('an order that is %s', async (state, { context }) => {
-    const admin = context.createCaller();
-    const { actions } = await admin.purchaseOrders.get({ id: (await orderIn(admin, state)).id });
-    const attempt = async (write: (order: Order) => Promise<unknown>) => settle(write(await orderIn(admin, state)));
-    for (const [action, write] of Object.entries(writes) as [
-      PurchaseOrderActionName,
-      (typeof writes)[PurchaseOrderActionName],
-    ][])
-      expectAgreement(
-        action,
-        actions[action],
-        await attempt((order) => write(admin, order, context)),
-        `${state} · ${action}`,
-      );
-    expectAgreement('receive', actions.receive, await attempt((order) => arrive(admin, order)), `${state} · arrive`);
-    expectAgreement(
-      'fileDocuments',
-      actions.fileDocuments,
-      await attempt((order) => fileCreditNote(admin, order, context)),
-      `${state} · credit note`,
-      'credit_note.return_not_found',
-    );
+  describe.for(states)('an order that is %s', (state) => {
+    test.for(attempts)('%s', async ([label, action, write, inputFailure], { context }) => {
+      const admin = context.createCaller();
+      const order = await orderIn(admin, state);
+      const { actions } = await admin.purchaseOrders.get({ id: order.id });
+      const error = await settle(write(admin, order, context));
+      expectAgreement(action, actions[action], error, `${state} · ${label}`, inputFailure);
+    });
   });
 });

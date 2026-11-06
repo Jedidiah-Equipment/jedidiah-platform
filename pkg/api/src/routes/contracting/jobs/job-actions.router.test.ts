@@ -31,11 +31,12 @@ import {
   type JobActionName,
   type JobActionVerdict,
   type JobStatus,
+  jobActionNames,
   MachineCreateInput,
 } from '@pkg/schema/contracting';
 import { TRPCError } from '@trpc/server';
 import { describe, expect } from 'vitest';
-import { type AppRouterCaller, createTester } from '@/test/create-tester.js';
+import { type AppRouterCaller, createTester, type TesterContext } from '@/test/create-tester.js';
 import { mockSession } from '@/test/test-utils.js';
 import { getTRPCAppCode, getTRPCPublicMetadata } from '@/trpc/errors.js';
 
@@ -46,119 +47,123 @@ const setup = accessForRole('contracting-admin', setupId);
 
 let sequence = 0;
 
-const test = createTester(async ({ db }) => {
-  const now = new Date();
-  const person = (id: string, contractingRole: ContractingRole) => ({
-    id,
-    name: id,
-    email: `${id}@example.com`,
-    emailVerified: true,
-    contractingRole,
-    createdAt: now,
-    updatedAt: now,
-  });
-  await db.insert(user).values([person(callerId, 'foreman'), person(setupId, 'contracting-admin')]);
-  const customer = await createCustomer({ db, actorUserId: setupId, input: { name: 'Rowley' } });
-  const farm = await createFarm({ db, actorUserId: setupId, input: { customerId: customer.id, name: 'Rooikraal' } });
-  const workType = await createWorkType({ db, actorUserId: setupId, input: { name: 'Dam building' } });
-  const category = await createCategory({ db, actorUserId: setupId, input: { name: 'Excavators', kind: 'machine' } });
-  const loads = await createMeasureType({ db, actorUserId: setupId, input: { name: 'Loads' } });
-  const rate = await createRate({
-    db,
-    actorUserId: setupId,
-    input: { name: 'Dry hire', basis: 'time', measureTypeId: null, amount: 600 },
-  });
-  const machine = () =>
-    createMachine({
+// Every test builds its own Job, so the file shares one database instead of cloning one per write.
+const test = createTester(
+  async ({ db }) => {
+    const now = new Date();
+    const person = (id: string, contractingRole: ContractingRole) => ({
+      id,
+      name: id,
+      email: `${id}@example.com`,
+      emailVerified: true,
+      contractingRole,
+      createdAt: now,
+      updatedAt: now,
+    });
+    await db.insert(user).values([person(callerId, 'foreman'), person(setupId, 'contracting-admin')]);
+    const customer = await createCustomer({ db, actorUserId: setupId, input: { name: 'Rowley' } });
+    const farm = await createFarm({ db, actorUserId: setupId, input: { customerId: customer.id, name: 'Rooikraal' } });
+    const workType = await createWorkType({ db, actorUserId: setupId, input: { name: 'Dam building' } });
+    const category = await createCategory({ db, actorUserId: setupId, input: { name: 'Excavators', kind: 'machine' } });
+    const loads = await createMeasureType({ db, actorUserId: setupId, input: { name: 'Loads' } });
+    const rate = await createRate({
       db,
       actorUserId: setupId,
-      input: MachineCreateInput.parse({
-        code: `EX-${++sequence}`,
-        make: 'CAT',
-        model: '320',
-        categoryId: category.id,
-      }),
+      input: { name: 'Dry hire', basis: 'time', measureTypeId: null, amount: 600 },
     });
+    const machine = () =>
+      createMachine({
+        db,
+        actorUserId: setupId,
+        input: MachineCreateInput.parse({
+          code: `EX-${++sequence}`,
+          make: 'CAT',
+          model: '320',
+          categoryId: category.id,
+        }),
+      });
 
-  /**
-   * A fresh Job in the given status, with one worked stint on its own Machine and a spare Machine to add. An Active
-   * Job also holds a planned stint and one that has already left, so every stint state is judged while the Job runs.
-   */
-  async function jobAt(status: JobStatus) {
-    const [worked, spare] = [await machine(), await machine()];
-    const job = await createJob({
-      db,
-      actor: setup,
-      input: {
-        customerId: customer.id,
-        farmId: farm.id,
-        workTypeId: workType.id,
-        description: null,
-        foremanUserId: callerId,
-      },
-    });
-    await createAssignment({
-      db,
-      actor: setup,
-      input: { jobId: job.id, machineId: worked.id, implementId: null },
-    });
-    const [planned] = (await getJob({ db, id: job.id })).assignments;
-    if (!planned) throw new Error('Expected Machine Assignment');
-    const stint = { id: planned.id, machineId: worked.id };
-    const capture = (role: 'arrival' | 'departure', hours: number, on: { id: string } = stint) =>
-      captureStintHours({ db, actor: setup, input: { assignmentId: on.id, role, hours } });
-    const fixture: Fixture = { job, stint, spare, chargeLineId: null, stints: [{ ...stint, state: 'planned' }] };
-    if (status === 'upcoming') return fixture;
-    await capture('arrival', 100);
-    const plan = async () => {
-      const added = await machine();
-      await createAssignment({ db, actor: setup, input: { jobId: job.id, machineId: added.id, implementId: null } });
-      const found = (await getJob({ db, id: job.id })).assignments.find((each) => each.machineId === added.id);
-      if (!found) throw new Error('Expected planned Machine Assignment');
-      return { id: found.id, machineId: added.id };
-    };
-    const gone = await plan();
-    await capture('arrival', 10, gone);
-    await capture('departure', 11, gone);
-    const later = await plan();
-    fixture.stints = [
-      { ...stint, state: 'on-site' },
-      { ...later, state: 'planned' },
-      { ...gone, state: 'left' },
-    ];
-    await createChargeLine({ db, actor: setup, input: { jobId: job.id, description: 'Low-bed' } });
-    const [line] = (await getJob({ db, id: job.id })).chargeLines;
-    if (!line) throw new Error('Expected Charge Line');
-    fixture.chargeLineId = line.id;
-    await patchChargeLine({ db, actor: setup, input: { id: line.id, amount: 0 } });
-    if (status === 'active') return fixture;
-    await capture('departure', 101);
-    await completeJob({
-      db,
-      actor: setup,
-      input: {
-        id: job.id,
-        startDate: DateOnlyIso.parse('2026-09-01'),
-        endDate: DateOnlyIso.parse('2026-09-02'),
-        dieselLitres: 0,
-        notes: null,
-        removePlannedAssignmentIds: [later.id],
-      },
-    });
-    fixture.stints = [
-      { ...stint, state: 'left' },
-      { ...gone, state: 'left' },
-    ];
-    if (status === 'completed') return fixture;
-    for (const each of [stint, gone])
-      await setStintRate({ db, actor: setup, input: { assignmentId: each.id, rateId: rate.id } });
-    const total = (await getJob({ db, id: job.id })).pricing.total;
-    await markPriced({ db, actor: setup, input: { id: job.id, expectedTotal: total } });
-    return fixture;
-  }
+    /**
+     * A fresh Job in the given status, with one worked stint on its own Machine and a spare Machine to add. An Active
+     * Job also holds a planned stint and one that has already left, so every stint state is judged while the Job runs.
+     */
+    async function jobAt(status: JobStatus) {
+      const [worked, spare] = [await machine(), await machine()];
+      const job = await createJob({
+        db,
+        actor: setup,
+        input: {
+          customerId: customer.id,
+          farmId: farm.id,
+          workTypeId: workType.id,
+          description: null,
+          foremanUserId: callerId,
+        },
+      });
+      await createAssignment({
+        db,
+        actor: setup,
+        input: { jobId: job.id, machineId: worked.id, implementId: null },
+      });
+      const [planned] = (await getJob({ db, id: job.id })).assignments;
+      if (!planned) throw new Error('Expected Machine Assignment');
+      const stint = { id: planned.id, machineId: worked.id };
+      const capture = (role: 'arrival' | 'departure', hours: number, on: { id: string } = stint) =>
+        captureStintHours({ db, actor: setup, input: { assignmentId: on.id, role, hours } });
+      const fixture: Fixture = { job, stint, spare, chargeLineId: null, stints: [{ ...stint, state: 'planned' }] };
+      if (status === 'upcoming') return fixture;
+      await capture('arrival', 100);
+      const plan = async () => {
+        const added = await machine();
+        await createAssignment({ db, actor: setup, input: { jobId: job.id, machineId: added.id, implementId: null } });
+        const found = (await getJob({ db, id: job.id })).assignments.find((each) => each.machineId === added.id);
+        if (!found) throw new Error('Expected planned Machine Assignment');
+        return { id: found.id, machineId: added.id };
+      };
+      const gone = await plan();
+      await capture('arrival', 10, gone);
+      await capture('departure', 11, gone);
+      const later = await plan();
+      fixture.stints = [
+        { ...stint, state: 'on-site' },
+        { ...later, state: 'planned' },
+        { ...gone, state: 'left' },
+      ];
+      await createChargeLine({ db, actor: setup, input: { jobId: job.id, description: 'Low-bed' } });
+      const [line] = (await getJob({ db, id: job.id })).chargeLines;
+      if (!line) throw new Error('Expected Charge Line');
+      fixture.chargeLineId = line.id;
+      await patchChargeLine({ db, actor: setup, input: { id: line.id, amount: 0 } });
+      if (status === 'active') return fixture;
+      await capture('departure', 101);
+      await completeJob({
+        db,
+        actor: setup,
+        input: {
+          id: job.id,
+          startDate: DateOnlyIso.parse('2026-09-01'),
+          endDate: DateOnlyIso.parse('2026-09-02'),
+          dieselLitres: 0,
+          notes: null,
+          removePlannedAssignmentIds: [later.id],
+        },
+      });
+      fixture.stints = [
+        { ...stint, state: 'left' },
+        { ...gone, state: 'left' },
+      ];
+      if (status === 'completed') return fixture;
+      for (const each of [stint, gone])
+        await setStintRate({ db, actor: setup, input: { assignmentId: each.id, rateId: rate.id } });
+      const total = (await getJob({ db, id: job.id })).pricing.total;
+      await markPriced({ db, actor: setup, input: { id: job.id, expectedTotal: total } });
+      return fixture;
+    }
 
-  return { db, jobAt, loadsId: loads.id, rateId: rate.id };
-});
+    return { db, jobAt, loadsId: loads.id, rateId: rate.id };
+  },
+  { scope: 'file' },
+);
 
 type StintFixture = { id: string; machineId: string; state: AssignmentState };
 type Fixture = {
@@ -268,18 +273,23 @@ const cases = roles.flatMap((role) =>
   statuses.filter((status) => (readable[role] ?? statuses).includes(status)).map((status) => [role, status] as const),
 );
 
+function callerAs(context: TesterContext, role: ContractingRole) {
+  const session = mockSession(null);
+  session.user.contractingRole = role;
+  return context.createCaller(session);
+}
+
+// One write per test: a case that built a Job per action ran long enough to time out on a busy machine.
 describe('Job Actions served on the Job agree with what the server does', () => {
-  test.for(cases)('%s on a %s Job', async ([role, status], { context }) => {
-    const session = mockSession(null);
-    session.user.contractingRole = role;
-    const caller = context.createCaller(session);
-    const shown = await context.jobAt(status);
-    const { actions } = await caller.contractingJobs.jobs.get({ id: shown.job.id });
-    for (const [action, attempt] of Object.entries(attempts) as [JobActionName, (typeof attempts)[JobActionName]][]) {
-      const write = attempt(caller, await context.jobAt(status), context, role);
-      if (write === null) continue;
+  describe.for(cases)('%s on a %s Job', ([role, status]) => {
+    test.for(jobActionNames)('%s', async (action, { context }) => {
+      const caller = callerAs(context, role);
+      const fixture = await context.jobAt(status);
+      const { actions } = await caller.contractingJobs.jobs.get({ id: fixture.job.id });
+      const write = attempts[action](caller, fixture, context, role);
+      if (write === null) return;
       expectAgreement(actions[action], await settle(write), `${role} · ${status} · ${action}`);
-    }
+    });
   });
 });
 
@@ -287,11 +297,7 @@ const moneyFields = ['diesel', 'discount', 'pricedTotal', 'reopenedAt', 'reprici
 
 describe('money reaches only the readers the server sends it to', () => {
   test.for(cases)('%s on a %s Job', async ([role, status], { context }) => {
-    const session = mockSession(null);
-    session.user.contractingRole = role;
-    const job = await context
-      .createCaller(session)
-      .contractingJobs.jobs.get({ id: (await context.jobAt(status)).job.id });
+    const job = await callerAs(context, role).contractingJobs.jobs.get({ id: (await context.jobAt(status)).job.id });
     const seesMoney = jobReadSeesMoney(jobReadMode(accessForRole(role, callerId)) ?? 'all');
     expect(job.seesMoney).toBe(seesMoney);
     if (seesMoney) return;
@@ -348,19 +354,17 @@ function expectStintAgreement(verdict: AssignmentActionVerdict, error: unknown, 
 }
 
 describe('Assignment Actions served on each stint agree with what the server does', () => {
-  test.for(cases)('%s on a %s Job', async ([role, status], { context }) => {
-    const session = mockSession(null);
-    session.user.contractingRole = role;
-    const caller = context.createCaller(session);
-    const shown = await caller.contractingJobs.jobs.get({ id: (await context.jobAt(status)).job.id });
-    for (const assignment of shown.assignments) {
-      for (const action of assignmentActionNames) {
+  describe.for(cases)('%s on a %s Job', ([role, status]) => {
+    test.for(assignmentActionNames)('%s', async (action, { context }) => {
+      const caller = callerAs(context, role);
+      const shown = await caller.contractingJobs.jobs.get({ id: (await context.jobAt(status)).job.id });
+      for (const assignment of shown.assignments) {
         const stint = (await context.jobAt(status)).stints.find((each) => each.state === assignment.state);
         if (!stint) throw new Error(`Expected a ${assignment.state} stint`);
         const write = stintAttempts[action](caller, stint, context, role);
         const label = `${role} · ${status} · ${assignment.state} · ${action}`;
         expectStintAgreement(assignment.actions[action], await settle(write), label);
       }
-    }
+    });
   });
 });

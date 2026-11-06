@@ -169,9 +169,9 @@ describe('pooled test database', () => {
       }),
     ).rejects.toThrow('test failed');
 
-    await dropTrackedTestDatabases();
+    await expect.poll(() => databaseExists(handedOut)).toBe(false);
 
-    expect(await databaseExists(handedOut)).toBe(false);
+    await dropTrackedTestDatabases();
   });
 });
 

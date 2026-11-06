@@ -31,6 +31,9 @@ const createdEphemeralTestDatabases = testDatabaseState.created;
 // refusal means a session lingered; a few more rounds outlast a short-lived one rather than failing a test.
 const templateCloneAttempts = 5;
 const templateInUseErrorCode = '55006';
+// Clones kept ready per process, and the admin connections its clones and drops share.
+const pooledDatabasesAhead = 2;
+const pooledAdminConnections = 2;
 
 export type EphemeralTestDatabase = {
   databaseName: string;
@@ -87,22 +90,25 @@ export async function createEphemeralTestDatabase({
   templateDatabaseUrl = getTestTemplateDatabaseUrl(),
 }: CreateEphemeralTestDatabaseOptions = {}): Promise<EphemeralTestDatabase> {
   const adminClient = createAdminClient(templateDatabaseUrl);
-  const templateDatabaseName = getDatabaseName(templateDatabaseUrl);
 
   try {
-    const quotedDatabaseName = quoteIdentifier(databaseName);
-    const quotedTemplateDatabaseName = quoteIdentifier(templateDatabaseName);
-
-    await cloneTemplateDatabase(adminClient, quotedDatabaseName, quotedTemplateDatabaseName);
-    createdEphemeralTestDatabases.set(databaseName, templateDatabaseUrl);
-
-    return {
-      databaseName,
-      databaseUrl: buildDatabaseUrl(databaseName, templateDatabaseUrl),
-    };
+    return await cloneTrackedDatabase(adminClient, databaseName, templateDatabaseUrl);
   } finally {
     await adminClient.end();
   }
+}
+
+async function cloneTrackedDatabase(
+  adminClient: postgres.Sql,
+  databaseName: string,
+  templateDatabaseUrl: string,
+): Promise<EphemeralTestDatabase> {
+  const templateDatabaseName = getDatabaseName(templateDatabaseUrl);
+
+  await cloneTemplateDatabase(adminClient, quoteIdentifier(databaseName), quoteIdentifier(templateDatabaseName));
+  createdEphemeralTestDatabases.set(databaseName, templateDatabaseUrl);
+
+  return { databaseName, databaseUrl: buildDatabaseUrl(databaseName, templateDatabaseUrl) };
 }
 
 /**
@@ -129,9 +135,6 @@ export async function withTestDatabase<T>(use: (database: EphemeralTestDatabase)
   }
 }
 
-const pooledDatabasesAhead = 2;
-const pooledAdminConnections = 2;
-
 type DatabasePool = {
   adminClient: postgres.Sql;
   templateDatabaseUrl: string;
@@ -152,16 +155,7 @@ function openDatabasePool(): DatabasePool {
 
 function cloneIntoPool(pool: DatabasePool): Promise<EphemeralTestDatabase> {
   const databaseName = createTestDatabaseName('jedidiah_ephemeral');
-  const templateDatabaseName = getDatabaseName(pool.templateDatabaseUrl);
-  const clone = cloneTemplateDatabase(
-    pool.adminClient,
-    quoteIdentifier(databaseName),
-    quoteIdentifier(templateDatabaseName),
-  ).then(() => {
-    createdEphemeralTestDatabases.set(databaseName, pool.templateDatabaseUrl);
-
-    return { databaseName, databaseUrl: buildDatabaseUrl(databaseName, pool.templateDatabaseUrl) };
-  });
+  const clone = cloneTrackedDatabase(pool.adminClient, databaseName, pool.templateDatabaseUrl);
 
   // A clone nobody takes still has to settle before the pool closes; one a test takes rethrows there.
   trackInFlight(pool, clone);
@@ -171,11 +165,7 @@ function cloneIntoPool(pool: DatabasePool): Promise<EphemeralTestDatabase> {
 
 // A drop that fails leaves the database tracked, so `dropTrackedTestDatabases` retries it and reports a second failure.
 function dropFromPool(pool: DatabasePool, databaseName: string): void {
-  const drop = dropDatabaseIfExists(pool.adminClient, databaseName).then(() => {
-    createdEphemeralTestDatabases.delete(databaseName);
-  });
-
-  trackInFlight(pool, drop);
+  trackInFlight(pool, dropTrackedDatabase(pool.adminClient, databaseName, pool.templateDatabaseUrl));
 }
 
 function trackInFlight(pool: DatabasePool, work: Promise<unknown>): void {
@@ -348,12 +338,20 @@ export async function dropTestDatabase(databaseName: string, databaseUrl = getTe
   const adminClient = createAdminClient(databaseUrl);
 
   try {
-    await dropDatabaseIfExists(adminClient, databaseName);
+    await dropTrackedDatabase(adminClient, databaseName, databaseUrl);
   } finally {
     await adminClient.end();
   }
+}
 
-  if (createdEphemeralTestDatabases.get(databaseName) === databaseUrl) {
+async function dropTrackedDatabase(
+  adminClient: postgres.Sql,
+  databaseName: string,
+  templateDatabaseUrl: string,
+): Promise<void> {
+  await dropDatabaseIfExists(adminClient, databaseName);
+
+  if (createdEphemeralTestDatabases.get(databaseName) === templateDatabaseUrl) {
     createdEphemeralTestDatabases.delete(databaseName);
   }
 }

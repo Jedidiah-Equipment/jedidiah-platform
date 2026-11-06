@@ -1,7 +1,7 @@
 import type { ContractingRole } from '@pkg/schema';
 import { describe, expect, test, vi } from 'vitest';
 import { createUserAccessSummary } from '../auth/authorization.js';
-import { breakdownFirstLine, breakdownReadScope, breakdownsByUrgency, mostUrgentBreakdown } from './breakdowns.js';
+import { breakdownFirstLine, breakdownReadScope, breakdownsByUrgency } from './breakdowns.js';
 
 const access = (contractingRole: ContractingRole) =>
   createUserAccessSummary({ userId: 'me', equipmentRole: null, contractingRole });
@@ -43,21 +43,5 @@ describe('breakdownsByUrgency', () => {
     const input = [greenNew, redOld, redNew];
     expect(breakdownsByUrgency(input)).toEqual([redNew, redOld, greenNew]);
     expect(input).toEqual([greenNew, redOld, redNew]);
-  });
-});
-
-describe('mostUrgentBreakdown', () => {
-  const at = (urgency: 'code-red' | 'code-green', reportedAt: string) => ({ urgency, reportedAt });
-
-  test('puts Code Red over Code Green however old, and the newest first among equals', () => {
-    const oldRed = at('code-red', '2026-10-01T08:00:00Z');
-    const newRed = at('code-red', '2026-10-02T08:00:00Z');
-    const green = at('code-green', '2026-10-03T08:00:00Z');
-    expect(mostUrgentBreakdown([green, oldRed, newRed])).toBe(newRed);
-    expect(mostUrgentBreakdown([green, at('code-green', '2026-10-01T08:00:00Z')])).toBe(green);
-  });
-
-  test('is none for none', () => {
-    expect(mostUrgentBreakdown([])).toBeNull();
   });
 });

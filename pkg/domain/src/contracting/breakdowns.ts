@@ -61,11 +61,6 @@ export function breakdownsByUrgency<TBreakdown extends { urgency: BreakdownUrgen
   );
 }
 
-/** The most urgent of some Breakdowns; none for none. */
-export const mostUrgentBreakdown = <TBreakdown extends { urgency: BreakdownUrgency; reportedAt: string }>(
-  breakdowns: readonly TBreakdown[],
-): TBreakdown | null => breakdownsByUrgency(breakdowns)[0] ?? null;
-
 /** A Breakdown is "mine" when I reported it or it sits on a Job I am Foreman of. */
 export function isBreakdownMine(
   subject: { reportedByUserId: AuthId; jobForemanUserId: AuthId | null },

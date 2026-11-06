@@ -7,10 +7,11 @@ import {
   assignmentStateLabels,
   attentionBadges,
   breakdownsByStint,
+  breakdownsByUrgency,
   breakdownUrgencyColorClassNames,
+  breakdownUrgencyLabels,
   type JobSheetStint,
   jobSheet,
-  mostUrgentBreakdown,
   needsALookColorClassNames,
 } from '@pkg/domain/contracting';
 import type { AssignmentDetail, BreakdownSummary, JobCardVariant } from '@pkg/schema/contracting';
@@ -36,11 +37,18 @@ import { Text } from '@/components/ui/text';
 import { AddNoteButton } from '@/contracting/activity/AddNoteButton';
 import { ContractingActivityFeed } from '@/contracting/activity/ContractingActivityFeed';
 import { RecordTabBar, useRecordTab } from '@/contracting/activity/RecordTabs';
-import { BreakdownFlagButton, BreakdownIcon, breakdownBorder } from '@/contracting/components/BreakdownSubjectIcons';
+import {
+  BreakdownFlagButton,
+  BreakdownIcon,
+  BreakdownStatusBadge,
+  BreakdownUrgencyIcon,
+  breakdownBorder,
+} from '@/contracting/components/BreakdownSubjectIcons';
 import { CaptureButton } from '@/contracting/components/CaptureButton';
 import { CategoryIcon, categoryTileSize } from '@/contracting/components/CategoryIcon';
 import { CONTRACTING_TAB_HREF } from '@/contracting/lib/app-tabs';
 import { jobCardShareAction } from '@/contracting/lib/job-card';
+import { BreakdownRow } from '@/contracting/workshop/BreakdownRow';
 import { useJobBreakdowns } from '@/contracting/workshop/use-breakdowns';
 import { shareDocument } from '@/lib/document-actions';
 import { useBusyAction } from '@/lib/use-busy-action';
@@ -80,8 +88,8 @@ export default function JobScreen() {
   const [measuringId, setMeasuringId] = useState<string | null>(null);
   const measuring = stints.find((entry) => entry.stint.id === measuringId && entry.sheet.can('editMeasures'))?.stint;
   const breakdowns = useJobBreakdowns(jobId);
-  const breakdownsOnStint = useMemo(
-    () => breakdownsByStint(job?.assignments ?? [], breakdowns.data?.items ?? []).byStint,
+  const placed = useMemo(
+    () => breakdownsByStint(job?.assignments ?? [], breakdowns.data?.items ?? []),
     [job?.assignments, breakdowns.data],
   );
 
@@ -162,7 +170,7 @@ export default function JobScreen() {
 
           {stints.map((entry) => (
             <StintCard
-              breakdown={mostUrgentBreakdown(breakdownsOnStint.get(entry.stint.id) ?? [])}
+              breakdowns={placed.byStint.get(entry.stint.id) ?? []}
               canReport={canReport}
               entry={entry}
               key={entry.stint.id}
@@ -181,6 +189,16 @@ export default function JobScreen() {
                 ? 'No machines planned yet — add the first one to start this Job.'
                 : 'No Machines are assigned to this Job.'}
             </Text>
+          ) : null}
+          {job && placed.unplaced.length ? (
+            <View className="gap-2">
+              <Text className="text-lg text-foreground" weight="bold">
+                Other Breakdowns on this Job
+              </Text>
+              {placed.unplaced.map((breakdown) => (
+                <BreakdownRow breakdown={breakdown} key={breakdown.id} />
+              ))}
+            </View>
           ) : null}
           {canShareJobCard ? (
             <View className="gap-2">
@@ -242,9 +260,33 @@ function EditableLine({ label, onPress, children }: { label: string; onPress?: (
   );
 }
 
+/** One open Breakdown on a Machine card, opening it: its flag, the Implement when it is on that, and its first line. */
+function BreakdownLine({ breakdown }: { breakdown: BreakdownSummary }) {
+  const { subject } = breakdown;
+  const text = `${subject.kind === 'implement' ? `${subject.code} · ` : ''}${breakdown.firstLine}`;
+  return (
+    <Pressable
+      accessibilityHint="Opens the Breakdown"
+      accessibilityLabel={`${breakdownUrgencyLabels[breakdown.urgency]} on ${subject.code}: ${breakdown.firstLine}`}
+      accessibilityRole="button"
+      className="flex-row items-center gap-2 rounded-lg active:bg-muted"
+      hitSlop={6}
+      onPress={() =>
+        router.push({ pathname: '/contracting/workshop/[breakdownId]', params: { breakdownId: breakdown.id } })
+      }
+    >
+      <BreakdownUrgencyIcon tile={categoryTileSize(16)} urgency={breakdown.urgency} />
+      <Text className="min-w-0 flex-1 text-base text-foreground/70" numberOfLines={1}>
+        {text}
+      </Text>
+      <BreakdownStatusBadge status={breakdown.status} />
+    </Pressable>
+  );
+}
+
 function StintCard({
   entry: { stint, sheet: stintSheet },
-  breakdown,
+  breakdowns,
   canReport,
   onStart,
   onStop,
@@ -254,8 +296,8 @@ function StintCard({
   thresholds,
 }: {
   entry: JobSheetStint;
-  /** The most urgent unsolved Breakdown on this Machine's stint, if any. */
-  breakdown: BreakdownSummary | null;
+  /** The unsolved Breakdowns on this Machine's stint. */
+  breakdowns: readonly BreakdownSummary[];
   canReport: boolean;
   onStart: () => void;
   onStop: () => void;
@@ -265,6 +307,8 @@ function StintCard({
   thresholds: AttentionThresholds | undefined;
 }) {
   const [opened, setOpened] = useState<AttentionBadge | null>(null);
+  const ordered = breakdownsByUrgency(breakdowns);
+  const [breakdown] = ordered;
   const [removing, setRemoving] = useState(false);
   const [changing, setChanging] = useState(false);
   const [settingTravel, setSettingTravel] = useState(false);
@@ -330,6 +374,9 @@ function StintCard({
             .join(' · ')}
         </EditableLine>
       ) : null}
+      {ordered.map((each) => (
+        <BreakdownLine breakdown={each} key={each.id} />
+      ))}
       {thresholds ? (
         <>
           <AttentionRows onOpen={setOpened} stint={stint} thresholds={thresholds} />

@@ -1,0 +1,23 @@
+{
+  "business": "contracting",
+  "releasedAt": "2026-11-06T14:12:28.786Z",
+  "sections": [
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Find every open Breakdown on a Job",
+          "description": "Machine cards now list every open Breakdown, including less urgent ones. Breakdowns that do not match a Machine on the Job appear in a separate section."
+        },
+        {
+          "title": "Retry missing Breakdown photos",
+          "description": "Photos that failed to load are automatically retried when you open them or swipe to them."
+        },
+        {
+          "title": "Swipe through full-screen photos",
+          "description": "Swipe sideways between photos without closing the viewer, and see your position in the set. Screen readers offer Next and Previous photo actions and keep focus as you move between photos."
+        }
+      ]
+    }
+  ]
+}

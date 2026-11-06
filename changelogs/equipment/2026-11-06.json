@@ -1,0 +1,15 @@
+{
+  "business": "equipment",
+  "releasedAt": "2026-11-06T14:12:28.786Z",
+  "sections": [
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Swipe through full-screen photos",
+          "description": "Swipe sideways between photos without closing the viewer, and see your position in the set. Screen readers offer Next and Previous photo actions and keep focus as you move between photos."
+        }
+      ]
+    }
+  ]
+}

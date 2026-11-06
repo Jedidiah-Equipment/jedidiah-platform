@@ -8,7 +8,7 @@ export default defineConfig({
   },
   test: {
     maxWorkers: 4,
-    // Re-importing the module graph for every file was ~40% of the run; nothing in core needs a fresh one.
+    // Test files on a worker share one module graph; see pkg/core/AGENTS.md.
     isolate: false,
     exclude: [...configDefaults.exclude, 'dist/**'],
     globalSetup: ['../db/src/test-global-setup.ts'],

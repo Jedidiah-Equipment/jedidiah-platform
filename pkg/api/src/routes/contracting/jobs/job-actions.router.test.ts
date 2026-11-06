@@ -264,11 +264,12 @@ const readable: Record<string, readonly JobStatus[]> = {
   'contracting-invoicing': ['completed', 'priced'],
 };
 
+// Each case clones its own database, so the matrix runs concurrently instead of serially on one worker.
 const cases = roles.flatMap((role) =>
   statuses.filter((status) => (readable[role] ?? statuses).includes(status)).map((status) => [role, status] as const),
 );
 
-describe('Job Actions served on the Job agree with what the server does', () => {
+describe.concurrent('Job Actions served on the Job agree with what the server does', () => {
   test.for(cases)('%s on a %s Job', async ([role, status], { context }) => {
     const session = mockSession(null);
     session.user.contractingRole = role;
@@ -285,7 +286,7 @@ describe('Job Actions served on the Job agree with what the server does', () => 
 
 const moneyFields = ['diesel', 'discount', 'pricedTotal', 'reopenedAt', 'repricingNote', 'pricing'] as const;
 
-describe('money reaches only the readers the server sends it to', () => {
+describe.concurrent('money reaches only the readers the server sends it to', () => {
   test.for(cases)('%s on a %s Job', async ([role, status], { context }) => {
     const session = mockSession(null);
     session.user.contractingRole = role;
@@ -347,7 +348,7 @@ function expectStintAgreement(verdict: AssignmentActionVerdict, error: unknown, 
   expect(refusalOf(error), label).toBeUndefined();
 }
 
-describe('Assignment Actions served on each stint agree with what the server does', () => {
+describe.concurrent('Assignment Actions served on each stint agree with what the server does', () => {
   test.for(cases)('%s on a %s Job', async ([role, status], { context }) => {
     const session = mockSession(null);
     session.user.contractingRole = role;

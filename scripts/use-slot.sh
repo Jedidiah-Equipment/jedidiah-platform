@@ -61,14 +61,19 @@ THIS_CHECKOUT=$(checkout_of "$ROOT")
 
 # The directory slot N's Docker stack was started from; empty when it has no stack.
 stack_dir() {
-  docker ps -a --filter "label=com.docker.compose.project=jedidiah_slot$1" \
-    --format '{{.Label "com.docker.compose.project.working_dir"}}' | sort -u | head -1
+  stack_dirs=$(docker ps -a --filter "label=com.docker.compose.project=jedidiah_slot$1" \
+    --format '{{.Label "com.docker.compose.project.working_dir"}}') || return 1
+  printf '%s\n' "$stack_dirs" | sort -u | head -1
 }
 
-# One "port|cwd" line per dev server listening on slot N's web, API, Expo, or lander port.
+# Slot N's web, API, Expo, and lander ports.
+dev_ports() {
+  echo "$((7000 + $1 * 100 + 1)) $((7000 + $1 * 100 + 2)) $((7000 + $1 * 100 + 3)) $((7000 + $1 * 100 + 4))"
+}
+
+# One "port|cwd" line per dev server listening on slot N's dev ports.
 slot_listeners() {
-  for offset in 1 2 3 4; do
-    port=$((7000 + $1 * 100 + offset))
+  for port in $(dev_ports "$1"); do
     for pid in $(lsof -nP -ti "tcp:${port}" -sTCP:LISTEN 2>/dev/null || true); do
       cwd=$(lsof -a -p "$pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p')
       printf '%s|%s\n' "$port" "$cwd"
@@ -241,24 +246,26 @@ write_env_files() {
 clear_env_files() {
   for file in $ENV_FILES; do
     target="$ROOT/$file"
-    if [ -f "$target" ] && grep -Eq '^# >>> (use-slot|parallel-env|worktree-setup)' "$target"; then
-      strip_generated_blocks "$target" > "${target}.use-slot.tmp"
-      trim_trailing_blank_lines "${target}.use-slot.tmp"
-      if [ -s "${target}.use-slot.tmp" ]; then
-        mv "${target}.use-slot.tmp" "$target"
-      else
-        rm -f "${target}.use-slot.tmp" "$target"
-      fi
-      echo "  cleared ${file}"
+    [ -f "$target" ] || continue
+    strip_generated_blocks "$target" > "${target}.use-slot.tmp"
+    if cmp -s "${target}.use-slot.tmp" "$target"; then
+      rm -f "${target}.use-slot.tmp"
+      continue
     fi
+    trim_trailing_blank_lines "${target}.use-slot.tmp"
+    if [ -s "${target}.use-slot.tmp" ]; then
+      mv "${target}.use-slot.tmp" "$target"
+    else
+      rm -f "${target}.use-slot.tmp" "$target"
+    fi
+    echo "  cleared ${file}"
   done
 }
 
 # Stop listener groups on slot N's dev ports so Turbo and tsx watch cannot restart their servers.
 stop_dev_servers() {
   self_pgid=$(ps -o pgid= -p "$$" | tr -d ' ')
-  for offset in 1 2 3 4; do
-    port=$((7000 + $1 * 100 + offset))
+  for port in $(dev_ports "$1"); do
     pids=$(lsof -nP -ti "tcp:${port}" -sTCP:LISTEN 2>/dev/null || true)
     if [ -n "$pids" ]; then
       echo "Stopping dev servers on ${port}..."
@@ -369,14 +376,11 @@ if ! snapshot_has_content "$snapshot"; then
   trap - 0 HUP INT TERM
 fi
 
-previous=$(sed -n 's/^COMPOSE_PROJECT_NAME=//p' .env.dev 2>/dev/null | tail -1)
 holder=$(stack_dir "$SLOT")
 echo "Taking slot ${SLOT} (${PROJECT}); its data will be replaced."
 if [ -n "$holder" ]; then echo "  previous holder: ${holder}"; fi
 if [ -n "$own_slot" ] && [ "$own_slot" != "$SLOT" ]; then
-  echo "  this checkout was on ${previous}; that stack is left running, free it with: pnpm use-slot -- release ${own_slot}"
-elif [ -n "$previous" ] && [ "$previous" != "$PROJECT" ]; then
-  echo "  this checkout was on ${previous}; that stack is left running"
+  echo "  this checkout was on jedidiah_slot${own_slot}; that stack is left running, free it with: pnpm use-slot -- release ${own_slot}"
 fi
 
 stop_dev_servers "$SLOT"

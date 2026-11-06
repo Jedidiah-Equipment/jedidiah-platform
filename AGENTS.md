@@ -46,10 +46,9 @@
 - Slot 0 is the committed default environment. Other checkouts need a user-chosen slot (1–9): use
   `$use-slot` or run `pnpm use-slot -- <N>` before starting dev services. Every run takes over that slot,
   stops its dev listeners, removes its Docker stack and volumes, then migrates and seeds fresh data.
-  `pnpm use-slot -- status` lists each slot as `free`, `held`, or `abandoned`.
-- Release the slot when the work is done, and before removing its worktree: `pnpm use-slot -- release`
-  stops its dev servers, removes its stack and volumes, and strips this checkout's env blocks. A test run
-  ends with `release`, with no data restore.
+- Release the slot when the work is done, including before you remove its worktree:
+  `pnpm use-slot -- release`. A test run ends with `release`, not a data restore. `pnpm use-slot -- status`
+  lists slots as `free`, `held`, or `abandoned`.
 - A slot is `COMPOSE_PROJECT_NAME=jedidiah_slot<N>` on ports `7N01`-`7N08`: web, API, Expo, lander, development
   Postgres, MinIO API, MinIO console, test Postgres. The previous holder's env files still point at a
   taken-over slot.

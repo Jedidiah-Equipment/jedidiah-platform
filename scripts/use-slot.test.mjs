@@ -86,6 +86,18 @@ if ('${tool}' === 'lsof' && args.includes('cwd')) {
   };
 }
 
+// The stub lsof reports this process on slot 2's API port until SIGTERM removes its pid file.
+const listenerScript = (f) => `
+  const fs = require('node:fs');
+  fs.writeFileSync(${JSON.stringify(join(f.root, 'listener'))}, String(process.pid));
+  process.on('SIGTERM', () => {
+    fs.unlinkSync(${JSON.stringify(join(f.root, 'listener'))});
+    process.exit(0);
+  });
+  console.log('ready');
+  setInterval(() => {}, 1000);
+`;
+
 test('requires one explicit slot from 1–9 before touching services or env files', (t) => {
   const f = fixture(t);
   for (const args of [[], ['0'], ['10'], ['02'], ['-1'], ['oops'], ['2', '3'], ['--'], ['status', '2'], ['release', '0'], ['release', '02'], ['release', '2', '3']]) {
@@ -260,16 +272,7 @@ test('bootstrap failures stop before later commands and never report readiness',
 
 test('stops a previous holder’s listener and its supervisor before rebuilding Docker', async (t) => {
   const f = fixture(t);
-  const listenerCode = `
-    const fs = require('node:fs');
-    fs.writeFileSync(${JSON.stringify(join(f.root, 'listener'))}, String(process.pid));
-    process.on('SIGTERM', () => {
-      fs.unlinkSync(${JSON.stringify(join(f.root, 'listener'))});
-      process.exit(0);
-    });
-    console.log('ready');
-    setInterval(() => {}, 1000);
-  `;
+  const listenerCode = listenerScript(f);
   const child = spawn(process.execPath, ['-e', `
     const fs = require('node:fs');
     fs.writeFileSync(${JSON.stringify(join(f.root, 'supervisor'))}, String(process.pid));
@@ -316,16 +319,7 @@ test('refuses to kill its own process group before changing Docker or env files'
 
 // A dev server on slot 2's API port, in its own process group, running from `cwd`.
 async function listen(t, f, cwd) {
-  const child = spawn(process.execPath, ['-e', `
-    const fs = require('node:fs');
-    fs.writeFileSync(${JSON.stringify(join(f.root, 'listener'))}, String(process.pid));
-    process.on('SIGTERM', () => {
-      fs.unlinkSync(${JSON.stringify(join(f.root, 'listener'))});
-      process.exit(0);
-    });
-    console.log('ready');
-    setInterval(() => {}, 1000);
-  `], { cwd, detached: true });
+  const child = spawn(process.execPath, ['-e', listenerScript(f)], { cwd, detached: true });
   t.after(() => {
     try { process.kill(-child.pid, 'SIGKILL'); } catch (error) {
       if (error.code !== 'ESRCH') throw error;
@@ -347,7 +341,7 @@ test('status reports every slot as free, held, or abandoned and changes nothing'
   const lines = result.stdout.trim().split('\n');
   assert.equal(lines.length, 9);
   assert.match(lines[0], /^slot 1 +free$/);
-  assert.equal(lines[1].startsWith(`slot 2  held  stack from ${f.root} (this checkout)  dev servers 7202:`), true, lines[1]);
+  assert.ok(lines[1].startsWith(`slot 2  held  stack from ${f.root} (this checkout)  dev servers 7202:`), lines[1]);
   assert.match(lines[2], /^slot 3 +abandoned +stack from \/removed worktree \(gone\)$/);
   assert.equal(lines[3], `slot 4  held  stack from ${elsewhere}`);
   for (const line of lines.slice(4)) assert.match(line, /^slot \d  free$/);
@@ -416,4 +410,12 @@ test('release N tears down an abandoned slot and leaves this checkout’s env al
   assert.match(result.stdout, /Slot 3 is free\./);
   assert.deepEqual(composeCalls(f).map((call) => call.args), [downArgs(f, 3)]);
   assert.equal(f.read('.env.dev'), env);
+});
+
+test('release stops when it cannot read who holds the slot', (t) => {
+  const f = fixture(t, { SLOT_TEST_FAIL: 'docker:ps' });
+  const result = f.run('release', '2');
+  assert.notEqual(result.status, 0);
+  assert.doesNotMatch(result.stdout, /is free/);
+  assert.deepEqual(composeCalls(f), []);
 });

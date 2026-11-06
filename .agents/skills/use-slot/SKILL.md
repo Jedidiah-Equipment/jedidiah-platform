@@ -20,23 +20,7 @@ argument-hint: <slot 1-9 | status | release [slot 1-9]>
    ```bash
    pnpm use-slot -- release
    ```
-   Done when it prints `Slot <N> is free`. A test run ends here, with no data restore.
-
-## Status
-
-`pnpm use-slot -- status` prints one line per slot and changes nothing:
-
-- `free`: no stack and no dev servers.
-- `held`: a stack from a checkout that still exists, or dev servers on the slot's ports.
-- `abandoned`: the stack's checkout is gone and nothing listens. Free it with `release <N>`.
-
-## Release
-
-`release` takes this checkout's slot from `.env.dev`; `release <N>` names one. It refuses a slot whose
-stack or dev servers belong to another checkout that still exists. Otherwise it stops the slot's dev
-servers by process group, removes `jedidiah_slot<N>` and its volumes, and, when the slot is this
-checkout's, strips the generated env blocks so the env files fall back to slot 0's defaults.
-Hand-written lines stay; a file with none left is deleted.
+   Done when it prints `Slot <N> is free`. A test run ends here, not with a data restore.
 
 ## Take
 
@@ -55,3 +39,19 @@ touching development data.
 Taking a new slot leaves this checkout's previous stack running; `release <old N>` frees it. The script
 prepares the environment; start dev services with `pnpm dev`. Open the printed URLs: `.claude/launch.json`
 keeps default ports. The docs server still starts at `7006` and tries the next free port.
+
+## Release
+
+`release` takes this checkout's slot from `.env.dev`; `release <N>` names one. It refuses a slot whose
+stack or dev servers belong to another checkout that still exists. Otherwise it stops the slot's dev
+servers, removes `jedidiah_slot<N>` and its volumes, and, when the slot is this checkout's, strips the
+generated env blocks so the env files fall back to slot 0's defaults. Hand-written lines stay; a file
+with none left is deleted.
+
+## Status
+
+`pnpm use-slot -- status` prints one line per slot and changes nothing:
+
+- `free`: no stack and no dev servers.
+- `held`: a stack from a checkout that still exists, or dev servers on the slot's ports.
+- `abandoned`: the stack's checkout is gone and nothing listens. Free it with `release <N>`.

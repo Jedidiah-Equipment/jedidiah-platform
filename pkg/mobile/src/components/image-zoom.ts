@@ -46,3 +46,33 @@ export function doubleTap(zoom: Zoom, at: Point, frame: Size, content: Size): Zo
   if (zoom.scale > 1) return UNZOOMED;
   return settle(pinch(UNZOOMED, at, at, DOUBLE_TAP_ZOOM), frame, content);
 }
+
+/** A one-finger drag's travel and sideways speed (points per millisecond) when it lets go. */
+export type Drag = { dx: number; dy: number; vx: number };
+
+/** Share of the frame's width a released drag must cover to turn the photo. */
+const SWIPE_DISTANCE = 0.25;
+/** A flick this fast turns the photo after only {@link SWIPE_FLICK_DISTANCE} points. */
+const SWIPE_VELOCITY = 0.3;
+const SWIPE_FLICK_DISTANCE = 20;
+/** Past the first or last photo, the photo follows the finger only this much. */
+const SWIPE_EDGE_RESISTANCE = 1 / 3;
+
+/** Where an unzoomed photo sits while a finger drags it sideways. */
+export function swipeOffset(dx: number, index: number, count: number): number {
+  const toward = dx < 0 ? index + 1 : index - 1;
+  return toward >= 0 && toward < count ? dx : dx * SWIPE_EDGE_RESISTANCE;
+}
+
+/**
+ * The photo a released one-finger drag lands on: a mostly sideways drag on a photo that was not zoomed in, far or
+ * fast enough, turns to the next (dragged left) or previous (dragged right) photo, never past either end.
+ */
+export function swipeTarget(start: Zoom, drag: Drag, frameWidth: number, index: number, count: number): number {
+  const reach = Math.abs(drag.dx);
+  if (start.scale !== 1 || reach <= Math.abs(drag.dy)) return index;
+  const far = reach > frameWidth * SWIPE_DISTANCE;
+  const flick = reach > SWIPE_FLICK_DISTANCE && drag.vx * Math.sign(drag.dx) > SWIPE_VELOCITY;
+  if (!far && !flick) return index;
+  return clamp(index - Math.sign(drag.dx), 0, count - 1);
+}

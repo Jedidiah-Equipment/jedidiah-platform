@@ -1,5 +1,5 @@
 import { Directory, File, Paths } from 'expo-file-system';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { authedFetch } from './authed-fetch';
 import { captureSanitizedException } from './observability';
 
@@ -18,30 +18,59 @@ export type AuthedFileKey = {
 
 const inFlight = new Map<string, Promise<string>>();
 
+const LOADING: AuthedFileSource = { kind: 'loading' };
+const fileId = ({ cacheDir, cacheName }: AuthedFileKey) => `${cacheDir}/${cacheName}`;
+
 /**
  * A file behind the session cookie as a displayable URI: downloaded once into the OS cache, then served from there.
  * The web build overrides this with the API URL, since the browser sends the cookie and owns caching.
  */
 export function useAuthedFileSource(key: AuthedFileKey): AuthedFileSource {
-  const [source, setSource] = useState<AuthedFileSource>({ kind: 'loading' });
-  const { cacheDir, cacheName, path, label } = key;
+  return useAuthedFileSources([key]).sources[0] ?? LOADING;
+}
+
+/**
+ * {@link useAuthedFileSource} for a set of files, each loading or failing on its own; `retry` loads the failed ones
+ * again, since the set outlives any one look at a file.
+ */
+export function useAuthedFileSources(keys: readonly AuthedFileKey[]): {
+  sources: AuthedFileSource[];
+  retry: () => void;
+} {
+  const [sources, setSources] = useState<ReadonlyMap<string, AuthedFileSource>>(() => new Map());
+  const [attempt, setAttempt] = useState(0);
+  // The keys' contents, not the array's identity, decide what to load.
+  const wanted = JSON.stringify({ attempt, keys });
 
   useEffect(() => {
     let active = true;
-    resolveFileUri({ cacheDir, cacheName, path, label })
-      .then((uri) => {
-        if (active) setSource({ kind: 'ready', uri });
-      })
-      .catch((error) => {
-        captureSanitizedException(error, `${label} loading failed`, { source: 'authed_file', cacheDir });
-        if (active) setSource({ kind: 'failed' });
-      });
+    for (const key of (JSON.parse(wanted) as { keys: AuthedFileKey[] }).keys) {
+      resolveFileUri(key)
+        .then(
+          (uri): AuthedFileSource => ({ kind: 'ready', uri }),
+          (error): AuthedFileSource => {
+            captureSanitizedException(error, `${key.label} loading failed`, {
+              source: 'authed_file',
+              cacheDir: key.cacheDir,
+            });
+            return { kind: 'failed' };
+          },
+        )
+        .then((source) => {
+          if (active) setSources((current) => new Map(current).set(fileId(key), source));
+        });
+    }
     return () => {
       active = false;
     };
-  }, [cacheDir, cacheName, path, label]);
+  }, [wanted]);
 
-  return source;
+  const retry = useCallback(() => {
+    setSources((current) => new Map([...current].filter(([, source]) => source.kind !== 'failed')));
+    setAttempt((count) => count + 1);
+  }, []);
+
+  return { sources: keys.map((key) => sources.get(fileId(key)) ?? LOADING), retry };
 }
 
 async function resolveFileUri(key: AuthedFileKey): Promise<string> {

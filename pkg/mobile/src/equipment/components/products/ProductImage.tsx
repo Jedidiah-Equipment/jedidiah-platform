@@ -50,7 +50,10 @@ export function ProductImageViewer({
   onClose: () => void;
   productName: string;
 }) {
-  return <ImageViewer label={`${productName} photo`} source={useProductImageSource(imageKey)} onClose={onClose} />;
+  const source = useProductImageSource(imageKey);
+  return (
+    <ImageViewer index={0} photos={[{ key: 'product', label: `${productName} photo`, source }]} onClose={onClose} />
+  );
 }
 
 function ResolvedProductImage({ productName, imageKey }: { productName: string; imageKey: ProductImageKey }) {

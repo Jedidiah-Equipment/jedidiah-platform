@@ -1,12 +1,13 @@
 ---
 name: use-slot
-description: Take over a numbered local Jedidiah slot with fresh Docker data and isolated ports. Use when the user says "use slot N" or asks to prepare, switch, or reset a checkout's local slot.
+description: Take over a numbered local Jedidiah slot with fresh Docker data and isolated ports, and release it when done. Use when the user says "use slot N", asks to prepare, switch, or reset a checkout's local slot, asks which slots are free, or asks to free a slot.
+argument-hint: <slot 1-9 | status | release [slot 1-9]>
 ---
 
 # Use Slot
 
-1. Take the slot number (1–9) from the user. If none was given, ask for one: every invocation wipes
-   that slot's data, even when this checkout already uses it.
+1. Take the slot number (1–9) from the user. If none was given, run `pnpm use-slot -- status` and ask
+   for one: every take wipes that slot's data, even when this checkout already uses it.
 2. From the repo root, run:
    ```bash
    pnpm use-slot -- <N>
@@ -15,6 +16,13 @@ description: Take over a numbered local Jedidiah slot with fresh Docker data and
    database URL copied from its output. Include any previous holder it names: that checkout's env files
    still point at the slot and its data has been replaced. On failure, report the failing command and
    relevant output, then stop.
+4. **Release** the slot once you no longer run the app or its tests, and before removing the worktree:
+   ```bash
+   pnpm use-slot -- release
+   ```
+   Done when it prints `Slot <N> is free`. A test run ends here, not with a data restore.
+
+## Take
 
 If this checkout's `pkg/seed/snapshot` is missing or empty, the script first copies the primary
 checkout's snapshot, including its objects. Existing local content is left alone. If neither has content,
@@ -28,6 +36,22 @@ Postgres keeps its durable volume; disposable `postgres-test` uses tmpfs. After 
 Postgres, run `pnpm db:up:template` before DB-backed tests to recreate its migrated template without
 touching development data.
 
-Switching slots leaves the checkout's previous stack running. The script prepares the environment;
-start dev services with `pnpm dev`. Open the printed URLs: `.claude/launch.json` keeps default ports.
-The docs server still starts at `7006` and tries the next free port.
+Taking a new slot leaves this checkout's previous stack running; `release <old N>` frees it. The script
+prepares the environment; start dev services with `pnpm dev`. Open the printed URLs: `.claude/launch.json`
+keeps default ports. The docs server still starts at `7006` and tries the next free port.
+
+## Release
+
+`release` takes this checkout's slot from `.env.dev`; `release <N>` names one. It refuses a slot whose
+stack or dev servers belong to another checkout that still exists. Otherwise it stops the slot's dev
+servers, removes `jedidiah_slot<N>` and its volumes, and, when the slot is this checkout's, strips the
+generated env blocks so the env files fall back to slot 0's defaults. Hand-written lines stay; a file
+with none left is deleted.
+
+## Status
+
+`pnpm use-slot -- status` prints one line per slot and changes nothing:
+
+- `free`: no stack and no dev servers.
+- `held`: a stack from a checkout that still exists, or dev servers on the slot's ports.
+- `abandoned`: the stack's checkout is gone and nothing listens. Free it with `release <N>`.

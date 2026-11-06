@@ -22,7 +22,12 @@ export function BreakdownPhotosCard({ breakdown }: { breakdown: BreakdownDetail 
   const add = useBreakdownUpload((photoUris: string[]) => addBreakdownPhotos(breakdown.id, photoUris));
   const remove = useBreakdownMutation((breakdowns) => breakdowns.removePhoto);
   const [viewing, setViewing] = useState<number | null>(null);
-  const photos = useBreakdownPhotos(breakdown);
+  const { photos, retry } = useBreakdownPhotos(breakdown);
+  // A photo that failed to load tries again when it is opened or swiped to.
+  const view = (index: number) => {
+    setViewing(index);
+    if (photos[index]?.source.kind === 'failed') retry();
+  };
   const { busy, error, run } = useBusyAction();
   const canChange = breakdown.actions.addPhotos.allowed;
   const left = BREAKDOWN_MAX_PHOTOS - breakdown.photos.length;
@@ -46,7 +51,7 @@ export function BreakdownPhotosCard({ breakdown }: { breakdown: BreakdownDetail 
                 accessibilityLabel={`Open ${photo.label}`}
                 accessibilityRole="imagebutton"
                 className="h-full w-full"
-                onPress={() => setViewing(index)}
+                onPress={() => view(index)}
               >
                 <BreakdownPhoto source={photo.source} />
               </Pressable>
@@ -86,7 +91,7 @@ export function BreakdownPhotosCard({ breakdown }: { breakdown: BreakdownDetail 
           )}
         </VerdictGroup>
       ) : null}
-      <ImageViewer index={viewing} photos={photos} onClose={() => setViewing(null)} onIndexChange={setViewing} />
+      <ImageViewer index={viewing} photos={photos} onClose={() => setViewing(null)} onIndexChange={view} />
     </Card>
   );
 }
@@ -102,9 +107,9 @@ function BreakdownPhoto({ source }: { source: AuthedFileSource }) {
   return <Image source={{ uri: source.uri }} resizeMode="cover" style={{ height: '100%', width: '100%' }} />;
 }
 
-function useBreakdownPhotos(breakdown: BreakdownDetail): ViewerPhoto[] {
+function useBreakdownPhotos(breakdown: BreakdownDetail): { photos: ViewerPhoto[]; retry: () => void } {
   // A Breakdown photo never changes once stored, so its cache file is keyed by its id alone.
-  const sources = useAuthedFileSources(
+  const { sources, retry } = useAuthedFileSources(
     breakdown.photos.map((photo) => ({
       cacheDir: 'breakdown-photos',
       cacheName: `${photo.id}.img`,
@@ -112,9 +117,12 @@ function useBreakdownPhotos(breakdown: BreakdownDetail): ViewerPhoto[] {
       label: 'Breakdown photo',
     })),
   );
-  return breakdown.photos.map((photo, index) => ({
-    key: photo.id,
-    label: `Breakdown photo ${formatNumber(index + 1)}`,
-    source: sources[index] ?? { kind: 'loading' },
-  }));
+  const photos = breakdown.photos.map(
+    (photo, index): ViewerPhoto => ({
+      key: photo.id,
+      label: `Breakdown photo ${formatNumber(index + 1)}`,
+      source: sources[index] ?? { kind: 'loading' },
+    }),
+  );
+  return { photos, retry };
 }

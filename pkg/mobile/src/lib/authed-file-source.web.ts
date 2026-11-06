@@ -8,6 +8,11 @@ export function useAuthedFileSource(key: AuthedFileKey): AuthedFileSource {
   return webSource(key);
 }
 
-export function useAuthedFileSources(keys: readonly AuthedFileKey[]): AuthedFileSource[] {
-  return keys.map(webSource);
+const retry = () => undefined;
+
+export function useAuthedFileSources(keys: readonly AuthedFileKey[]): {
+  sources: AuthedFileSource[];
+  retry: () => void;
+} {
+  return { sources: keys.map(webSource), retry };
 }

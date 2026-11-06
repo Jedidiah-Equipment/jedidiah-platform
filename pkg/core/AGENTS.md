@@ -8,4 +8,8 @@
 
 - Write an audited update through `mutateEntity` (`src/audit/mutate-entity.ts`), which owns the transaction, the row lock, the skip-on-no-change branch, and the audit event. Hand-roll `diffAuditUpdate` + `recordAuditUpdate` only when real logic must run between the diff and the write; that module's doc names the paths that do.
 
+- Tests run with `isolate: false`, so test files on a worker share one module graph: build state inside each test, and
+  restore whatever a test changes (fake timers, spies on shared modules, `process.env`) in its own `afterEach` or
+  `finally`. Module-level mocks (`vi.mock`) belong in a package that keeps isolation on.
+
 Canonical examples: `src/equipment/products/product-service.ts`, `src/equipment/products/product-errors.ts`, `src/changelog/changelog-service.ts`.

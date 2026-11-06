@@ -8,6 +8,8 @@ export default defineConfig({
   },
   test: {
     maxWorkers: 4,
+    // Test files on a worker share one module graph; see pkg/core/AGENTS.md.
+    isolate: false,
     exclude: [...configDefaults.exclude, 'dist/**'],
     globalSetup: ['../db/src/test-global-setup.ts'],
     setupFiles: ['../db/src/test-setup.ts'],

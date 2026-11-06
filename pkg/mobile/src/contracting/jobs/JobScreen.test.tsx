@@ -1,6 +1,6 @@
 import { assignmentActionNames, jobActionNames } from '@pkg/schema/contracting';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
-import { expect, test, vi } from 'vitest';
+import { beforeEach, expect, test, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
   tab: 'activity',
@@ -55,6 +55,12 @@ vi.mock('./use-jobs', () => ({ useJob: () => ({ data: state.job, canRead: state.
 import JobScreen from './JobScreen';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
+beforeEach(() => {
+  state.tab = 'activity';
+  state.job = undefined;
+  state.breakdowns = undefined;
+});
 
 test('a Job note deep link opens the authorized Activity feed even when the phone excludes Job details', async () => {
   let renderer!: ReactTestRenderer;

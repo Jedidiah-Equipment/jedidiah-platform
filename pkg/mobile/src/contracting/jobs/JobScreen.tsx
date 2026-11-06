@@ -191,7 +191,6 @@ export default function JobScreen() {
             </Text>
           ) : null}
           {placed.unplaced.length ? (
-            // A Breakdown whose Machine or Implement is on none of the stints any more, so no card above shows it.
             <View className="gap-2">
               <Text className="text-lg text-foreground" weight="bold">
                 Other Breakdowns on this Job
@@ -308,7 +307,6 @@ function StintCard({
   thresholds: AttentionThresholds | undefined;
 }) {
   const [opened, setOpened] = useState<AttentionBadge | null>(null);
-  // Most urgent first: the first sets the card's flag and border.
   const ordered = breakdownsByUrgency(breakdowns);
   const [breakdown] = ordered;
   const [removing, setRemoving] = useState(false);

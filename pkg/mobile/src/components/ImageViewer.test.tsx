@@ -1,3 +1,4 @@
+import { AccessibilityInfo } from 'react-native';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { expect, test, vi } from 'vitest';
 
@@ -7,6 +8,7 @@ vi.mock('react-native', () => {
     stopAnimation() {}
   }
   return {
+    AccessibilityInfo: { announceForAccessibility: vi.fn() },
     ActivityIndicator: 'ActivityIndicator',
     Animated: { Image: 'Animated.Image', Value, View: 'Animated.View' },
     PanResponder: { create: () => ({ panHandlers: {} }) },
@@ -59,6 +61,7 @@ test('a screen reader turns to the next or previous photo, but not past either e
   expect(first.photo().props.accessibilityActions.map((action: { name: string }) => action.name)).toEqual(['next']);
   first.turnBy('next');
   expect(first.onIndexChange).toHaveBeenCalledWith(1);
+  expect(AccessibilityInfo.announceForAccessibility).toHaveBeenCalledWith('Breakdown photo 2');
 
   const middle = render(photos, 1);
   middle.turnBy('previous');

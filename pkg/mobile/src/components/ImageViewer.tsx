@@ -1,13 +1,22 @@
 import { formatNumber } from '@pkg/domain';
 import { IconX } from '@tabler/icons-react-native';
 import { type ComponentRef, useEffect, useMemo, useRef } from 'react';
-import { ActivityIndicator, Animated, type GestureResponderEvent, PanResponder, Pressable, View } from 'react-native';
+import {
+  AccessibilityInfo,
+  ActivityIndicator,
+  Animated,
+  type GestureResponderEvent,
+  PanResponder,
+  Pressable,
+  View,
+} from 'react-native';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { ThemedModal } from '@/components/ui/themed-modal';
 import type { AuthedFileSource } from '@/lib/authed-file-source';
 import {
   containedSize,
+  type Drag,
   distance,
   doubleTap,
   midpoint,
@@ -53,18 +62,41 @@ export function ImageViewer({
   photos: readonly ViewerPhoto[];
 }) {
   const photo = index === null ? undefined : photos[index];
+  const turnTo = (next: number) => {
+    onIndexChange?.(next);
+    const label = photos[next]?.label;
+    if (label) AccessibilityInfo.announceForAccessibility(label);
+  };
   return (
     <ThemedModal backdropLabel="Close photo" open={photo !== undefined} onClose={onClose}>
       <View className="w-full flex-1 overflow-hidden rounded-2xl bg-black">
         {photo && index !== null ? (
           <>
-            <ZoomablePhoto
-              key={photo.key}
-              count={photos.length}
-              index={index}
-              photo={photo}
-              onTurn={(next) => onIndexChange?.(next)}
-            />
+            {/* Outside the per-photo remount, so a screen reader keeps its place when the photo turns. */}
+            <View
+              accessible
+              accessibilityActions={[
+                ...(index > 0 ? [TURN_ACTIONS.previous] : []),
+                ...(index < photos.length - 1 ? [TURN_ACTIONS.next] : []),
+              ]}
+              accessibilityHint={photo.source.kind === 'ready' ? 'Pinch or double-tap to zoom' : undefined}
+              accessibilityLabel={photo.label}
+              accessibilityRole="image"
+              accessibilityState={{ busy: photo.source.kind === 'loading' }}
+              className="flex-1"
+              onAccessibilityAction={({ nativeEvent }) => {
+                if (nativeEvent.actionName === 'next') turnTo(index + 1);
+                if (nativeEvent.actionName === 'previous') turnTo(index - 1);
+              }}
+            >
+              <ZoomablePhoto
+                key={photo.key}
+                count={photos.length}
+                index={index}
+                source={photo.source}
+                onTurn={(next) => onIndexChange?.(next)}
+              />
+            </View>
             {photos.length > 1 ? (
               <View
                 className="absolute left-3 top-3 h-10 justify-center rounded-full bg-black/60 px-4"
@@ -99,14 +131,13 @@ function ZoomablePhoto({
   count,
   index,
   onTurn,
-  photo,
+  source,
 }: {
   count: number;
   index: number;
   onTurn: (index: number) => void;
-  photo: ViewerPhoto;
+  source: AuthedFileSource;
 }) {
-  const { label, source } = photo;
   const frameRef = useRef<ComponentRef<typeof View>>(null);
   const frame = useRef({ size: { width: 0, height: 0 } as Size, origin: { x: 0, y: 0 } as Point });
   const imageSize = useRef<Size | null>(null);
@@ -128,8 +159,10 @@ function ZoomablePhoto({
     let gesture: { start: Zoom; touches: Point[] } | null = null;
     let tap: { at: Point; time: number; tappable: boolean } | null = null;
     let lastTap: { at: Point; time: number } | null = null;
-    // A drag that began with one finger on an unzoomed photo, and has had only that finger since.
+    // A drag that began with one finger, and has had only that finger since.
     let swipe: { start: Zoom } | null = null;
+    // The photo a swipe is sliding out toward.
+    let turning: number | null = null;
 
     const content = () => containedSize(frame.current.size, imageSize.current);
     const touches = (event: GestureResponderEvent): Point[] => {
@@ -154,6 +187,7 @@ function ZoomablePhoto({
       ).start();
     };
     const turn = (next: number) => {
+      turning = next;
       const width = frame.current.size.width;
       Animated.timing(values.x, {
         toValue: next > latest.current.index ? -width : width,
@@ -163,7 +197,8 @@ function ZoomablePhoto({
         if (finished) latest.current.onTurn(next);
       });
     };
-    const release = (_event: GestureResponderEvent, drag: { dx: number; dy: number; vx: number }) => {
+    const release = (_event: GestureResponderEvent, drag: Drag) => {
+      if (turning !== null) return;
       gesture = null;
       const ended = tap;
       const swiped = swipe;
@@ -199,15 +234,18 @@ function ZoomablePhoto({
       onPanResponderTerminationRequest: () => false,
       onShouldBlockNativeResponder: () => true,
       onPanResponderGrant: (event) => {
+        // A swipe still sliding out finishes at once rather than being lost to a quick next swipe.
+        if (turning !== null) return latest.current.onTurn(turning);
         // A touch landing mid-settle takes over from where that settle was heading.
         for (const value of Object.values(values)) value.stopAnimation();
         show(zoom.current);
         const now = touches(event);
         gesture = { start: zoom.current, touches: now };
         tap = now[0] ? { at: now[0], time: Date.now(), tappable: now.length === 1 } : null;
-        swipe = now.length === 1 && zoom.current.scale === 1 ? { start: zoom.current } : null;
+        swipe = now.length === 1 ? { start: zoom.current } : null;
       },
       onPanResponderMove: (event, drag) => {
+        if (turning !== null) return;
         const now = touches(event);
         if (!gesture || now.length !== gesture.touches.length) {
           // A finger joined or lifted: carry on from here rather than jump.
@@ -231,30 +269,20 @@ function ZoomablePhoto({
         }
       },
       onPanResponderRelease: release,
-      onPanResponderTerminate: release,
+      onPanResponderTerminate: (event, drag) => {
+        // A gesture taken away settles where it is; only a finger lifted turns the photo.
+        swipe = null;
+        release(event, drag);
+      },
     });
   }, [values]);
 
-  const turnActions = [
-    ...(index > 0 ? [TURN_ACTIONS.previous] : []),
-    ...(index < count - 1 ? [TURN_ACTIONS.next] : []),
-  ];
   const transform = [{ translateX: values.x }, { translateY: values.y }, { scale: values.scale }];
 
   return (
     <View
       ref={frameRef}
-      accessible
-      accessibilityActions={turnActions}
-      accessibilityHint={source.kind === 'ready' ? 'Pinch or double-tap to zoom' : undefined}
-      accessibilityLabel={label}
-      accessibilityRole="image"
-      accessibilityState={{ busy: source.kind === 'loading' }}
       className="flex-1"
-      onAccessibilityAction={({ nativeEvent }) => {
-        if (nativeEvent.actionName === 'next') onTurn(index + 1);
-        if (nativeEvent.actionName === 'previous') onTurn(index - 1);
-      }}
       onLayout={({ nativeEvent }) => {
         frame.current.size = { width: nativeEvent.layout.width, height: nativeEvent.layout.height };
         frameRef.current?.measure((_x, _y, _width, _height, pageX, pageY) => {

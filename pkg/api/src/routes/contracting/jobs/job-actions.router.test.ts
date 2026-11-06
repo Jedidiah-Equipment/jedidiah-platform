@@ -264,11 +264,11 @@ const readable: Record<string, readonly JobStatus[]> = {
   'contracting-invoicing': ['completed', 'priced'],
 };
 
-// Each case clones its own database, so the matrix runs concurrently instead of serially on one worker.
 const cases = roles.flatMap((role) =>
   statuses.filter((status) => (readable[role] ?? statuses).includes(status)).map((status) => [role, status] as const),
 );
 
+// Each case clones its own database, so the matrix runs concurrently instead of serially on one worker.
 describe.concurrent('Job Actions served on the Job agree with what the server does', () => {
   test.for(cases)('%s on a %s Job', async ([role, status], { context }) => {
     const session = mockSession(null);

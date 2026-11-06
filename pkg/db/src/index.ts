@@ -37,16 +37,13 @@ export * from './schema/transcription.js';
 export { applicationSchemas, schema } from './schema.js';
 export {
   buildDatabaseUrl,
-  type CreateEphemeralTestDatabaseOptions,
-  createEphemeralTestDatabase,
   createTestDatabaseName,
-  dropTestDatabase,
   dropTrackedTestDatabases,
   type EphemeralTestDatabase,
-  getTestTemplateDatabaseUrl,
   type RecreateTestTemplateDatabaseOptions,
   readMigrationStatements,
   recreateTestTemplateDatabase,
   sweepStaleTestDatabases,
+  withTestDatabase,
 } from './test-utils.js';
 export type { DatabaseTransaction } from './types.js';

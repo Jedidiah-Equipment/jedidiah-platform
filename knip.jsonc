@@ -1,0 +1,50 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema-jsonc.json",
+  // Unused exports stay off: many are deliberate (test fixtures, row types). Turning them on is its own decision.
+  "include": ["files", "dependencies", "devDependencies", "unlisted", "unresolved", "binaries"],
+  // Design references people read, not code anything imports.
+  "ignore": ["docs/**"],
+  "workspaces": {
+    ".": {
+      // CLI only: adds shadcn components to pkg/web (components.json).
+      "ignoreDependencies": ["shadcn"]
+    },
+    "pkg/changelog": {
+      // scripts/release-production.sh runs `pnpm --filter @pkg/changelog exec tsx src/cli.ts`.
+      "ignoreDependencies": ["tsx"]
+    },
+    "pkg/db": {
+      // drizzle.config.ts reads the database URL from env when loaded, which fails under knip.
+      "drizzle": false,
+      "entry": ["drizzle.config.ts", "src/schema/**/*.ts"]
+    },
+    "pkg/lander": {
+      // vite.config.ts reads the port from env when loaded, which fails under knip.
+      "vite": false,
+      "entry": ["vite.config.ts"]
+    },
+    "pkg/mobile": {
+      // metro.config.js loads tailwind.config relative to the cwd, which fails under knip. Metro picks the
+      // platform files (`*.web.ts`, `*.ios.tsx`) by extension, so nothing imports them by name.
+      "metro": false,
+      "entry": ["metro.config.js", "fingerprint.config.js", "src/**/*.{ios,android,native,web}.{ts,tsx}"],
+      "ignoreDependencies": [
+        // Typed in fingerprint.config.js only; see the note there.
+        "@expo/fingerprint",
+        // react-native-css-interop's Babel preset names it as a plugin without declaring it.
+        "@babel/plugin-transform-react-jsx",
+        // scripts/eas-update.mjs runs `pnpm exec posthog-cli` from an argument array.
+        "@posthog/cli",
+        // Patched in pnpm-workspace.yaml; scripts/release-isolation.test.mjs requires its Metro entry by path.
+        "react-native-css-interop"
+      ],
+      // EAS CLI is installed globally, as Expo recommends, not as a dependency.
+      "ignoreBinaries": ["eas"]
+    },
+    "pkg/web": {
+      // vite.config.ts reads the server config from env when loaded, which fails under knip.
+      "vite": false,
+      "entry": ["vite.config.ts", "src/server/static.ts"]
+    }
+  }
+}

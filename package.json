@@ -17,7 +17,7 @@
     "railway:plan:production": "railway link --project 'Jedidiah Equipment' --environment production && railway config plan",
     "railway:apply:production": "railway link --project 'Jedidiah Equipment' --environment production && railway config apply",
     "test": "turbo run test --concurrency=2",
-    "lint": "biome check --error-on-warnings",
+    "lint": "biome check --error-on-warnings && APP_VARIANT=staging knip",
     "lint:fix": "biome check --write --error-on-warnings",
     "compose:up": "sh scripts/compose-up.sh",
     "compose:down": "sh scripts/compose-down.sh",
@@ -39,7 +39,6 @@
     "verify": "pnpm lint && pnpm typecheck && pnpm build && pnpm test"
   },
   "dependencies": {
-    "@pkg/schema": "workspace:*",
     "better-auth": "1.7.14",
     "fastify": "^5.12.7",
     "zod": "^4.6.7"
@@ -49,6 +48,7 @@
     "@railway/cli": "5.71.0",
     "@types/node": "^26.6.5",
     "dotenv": "^18.0.9",
+    "knip": "^6.44.1",
     "railway": "3.16.0",
     "shadcn": "^4.23.0",
     "tsx": "^4.23.15",

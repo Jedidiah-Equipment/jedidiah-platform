@@ -2,9 +2,10 @@ import posthogRollupPlugin from '@posthog/rollup-plugin';
 import tailwindcss from '@tailwindcss/vite';
 import { tanstackRouter } from '@tanstack/router-plugin/vite';
 import react from '@vitejs/plugin-react';
-import type { Plugin } from 'rollup';
 import { defineConfig } from 'vite';
 import { getServerConfig } from './src/server/env.js';
+
+type PostHogRollupPlugin = ReturnType<typeof posthogRollupPlugin>;
 
 const serverConfig = getServerConfig();
 const posthogSourceMapsPlugin =
@@ -31,7 +32,7 @@ function makePostHogSourceMapsPlugin({
   projectId: string;
   host: string;
   releaseVersion: string;
-}): Plugin {
+}): PostHogRollupPlugin {
   const plugin = posthogRollupPlugin({
     personalApiKey: apiKey,
     projectId,

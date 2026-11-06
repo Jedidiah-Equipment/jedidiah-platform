@@ -8,6 +8,8 @@ export default defineConfig({
   },
   test: {
     maxWorkers: 4,
+    // Re-importing the module graph for every file was ~40% of the run; nothing in core needs a fresh one.
+    isolate: false,
     exclude: [...configDefaults.exclude, 'dist/**'],
     globalSetup: ['../db/src/test-global-setup.ts'],
     setupFiles: ['../db/src/test-setup.ts'],

@@ -1,12 +1,14 @@
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { once } from 'node:events';
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 
-function fixture(t, overrides = {}, { withPrimary = false, localSnapshot = true } = {}) {
+const realLsof = spawnSync('sh', ['-c', 'command -v lsof'], { encoding: 'utf8' }).stdout.trim();
+
+function fixture(t, overrides = {}, { withPrimary = false, localSnapshot = true, stacks = {} } = {}) {
   const temporary = mkdtempSync(join(tmpdir(), 'jedidiah-slot-'));
   t.after(() => rmSync(temporary, { recursive: true, force: true }));
   const root = join(temporary, 'linked checkout');
@@ -27,6 +29,7 @@ function fixture(t, overrides = {}, { withPrimary = false, localSnapshot = true 
   mkdirSync(join(root, 'bin'));
   cpSync(new URL('./use-slot.sh', import.meta.url), join(root, 'scripts/use-slot.sh'));
   writeFileSync(join(root, 'docker-compose.yml'), 'services: {}\n');
+  writeFileSync(join(root, 'stacks.json'), JSON.stringify(stacks));
   const env = { ...process.env, PATH: `${root}/bin:${process.env.PATH}`, SLOT_TEST_ROOT: root, ...overrides };
   for (const tool of ['docker', 'pnpm', 'lsof']) {
     writeFileSync(
@@ -44,8 +47,20 @@ const step = args[0];
 if (process.env.SLOT_TEST_FAIL === '${tool}:' + step) {
   console.error('deliberate failure'); process.exit(7);
 }
-if ('${tool}' === 'docker' && args[0] === 'ps') console.log('/previous checkout');
-if ('${tool}' === 'lsof') {
+if ('${tool}' === 'docker') {
+  const stacks = JSON.parse(fs.readFileSync(root + '/stacks.json', 'utf8'));
+  if (args[0] === 'ps') {
+    const project = args.find((arg) => arg.startsWith('label=')).split('=').pop();
+    if (stacks[project]) console.log(stacks[project]);
+  }
+  if (args[0] === 'compose' && args.includes('down')) {
+    delete stacks[args[args.indexOf('-p') + 1]];
+    fs.writeFileSync(root + '/stacks.json', JSON.stringify(stacks));
+  }
+}
+if ('${tool}' === 'lsof' && args.includes('cwd')) {
+  process.exit(require('node:child_process').spawnSync(${JSON.stringify(realLsof)}, args, { stdio: 'inherit' }).status);
+} else if ('${tool}' === 'lsof') {
   const listener = root + '/listener';
   if (args.includes('tcp:7202') && fs.existsSync(listener)) console.log(fs.readFileSync(listener, 'utf8'));
   else process.exit(1);
@@ -63,6 +78,7 @@ if ('${tool}' === 'lsof') {
     root,
     primary,
     write: (path, content) => writeAt(root, path, content),
+    stacks: (next) => writeFileSync(join(root, 'stacks.json'), JSON.stringify(next)),
     writePrimary: (path, content) => writeAt(primary, path, content),
     read: (path) => readFileSync(join(root, path), 'utf8'),
     calls: () => (existsSync(join(root, 'calls')) ? readFileSync(join(root, 'calls'), 'utf8').trim().split('\n').map(JSON.parse) : []),
@@ -72,7 +88,7 @@ if ('${tool}' === 'lsof') {
 
 test('requires one explicit slot from 1–9 before touching services or env files', (t) => {
   const f = fixture(t);
-  for (const args of [[], ['0'], ['10'], ['02'], ['-1'], ['oops'], ['2', '3'], ['--']]) {
+  for (const args of [[], ['0'], ['10'], ['02'], ['-1'], ['oops'], ['2', '3'], ['--'], ['status', '2'], ['release', '0'], ['release', '02'], ['release', '2', '3']]) {
     const result = f.run(...args);
     assert.equal(result.status, 2, result.stderr);
     assert.equal(f.calls().length, 0);
@@ -161,7 +177,11 @@ test('a missing primary snapshot leaves services, volumes, and handwritten env a
 });
 
 test('takes over the named stack, preserves handwritten lines, and migrates both databases before seeding', (t) => {
-  const f = fixture(t, { COMPOSE_PROJECT_NAME: 'another_stack', DATABASE_URL: 'postgres://elsewhere/other' });
+  const f = fixture(
+    t,
+    { COMPOSE_PROJECT_NAME: 'another_stack', DATABASE_URL: 'postgres://elsewhere/other' },
+    { stacks: { jedidiah_slot2: '/previous checkout' } },
+  );
   f.write('.env.dev', 'KEEP=root\n# >>> parallel-env (slot 8)\nCOMPOSE_PROJECT_NAME=jedidiah_slot8\n# <<< parallel-env\nAFTER=root\n');
   f.write('pkg/api/.env.dev', 'OPENAI_API_KEY=private-test-key\nPORT=1234\n# >>> worktree-setup\nPORT=7802\n# <<< worktree-setup\nAFTER=api\n');
   f.write('pkg/mobile/.env.local', 'EXPO_PUBLIC_CUSTOM=value\n');
@@ -292,4 +312,108 @@ test('refuses to kill its own process group before changing Docker or env files'
   assert.equal(existsSync(join(f.root, 'listener')), true);
   assert.equal(f.calls().some((call) => call.tool === 'docker' && call.args[0] === 'compose'), false);
   assert.equal(f.calls().some((call) => call.tool === 'pnpm'), false);
+});
+
+// A dev server on slot 2's API port, in its own process group, running from `cwd`.
+async function listen(t, f, cwd) {
+  const child = spawn(process.execPath, ['-e', `
+    const fs = require('node:fs');
+    fs.writeFileSync(${JSON.stringify(join(f.root, 'listener'))}, String(process.pid));
+    process.on('SIGTERM', () => {
+      fs.unlinkSync(${JSON.stringify(join(f.root, 'listener'))});
+      process.exit(0);
+    });
+    console.log('ready');
+    setInterval(() => {}, 1000);
+  `], { cwd, detached: true });
+  t.after(() => {
+    try { process.kill(-child.pid, 'SIGKILL'); } catch (error) {
+      if (error.code !== 'ESRCH') throw error;
+    }
+  });
+  await once(child.stdout, 'data');
+  return child;
+}
+
+test('status reports every slot as free, held, or abandoned and changes nothing', async (t) => {
+  const elsewhere = realpathSync(mkdtempSync(join(tmpdir(), 'jedidiah-other-')));
+  t.after(() => rmSync(elsewhere, { recursive: true, force: true }));
+  const f = fixture(t);
+  f.stacks({ jedidiah_slot2: f.root, jedidiah_slot3: '/removed worktree', jedidiah_slot4: elsewhere });
+  f.write('.env.dev', 'KEEP=custom\n');
+  await listen(t, f, f.root);
+  const result = f.run('status');
+  assert.equal(result.status, 0, result.stderr);
+  const lines = result.stdout.trim().split('\n');
+  assert.equal(lines.length, 9);
+  assert.match(lines[0], /^slot 1 +free$/);
+  assert.equal(lines[1].startsWith(`slot 2  held  stack from ${f.root} (this checkout)  dev servers 7202:`), true, lines[1]);
+  assert.match(lines[2], /^slot 3 +abandoned +stack from \/removed worktree \(gone\)$/);
+  assert.equal(lines[3], `slot 4  held  stack from ${elsewhere}`);
+  for (const line of lines.slice(4)) assert.match(line, /^slot \d  free$/);
+  assert.equal(existsSync(join(f.root, 'listener')), true);
+  assert.equal(f.read('.env.dev'), 'KEEP=custom\n');
+  assert.equal(f.calls().some((call) => call.tool === 'docker' && call.args[0] === 'compose'), false);
+});
+
+const downArgs = (f, slot) => ['compose', '-p', `jedidiah_slot${slot}`, '-f', join(f.root, 'docker-compose.yml'), 'down', '-v', '--remove-orphans'];
+const composeCalls = (f) => f.calls().filter((call) => call.tool === 'docker' && call.args[0] === 'compose');
+
+test('release frees this checkout’s slot and keeps hand-written env lines', async (t) => {
+  const f = fixture(t);
+  f.write('.env.dev', 'KEEP=root\n');
+  f.write('pkg/api/.env.dev', 'OPENAI_API_KEY=private-test-key\n');
+  assert.equal(f.run('2').status, 0);
+  f.stacks({ jedidiah_slot2: f.root });
+  const exited = once(await listen(t, f, f.root), 'exit');
+  const pnpmCalls = f.calls().filter((call) => call.tool === 'pnpm').length;
+
+  const result = f.run('release');
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /Stopping dev servers on 7202/);
+  assert.match(result.stdout, /Slot 2 is free\./);
+  assert.equal(existsSync(join(f.root, 'listener')), false);
+  assert.deepEqual(composeCalls(f).at(-1).args, downArgs(f, 2));
+  assert.equal(f.calls().filter((call) => call.tool === 'pnpm').length, pnpmCalls);
+  assert.equal(f.read('.env.dev'), 'KEEP=root\n');
+  assert.equal(f.read('pkg/api/.env.dev'), 'OPENAI_API_KEY=private-test-key\n');
+  for (const file of ['pkg/web/.env.dev', 'pkg/db/.env.test', 'pkg/mobile/.env.local']) assert.equal(existsSync(join(f.root, file)), false, file);
+  assert.match(f.run('status').stdout.split('\n')[1], /^slot 2  free$/);
+  await exited;
+});
+
+test('release refuses a slot whose stack or dev server belongs to another live checkout', async (t) => {
+  const elsewhere = realpathSync(mkdtempSync(join(tmpdir(), 'jedidiah-other-')));
+  t.after(() => rmSync(elsewhere, { recursive: true, force: true }));
+  const f = fixture(t, {}, { stacks: { jedidiah_slot2: elsewhere } });
+  const env = 'KEEP=root\n# >>> use-slot (slot 2) managed, regenerate with pnpm use-slot\nCOMPOSE_PROJECT_NAME=jedidiah_slot2\n# <<< use-slot\n';
+  f.write('.env.dev', env);
+
+  const byStack = f.run('release', '2');
+  assert.equal(byStack.status, 1, byStack.stderr);
+  assert.match(byStack.stderr, new RegExp(`Slot 2 is held by ${elsewhere}`));
+
+  f.stacks({});
+  await listen(t, f, elsewhere);
+  const byServer = f.run('release');
+  assert.equal(byServer.status, 1, byServer.stderr);
+  assert.match(byServer.stderr, new RegExp(`Slot 2 has a dev server from ${elsewhere} on 7202`));
+  assert.equal(existsSync(join(f.root, 'listener')), true);
+  assert.equal(f.read('.env.dev'), env);
+  assert.deepEqual(composeCalls(f), []);
+});
+
+test('release N tears down an abandoned slot and leaves this checkout’s env alone', (t) => {
+  const f = fixture(t, {}, { stacks: { jedidiah_slot3: '/removed worktree' } });
+  const noSlot = f.run('release');
+  assert.equal(noSlot.status, 1);
+  assert.match(noSlot.stderr, /This checkout holds no slot/);
+
+  const env = 'KEEP=root\n# >>> use-slot (slot 2) managed, regenerate with pnpm use-slot\nCOMPOSE_PROJECT_NAME=jedidiah_slot2\n# <<< use-slot\n';
+  f.write('.env.dev', env);
+  const result = f.run('release', '3');
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /Slot 3 is free\./);
+  assert.deepEqual(composeCalls(f).map((call) => call.args), [downArgs(f, 3)]);
+  assert.equal(f.read('.env.dev'), env);
 });

@@ -66,8 +66,12 @@ changing services or volumes; capture one with `pnpm --filter @pkg/seed seed:rea
 
 Hand-written env values survive, including secrets; generated blocks from the old slot setup are
 replaced. A previous holder's env files still point at the slot, but its data has been replaced.
-Switching slots leaves the checkout's previous stack running. `pnpm compose:down` removes the currently
-configured Docker stack and volumes; `pnpm dev:kill` stops this checkout's dev processes.
+`pnpm use-slot -- status` lists each slot as `free`, `held`, or `abandoned` (its checkout is gone).
+Release the slot when you are done, and before removing a worktree: `pnpm use-slot -- release` stops its
+dev servers, removes its stack and volumes, and strips the generated env blocks so the checkout falls back
+to slot 0's defaults. `release <N>` frees an abandoned slot; it refuses one another live checkout holds.
+`pnpm compose:down` removes the currently configured Docker stack and volumes; `pnpm dev:kill` stops this
+checkout's dev processes.
 
 The docs dev server still starts on `7006` and tries the next free port. `.claude/launch.json` still uses
 default ports; open the URLs printed by the slot script when using a slot.
@@ -124,6 +128,8 @@ pnpm db:seed
 pnpm db:studio
 
 pnpm use-slot -- 2   # take over slot 2 and rebuild its local data
+pnpm use-slot -- status   # list free, held, and abandoned slots
+pnpm use-slot -- release  # free this checkout's slot: dev servers, stack, volumes, env blocks
 pnpm compose:down    # remove the configured Docker stack and volumes
 ```
 

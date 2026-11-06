@@ -1,11 +1,5 @@
 import type { StorageAdapter, StoragePutInput, StoredObject } from '@pkg/core';
-import {
-  createDatabaseClient,
-  createEphemeralTestDatabase,
-  type Db,
-  dropTestDatabase,
-  getTestTemplateDatabaseUrl,
-} from '@pkg/db';
+import { createDatabaseClient, type Db, withTestDatabase } from '@pkg/db';
 import { createUserAccessSummaryForUser } from '@pkg/domain';
 import pino from 'pino';
 import { type TestAPI, type TestContext, test as testBase } from 'vitest';
@@ -62,16 +56,12 @@ export function createTester<T extends object = Record<string, never>>(
   { max = 2 }: { max?: number } = {},
 ): TestAPI<{ context: TesterContext & T }> {
   return testBase.extend<{ context: TesterContext & T }>({
-    context: async ({ task: _task }: TestContext, use: (ctx: TesterContext & T) => Promise<void>) => {
-      const templateDatabaseUrl = getTestTemplateDatabaseUrl();
-      const { databaseName, databaseUrl } = await createEphemeralTestDatabase({
-        templateDatabaseUrl,
-      });
-      const databaseClient = createDatabaseClient(databaseUrl, { max });
-      const auth = createAuth(databaseClient.db);
-      const cleanups: Cleanup[] = [];
+    context: async ({ task: _task }: TestContext, use: (ctx: TesterContext & T) => Promise<void>) =>
+      withTestDatabase(async ({ databaseName, databaseUrl }) => {
+        const databaseClient = createDatabaseClient(databaseUrl, { max });
+        const auth = createAuth(databaseClient.db);
+        const cleanups: Cleanup[] = [];
 
-      try {
         try {
           const testLog = pino({ level: 'silent' });
           // The changelog feature is production-only, so tests default to production and supply an
@@ -127,10 +117,7 @@ export function createTester<T extends object = Record<string, never>>(
 
           await databaseClient.close();
         }
-      } finally {
-        await dropTestDatabase(databaseName, templateDatabaseUrl);
-      }
-    },
+      }),
   });
 }
 

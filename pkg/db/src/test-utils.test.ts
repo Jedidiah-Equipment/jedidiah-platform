@@ -13,6 +13,7 @@ import {
   dropTrackedTestDatabases,
   getTestTemplateDatabaseUrl,
   sweepStaleTestDatabases,
+  withTestDatabase,
 } from './test-utils.js';
 
 const databaseNamesToCleanUp = new Set<string>();
@@ -124,6 +125,71 @@ describe('ephemeral test database clone', () => {
     await expect(createEphemeralTestDatabase({ templateDatabaseUrl })).rejects.toMatchObject({ code: '3D000' });
   });
 });
+
+describe('pooled test database', () => {
+  it('hands out a migrated database and leaves none of this process behind once the file drains', async () => {
+    const handedOut = await withTestDatabase(async ({ databaseName, databaseUrl }) => {
+      const client = postgres(databaseUrl, { max: 1 });
+
+      try {
+        const [row] = await client<{ migrations: number }[]>`
+          SELECT count(*)::int AS "migrations" FROM drizzle.__drizzle_migrations
+        `;
+        expect(row?.migrations).toBeGreaterThan(0);
+      } finally {
+        await client.end();
+      }
+
+      return databaseName;
+    });
+
+    await dropTrackedTestDatabases();
+
+    expect(await databaseExists(handedOut)).toBe(false);
+    expect(await listOwnEphemeralDatabases()).toEqual([]);
+  });
+
+  it('clones the next database while the current one is in use', async () => {
+    await withTestDatabase(async ({ databaseName }) => {
+      await expect
+        .poll(async () => (await listOwnEphemeralDatabases()).filter((name) => name !== databaseName).length)
+        .toBeGreaterThan(0);
+    });
+
+    await dropTrackedTestDatabases();
+  });
+
+  it('releases the database when the test using it throws', async () => {
+    let handedOut = '';
+
+    await expect(
+      withTestDatabase(async ({ databaseName }) => {
+        handedOut = databaseName;
+        throw new Error('test failed');
+      }),
+    ).rejects.toThrow('test failed');
+
+    await expect.poll(() => databaseExists(handedOut)).toBe(false);
+
+    await dropTrackedTestDatabases();
+  });
+});
+
+async function listOwnEphemeralDatabases(): Promise<string[]> {
+  const adminClient = createAdminClient();
+
+  try {
+    const databases = await adminClient<{ databaseName: string }[]>`
+      SELECT datname AS "databaseName"
+      FROM pg_database
+      WHERE datname LIKE ${`jedidiah_ephemeral_${process.pid}_%`}
+    `;
+
+    return databases.map(({ databaseName }) => databaseName);
+  } finally {
+    await adminClient.end();
+  }
+}
 
 async function waitForCloneAttempts(databaseName: string, attempts: number, signal: AbortSignal): Promise<void> {
   const adminClient = createAdminClient();

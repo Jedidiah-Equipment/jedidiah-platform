@@ -3,6 +3,8 @@
 - Read the closest `pkg/*/AGENTS.md` before changing code in that package.
 - Use pnpm scripts. Normal verification is `pnpm verify` (lint + typecheck + build + test). Run it in the
   foreground with a 10-minute Bash timeout; it takes about 2 minutes warm.
+- `pnpm lint` runs Biome, then knip (`knip.jsonc`), which fails on a file, dependency or binary nothing in
+  the repo reaches. Delete what it names; configure it only when the use is real but invisible to knip.
 - Keep `pnpm test` at `--concurrency=2` and every Vitest runner bounded (default four workers,
   `VITEST_MAX_WORKERS` override). More packages in flight oversubscribe the box until DB-backed tests time out.
 - Do not add CI, deployment, or production infrastructure unless explicitly asked.

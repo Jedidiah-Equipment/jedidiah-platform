@@ -108,7 +108,7 @@ OPENAI_TRANSCRIPTION_MODEL=gpt-transcribe
 ```sh
 pnpm verify          # lint + typecheck + build + test
 pnpm typecheck
-pnpm lint
+pnpm lint            # Biome, then knip for unreached files and dependencies
 pnpm test
 pnpm build
 

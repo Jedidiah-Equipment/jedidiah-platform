@@ -190,7 +190,7 @@ export default function JobScreen() {
                 : 'No Machines are assigned to this Job.'}
             </Text>
           ) : null}
-          {placed.unplaced.length ? (
+          {job && placed.unplaced.length ? (
             <View className="gap-2">
               <Text className="text-lg text-foreground" weight="bold">
                 Other Breakdowns on this Job

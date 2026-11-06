@@ -139,3 +139,25 @@ test('every open Breakdown on a Machine opens from its card, and one on no Machi
   ]);
   await act(async () => renderer.unmount());
 });
+
+test('no Breakdown shows as on no Machine before the Job has loaded', async () => {
+  state.tab = 'details';
+  state.breakdowns = {
+    items: [
+      {
+        id: 'red',
+        urgency: 'code-red',
+        status: 'open',
+        reportedAt: '2026-11-06T07:04:00Z',
+        firstLine: 'Problem red',
+        subject: { kind: 'machine', id: 'm1', code: 'SUM210-1' },
+      },
+    ],
+  };
+  let renderer!: ReactTestRenderer;
+  await act(async () => {
+    renderer = create(<JobScreen />);
+  });
+  expect(renderer.root.findAllByType('BreakdownRow' as never)).toHaveLength(0);
+  await act(async () => renderer.unmount());
+});

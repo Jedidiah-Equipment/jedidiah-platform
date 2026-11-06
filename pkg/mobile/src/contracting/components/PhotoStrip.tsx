@@ -33,7 +33,6 @@ export function PhotoStrip({
 }) {
   const full = photos.length >= limit;
   const [viewing, setViewing] = useState<number | null>(null);
-  const viewed = viewing === null ? undefined : photos[viewing];
   return (
     <View className="gap-3">
       <View className="flex-row items-baseline justify-between">
@@ -73,9 +72,14 @@ export function PhotoStrip({
       <Button title="Take photo" icon={IconCamera} disabled={busy || full} onPress={onTake} />
       <Button title="Choose from gallery" icon={IconPhoto} disabled={busy || full} onPress={onChoose} />
       <ImageViewer
-        label={`${noun} ${formatNumber((viewing ?? 0) + 1)}`}
-        source={viewed ? { kind: 'ready', uri: viewed.uri } : null}
+        index={viewing}
+        photos={photos.map((photo, index) => ({
+          key: photo.id,
+          label: `${noun} ${formatNumber(index + 1)}`,
+          source: { kind: 'ready', uri: photo.uri },
+        }))}
         onClose={() => setViewing(null)}
+        onIndexChange={setViewing}
       />
     </View>
   );

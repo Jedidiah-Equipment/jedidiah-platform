@@ -12,6 +12,7 @@ import { useMutation } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
+import { ActionButton } from '@/components/button/ActionButton.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { RemoveEntityButton } from '@/components/common/RemoveEntityButton.js';
 import { AutosaveStatus, useAppForm, useAutosaveForm, useTypedAppFormContext } from '@/components/form/index.js';
@@ -178,14 +179,14 @@ function DraftSignOffDetails({ job, sheet }: { job: JobDetail; sheet: JobSheet }
               <CardFooter className="justify-end gap-3">
                 {!gate.ok ? <p className="text-destructive">{completionGateReasons(gate).join(' ')}</p> : null}
                 {completeAction ? (
-                  <Button
+                  <ActionButton
+                    action={completeAction}
                     className="shrink-0"
-                    disabled={completeAction.disabled || !gate.ok || !input.success}
-                    title={completeAction.title}
+                    disabled={!gate.ok || !input.success}
                     onClick={() => setConfirm(true)}
                   >
                     Complete
-                  </Button>
+                  </ActionButton>
                 ) : null}
               </CardFooter>
               <Dialog open={confirm} onOpenChange={setConfirm}>

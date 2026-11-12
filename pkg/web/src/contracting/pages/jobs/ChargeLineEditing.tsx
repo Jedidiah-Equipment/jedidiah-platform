@@ -4,9 +4,10 @@ import type { ChargeLine } from '@pkg/schema/contracting';
 import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { z } from 'zod';
+import { ActionButton } from '@/components/button/ActionButton.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { CreateEntityDialog } from '@/components/form/index.js';
-import { Button } from '@/components/ui/button.js';
+import type { Button } from '@/components/ui/button.js';
 import { Input } from '@/components/ui/input.js';
 import { useResetOnOpen } from '@/contracting/hooks/use-contracting-write.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -31,9 +32,9 @@ export function AddChargeLineButton({
   useResetOnOpen(create, open);
   return (
     <>
-      <Button size={size} {...action} onClick={() => setOpen(true)}>
+      <ActionButton size={size} action={action} onClick={() => setOpen(true)}>
         Add charge line
-      </Button>
+      </ActionButton>
       <CreateEntityDialog
         open={open}
         onOpenChange={setOpen}

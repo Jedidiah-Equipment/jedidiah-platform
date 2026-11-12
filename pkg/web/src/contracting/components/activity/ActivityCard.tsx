@@ -3,8 +3,8 @@ import { canSeeActivity } from '@pkg/domain/contracting';
 import { NoteText } from '@pkg/schema/contracting';
 import { IconActivity, IconMessagePlus } from '@tabler/icons-react';
 import { useState } from 'react';
+import { ActionButton } from '@/components/button/ActionButton.js';
 import { ReasonDialog } from '@/components/form/ReasonDialog.js';
-import { Button } from '@/components/ui/button.js';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { useResetOnOpen } from '@/contracting/hooks/use-contracting-write.js';
 import { useAccess } from '@/hooks/use-access.js';
@@ -32,9 +32,9 @@ export function ActivityCard({
         </CardTitle>
         {addNote ? (
           <CardAction>
-            <Button {...addNote} onClick={() => setOpen(true)} size="sm" variant="outline">
+            <ActionButton action={addNote} onClick={() => setOpen(true)} size="sm" variant="outline">
               <IconMessagePlus /> Add Note
-            </Button>
+            </ActionButton>
             <AddNoteDialog onOpenChange={setOpen} open={open} thread={thread} />
           </CardAction>
         ) : null}

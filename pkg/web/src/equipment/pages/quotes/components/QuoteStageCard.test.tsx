@@ -65,29 +65,34 @@ function renderCard({
   act(() => root.render(<QuoteStageCard flushAutosave={flushAutosave} quote={quote} />));
   const button = (label: string) =>
     [...container.querySelectorAll('button')].find((candidate) => candidate.textContent === label);
-  return { button, container };
+  const reason = (label: string) =>
+    document.getElementById(button(label)?.getAttribute('aria-describedby') ?? '')?.textContent;
+  return { button, container, reason };
 }
 
 describe('QuoteStageCard', () => {
   it('hides what the person may never do and disables, with the reason, what the stage refuses', () => {
-    const { button } = renderCard({ role: 'admin', stage: 'awaiting-pricing' });
+    const { button, reason } = renderCard({ role: 'admin', stage: 'awaiting-pricing' });
 
     expect(button('Send for approval')?.disabled).toBe(false);
     expect(button('Approve')).toBeUndefined();
     expect(button('Send back')).toBeUndefined();
     expect(button('Remove')).toBeUndefined();
     expect(button('Enter Invoice Number')?.disabled).toBe(true);
-    expect(button('Enter Invoice Number')?.title).toBe(
-      'You can only enter an Invoice Number while it is Awaiting invoice.',
-    );
+    expect(reason('Enter Invoice Number')).toBe('You can only enter an Invoice Number while it is Awaiting invoice.');
   });
 
   it('disables Send for approval until delivery is confirmed, and says so', () => {
-    const { button, container } = renderCard({ deliveryTerms: 'tbc', role: 'admin', stage: 'awaiting-pricing' });
+    const { button, container, reason } = renderCard({
+      deliveryTerms: 'tbc',
+      role: 'admin',
+      stage: 'awaiting-pricing',
+    });
+    const sentence = 'Confirm delivery before sending this quote for approval.';
 
     expect(button('Send for approval')?.disabled).toBe(true);
-    expect(button('Send for approval')?.title).toBe('Confirm delivery before sending this quote for approval.');
-    expect(container.textContent).toContain('Confirm delivery before sending this quote for approval.');
+    expect(reason('Send for approval')).toBe(sentence);
+    expect([...container.querySelectorAll('p')].map((paragraph) => paragraph.textContent)).toContain(sentence);
   });
 
   it('keeps focus in the field being edited on mousedown, so the autosave banner cannot move the button away', () => {

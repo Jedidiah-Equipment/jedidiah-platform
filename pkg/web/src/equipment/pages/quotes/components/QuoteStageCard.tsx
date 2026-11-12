@@ -5,6 +5,7 @@ import { IconArrowBackUp } from '@tabler/icons-react';
 import { useMutation } from '@tanstack/react-query';
 import { type ComponentProps, useState } from 'react';
 import { toast } from 'sonner';
+import { ActionButton } from '@/components/button/ActionButton.js';
 import { RemoveEntityDialog } from '@/components/common/RemoveEntityButton.js';
 import { ReasonDialog } from '@/components/form/ReasonDialog.js';
 import { HelpLink } from '@/components/help/index.js';
@@ -136,10 +137,10 @@ export function QuoteStageCard({
           {stageActions.map(({ name, label, run, variant }) => {
             const action = sheet.action(name);
             return action ? (
-              <Button
+              <ActionButton
                 key={name}
-                {...action}
-                disabled={busy || action.disabled}
+                action={action}
+                disabled={busy}
                 onClick={() => void runAfterSaving(run)}
                 // A field blurred on mousedown flushes and can raise the autosave banner, which moves this button
                 // before the click lands. The click flushes anyway, so the field keeps focus until then.
@@ -148,7 +149,7 @@ export function QuoteStageCard({
                 variant={variant}
               >
                 {label}
-              </Button>
+              </ActionButton>
             ) : null;
           })}
         </div>

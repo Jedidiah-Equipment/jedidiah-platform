@@ -26,6 +26,7 @@ import {
   EquipmentAuditTable,
   usePurchaseOrderAuditTableStore,
 } from '@/equipment/components/audit/EquipmentAuditTable.js';
+import { JobCodeWithCustomer } from '@/equipment/components/common/JobCodeWithCustomer.js';
 import { formatPurchaseUnitLabel } from '@/equipment/utils/part-quantity-format.js';
 import { useAccess, useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
@@ -416,8 +417,8 @@ const ReadOnlyJobsCard: React.FC<{ purchaseOrder: PurchaseOrderView }> = ({ purc
       {purchaseOrder.jobs.length ? (
         <div className="flex flex-wrap gap-2">
           {purchaseOrder.jobs.map((job) => (
-            <Badge key={job.id} variant="outline">
-              {job.code}
+            <Badge className="max-w-full" key={job.id} variant="outline">
+              <JobCodeWithCustomer job={job} />
             </Badge>
           ))}
         </div>

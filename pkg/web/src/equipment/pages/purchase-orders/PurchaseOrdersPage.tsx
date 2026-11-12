@@ -9,6 +9,7 @@ import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Button } from '@/components/ui/button.js';
+import { jobCodeWithCustomerText } from '@/equipment/components/common/JobCodeWithCustomer.js';
 import { purchaseOrdersPageDescription } from '@/equipment/utils/page-descriptions.js';
 import { useCan } from '@/hooks/use-access.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
@@ -104,7 +105,7 @@ function createPurchaseOrderColumns(canReadCosts: boolean): DataTableColumnDef<P
       id: 'supplier',
     },
     {
-      accessorFn: (purchaseOrder) => purchaseOrder.jobs.map((job) => job.code).join(', ') || 'Restock',
+      accessorFn: (purchaseOrder) => purchaseOrder.jobs.map(jobCodeWithCustomerText).join(', ') || 'Restock',
       header: 'Jobs',
       id: 'jobs',
     },

@@ -38,6 +38,20 @@ describe('PurchaseOrderTable', () => {
     expect(html).not.toContain('R 10.00');
   });
 
+  it('names whose each linked Job is, reading a held machine as Stock', () => {
+    const linked = {
+      ...purchaseOrder,
+      jobs: [
+        { code: 'JOB-00007', customerCompanyName: 'Karoo Farms', id: '8c6f2a1e-4d3b-4c5a-9e8f-7a6b5c4d3e2f' },
+        { code: 'JOB-00009', customerCompanyName: null, id: '9c6f2a1e-4d3b-4c5a-9e8f-7a6b5c4d3e2f' },
+      ],
+    } as unknown as PurchaseOrderView;
+
+    const html = renderToStaticMarkup(<PurchaseOrderTable canReadCosts items={[linked]} onOpen={vi.fn()} />);
+
+    expect(html).toContain('JOB-00007 · Karoo Farms, JOB-00009 · Stock');
+  });
+
   it('labels zero-sentinel draft prices as not priced rather than free', () => {
     const unpriced = {
       ...purchaseOrder,

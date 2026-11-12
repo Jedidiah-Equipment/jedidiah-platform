@@ -355,6 +355,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
               {(summary) => (
                 <QuoteRightPanel
                   canOpenJobs={canOpenJobs}
+                  flushAutosave={autosave.flush}
                   jobScheduleError={linkedJobQuery.error}
                   jobScheduleState={linkedJobQuery.data?.items[0]?.scheduleState ?? null}
                   onOpenJob={() => setJobSheetOpen(true)}

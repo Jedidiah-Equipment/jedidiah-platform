@@ -5,6 +5,9 @@ ALTER TABLE "equipment"."quote" ADD COLUMN "sent_back_by_user_id" text;--> state
 ALTER TABLE "equipment"."quote" ADD COLUMN "sent_back_note" text;--> statement-breakpoint
 ALTER TABLE "equipment"."quote" ADD CONSTRAINT "quote_invoiced_by_user_id_user_id_fk" FOREIGN KEY ("invoiced_by_user_id") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "equipment"."quote" ADD CONSTRAINT "quote_sent_back_by_user_id_user_id_fk" FOREIGN KEY ("sent_back_by_user_id") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+-- 0. An Invoice Number now exists exactly while a Quote is Invoiced, and a Cancelled Quote is never Invoiced. None
+-- carries one in production today; should one appear before release, its number stays in the audit history.
+UPDATE "equipment"."quote" SET "invoice_number" = NULL WHERE "status" = 'cancelled' AND "invoice_number" IS NOT NULL;--> statement-breakpoint
 -- 1. Invoiced: every live Quote carrying an Invoice Number, dated from the latest audit event that set it from empty.
 UPDATE "equipment"."quote" AS q
 SET
@@ -12,7 +15,10 @@ SET
   "invoiced_at" = coalesce(stamp."occurred_at", q."updated_at"),
   "invoiced_by_user_id" = stamp."actor_user_id",
   "accepted_at" = coalesce(q."accepted_at", stamp."occurred_at", q."updated_at"),
-  "status_changed_at" = coalesce(stamp."occurred_at", q."updated_at")
+  "status_changed_at" = coalesce(stamp."occurred_at", q."updated_at"),
+  -- A sold Quote's delivery is confirmed. A To be confirmed one is priced at nothing (quote_delivery_charge_matches_price),
+  -- so it takes the default terms a new Quote gets, and its total does not move.
+  "delivery_terms" = CASE WHEN q."delivery_terms" = 'tbc' THEN 'ex_factory' ELSE q."delivery_terms" END
 FROM "equipment"."quote" AS source
 LEFT JOIN LATERAL (
   SELECT a."occurred_at", a."actor_user_id"
@@ -32,7 +38,8 @@ UPDATE "equipment"."quote" AS q
 SET
   "status" = 'awaiting-invoice',
   "accepted_at" = coalesce(q."accepted_at", (live."completed_on"::timestamp AT TIME ZONE 'Africa/Johannesburg')),
-  "status_changed_at" = now()
+  "status_changed_at" = now(),
+  "delivery_terms" = CASE WHEN q."delivery_terms" = 'tbc' THEN 'ex_factory' ELSE q."delivery_terms" END
 FROM (
   SELECT source."id", job."id" AS "job_id", job."completed_on"
   FROM "equipment"."quote" AS source

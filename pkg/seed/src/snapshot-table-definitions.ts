@@ -295,15 +295,18 @@ export const snapshotTableDefinitions = [
     // Before Quote Stages an Invoice Number sat on a Quote in any status; it now exists exactly while the Quote is
     // Invoiced, as the migration moves it. Delete once the source is migrated.
     seedRowTransform: (row) =>
-      row.invoiceNumber == null || row.status === 'invoiced' || row.status === 'cancelled'
+      row.invoiceNumber == null || row.status === 'invoiced'
         ? row
-        : {
-            ...row,
-            acceptedAt: row.acceptedAt ?? row.updatedAt,
-            invoicedAt: row.updatedAt,
-            status: 'invoiced',
-            statusChangedAt: row.updatedAt,
-          },
+        : row.status === 'cancelled'
+          ? { ...row, invoiceNumber: null }
+          : {
+              ...row,
+              acceptedAt: row.acceptedAt ?? row.updatedAt,
+              deliveryTerms: row.deliveryTerms === 'tbc' ? 'ex_factory' : row.deliveryTerms,
+              invoicedAt: row.updatedAt,
+              status: 'invoiced',
+              statusChangedAt: row.updatedAt,
+            },
     resetSequence: { sequence: quoteCodeSequence, columnName: 'code' },
   },
   {

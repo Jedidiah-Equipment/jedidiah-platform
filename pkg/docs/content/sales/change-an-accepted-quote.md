@@ -26,7 +26,7 @@ machine can be invoiced before it is delivered. Everything else depends on the Q
 | Stage | Document notes, Valid until | Work Items, discount, deposit, Delivery Terms and Delivery Price |
 | --- | --- | --- |
 | **Accepted** or **Awaiting pricing** | Anyone who edits Quotes | An Administrator or Super Administrator |
-| **Awaiting approval** | Anyone who edits Quotes | A Super Administrator |
+| **Awaiting approval** | A Super Administrator | A Super Administrator |
 | **Awaiting invoice** or **Invoiced** | Nobody | Nobody |
 | **Cancelled** | Anyone who edits Quotes | Nobody |
 

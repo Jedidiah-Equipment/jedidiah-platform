@@ -46,6 +46,7 @@ const getSummaryWorkItemPartKey =
 
 export function QuoteRightPanel({
   canOpenJobs,
+  flushAutosave,
   jobScheduleError,
   jobScheduleState,
   onOpenJob,
@@ -53,6 +54,7 @@ export function QuoteRightPanel({
   summary,
 }: {
   canOpenJobs: boolean;
+  flushAutosave: () => Promise<boolean>;
   jobScheduleError: unknown;
   jobScheduleState: JobScheduleState | null;
   onOpenJob: () => void;
@@ -61,7 +63,7 @@ export function QuoteRightPanel({
 }) {
   return (
     <aside className="order-first grid h-fit gap-4 border-b pb-5 text-sm xl:sticky xl:top-4 xl:order-0 xl:border-b-0 xl:pb-0 xl:pl-5">
-      <QuoteStageCard quote={quote} />
+      <QuoteStageCard flushAutosave={flushAutosave} quote={quote} />
       <QuoteCustomerCard quote={quote} />
       <QuoteProductCard quote={quote} />
       {quote.kind === 'product' && quote.productUnit ? <QuoteAllocationCard quote={quote} /> : null}

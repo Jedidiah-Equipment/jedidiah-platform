@@ -4,6 +4,7 @@ import { type QuoteDetail, QuoteSentBackNote, type QuoteStage } from '@pkg/schem
 import { IconArrowBackUp } from '@tabler/icons-react';
 import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { RemoveEntityDialog } from '@/components/common/RemoveEntityButton.js';
 import { ReasonDialog } from '@/components/form/ReasonDialog.js';
 import { HelpLink } from '@/components/help/index.js';
@@ -36,12 +37,20 @@ const stageSentences: Partial<Record<QuoteStage, string>> = {
 type Confirming = 'sendForApproval' | 'removeInvoiceNumber' | null;
 
 /** Where a sold Quote stands on the way to its invoice, and the Quote Actions this person may take from here. */
-export function QuoteStageCard({ quote }: { quote: QuoteDetail }) {
+export function QuoteStageCard({
+  flushAutosave,
+  quote,
+}: {
+  /** A Quote Action restarts the form from the new status, so pending edits save first or the action waits. */
+  flushAutosave: () => Promise<boolean>;
+  quote: QuoteDetail;
+}) {
   const trpc = useTRPC();
   const { invalidateQuotes } = useQueryInvalidation();
   const [confirming, setConfirming] = useState<Confirming>(null);
   const [sendingBack, setSendingBack] = useState(false);
   const [stamping, setStamping] = useState(false);
+  const [saving, setSaving] = useState(false);
   const showMutationError = useApiMutationErrorToast();
   const mutationHandlers = {
     onError: (error: unknown) => showMutationError(error, 'Unable to move the quote.'),
@@ -59,7 +68,16 @@ export function QuoteStageCard({ quote }: { quote: QuoteDetail }) {
 
   const { actions } = quote;
   const sendBlocked = actions.sendForApproval.allowed ? null : actions.sendForApproval;
-  const busy = sendForApproval.isPending || approve.isPending || removeInvoiceNumber.isPending;
+  const busy = saving || sendForApproval.isPending || approve.isPending || removeInvoiceNumber.isPending;
+  const afterSaving = (run: () => void) => async () => {
+    setSaving(true);
+    try {
+      if (await flushAutosave()) run();
+      else toast.error('Fix the highlighted quote fields before moving the quote.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <Card size="sm">
@@ -98,34 +116,34 @@ export function QuoteStageCard({ quote }: { quote: QuoteDetail }) {
         ) : null}
         <div className="flex flex-wrap gap-2">
           {actions.sendForApproval.allowed ? (
-            <Button disabled={busy} onClick={() => setConfirming('sendForApproval')} type="button">
+            <Button disabled={busy} onClick={afterSaving(() => setConfirming('sendForApproval'))} type="button">
               Send for approval
             </Button>
           ) : null}
           {actions.approve.allowed ? (
-            <Button disabled={busy} onClick={() => approve.mutate({ id: quote.id })} type="button">
+            <Button disabled={busy} onClick={afterSaving(() => approve.mutate({ id: quote.id }))} type="button">
               Approve
             </Button>
           ) : null}
           {actions.stampInvoice.allowed ? (
-            <Button disabled={busy} onClick={() => setStamping(true)} type="button">
+            <Button disabled={busy} onClick={afterSaving(() => setStamping(true))} type="button">
               Enter Invoice Number
             </Button>
           ) : null}
           {actions.correctInvoiceNumber.allowed ? (
-            <Button disabled={busy} onClick={() => setStamping(true)} type="button" variant="outline">
+            <Button disabled={busy} onClick={afterSaving(() => setStamping(true))} type="button" variant="outline">
               Correct
             </Button>
           ) : null}
           {actions.sendBack.allowed ? (
-            <Button disabled={busy} onClick={() => setSendingBack(true)} type="button" variant="outline">
+            <Button disabled={busy} onClick={afterSaving(() => setSendingBack(true))} type="button" variant="outline">
               Send back
             </Button>
           ) : null}
           {actions.removeInvoiceNumber.allowed ? (
             <Button
               disabled={busy}
-              onClick={() => setConfirming('removeInvoiceNumber')}
+              onClick={afterSaving(() => setConfirming('removeInvoiceNumber'))}
               type="button"
               variant="destructive"
             >

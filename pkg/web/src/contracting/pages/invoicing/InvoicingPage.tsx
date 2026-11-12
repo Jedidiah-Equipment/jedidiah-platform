@@ -1,5 +1,5 @@
 import { countPhrase, formatCurrency, formatDate } from '@pkg/domain';
-import { jobQueueLabels, jobQueueOf } from '@pkg/domain/contracting';
+import { jobQueueColorClassNames, jobQueueLabels, jobQueueOf } from '@pkg/domain/contracting';
 import { type JobListInput, type JobQueueCounts, type JobSummary, jobQueues } from '@pkg/schema/contracting';
 import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
@@ -9,6 +9,14 @@ import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/compo
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
+import { StatusQuickFilters } from '@/components/data-table/StatusQuickFilters.js';
+import {
+  focusOnInvoicingStage,
+  INVOICED_COLUMN_ID,
+  invoicedRange,
+  listedInvoicingStages,
+  STAGE_COLUMN_ID,
+} from '@/components/data-table/stage-filter.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
@@ -17,18 +25,10 @@ import { useCan } from '@/hooks/use-access.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { JobCardPreviewSheet } from '../jobs/JobCardPreviewSheet.js';
-import { JobStageQuickFilters } from '../jobs/JobStageQuickFilters.js';
 import { JobQueueBadge } from '../jobs/JobStatusBadge.js';
-import { STAGE_COLUMN_ID } from '../jobs/job-stage-filter.js';
+import { quickFilterStages } from '../jobs/job-stage-filter.js';
 import { type StampableJob, StampInvoiceDialog } from './StampInvoiceDialog.js';
-import {
-  focusOnInvoicingStage,
-  INVOICED_COLUMN_ID,
-  type InvoicingStage,
-  invoicedRange,
-  invoicingStages,
-  listedInvoicingStages,
-} from './types.js';
+import { type InvoicingStage, invoicingStages } from './types.js';
 
 /** Awaiting invoice is Invoicing's only quick filter; Invoiced stays in the Stage column filter. */
 const awaitingStages = ['awaiting-invoice'] as const;
@@ -63,7 +63,7 @@ export function InvoicingPage() {
   const counts = queues.data?.counts ?? noCounts;
   const getListInputExtras = useCallback(
     (columnFilters: ColumnFiltersState) => ({
-      queues: listedInvoicingStages(columnFilters, counts),
+      queues: listedInvoicingStages(columnFilters, { stages: invoicingStages, open: awaitingStages, counts }),
       ...invoicedRange(columnFilters),
     }),
     [counts],
@@ -174,15 +174,22 @@ export function InvoicingPage() {
       sorting: tableController.sorting,
     },
   });
-  const listed = listedInvoicingStages(tableController.columnFilters, counts);
+  const listed = listedInvoicingStages(tableController.columnFilters, {
+    stages: invoicingStages,
+    open: awaitingStages,
+    counts,
+  });
   const awaitingOnly = listed.length === 1 && listed[0] === 'awaiting-invoice';
   return (
     <PageLayout title="Invoicing" description="Stamp invoice numbers and review invoiced Jobs." size="full">
-      <JobStageQuickFilters
+      <StatusQuickFilters
         label="Invoicing stages"
-        stages={awaitingStages}
-        allStages={invoicingStages}
-        summary={queues.data}
+        columnId={STAGE_COLUMN_ID}
+        statuses={invoicingStages}
+        shown={quickFilterStages(queues.data?.counts, tableController.columnFilters, awaitingStages)}
+        labels={jobQueueLabels}
+        colours={jobQueueColorClassNames}
+        counts={queues.data?.counts}
         columnFilters={tableController.columnFilters}
         onColumnFiltersChange={tableController.setColumnFilters}
       />

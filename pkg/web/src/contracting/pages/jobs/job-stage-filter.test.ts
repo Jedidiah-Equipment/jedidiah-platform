@@ -4,12 +4,10 @@ import { describe, expect, it } from 'vitest';
 import {
   focusOnNeedsALook,
   focusOnStage,
-  isPickedStages,
   jobListFilters,
   jobsQuickFilterStages,
   listedStages,
   quickFilterStages,
-  toggleStages,
 } from './job-stage-filter.js';
 
 const stage = (value: unknown) => [{ id: 'stage', value }];
@@ -56,22 +54,6 @@ describe('jobsQuickFilterStages', () => {
   it('offers the stages the reader lists, Invoiced after the open ones and never Cancelled', () => {
     expect(jobsQuickFilterStages('all')).toEqual([...openJobQueues, 'invoiced']);
     expect(jobsQuickFilterStages('priced')).toEqual(['awaiting-pricing', 'awaiting-invoice', 'invoiced']);
-  });
-});
-
-describe('toggleStages', () => {
-  it('shows just the pressed stage, keeping other filters, and clears the pick when pressed again', () => {
-    const next = toggleStages([{ id: 'other', value: 'x' }, ...stage(['upcoming', 'active'])], ['active']);
-    expect(next).toEqual([{ id: 'other', value: 'x' }, ...stage(['active'])]);
-    expect(isPickedStages(next, ['active'])).toBe(true);
-    expect(toggleStages(next, ['active'])).toEqual([{ id: 'other', value: 'x' }]);
-  });
-
-  it('picks every stage for All, Invoiced and Cancelled included', () => {
-    const every = toggleStages(stage(['active']), jobQueues);
-    expect(every).toEqual(stage([...jobQueues]));
-    expect(isPickedStages(every, jobQueues)).toBe(true);
-    expect(isPickedStages(stage(['active']), jobQueues)).toBe(false);
   });
 });
 

@@ -1,5 +1,6 @@
 import { countPhrase, formatCurrency, formatDate, formatNumber, getFirstName } from '@pkg/domain';
 import {
+  jobQueueColorClassNames,
   jobQueueLabels,
   jobQueueOf,
   jobReadMode,
@@ -33,6 +34,8 @@ import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/compo
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
+import { StatusQuickFilters } from '@/components/data-table/StatusQuickFilters.js';
+import { STAGE_COLUMN_ID } from '@/components/data-table/stage-filter.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
 import { useCreateEntityFlow } from '@/components/form/hooks/use-create-entity-flow.js';
@@ -46,7 +49,6 @@ import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.j
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { JobAttentionBadge } from './JobAttentionBadge.js';
-import { JobStageQuickFilters } from './JobStageQuickFilters.js';
 import { JobQueueBadge } from './JobStatusBadge.js';
 import {
   ATTENTION_COLUMN_ID,
@@ -57,7 +59,7 @@ import {
   jobsQuickFilterStages,
   NEEDS_A_LOOK,
   pickedDriver,
-  STAGE_COLUMN_ID,
+  quickFilterStages,
 } from './job-stage-filter.js';
 import { OnSiteDrivers } from './OnSiteDrivers.js';
 import { useJobWrite } from './use-job-write.js';
@@ -396,11 +398,14 @@ export function JobsTable({ scope }: { scope?: JobsScope }) {
     <>
       <ErrorMessage error={queues.error ?? foremen.error ?? drivers.error} fallbackMessage="Unable to load Jobs." />
       {scopeKind ? null : (
-        <JobStageQuickFilters
+        <StatusQuickFilters
           label="Job stages"
-          stages={jobsQuickFilterStages(readMode)}
-          allStages={jobQueues}
-          summary={queues.data}
+          columnId={STAGE_COLUMN_ID}
+          statuses={jobQueues}
+          shown={quickFilterStages(queues.data?.counts, tableController.columnFilters, jobsQuickFilterStages(readMode))}
+          labels={jobQueueLabels}
+          colours={jobQueueColorClassNames}
+          counts={queues.data?.counts}
           columnFilters={tableController.columnFilters}
           onColumnFiltersChange={tableController.setColumnFilters}
         />

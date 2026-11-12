@@ -1,26 +1,11 @@
 import type { AuthId } from '@pkg/schema';
 import type { QuoteStatus } from '@pkg/schema/equipment';
 
+import { transitionEdges } from '../../lifecycle/transition-edges.js';
 import { quoteStatusLabels } from './quote-display.js';
 
-type QuoteTransitionSubject = { status: QuoteStatus; acceptedAt: Date | null };
-
-/**
- * One move along a sold Quote's way to its invoice: the statuses it leaves and the columns that travel with it,
- * including the ones the database requires cleared. It judges no one: the caller has already asserted the Quote
- * Action. A move with no edge from the Quote's status is a programming error, not a refusal.
- */
-const edge =
-  <Event extends { at: Date }, Columns extends { readonly status: QuoteStatus }>(
-    verb: string,
-    from: readonly QuoteStatus[],
-    columns: (event: Event, quote: QuoteTransitionSubject) => Columns,
-  ) =>
-  (quote: QuoteTransitionSubject, event: Event): Columns & { updatedAt: Date } => {
-    if (!from.includes(quote.status))
-      throw new Error(`Cannot ${verb} a Quote that is ${quoteStatusLabels[quote.status]}.`);
-    return { ...columns(event, quote), updatedAt: event.at };
-  };
+/** One move along a sold Quote's way to its invoice; the caller has already asserted the Quote Action. */
+const edge = transitionEdges<QuoteStatus, { status: QuoteStatus; acceptedAt: Date | null }>('Quote', quoteStatusLabels);
 
 /** The columns that clear a sent-back note; any move off `accepted` must write them, as the database requires. */
 export const clearedSentBack = { sentBackAt: null, sentBackByUserId: null, sentBackNote: null } as const;

@@ -20,6 +20,12 @@ import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
 import { StatusQuickFilters } from '@/components/data-table/StatusQuickFilters.js';
+import {
+  focusOnInvoicingStage,
+  INVOICED_COLUMN_ID,
+  pickWithoutStaleRange,
+  STAGE_COLUMN_ID,
+} from '@/components/data-table/stage-filter.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
@@ -32,16 +38,7 @@ import { QuoteOfferingTypeBadge } from '../quotes/components/QuoteOfferingTypeBa
 import { QuoteStageBadge } from '../quotes/components/QuoteStageBadge.js';
 import { QuoteStampInvoiceDialog, type StampableQuote } from '../quotes/components/QuoteStampInvoiceDialog.js';
 import { quoteOfferingTypeFilterOptions } from '../quotes/components/QuoteTableColumns.js';
-import {
-  focusOnInvoicingStage,
-  INVOICED_COLUMN_ID,
-  type InvoicingQuoteStage,
-  invoicingListFilters,
-  JOB_COMPLETED_COLUMN_ID,
-  pickWithoutStaleRange,
-  STAGE_COLUMN_ID,
-  TYPE_COLUMN_ID,
-} from './types.js';
+import { type InvoicingQuoteStage, invoicingListFilters, JOB_COMPLETED_COLUMN_ID, TYPE_COLUMN_ID } from './types.js';
 
 const defaultSort = { id: JOB_COMPLETED_COLUMN_ID, desc: false } as const;
 

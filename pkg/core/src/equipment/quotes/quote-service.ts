@@ -26,7 +26,7 @@ import {
   type QuoteWorkItemInput,
   soldQuoteStatuses,
 } from '@pkg/schema/equipment';
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { diffAuditUpdate, recordAuditCreate, recordAuditUpdate } from '../../audit/audit-writer.js';
 import { assertCustomerCreationAllowed, customerAuditDescriptor } from '../customers/customer-service.js';
 import { cancelJobForQuote } from '../jobs/job-service.js';
@@ -49,7 +49,7 @@ import {
   quoteStatusNotPickable,
 } from './quote-errors.js';
 import { narrowQuoteOffering } from './quote-offering.js';
-import { getQuote } from './quote-read-service.js';
+import { getQuote, readLiveJob } from './quote-read-service.js';
 import {
   listQuoteSelectedAssemblies,
   persistQuoteSelectedAssemblies,
@@ -163,7 +163,7 @@ export async function cancelQuote({
       : null;
     // What becomes of the machine turns on whether a live build is left owing one — not on whether
     // this call is what cancelled it. A Job cancelled earlier, directly, leaves none.
-    const liveJobRemains = cancelJob ? false : await quoteHasLiveJob({ quoteId: before.id, tx });
+    const liveJobRemains = cancelJob ? false : (await readLiveJob({ db: tx, quoteId: before.id })) !== 'none';
 
     // An Allocation Quote sold a machine that already existed, so the sale dying hands it back whatever
     // becomes of any Job. A build-to-order Unit belongs to the Job that minted it and returns once no
@@ -940,16 +940,6 @@ function statusChangeStamps({
   return next === before.status
     ? {}
     : { acceptedAt: acceptedAtAfter({ before, next, now }), statusChangedAt: now, ...clearedSentBack };
-}
-
-async function quoteHasLiveJob({ quoteId, tx }: { quoteId: UUID; tx: DatabaseTransaction }): Promise<boolean> {
-  const [job] = await tx
-    .select({ id: jobs.id })
-    .from(jobs)
-    .where(and(eq(jobs.quoteId, quoteId), isNull(jobs.cancelledAt)))
-    .limit(1);
-
-  return Boolean(job);
 }
 
 /**

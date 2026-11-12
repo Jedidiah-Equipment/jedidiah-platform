@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { actionVerdict, actionVerdicts } from '../../common/action-verdicts.js';
 import { InvoiceNumber } from '../../common/invoice-number.js';
 import { requiredTrimmedText } from '../../common/text.js';
 import { UUID } from '../../common/uuid.js';
@@ -45,20 +46,11 @@ export type QuoteActionName = (typeof quoteActionNames)[number];
 export const QuoteActionBlockedReason = z.enum(['no-permission', 'wrong-status', 'delivery-unconfirmed']);
 export type QuoteActionBlockedReason = z.infer<typeof QuoteActionBlockedReason>;
 
-export const QuoteActionVerdict = z.discriminatedUnion('allowed', [
-  z.object({ allowed: z.literal(true) }),
-  /** `message` is the one sentence that says why, as the server's refusal and the Quote page both show it. */
-  z.object({ allowed: z.literal(false), reason: QuoteActionBlockedReason, message: z.string() }),
-]);
+export const QuoteActionVerdict = actionVerdict(QuoteActionBlockedReason);
 export type QuoteActionVerdict = z.infer<typeof QuoteActionVerdict>;
 
 /** The Quote Actions verdicts for the person asking; permission sits inside them. */
-export const QuoteActions = z.object(
-  Object.fromEntries(quoteActionNames.map((name) => [name, QuoteActionVerdict])) as Record<
-    QuoteActionName,
-    typeof QuoteActionVerdict
-  >,
-);
+export const QuoteActions = actionVerdicts(quoteActionNames, QuoteActionVerdict);
 export type QuoteActions = z.infer<typeof QuoteActions>;
 
 export type QuoteSentBackNote = z.infer<typeof QuoteSentBackNote>;
@@ -84,10 +76,5 @@ export const QuoteInvoiceNumberMatch = z.object({
 
 export type QuoteStageCounts = z.infer<typeof QuoteStageCounts>;
 export const QuoteStageCounts = z.object({
-  counts: z.object(
-    Object.fromEntries(QuoteStage.options.map((stage) => [stage, z.number().int().min(0)])) as Record<
-      QuoteStage,
-      z.ZodNumber
-    >,
-  ),
+  counts: z.record(QuoteStage, z.number().int().nonnegative()),
 });

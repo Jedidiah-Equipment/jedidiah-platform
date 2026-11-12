@@ -1,10 +1,11 @@
-import { formatDate, getFirstName } from '@pkg/domain';
+import { actionSheet, formatDate, getFirstName } from '@pkg/domain';
 import { pricePersistedQuote } from '@pkg/domain/equipment';
-import { type QuoteDetail, QuoteSentBackNote, type QuoteStage } from '@pkg/schema/equipment';
+import { type QuoteActionName, type QuoteDetail, QuoteSentBackNote, type QuoteStage } from '@pkg/schema/equipment';
 import { IconArrowBackUp } from '@tabler/icons-react';
 import { useMutation } from '@tanstack/react-query';
-import { useState } from 'react';
+import { type ComponentProps, useState } from 'react';
 import { toast } from 'sonner';
+import { ActionButton } from '@/components/button/ActionButton.js';
 import { RemoveEntityDialog } from '@/components/common/RemoveEntityButton.js';
 import { ReasonDialog } from '@/components/form/ReasonDialog.js';
 import { HelpLink } from '@/components/help/index.js';
@@ -66,10 +67,28 @@ export function QuoteStageCard({
   const sentence = stageSentences[quote.stage];
   if (!sentence) return null;
 
-  const { actions } = quote;
-  const sendBlocked = actions.sendForApproval.allowed ? null : actions.sendForApproval;
+  const sheet = actionSheet(quote.actions);
+  const sendVerdict = sheet.verdict('sendForApproval');
   const busy = saving || sendForApproval.isPending || approve.isPending || removeInvoiceNumber.isPending;
-  const afterSaving = (run: () => void) => async () => {
+  const stageActions: {
+    name: QuoteActionName;
+    label: string;
+    run: () => void;
+    variant?: ComponentProps<typeof Button>['variant'];
+  }[] = [
+    { name: 'sendForApproval', label: 'Send for approval', run: () => setConfirming('sendForApproval') },
+    { name: 'approve', label: 'Approve', run: () => approve.mutate({ id: quote.id }) },
+    { name: 'stampInvoice', label: 'Enter Invoice Number', run: () => setStamping(true) },
+    { name: 'correctInvoiceNumber', label: 'Correct', run: () => setStamping(true), variant: 'outline' },
+    { name: 'sendBack', label: 'Send back', run: () => setSendingBack(true), variant: 'outline' },
+    {
+      name: 'removeInvoiceNumber',
+      label: 'Remove',
+      run: () => setConfirming('removeInvoiceNumber'),
+      variant: 'destructive',
+    },
+  ];
+  const runAfterSaving = async (run: () => void) => {
     setSaving(true);
     try {
       if (await flushAutosave()) run();
@@ -111,45 +130,28 @@ export function QuoteStageCard({
             </span>
           </div>
         ) : null}
-        {sendBlocked?.reason === 'delivery-unconfirmed' ? (
-          <p className="text-sm text-warning-foreground">{sendBlocked.message}</p>
+        {!sendVerdict.allowed && sendVerdict.reason === 'delivery-unconfirmed' ? (
+          <p className="text-sm text-warning-foreground">{sendVerdict.message}</p>
         ) : null}
         <div className="flex flex-wrap gap-2">
-          {actions.sendForApproval.allowed ? (
-            <Button disabled={busy} onClick={afterSaving(() => setConfirming('sendForApproval'))} type="button">
-              Send for approval
-            </Button>
-          ) : null}
-          {actions.approve.allowed ? (
-            <Button disabled={busy} onClick={afterSaving(() => approve.mutate({ id: quote.id }))} type="button">
-              Approve
-            </Button>
-          ) : null}
-          {actions.stampInvoice.allowed ? (
-            <Button disabled={busy} onClick={afterSaving(() => setStamping(true))} type="button">
-              Enter Invoice Number
-            </Button>
-          ) : null}
-          {actions.correctInvoiceNumber.allowed ? (
-            <Button disabled={busy} onClick={afterSaving(() => setStamping(true))} type="button" variant="outline">
-              Correct
-            </Button>
-          ) : null}
-          {actions.sendBack.allowed ? (
-            <Button disabled={busy} onClick={afterSaving(() => setSendingBack(true))} type="button" variant="outline">
-              Send back
-            </Button>
-          ) : null}
-          {actions.removeInvoiceNumber.allowed ? (
-            <Button
-              disabled={busy}
-              onClick={afterSaving(() => setConfirming('removeInvoiceNumber'))}
-              type="button"
-              variant="destructive"
-            >
-              Remove
-            </Button>
-          ) : null}
+          {stageActions.map(({ name, label, run, variant }) => {
+            const action = sheet.action(name);
+            return action ? (
+              <ActionButton
+                key={name}
+                action={action}
+                disabled={busy}
+                onClick={() => void runAfterSaving(run)}
+                // A field blurred on mousedown flushes and can raise the autosave banner, which moves this button
+                // before the click lands. The click flushes anyway, so the field keeps focus until then.
+                onMouseDown={(event) => event.preventDefault()}
+                type="button"
+                variant={variant}
+              >
+                {label}
+              </ActionButton>
+            ) : null;
+          })}
         </div>
       </CardContent>
       <Dialog

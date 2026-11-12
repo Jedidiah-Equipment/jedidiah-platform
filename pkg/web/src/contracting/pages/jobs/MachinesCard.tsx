@@ -11,10 +11,10 @@ import { type BreakdownSummary, breakdownStatuses, type JobDetail } from '@pkg/s
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
+import { ActionButton } from '@/components/button/ActionButton.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { HelpLink } from '@/components/help/index.js';
 import { Badge } from '@/components/ui/badge.js';
-import { Button } from '@/components/ui/button.js';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
 import { BreakdownUrgencyIcon } from '@/contracting/components/BreakdownSubjectLabel.js';
@@ -116,9 +116,9 @@ export function MachinesCard({ job, sheet }: { job: JobDetail; sheet: JobSheet }
           <CardAction className="flex items-center gap-2">
             <HelpLink label="How to capture Job hours" topic="contractingJobHours" />
             {planAction ? (
-              <Button {...planAction} onClick={() => setDialog({ kind: 'plan' })}>
+              <ActionButton action={planAction} onClick={() => setDialog({ kind: 'plan' })}>
                 Plan machine
-              </Button>
+              </ActionButton>
             ) : null}
           </CardAction>
         </CardHeader>

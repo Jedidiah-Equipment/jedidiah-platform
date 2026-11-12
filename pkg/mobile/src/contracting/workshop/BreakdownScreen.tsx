@@ -1,10 +1,5 @@
-import { getFirstName } from '@pkg/domain';
-import {
-  breakdownSubjectKindLabels,
-  breakdownUrgencyLabels,
-  fieldReaderOpensJob,
-  presentAction,
-} from '@pkg/domain/contracting';
+import { getFirstName, presentAction } from '@pkg/domain';
+import { breakdownSubjectKindLabels, breakdownUrgencyLabels, fieldReaderOpensJob } from '@pkg/domain/contracting';
 import { BreakdownDescription, type BreakdownDetail } from '@pkg/schema/contracting';
 import { IconMapPin, IconPencil } from '@tabler/icons-react-native';
 import { type Href, router, useLocalSearchParams } from 'expo-router';

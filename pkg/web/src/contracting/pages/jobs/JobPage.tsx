@@ -4,6 +4,7 @@ import { JobCreateValues, type JobDetail, toJobCreateInput } from '@pkg/schema/c
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { ActionButton } from '@/components/button/ActionButton.js';
 import { EntityActionsFooter } from '@/components/common/EntityActionsFooter.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { QueryContent } from '@/components/common/QueryContent.js';
@@ -13,7 +14,6 @@ import { ReasonDialog } from '@/components/form/ReasonDialog.js';
 import { DetailAsideGrid } from '@/components/page-layout/DetailAsideGrid.js';
 import { EditFormFullWidth } from '@/components/page-layout/EditFormLayout.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
-import { Button } from '@/components/ui/button.js';
 import { ActivityCard } from '@/contracting/components/activity/ActivityCard.js';
 import { HoursHeatMapCard } from '@/contracting/components/hours-heat-map/HoursHeatMapCard.js';
 import { jobHoursEnd } from '@/contracting/components/hours-heat-map/job-hours-end.js';
@@ -190,9 +190,9 @@ function CancelJob({ job, sheet }: { job: JobDetail; sheet: JobSheet }) {
   if (!cancelAction) return null;
   return (
     <EntityActionsFooter>
-      <Button variant="destructive" {...cancelAction} onClick={() => setOpen(true)}>
+      <ActionButton variant="destructive" action={cancelAction} onClick={() => setOpen(true)}>
         Cancel job
-      </Button>
+      </ActionButton>
       <ReasonDialog
         open={open}
         onOpenChange={setOpen}

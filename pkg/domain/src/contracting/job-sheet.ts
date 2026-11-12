@@ -1,5 +1,5 @@
 import type { AssignmentActions, AssignmentDetail, JobDetail } from '@pkg/schema/contracting';
-import { actionSheet } from './action-verdicts.js';
+import { actionSheet } from '../actions/action-verdicts.js';
 import { hasJobCard } from './job-card.js';
 import { assignmentStateDisplayOrder, groupStints } from './stints.js';
 

@@ -1,5 +1,5 @@
-import { formatHours, getFirstName } from '@pkg/domain';
-import { presentAction, reportToSolvedHours } from '@pkg/domain/contracting';
+import { formatHours, getFirstName, presentAction } from '@pkg/domain';
+import { reportToSolvedHours } from '@pkg/domain/contracting';
 import { type BreakdownDetail, CloseOutNote } from '@pkg/schema/contracting';
 import { IconPlayerPlay, IconPlayerStop } from '@tabler/icons-react-native';
 import { useState } from 'react';

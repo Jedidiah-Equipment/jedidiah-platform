@@ -1,9 +1,10 @@
 import {
   computeQuoteSummary,
-  editableLockedQuoteFields,
   getQuoteDeliveryTermsOptions,
   getQuoteOfferingName,
   isQuoteLocked,
+  type QuoteFormField,
+  quoteFormFieldAccess,
 } from '@pkg/domain/equipment';
 import { UUID } from '@pkg/schema';
 import { type PriorityQuote, type QuoteDetail, QuoteStatus, type QuoteUpdateInput } from '@pkg/schema/equipment';
@@ -172,9 +173,7 @@ function QuoteEditor({
     [quote, values],
   );
   const quoteCurrencyCode = quote.product?.currencyCode ?? quote.quotedCurrencyCode;
-  const lockEditableFields = editableLockedQuoteFields({ actor: access, status: quote.status });
-  const canEdit = (field: string) => canUpdate && (!isLocked || lockEditableFields.has(field));
-  const setupReadOnly = !canUpdate || isLocked;
+  const editable = quoteFormFieldAccess({ actor: access, quote });
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
@@ -214,7 +213,7 @@ function QuoteEditor({
                 {!canUpdate ? (
                   <InfoBanner message="You have read-only access. Quote fields cannot be changed." />
                 ) : isLocked ? (
-                  <InfoBanner message={describeLockedQuote({ canEdit, kind: quote.kind })} />
+                  <InfoBanner message={describeLockedQuote({ editable, kind: quote.kind })} />
                 ) : null}
                 {priorityQuote ? <QuotePriorityAlert quote={priorityQuote} /> : null}
 
@@ -225,7 +224,7 @@ function QuoteEditor({
                         <form.AppField name="workTitle">
                           {(field) => (
                             <field.TextField
-                              disabled={setupReadOnly}
+                              disabled={!editable.workTitle}
                               label="Work title"
                               onValueCommit={autosave.commit}
                             />
@@ -238,7 +237,7 @@ function QuoteEditor({
                         {(_field) => (
                           <SalespersonSelectField
                             assigned={{ id: quote.salesPersonId, name: quote.salesPersonName }}
-                            disabled={setupReadOnly}
+                            disabled={!editable.salesPersonId}
                             onValueCommit={autosave.commit}
                           />
                         )}
@@ -248,7 +247,7 @@ function QuoteEditor({
                       <form.AppField name="status">
                         {(field) => (
                           <field.SelectField
-                            disabled={setupReadOnly}
+                            disabled={!editable.status}
                             label="Status"
                             onValueCommit={autosave.commit}
                             onValueSelect={(value) => {
@@ -284,7 +283,7 @@ function QuoteEditor({
                       <form.AppField name="preferredDeliveryDate">
                         {(field) => (
                           <field.DateField
-                            disabled={!canEdit('preferredDeliveryDate')}
+                            disabled={!editable.preferredDeliveryDate}
                             label="Preferred delivery"
                             onValueCommit={autosave.commit}
                           />
@@ -295,7 +294,7 @@ function QuoteEditor({
                       <form.AppField name="plannedDeliveryDate">
                         {(field) => (
                           <field.DateField
-                            disabled={!canEdit('plannedDeliveryDate')}
+                            disabled={!editable.plannedDeliveryDate}
                             label="Planned delivery"
                             onValueCommit={autosave.commit}
                           />
@@ -306,7 +305,7 @@ function QuoteEditor({
                       <form.AppField name="validUntil">
                         {(field) => (
                           <field.DateField
-                            disabled={!canEdit('validUntil')}
+                            disabled={!editable.validUntil}
                             label="Valid until"
                             onValueCommit={autosave.commit}
                           />
@@ -320,7 +319,7 @@ function QuoteEditor({
                   <form.AppField name="deliveryTerms">
                     {(field) => (
                       <field.SelectField
-                        disabled={!canEdit('deliveryTerms')}
+                        disabled={!editable.deliveryTerms}
                         label="Delivery terms"
                         onValueCommit={autosave.commit}
                         onValueSelect={(value) => {
@@ -334,7 +333,7 @@ function QuoteEditor({
                   <form.AppField name="deliveryPrice">
                     {(field) => (
                       <field.CurrencyField
-                        disabled={!canEdit('deliveryPrice') || values.deliveryTerms !== 'additional_charge'}
+                        disabled={!editable.deliveryPrice || values.deliveryTerms !== 'additional_charge'}
                         label="Delivery price"
                         onValueCommit={autosave.commit}
                       />
@@ -348,7 +347,7 @@ function QuoteEditor({
                       <form.AppField name="discountPercent">
                         {(field) => (
                           <field.NumberField
-                            disabled={!canEdit('discountPercent')}
+                            disabled={!editable.discountPercent}
                             label="Discount percent"
                             onValueCommit={autosave.commit}
                           />
@@ -359,7 +358,7 @@ function QuoteEditor({
                       <form.AppField name="depositPercent">
                         {(field) => (
                           <field.NumberField
-                            disabled={!canEdit('depositPercent')}
+                            disabled={!editable.depositPercent}
                             label="Deposit percent"
                             onValueCommit={autosave.commit}
                           />
@@ -374,7 +373,7 @@ function QuoteEditor({
                     autosave={autosave}
                     currencyCode={quoteCurrencyCode}
                     form={form}
-                    readOnly={!canEdit('workItems')}
+                    readOnly={!editable.workItems}
                   />
                 ) : null}
 
@@ -382,7 +381,7 @@ function QuoteEditor({
                   <form.AppField name="notes">
                     {(field) => (
                       <field.TextareaField
-                        disabled={!canEdit('notes')}
+                        disabled={!editable.notes}
                         onValueCommit={autosave.commit}
                         placeholder="Internal notes about this quote"
                         rows={4}
@@ -406,7 +405,7 @@ function QuoteEditor({
                             field.handleChange(nextValue);
                             autosave.commit();
                           }}
-                          readOnly={setupReadOnly}
+                          readOnly={!editable.selectedAssemblies}
                           value={field.state.value}
                         />
                       )}
@@ -429,7 +428,7 @@ function QuoteEditor({
                   <form.AppField name="documentNotes">
                     {(field) => (
                       <field.TextareaField
-                        disabled={!canUpdate}
+                        disabled={!editable.documentNotes}
                         onValueCommit={autosave.commit}
                         placeholder="Notes entered here will be included in the quote document."
                         rows={4}
@@ -532,19 +531,25 @@ function AutosaveStatus({
 }
 
 /** Names what this person may still change on a Locked Quote, which depends on its status and their role. */
-function describeLockedQuote({ canEdit, kind }: { canEdit: (field: string) => boolean; kind: QuoteDetail['kind'] }) {
-  const editable = [
-    ...(kind === 'custom' && canEdit('workItems') ? ['work items'] : []),
+function describeLockedQuote({
+  editable,
+  kind,
+}: {
+  editable: Readonly<Record<QuoteFormField, boolean>>;
+  kind: QuoteDetail['kind'];
+}) {
+  const open = [
+    ...(kind === 'custom' && editable.workItems ? ['work items'] : []),
     'notes',
     'delivery dates',
-    ...(canEdit('validUntil') ? ['quote document fields'] : []),
-    ...(canEdit('deliveryTerms') ? ['delivery terms'] : []),
-    ...(canEdit('discountPercent') ? ['discount'] : []),
-    ...(canEdit('depositPercent') ? ['deposit'] : []),
+    ...(editable.validUntil ? ['quote document fields'] : []),
+    ...(editable.deliveryTerms ? ['delivery terms'] : []),
+    ...(editable.discountPercent ? ['discount'] : []),
+    ...(editable.depositPercent ? ['deposit'] : []),
   ];
-  const last = editable.pop();
+  const last = open.pop();
 
-  return `This Quote is locked. Still editable: ${editable.join(', ')}, and ${last}.`;
+  return `This Quote is locked. Still editable: ${open.join(', ')}, and ${last}.`;
 }
 
 function InfoBanner({ message }: { message: string }) {

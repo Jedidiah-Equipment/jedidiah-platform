@@ -5,6 +5,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { useLocation } from '@tanstack/react-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { ActionButton } from '@/components/button/ActionButton.js';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { useDataTable } from '@/components/data-table/features.js';
@@ -185,9 +186,9 @@ function MarkPriced({ job, action }: { job: JobDetail; action: NonNullable<Retur
   return (
     <div className="flex w-full flex-wrap items-center justify-end gap-3">
       {reasons.length && !action.disabled ? <p className="text-destructive">{reasons.join(' · ')}</p> : null}
-      <Button disabled={action.disabled || !pricing.gate.ok} title={action.title} onClick={() => setConfirm(true)}>
+      <ActionButton action={action} disabled={!pricing.gate.ok} onClick={() => setConfirm(true)}>
         Mark as Priced
-      </Button>
+      </ActionButton>
       <Dialog open={confirm} onOpenChange={setConfirm}>
         <DialogContent>
           <DialogHeader>

@@ -9,7 +9,7 @@ import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/compo
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
-import { StatusQuickFilters } from '@/components/data-table/StatusQuickFilters.js';
+import { InvoicingStageQuickFilters } from '@/components/data-table/InvoicingStageQuickFilters.js';
 import {
   focusOnInvoicingStage,
   INVOICED_COLUMN_ID,
@@ -182,10 +182,8 @@ export function InvoicingPage() {
   const awaitingOnly = listed.length === 1 && listed[0] === 'awaiting-invoice';
   return (
     <PageLayout title="Invoicing" description="Stamp invoice numbers and review invoiced Jobs." size="full">
-      <StatusQuickFilters
-        label="Invoicing stages"
-        columnId={STAGE_COLUMN_ID}
-        statuses={invoicingStages}
+      <InvoicingStageQuickFilters
+        stages={invoicingStages}
         shown={quickFilterStages(queues.data?.counts, tableController.columnFilters, awaitingStages)}
         labels={jobQueueLabels}
         colours={jobQueueColorClassNames}

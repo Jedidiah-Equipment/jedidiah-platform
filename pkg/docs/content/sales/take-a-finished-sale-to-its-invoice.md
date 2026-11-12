@@ -1,7 +1,8 @@
 # Take a finished sale to its invoice
 
 A sold Quote moves through its [Quote Stages](/sales/quote-stages) one person's queue at a time; the
-Quote's **Stage** card shows where it stands and the buttons you may use there.
+Quote's **Stage** card shows where it stands and the buttons your role has. A button the Stage does not
+allow yet is greyed out; point at it to see why.
 
 ## Find a Quote on the Invoicing page
 

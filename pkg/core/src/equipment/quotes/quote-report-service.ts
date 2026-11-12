@@ -35,7 +35,7 @@ const STALE_SENT_QUOTE_LIMIT = 8;
 
 type ReportQuoteRow = ReportQuotePricingRow & { id: UUID };
 
-// The statuses Quotes by status has always shown; the widget is rebuilt on Quote Stages.
+// Quotes by status shows only the statuses a Quote could hold before the post-sale ones existed.
 const SUMMARIZED_QUOTE_STATUSES = [
   'draft',
   'sent',

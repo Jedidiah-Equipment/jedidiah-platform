@@ -10,7 +10,7 @@ const EDITABLE_LOCKED_QUOTE_FIELDS: ReadonlySet<string> = new Set([
   'workItems',
 ]);
 
-const EDITABLE_ACCEPTED_LOCKED_QUOTE_FIELDS: ReadonlySet<string> = new Set([
+const EDITABLE_SOLD_LOCKED_QUOTE_FIELDS: ReadonlySet<string> = new Set([
   ...EDITABLE_LOCKED_QUOTE_FIELDS,
   // The Settling Terms.
   'depositPercent',
@@ -25,9 +25,7 @@ const EDITABLE_ACCEPTED_LOCKED_QUOTE_FIELDS: ReadonlySet<string> = new Set([
  * update Quotes at all (`equipment_quote:update`). A cancelled Quote moves none of them.
  */
 export function editableLockedQuoteFields({ status }: { status: QuoteStatus }): ReadonlySet<string> {
-  return hasQuoteStatus(soldQuoteStatuses, status)
-    ? EDITABLE_ACCEPTED_LOCKED_QUOTE_FIELDS
-    : EDITABLE_LOCKED_QUOTE_FIELDS;
+  return hasQuoteStatus(soldQuoteStatuses, status) ? EDITABLE_SOLD_LOCKED_QUOTE_FIELDS : EDITABLE_LOCKED_QUOTE_FIELDS;
 }
 
 export type QuoteEditableResult =

@@ -52,6 +52,7 @@ describe('listLatePurchaseOrders', () => {
           expectedDeliveryDate: '2026-07-30',
           id: expect.any(String),
           openLineCount: 1,
+          sentOn: '2026-08-02',
           supplierName: 'Slow Supplies',
         },
       ],
@@ -163,7 +164,31 @@ describe('listLatePurchaseOrders', () => {
     await expect(listLatePurchaseOrders({ clock, db: context.db })).resolves.toEqual({ items: [] });
   });
 
-  test('leaves an order due today, an undated order, and a draft alone', async ({ context }) => {
+  test('counts an undated order late once 30 days have passed since the plant day it was sent', async ({ context }) => {
+    // 4 July plant time is 3 July 22:30 UTC, so the plant day decides, not the UTC one: due 3 August.
+    const lateId = await seedSentPurchaseOrder(context.db, SUPPLIER_ID, [{ partId: PART_ID, quantity: 1 }], {
+      sentAt: new Date('2026-07-03T22:30:00.000Z'),
+    });
+    // Sent 5 July plant time, so due today and not yet late.
+    await seedSentPurchaseOrder(context.db, SUPPLIER_ID, [{ partId: PART_ID, quantity: 1 }], {
+      sentAt: new Date('2026-07-04T22:30:00.000Z'),
+    });
+
+    await expect(listLatePurchaseOrders({ clock, db: context.db })).resolves.toEqual({
+      items: [expect.objectContaining({ daysLate: 1, expectedDeliveryDate: null, id: lateId, sentOn: '2026-07-04' })],
+    });
+  });
+
+  test('judges a dated order by its own date even when it was sent more than 30 days ago', async ({ context }) => {
+    await seedSentPurchaseOrder(context.db, SUPPLIER_ID, [{ partId: PART_ID, quantity: 1 }], {
+      expectedDeliveryDate: '2026-08-10',
+      sentAt: new Date('2026-06-01T08:00:00.000Z'),
+    });
+
+    await expect(listLatePurchaseOrders({ clock, db: context.db })).resolves.toEqual({ items: [] });
+  });
+
+  test('leaves an order due today, a recently sent undated order, and a draft alone', async ({ context }) => {
     await seedSentPurchaseOrder(context.db, SUPPLIER_ID, [{ partId: PART_ID, quantity: 1 }], {
       expectedDeliveryDate: '2026-08-04',
     });

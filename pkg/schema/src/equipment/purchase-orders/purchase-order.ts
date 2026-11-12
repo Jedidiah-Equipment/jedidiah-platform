@@ -272,26 +272,18 @@ function uniqueValues(values: readonly string[]): boolean {
 export const PURCHASE_ORDER_DUPLICATE_PART_MESSAGE = 'A Part can appear only once on a Purchase Order';
 
 /**
- * Zero is the sentinel for a line whose Supplier price has not been keyed yet. It survives approval
- * — approving judges the order, and it is sending that asserts every line carries an agreed price —
- * so it can still be sitting on an approved order.
+ * Zero is the sentinel for a line whose Supplier price has not been keyed yet. It survives approval,
+ * and on a Custom Line it survives sending too: only a Part Line must be priced before it is sent.
  */
 export function isPurchaseOrderLineUnpriced(line: { unitPrice: number | null }): boolean {
   return line.unitPrice === 0;
 }
 
-/**
- * Whether a money total for this order would be a lie. True only while a line can still be unpriced:
- * once the order is sent, `assertLinesArePriced` has guaranteed every line has a price, so any zero
- * on it is a real agreed zero rather than a blank.
- */
+/** Whether a money total for this order would be a lie. */
 export function purchaseOrderHasUnpricedLines(purchaseOrder: {
   lines: readonly { unitPrice: number | null }[];
-  status: PurchaseOrderStatus;
 }): boolean {
-  const isPendingSend = purchaseOrder.status === 'draft' || purchaseOrder.status === 'approved';
-
-  return isPendingSend && purchaseOrder.lines.some(isPurchaseOrderLineUnpriced);
+  return purchaseOrder.lines.some(isPurchaseOrderLineUnpriced);
 }
 
 /** Shared with the draft form so a duplicate reads as a field error, not a rejected save. */

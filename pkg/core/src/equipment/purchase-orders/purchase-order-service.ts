@@ -592,11 +592,11 @@ export async function markPurchaseOrderSent({
 
   try {
     return await db.transaction(async (tx) => {
-      // Approval and having something on it are the order's own state; whether each line carries an
-      // agreed price judges the lines themselves, so it stays here with the write that reads them.
+      // Approval and having something on it are the order's own state; whether each Part Line carries
+      // an agreed price judges the lines themselves, so it stays here with the write that reads them.
       const { row: before } = await openPurchaseOrder(tx, id, 'send');
       const purchaseOrder = await getPurchaseOrder({ db: tx, id });
-      assertLinesArePriced(purchaseOrder);
+      assertPartLinesArePriced(purchaseOrder);
 
       const sentAt = new Date();
       // The footer names the last person who edited the Supplier-facing order — approving and
@@ -908,11 +908,12 @@ function mapPurchaseOrderLine({
 
 /**
  * A zero price on a draft line means "not priced yet" — the state a never-costed Part still starts
- * in. Sending is the assertion the price was agreed (spec §4), and it is the last point before a
- * receipt would stamp that zero onto the ledger as the Part's cost.
+ * in. Sending is the last point before a receipt would stamp that zero onto the ledger as the Part's
+ * cost, so a Part Line must carry its agreed price by then. A Custom Line never reaches the ledger,
+ * so it may go out unpriced and be priced from the Supplier's invoice.
  */
-function assertLinesArePriced(purchaseOrder: PurchaseOrder): void {
-  const unpriced = purchaseOrder.lines.find((line) => line.unitPrice === 0);
+function assertPartLinesArePriced(purchaseOrder: PurchaseOrder): void {
+  const unpriced = purchaseOrder.lines.find((line) => line.kind === 'part' && line.unitPrice === 0);
   if (unpriced) throw purchaseOrderLineNotPriced(formatPurchaseOrderLineLabel(unpriced));
 }
 

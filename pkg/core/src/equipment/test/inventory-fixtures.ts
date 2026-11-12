@@ -173,10 +173,11 @@ export async function seedSentPurchaseOrder(
   lines: ReadonlyArray<{ partId: string; quantity: number; unitPrice?: number }>,
   {
     expectedDeliveryDate = null,
+    sentAt: sentAtOverride,
     status = 'sent',
-  }: { expectedDeliveryDate?: string | null; status?: 'draft' | 'sent' } = {},
+  }: { expectedDeliveryDate?: string | null; sentAt?: Date; status?: 'draft' | 'sent' } = {},
 ): Promise<string> {
-  const sentAt = status === 'sent' ? new Date('2026-08-02T08:00:00.000Z') : null;
+  const sentAt = status === 'sent' ? (sentAtOverride ?? new Date('2026-08-02T08:00:00.000Z')) : null;
   const [purchaseOrder] = await db
     .insert(purchaseOrders)
     .values({

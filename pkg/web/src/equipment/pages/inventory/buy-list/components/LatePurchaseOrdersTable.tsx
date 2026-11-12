@@ -16,8 +16,15 @@ const lateColumns: DataTableColumnDef<LatePurchaseOrderRow>[] = [
     header: 'Supplier',
   },
   {
+    accessorKey: 'sentOn',
+    cell: ({ row }) => formatDate(row.original.sentOn),
+    header: 'Sent',
+  },
+  {
     accessorKey: 'expectedDeliveryDate',
-    cell: ({ row }) => formatDate(row.original.expectedDeliveryDate),
+    // An undated order is due a fixed number of days after it was sent, which `daysLate` already counts.
+    cell: ({ row }) =>
+      row.original.expectedDeliveryDate === null ? 'Not set' : formatDate(row.original.expectedDeliveryDate),
     header: 'Expected',
   },
   {
@@ -57,7 +64,7 @@ export function LatePurchaseOrdersTable({
 
   return (
     <DataTable
-      emptyMessage="No sent order is past its expected date."
+      emptyMessage="No sent order is overdue."
       errorMessage={errorMessage}
       getRowAriaLabel={(item) => `Open ${item.code}`}
       hideGlobalFilter={true}

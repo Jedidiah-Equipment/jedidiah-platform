@@ -146,6 +146,8 @@ const writes: Record<
       quantity: 1,
       reason: 'defective',
     }),
+  priceCustomLine: (admin, order) =>
+    admin.purchaseOrders.priceCustomLine({ id: order.id, lineId: order.customLineId, unitPrice: 95 }),
   cancel: (admin, order) => admin.purchaseOrders.cancel({ id: order.id }),
   closeShort: (admin, order) => admin.purchaseOrders.closeShort({ id: order.id }),
   // Invoice and credit note arrive as multipart uploads; the routes hand over to these same calls.

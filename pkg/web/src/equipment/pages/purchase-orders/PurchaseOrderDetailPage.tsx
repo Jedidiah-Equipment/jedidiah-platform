@@ -33,6 +33,7 @@ import { useTRPC } from '@/lib/trpc.js';
 import { PurchaseOrderAmendDialog } from './components/PurchaseOrderAmendDialog.js';
 import { PurchaseOrderAmendmentsCard } from './components/PurchaseOrderAmendmentsCard.js';
 import { PurchaseOrderArrivalsCard } from './components/PurchaseOrderArrivalsCard.js';
+import { PurchaseOrderCustomLinePriceDialog } from './components/PurchaseOrderCustomLinePriceDialog.js';
 import { PurchaseOrderDocumentsCard } from './components/PurchaseOrderDocumentsCard.js';
 import { PurchaseOrderFeedbackCard } from './components/PurchaseOrderFeedbackCard.js';
 import { PurchaseOrderInvoiceCrossCheckCard } from './components/PurchaseOrderInvoiceCrossCheckCard.js';
@@ -69,6 +70,10 @@ const PurchaseOrderDetail: React.FC<{ purchaseOrder: PurchaseOrderView; queryErr
   const canReverseArrival =
     actions.returnToSupplier.allowed && hasPermission(accessQuery.data, 'equipment_purchase_order:receive');
   const canAmend = actions.amend.allowed && hasPermission(accessQuery.data, 'equipment_purchase_order:amend');
+  const canPriceCustomLines =
+    canReadCosts &&
+    actions.priceCustomLine.allowed &&
+    hasPermission(accessQuery.data, 'equipment_purchase_order:amend');
   // The server accepts either the physical move right or the PO amendment right for this PO-bound flow.
   const canReturn =
     actions.returnToSupplier.allowed &&
@@ -105,7 +110,12 @@ const PurchaseOrderDetail: React.FC<{ purchaseOrder: PurchaseOrderView; queryErr
                 {canReceive ? (
                   <PurchaseOrderReceivingCard canReadCosts={canReadCosts} purchaseOrder={purchaseOrder} />
                 ) : null}
-                <ReadOnlyLinesCard canAmend={canAmend} canReadCosts={canReadCosts} purchaseOrder={purchaseOrder} />
+                <ReadOnlyLinesCard
+                  canAmend={canAmend}
+                  canPriceCustomLines={canPriceCustomLines}
+                  canReadCosts={canReadCosts}
+                  purchaseOrder={purchaseOrder}
+                />
                 <PurchaseOrderArrivalsCard canReverse={canReverseArrival} purchaseOrder={purchaseOrder} />
                 <PurchaseOrderReturnsCard
                   canFileCreditNote={canFileCreditNote}
@@ -215,15 +225,18 @@ const ReadOnlyDetailsCard: React.FC<{ canAmend: boolean; purchaseOrder: Purchase
  */
 const ReadOnlyLinesCard: React.FC<{
   canAmend: boolean;
+  canPriceCustomLines: boolean;
   canReadCosts: boolean;
   purchaseOrder: PurchaseOrderView;
-}> = ({ canAmend, canReadCosts, purchaseOrder }) => {
+}> = ({ canAmend, canPriceCustomLines, canReadCosts, purchaseOrder }) => {
   const [amendment, setAmendment] = useState<{ kind: PurchaseOrderAmendDialogKind; lineId: string | null } | null>(
     null,
   );
+  const [pricingLineId, setPricingLineId] = useState<string | null>(null);
   const amendingLine = amendment?.lineId
     ? (purchaseOrder.lines.find((line) => line.id === amendment.lineId) ?? null)
     : null;
+  const pricingLine = purchaseOrder.lines.find((line) => line.id === pricingLineId && line.kind === 'custom');
 
   return (
     <Card>
@@ -254,6 +267,7 @@ const ReadOnlyLinesCard: React.FC<{
           canReadCosts={canReadCosts}
           items={purchaseOrder.lines}
           onAmend={canAmend ? (kind, lineId) => setAmendment({ kind, lineId }) : null}
+          onSetPrice={canPriceCustomLines ? setPricingLineId : null}
         />
       </CardContent>
       {canReadCosts ? (
@@ -263,6 +277,14 @@ const ReadOnlyLinesCard: React.FC<{
             ? 'Not priced'
             : formatCurrency(purchaseOrderLinesTotal(purchaseOrder.lines))}
         </div>
+      ) : null}
+      {pricingLine?.kind === 'custom' ? (
+        <PurchaseOrderCustomLinePriceDialog
+          key={pricingLine.id}
+          line={pricingLine}
+          onOpenChange={(open) => setPricingLineId(open ? pricingLine.id : null)}
+          purchaseOrderId={purchaseOrder.id}
+        />
       ) : null}
       {amendment ? (
         <PurchaseOrderAmendDialog
@@ -282,7 +304,9 @@ const PurchaseOrderReadOnlyLinesTable: React.FC<{
   items: PurchaseOrderView['lines'];
   /** Absent when the reader may not amend, which is what drops the actions column entirely. */
   onAmend: ((kind: 'quantity-change' | 'remove-line' | 'substitute-part', lineId: string) => void) | null;
-}> = ({ canReadCosts, items, onAmend }) => {
+  /** Absent unless the reader may price a sent order's Custom Lines. */
+  onSetPrice: ((lineId: string) => void) | null;
+}> = ({ canReadCosts, items, onAmend, onSetPrice }) => {
   const columns = useMemo<DataTableColumnDef<PurchaseOrderView['lines'][number]>[]>(
     () => [
       {
@@ -336,20 +360,32 @@ const PurchaseOrderReadOnlyLinesTable: React.FC<{
             } satisfies DataTableColumnDef<PurchaseOrderView['lines'][number]>,
           ]
         : []),
-      ...(onAmend
+      ...(onAmend || onSetPrice
         ? [
             {
               cell: ({ row }) => {
                 const line = row.original;
                 return (
                   <div className="flex justify-end gap-2">
-                    <Button onClick={() => onAmend('quantity-change', line.id)} size="sm" type="button" variant="ghost">
-                      Change quantity
-                    </Button>
+                    {onSetPrice && line.kind === 'custom' ? (
+                      <Button onClick={() => onSetPrice(line.id)} size="sm" type="button" variant="ghost">
+                        Set price
+                      </Button>
+                    ) : null}
+                    {onAmend ? (
+                      <Button
+                        onClick={() => onAmend('quantity-change', line.id)}
+                        size="sm"
+                        type="button"
+                        variant="ghost"
+                      >
+                        Change quantity
+                      </Button>
+                    ) : null}
                     {/* Every movement keys off (order, Part), so only a line nothing has moved
                         against can change its Part — the same test the server's guard applies. A
                         fully returned line reads zero received but still carries its ledger rows. */}
-                    {line.kind === 'part' ? (
+                    {onAmend && line.kind === 'part' ? (
                       <Button
                         disabled={line.hasStockMovements}
                         onClick={() => onAmend('substitute-part', line.id)}
@@ -365,7 +401,7 @@ const PurchaseOrderReadOnlyLinesTable: React.FC<{
                         Substitute
                       </Button>
                     ) : null}
-                    {line.kind === 'custom' && !line.hasStockMovements && items.length > 1 ? (
+                    {onAmend && line.kind === 'custom' && !line.hasStockMovements && items.length > 1 ? (
                       <Button
                         onClick={() => onAmend('remove-line', line.id)}
                         size="sm"
@@ -385,7 +421,7 @@ const PurchaseOrderReadOnlyLinesTable: React.FC<{
           ]
         : []),
     ],
-    [canReadCosts, onAmend, items.length],
+    [canReadCosts, onAmend, onSetPrice, items.length],
   );
   const table = useDataTable({
     columns,

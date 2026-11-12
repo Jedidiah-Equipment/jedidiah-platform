@@ -20,6 +20,8 @@ import { type AuditDescriptor, diffAuditUpdate, recordAuditUpdate } from './audi
  * - Part bulk import — one transaction over many rows, its own per-row lock, skip is `continue`.
  * - Purchase Order draft save and send — child collections and the stored PDF are changed inside the
  *   same transaction before the aggregate audit diff is recorded.
+ * - Purchase Order amendments and Custom Line pricing — the order row is locked by the Purchase Order
+ *   gate, a line row changes, and the audit diffs the whole order, so there is no single row to merge.
  * - Supplier merge — Parts and Purchase Orders move in the same transaction before the survivor's
  *   fill-forward diff and both merge events are recorded.
  * - Customer merge — Quotes and Ownership Transfers move before the survivor's fill-empty diff,

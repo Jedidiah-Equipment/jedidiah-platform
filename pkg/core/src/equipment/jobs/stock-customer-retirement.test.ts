@@ -211,6 +211,7 @@ describe('stock customer retirement', () => {
         quotedBasePrice: 0,
         quotedCurrencyCode: 'ZAR',
         salesPersonId: ACTOR_USER_ID,
+        acceptedAt: new Date(),
         status: 'accepted',
         workTitle: 'Pump skid rebuild',
       })
@@ -335,6 +336,7 @@ async function seedPlaceholderShape(db: Db) {
         quotedBasePrice: 0,
         quotedCurrencyCode: 'ZAR',
         salesPersonId: ACTOR_USER_ID,
+        acceptedAt: new Date(),
         status: 'accepted',
       },
       {
@@ -343,6 +345,7 @@ async function seedPlaceholderShape(db: Db) {
         quotedBasePrice: 0,
         quotedCurrencyCode: 'ZAR',
         salesPersonId: ACTOR_USER_ID,
+        acceptedAt: new Date(),
         status: 'accepted',
       },
       {
@@ -351,6 +354,7 @@ async function seedPlaceholderShape(db: Db) {
         quotedBasePrice: 1_000,
         quotedCurrencyCode: 'ZAR',
         salesPersonId: ACTOR_USER_ID,
+        acceptedAt: new Date(),
         status: 'accepted',
       },
       {
@@ -359,6 +363,7 @@ async function seedPlaceholderShape(db: Db) {
         quotedBasePrice: 1_000,
         quotedCurrencyCode: 'ZAR',
         salesPersonId: ACTOR_USER_ID,
+        acceptedAt: new Date(),
         status: 'accepted',
       },
       {
@@ -367,6 +372,7 @@ async function seedPlaceholderShape(db: Db) {
         quotedBasePrice: 0,
         quotedCurrencyCode: 'ZAR',
         salesPersonId: ACTOR_USER_ID,
+        acceptedAt: new Date(),
         status: 'accepted',
       },
       {
@@ -375,6 +381,7 @@ async function seedPlaceholderShape(db: Db) {
         quotedBasePrice: 1_000,
         quotedCurrencyCode: 'ZAR',
         salesPersonId: ACTOR_USER_ID,
+        acceptedAt: new Date(),
         status: 'accepted',
       },
     ])

@@ -1,5 +1,5 @@
 import { accessForRole } from '@pkg/domain/testing';
-import type { QuoteListResult } from '@pkg/schema/equipment';
+import { type QuoteListResult, QuoteStatus } from '@pkg/schema/equipment';
 import { describe, expect, test } from 'vitest';
 
 import {
@@ -29,7 +29,7 @@ describe('findQuotes contract', () => {
     const input = FindQuotesInput.parse({ by: 'code', quoteCode: '8' });
 
     expect(toCoreQuoteListInput(input)).toEqual({
-      filters: { quoteCode: 'QUO-00008', statuses: ['draft', 'sent', 'accepted', 'rejected', 'cancelled'] },
+      filters: { quoteCode: 'QUO-00008', statuses: QuoteStatus.options },
       cursor: 0,
       limit: 0,
       search: '',
@@ -47,14 +47,14 @@ describe('findQuotes contract', () => {
     {
       expectedFilters: {
         customerId: CUSTOMER_ID,
-        statuses: ['draft', 'sent', 'accepted', 'rejected', 'cancelled'],
+        statuses: QuoteStatus.options,
       },
       input: { by: 'customer', customerId: CUSTOMER_ID } as const,
     },
     {
       expectedFilters: {
         productId: PRODUCT_ID,
-        statuses: ['draft', 'sent', 'accepted', 'rejected', 'cancelled'],
+        statuses: QuoteStatus.options,
       },
       input: { by: 'product', productId: PRODUCT_ID } as const,
     },

@@ -239,6 +239,7 @@ export async function seedJobs(db: Db, cfoPartId: string) {
         quotedBasePrice: 0,
         quotedCurrencyCode: 'ZAR',
         salesPersonId: actorUserId,
+        acceptedAt: new Date(),
         status: 'accepted',
         workTitle: 'CFO fabrication',
       },
@@ -248,6 +249,7 @@ export async function seedJobs(db: Db, cfoPartId: string) {
         quotedBasePrice: 0,
         quotedCurrencyCode: 'ZAR',
         salesPersonId: actorUserId,
+        acceptedAt: new Date(),
         status: 'accepted',
         workTitle: 'Off-CFO repair',
       },
@@ -301,6 +303,7 @@ export async function seedPartsSaleQuote(
       quotedBasePrice: 0,
       quotedCurrencyCode: 'ZAR',
       salesPersonId: actorUserId,
+      acceptedAt: status === 'accepted' ? new Date() : null,
       status,
       workTitle,
     })

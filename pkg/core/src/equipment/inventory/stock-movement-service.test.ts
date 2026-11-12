@@ -875,6 +875,7 @@ describe('Checkout to a Parts Sale', () => {
         quotedBasePrice: 0,
         quotedCurrencyCode: 'ZAR',
         salesPersonId: actorUserId,
+        acceptedAt: new Date(),
         status: 'accepted',
       })
       .returning();
@@ -918,7 +919,7 @@ describe('Checkout to a Parts Sale', () => {
     });
     await context.db
       .update(quotes)
-      .set({ cancellationReason: 'Customer withdrew', status: 'cancelled' })
+      .set({ acceptedAt: null, cancellationReason: 'Customer withdrew', status: 'cancelled' })
       .where(eq(quotes.id, partsSale.id));
 
     await expect(

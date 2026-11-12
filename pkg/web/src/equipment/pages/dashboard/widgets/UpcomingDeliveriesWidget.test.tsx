@@ -66,6 +66,7 @@ function buildUpcomingDelivery(kind: 'custom' | 'product'): UpcomingDeliveryQuot
     salesPersonThumbnailDataUrl: null,
     selectedAssemblies: [],
     status: 'accepted',
+    acceptedAt: '2026-08-01T08:00:00.000Z',
     statusChangedAt: '2026-08-01T08:00:00.000Z',
     updatedAt: '2026-08-01T08:00:00.000Z',
     validUntil: null,

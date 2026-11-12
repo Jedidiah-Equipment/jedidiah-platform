@@ -106,29 +106,38 @@ describe('quotes.create', () => {
     });
   });
 
-  test('creates a cancelled quote as a normal status', async ({ context }) => {
+  test.for([
+    ['cancelled', 'Customer withdrew the order'],
+    ['invoiced', null],
+  ] as const)('refuses to create a quote as %s', async ([status, cancellationReason], { context }) => {
     const caller = context.createCaller(mockSession('sales'));
 
-    const created = await caller.quotes.create({
-      cancellationReason: 'Customer withdrew the order',
-      customer: {
-        type: 'inline',
-        companyName: 'Cancelled Customer',
-      },
-      notes: null,
-      documentNotes: null,
-      offering: productOffering(context.product.id),
-      salesPersonId: 'test-user-id',
-      status: 'cancelled',
-      validUntil: null,
+    await expect(
+      caller.quotes.create({
+        cancellationReason,
+        customer: { type: 'inline', companyName: 'Unpickable Status Customer' },
+        documentNotes: null,
+        notes: null,
+        offering: productOffering(context.product.id),
+        salesPersonId: 'test-user-id',
+        status,
+        validUntil: null,
+      } as never),
+    ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+  });
+
+  test('refuses a status change into a post-sale status', async ({ context }) => {
+    const salesCaller = context.createCaller(mockSession('sales'));
+    const quote = await createNamedQuote(salesCaller, {
+      customerCompanyName: 'Post-sale Status Customer',
+      discountPercent: 0,
+      productId: context.product.id,
+      status: 'accepted',
     });
 
-    expect(created).toMatchObject({
-      cancellationReason: 'Customer withdrew the order',
-      customerCompanyName: 'Cancelled Customer',
-      depositPercent: 0,
-      discountPercent: 0,
-      status: 'cancelled',
+    await expect(salesCaller.quotes.update({ ...toUpdateInput(quote), status: 'invoiced' })).rejects.toMatchObject({
+      appCode: 'quote.status_not_pickable',
+      code: 'BAD_REQUEST',
     });
   });
 
@@ -430,15 +439,11 @@ describe('quotes.create', () => {
 
   test('maps repeated cancellation to a stable bad-request code', async ({ context }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
-    const quote = await salesCaller.quotes.create({
-      cancellationReason: 'Customer withdrew the order',
-      customer: { type: 'inline', companyName: 'Already Cancelled Customer' },
-      notes: null,
-      documentNotes: null,
-      offering: productOffering(context.product.id),
-      salesPersonId: 'test-user-id',
+    const quote = await createNamedQuote(salesCaller, {
+      customerCompanyName: 'Already Cancelled Customer',
+      discountPercent: 0,
+      productId: context.product.id,
       status: 'cancelled',
-      validUntil: null,
     });
 
     await expect(
@@ -2402,8 +2407,7 @@ async function createNamedQuote(
     status?: 'accepted' | 'cancelled' | 'draft' | 'rejected' | 'sent';
   },
 ) {
-  return caller.quotes.create({
-    cancellationReason: status === 'cancelled' ? 'Test cancellation reason' : null,
+  const quote = await caller.quotes.create({
     customer: {
       type: 'inline',
       companyName: customerCompanyName,
@@ -2418,9 +2422,14 @@ async function createNamedQuote(
     preferredDeliveryDate,
     offering: productOffering(productId),
     salesPersonId,
-    status,
+    status: status === 'cancelled' ? 'draft' : status,
     validUntil: '2026-06-30',
   });
+
+  if (status !== 'cancelled') return quote;
+
+  await caller.quotes.cancel({ cancellationReason: 'Test cancellation reason', id: quote.id });
+  return caller.quotes.get({ id: quote.id });
 }
 
 function productOffering(productId: string) {

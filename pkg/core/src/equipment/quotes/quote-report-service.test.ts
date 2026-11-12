@@ -9,7 +9,7 @@ import {
   quoteWorkItemParts,
   quoteWorkItems,
 } from '@pkg/db/equipment';
-import type { QuoteDeliveryTerms, QuoteStatus } from '@pkg/schema/equipment';
+import { hasQuoteStatus, type QuoteDeliveryTerms, type QuoteStatus, soldQuoteStatuses } from '@pkg/schema/equipment';
 import { describe, expect } from 'vitest';
 
 import { createTester } from '../../test/create-tester.js';
@@ -148,6 +148,23 @@ describe('summarizeQuoteWeeklyFlow', () => {
     expect(summary.items[9]).toEqual({ acceptedCount: 0, createdCount: 1, weekStartDate: '2026-05-18' });
     expect(summary.items[10]).toEqual({ acceptedCount: 0, createdCount: 4, weekStartDate: '2026-05-25' });
     expect(summary.items[11]).toEqual({ acceptedCount: 1, createdCount: 1, weekStartDate: '2026-06-01' });
+  });
+
+  test('counts a sale in the week it was accepted after its status has moved on', async ({ context }) => {
+    await createQuoteRows(context.db, {
+      acceptedAt: new Date('2026-05-26T08:00:00.000Z'),
+      customerId: context.customer.id,
+      productId: context.product.id,
+      salesPersonId: context.salesPerson.id,
+      statuses: ['awaiting-invoice'],
+      createdAt: new Date('2026-05-18T08:00:00.000Z'),
+      statusChangedAt: new Date('2026-06-02T08:00:00.000Z'),
+    });
+
+    const summary = await summarizeQuoteWeeklyFlow({ clock: fixedClock, db: context.db });
+
+    expect(summary.items[10]).toMatchObject({ acceptedCount: 1, weekStartDate: '2026-05-25' });
+    expect(summary.items[11]).toMatchObject({ acceptedCount: 0, weekStartDate: '2026-06-01' });
   });
 
   test('returns a flat zero series when the whole window is empty', async ({ context }) => {
@@ -472,6 +489,7 @@ async function createJobRow(
 async function createQuoteRows(
   db: Db,
   {
+    acceptedAt,
     createdAt,
     customerId,
     deliveryTerms = 'included' as QuoteDeliveryTerms,
@@ -485,6 +503,7 @@ async function createQuoteRows(
     statusChangedAt,
     workTitle = null,
   }: {
+    acceptedAt?: Date;
     createdAt?: Date;
     customerId: string;
     deliveryTerms?: QuoteDeliveryTerms;
@@ -515,6 +534,7 @@ async function createQuoteRows(
         quotedBasePrice,
         quotedCurrencyCode: 'ZAR',
         salesPersonId,
+        acceptedAt: hasQuoteStatus(soldQuoteStatuses, status) ? (acceptedAt ?? statusChangedAt ?? new Date()) : null,
         status,
         workTitle,
       })),

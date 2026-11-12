@@ -1,4 +1,4 @@
-import type { QuoteKind, QuoteStatus } from '@pkg/schema/equipment';
+import { hasQuoteStatus, type QuoteKind, type QuoteStatus, soldQuoteStatuses } from '@pkg/schema/equipment';
 
 const EDITABLE_LOCKED_QUOTE_FIELDS: ReadonlySet<string> = new Set([
   'invoiceNumber',
@@ -10,7 +10,7 @@ const EDITABLE_LOCKED_QUOTE_FIELDS: ReadonlySet<string> = new Set([
   'workItems',
 ]);
 
-const EDITABLE_ACCEPTED_LOCKED_QUOTE_FIELDS: ReadonlySet<string> = new Set([
+const EDITABLE_SOLD_LOCKED_QUOTE_FIELDS: ReadonlySet<string> = new Set([
   ...EDITABLE_LOCKED_QUOTE_FIELDS,
   // The Settling Terms.
   'depositPercent',
@@ -25,7 +25,7 @@ const EDITABLE_ACCEPTED_LOCKED_QUOTE_FIELDS: ReadonlySet<string> = new Set([
  * update Quotes at all (`equipment_quote:update`). A cancelled Quote moves none of them.
  */
 export function editableLockedQuoteFields({ status }: { status: QuoteStatus }): ReadonlySet<string> {
-  return status === 'accepted' ? EDITABLE_ACCEPTED_LOCKED_QUOTE_FIELDS : EDITABLE_LOCKED_QUOTE_FIELDS;
+  return hasQuoteStatus(soldQuoteStatuses, status) ? EDITABLE_SOLD_LOCKED_QUOTE_FIELDS : EDITABLE_LOCKED_QUOTE_FIELDS;
 }
 
 export type QuoteEditableResult =
@@ -57,7 +57,7 @@ export function assertQuoteEditable({
   const lockReason =
     status === 'cancelled'
       ? 'it has been cancelled'
-      : kind === 'product' && !hasProductUnit
+      : kind === 'product' && !hasProductUnit && !isPastAcceptance(status)
         ? 'it has already sourced a Job'
         : 'it has been accepted';
   const editableFields = editableLockedQuoteFields({ status });
@@ -111,7 +111,14 @@ export function isQuoteLocked({
   status: QuoteStatus;
 }) {
   // Cancellation is terminal regardless of the quote kind or whether a Job exists.
-  if (status === 'cancelled') return true;
+  if (status === 'cancelled' || isPastAcceptance(status)) return true;
 
-  return kind === 'product' ? hasEverSourcedJob || (hasProductUnit && status === 'accepted') : status === 'accepted';
+  const sold = hasQuoteStatus(soldQuoteStatuses, status);
+
+  return kind === 'product' ? hasEverSourcedJob || (hasProductUnit && sold) : sold;
+}
+
+/** Sent for approval or further: Locked whatever the kind. */
+function isPastAcceptance(status: QuoteStatus): boolean {
+  return status !== 'accepted' && hasQuoteStatus(soldQuoteStatuses, status);
 }

@@ -34,7 +34,7 @@ import { SalespersonSelectField } from '@/equipment/components/quotes/Salesperso
 import { SecondaryPageToolbar } from '@/equipment/components/TopToolbar';
 import {
   getQuoteEditFormValuesValidator,
-  QUOTE_STATUS_OPTIONS,
+  quoteStatusEditOptions,
   toQuoteEditFormValues,
   toQuoteUpdateInput,
   toQuoteWorkItemInput,
@@ -257,7 +257,7 @@ function QuoteEditor({
                               setCancelConfirmationOpen(true);
                               return false;
                             }}
-                            options={QUOTE_STATUS_OPTIONS}
+                            options={quoteStatusEditOptions(quote.status)}
                           />
                         )}
                       </form.AppField>

@@ -1,5 +1,5 @@
 import { defaultQuoteSalespersonId, quoteOfferingTypeLabels, quoteStatusLabels } from '@pkg/domain/equipment';
-import { QuoteOfferingType } from '@pkg/schema/equipment';
+import { pickableQuoteStatuses, QuoteOfferingType } from '@pkg/schema/equipment';
 import { IconX } from '@tabler/icons-react-native';
 import { revalidateLogic, useStore } from '@tanstack/react-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -21,7 +21,6 @@ import {
   clearQuoteOfferingTypeFields,
   QUOTE_CREATE_DEFAULT_VALUES,
   QuoteCreateFormValues,
-  QuoteCreateStatus,
   toQuoteCreateInput,
 } from '@/equipment/lib/quote-create';
 import { useTRPC } from '@/lib/trpc';
@@ -191,7 +190,7 @@ export function NewQuoteModal({ onClose }: { onClose: () => void }) {
                 {(field) => (
                   <field.SelectField
                     label="Status"
-                    options={QuoteCreateStatus.options.map((status) => ({
+                    options={pickableQuoteStatuses.map((status) => ({
                       label: quoteStatusLabels[status],
                       value: status,
                     }))}

@@ -232,6 +232,7 @@ async function seedJob(db: Db): Promise<string> {
       quotedBasePrice: 0,
       quotedCurrencyCode: 'ZAR',
       salesPersonId: ACTOR_ID,
+      acceptedAt: new Date(),
       status: 'accepted',
       workTitle: 'Seeded work',
     })

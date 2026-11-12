@@ -180,6 +180,7 @@ function buildPriorityQuote(overrides: Partial<Record<keyof PriorityQuoteType, u
     salesPersonThumbnailDataUrl: null,
     selectedAssemblies: [],
     status: 'accepted',
+    acceptedAt: null,
     statusChangedAt: '2026-06-01T10:00:00.000Z',
     updatedAt: '2026-06-01T10:00:00.000Z',
     validUntil: '2026-08-01T00:00:00.000Z',

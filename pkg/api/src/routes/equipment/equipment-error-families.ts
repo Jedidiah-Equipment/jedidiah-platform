@@ -68,6 +68,7 @@ export const quoteErrorFamily = defineCoreErrorFamily<QuoteError>({
     'quote.not_found': 'NOT_FOUND',
     'quote.offering_invariant': 'BAD_REQUEST',
     'quote.product_bay_availability_not_applicable': 'BAD_REQUEST',
+    'quote.status_not_pickable': 'BAD_REQUEST',
   },
   is: isQuoteError,
   messages: {

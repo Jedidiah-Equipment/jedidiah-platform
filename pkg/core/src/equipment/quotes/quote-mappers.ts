@@ -67,6 +67,7 @@ export type QuoteDetailRow = QuoteRow & {
 
 export function mapQuote(row: QuoteRow) {
   return Quote.parse({
+    acceptedAt: row.acceptedAt?.toISOString() ?? null,
     cancellationReason: row.cancellationReason,
     code: row.code,
     createdAt: row.createdAt.toISOString(),

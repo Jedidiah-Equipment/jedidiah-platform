@@ -30,17 +30,16 @@ const baseCreateInput = {
 };
 
 describe('QuoteCreateInput', () => {
-  it('requires a trimmed reason exactly when the quote starts cancelled', () => {
-    expect(() => QuoteCreateInput.parse({ ...baseCreateInput, status: 'cancelled' })).toThrow(
-      'Cancellation reason is required',
-    );
-    expect(
-      QuoteCreateInput.parse({
-        ...baseCreateInput,
-        cancellationReason: '  Customer withdrew the order  ',
-        status: 'cancelled',
-      }),
-    ).toMatchObject({ cancellationReason: 'Customer withdrew the order', status: 'cancelled' });
+  it.each(['cancelled', 'awaiting-approval', 'awaiting-invoice', 'invoiced'])(
+    'refuses to create a quote as %s',
+    (status) => {
+      expect(
+        QuoteCreateInput.safeParse({ ...baseCreateInput, cancellationReason: 'Customer withdrew', status }).success,
+      ).toBe(false);
+    },
+  );
+
+  it('refuses a cancellation reason on a new quote', () => {
     expect(() =>
       QuoteCreateInput.parse({ ...baseCreateInput, cancellationReason: 'Customer withdrew the order' }),
     ).toThrow('Cancellation reason is only allowed for cancelled quotes');
@@ -455,6 +454,7 @@ describe('QuoteDetail', () => {
       workItems: [],
       selectedAssemblies: [],
       status: 'accepted',
+      acceptedAt: null,
       statusChangedAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-01-01T00:00:00.000Z',
       validUntil: null,
@@ -540,6 +540,7 @@ describe('QuoteDetail', () => {
         salesPersonThumbnailDataUrl: null,
         selectedAssemblies: [],
         status: 'accepted',
+        acceptedAt: null,
         statusChangedAt: '2026-01-01T00:00:00.000Z',
         updatedAt: '2026-01-01T00:00:00.000Z',
         validUntil: null,
@@ -636,6 +637,7 @@ describe('PriorityQuote', () => {
       salesPersonThumbnailDataUrl: null,
       selectedAssemblies: [],
       status: 'accepted',
+      acceptedAt: null,
       statusChangedAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-01-01T00:00:00.000Z',
       validUntil: null,
@@ -693,6 +695,7 @@ describe('UpcomingDeliveryQuotesResult', () => {
       salesPersonThumbnailDataUrl: null,
       selectedAssemblies: [],
       status: 'accepted',
+      acceptedAt: null,
       statusChangedAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-01-01T00:00:00.000Z',
       validUntil: null,

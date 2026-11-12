@@ -4,7 +4,7 @@ import {
   quoteOfferingTypeLabels,
   quoteStatusLabels,
 } from '@pkg/domain/equipment';
-import { type Quote, QuoteOfferingType } from '@pkg/schema/equipment';
+import { pickableQuoteStatuses, type Quote, QuoteOfferingType } from '@pkg/schema/equipment';
 import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import type React from 'react';
@@ -24,12 +24,7 @@ import { useTRPC } from '@/lib/trpc.js';
 import { QuoteCustomerCombobox } from './components/QuoteCustomerCombobox.js';
 import { QuoteProductCombobox } from './components/QuoteProductCombobox.js';
 import { QuoteProductUnitSelect } from './components/QuoteProductUnitSelect.js';
-import {
-  QUOTE_CREATE_DEFAULT_VALUES,
-  QuoteCreateFormValues,
-  QuoteCreateStatus,
-  toQuoteCreateInput,
-} from './components/types.js';
+import { QUOTE_CREATE_DEFAULT_VALUES, QuoteCreateFormValues, toQuoteCreateInput } from './components/types.js';
 
 const ALL_RANGES_SELECT_VALUE = 'all-ranges';
 
@@ -289,7 +284,7 @@ export const QuoteCreateDialog: React.FC<QuoteCreateDialogProps> = ({ onOpenChan
               {(field) => (
                 <field.SelectField
                   label="Status"
-                  options={QuoteCreateStatus.options.map((status) => ({
+                  options={pickableQuoteStatuses.map((status) => ({
                     label: quoteStatusLabels[status],
                     value: status,
                   }))}

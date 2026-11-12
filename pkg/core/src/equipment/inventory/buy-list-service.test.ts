@@ -300,6 +300,7 @@ async function seedJob(
       quotedBasePrice: 0,
       quotedCurrencyCode: 'ZAR',
       salesPersonId: actorUserId,
+      acceptedAt: new Date(),
       status: 'accepted',
       workTitle: title,
     })

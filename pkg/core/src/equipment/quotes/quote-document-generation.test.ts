@@ -189,6 +189,7 @@ describe('getQuoteDocumentModel pricing (through generateQuoteDocument)', () => 
         quotedBasePrice: 2000,
         quotedCurrencyCode: 'ZAR',
         salesPersonId: context.salesPerson.id,
+        acceptedAt: new Date(),
         status: 'accepted',
       })
       .returning();

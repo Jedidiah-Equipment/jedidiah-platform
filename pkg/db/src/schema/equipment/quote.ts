@@ -43,6 +43,7 @@ export const quotes = equipmentSchema.table(
     status: text('status').notNull().default('draft').$type<QuoteStatus>(),
     cancellationReason: text('cancellation_reason'),
     statusChangedAt: timestamp('status_changed_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+    acceptedAt: timestamp('accepted_at', { mode: 'date', withTimezone: true }),
     discountPercent: numeric('discount_percent', { mode: 'number', precision: 5, scale: 2 }).notNull().default(0),
     depositPercent: numeric('deposit_percent', { mode: 'number', precision: 5, scale: 2 }).notNull().default(0),
     deliveryTerms: text('delivery_terms').notNull().default('ex_factory').$type<QuoteDeliveryTerms>(),
@@ -95,6 +96,10 @@ export const quotes = equipmentSchema.table(
       ) or (
         ${table.kind} = 'custom' and ${table.productId} is null and ${table.productUnitId} is null and ${table.workTitle} is not null and length(trim(${table.workTitle})) > 0 and ${table.quotedBasePrice} = 0
       )`,
+    ),
+    check(
+      'quote_accepted_shape',
+      sql`(${table.status} in ('accepted', 'awaiting-approval', 'awaiting-invoice', 'invoiced')) = (${table.acceptedAt} is not null)`,
     ),
     check('quote_parts_sale_is_custom', sql`${table.isPartsSale} = false or ${table.kind} = 'custom'`),
     foreignKey({

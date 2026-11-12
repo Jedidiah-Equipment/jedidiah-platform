@@ -833,6 +833,7 @@ async function createJobOwner(db: Db, productId: UUID) {
       quotedBasePrice: 1_000,
       quotedCurrencyCode: 'ZAR',
       salesPersonId: 'test-user-id',
+      acceptedAt: new Date(),
       status: 'accepted',
     })
     .returning({ id: quotes.id });

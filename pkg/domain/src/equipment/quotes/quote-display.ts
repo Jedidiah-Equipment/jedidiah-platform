@@ -1,10 +1,13 @@
 import {
+  hasQuoteStatus,
+  pickableQuoteStatuses,
   type QuoteDeliveryTerms,
   QuoteDeliveryTerms as QuoteDeliveryTermsSchema,
   type QuoteKind,
   type QuoteOfferingType,
   type QuoteProductSource,
   type QuoteStatus,
+  soldQuoteStatuses,
 } from '@pkg/schema/equipment';
 
 import { formatCurrency } from '../../formatting/number.js';
@@ -18,7 +21,10 @@ import type { QuoteOfferingFacts } from './quote-offering.js';
 
 export const quoteStatusLabels: Record<QuoteStatus, string> = {
   accepted: 'Accepted',
+  'awaiting-approval': 'Awaiting approval',
+  'awaiting-invoice': 'Awaiting invoice',
   cancelled: 'Cancelled',
+  invoiced: 'Invoiced',
   draft: 'Draft',
   rejected: 'Rejected',
   sent: 'Sent',
@@ -27,11 +33,24 @@ export const quoteStatusLabels: Record<QuoteStatus, string> = {
 /** Tailwind classes split so native surfaces can put the text colour on the Text element. */
 export const quoteStatusColorClassNames: Record<QuoteStatus, BadgeColorClassNames> = {
   accepted: statusBadgeColorClassNames.green,
+  'awaiting-approval': statusBadgeColorClassNames.purple,
+  'awaiting-invoice': statusBadgeColorClassNames.yellow,
   cancelled: cancelledBadgeColorClassNames,
   draft: statusBadgeColorClassNames.gray,
+  invoiced: statusBadgeColorClassNames.teal,
   rejected: statusBadgeColorClassNames.red,
   sent: statusBadgeColorClassNames.blue,
 };
+
+/**
+ * What an existing Quote's Status field offers: the pickable statuses, Cancelled (which opens Quote
+ * Cancellation), and the Quote's own status when it is none of those, so the field never renders blank.
+ */
+export function editableQuoteStatuses(currentStatus: QuoteStatus): readonly QuoteStatus[] {
+  const statuses: QuoteStatus[] = [...pickableQuoteStatuses, 'cancelled'];
+
+  return statuses.includes(currentStatus) ? statuses : [...statuses, currentStatus];
+}
 
 /** The dropdown and summary wording for each Delivery Term; the PDF spells Ex factory out further. */
 export const quoteDeliveryTermsLabels: Record<QuoteDeliveryTerms, string> = {
@@ -46,9 +65,9 @@ const quoteDeliveryTermsOptions = QuoteDeliveryTermsSchema.options.map((delivery
   value: deliveryTerms,
 }));
 
-/** An accepted Quote can never go back to To be confirmed, so it is not offered there. */
+/** A sold Quote can never go back to To be confirmed, so it is not offered there. */
 export function getQuoteDeliveryTermsOptions(status: QuoteStatus) {
-  return status === 'accepted'
+  return hasQuoteStatus(soldQuoteStatuses, status)
     ? quoteDeliveryTermsOptions.filter((option) => option.value !== 'tbc')
     : quoteDeliveryTermsOptions;
 }

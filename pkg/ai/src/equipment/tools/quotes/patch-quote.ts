@@ -3,13 +3,13 @@ import { AuthId, DateIsoString, DateOnlyIsoString, type UserAccessSummary, UUID 
 import {
   QuotePatchInput as CoreQuotePatchInput,
   type QuotePatchInput as CoreQuotePatchInputType,
+  pickableQuoteStatuses,
   QuoteCancellationReason,
   type QuoteDetail,
   QuoteDocumentNotes,
   QuoteInvoiceNumber,
   QuoteNotes,
   QuoteSelectedAssemblyInput,
-  QuoteStatus,
 } from '@pkg/schema/equipment';
 import { z } from 'zod';
 
@@ -39,7 +39,10 @@ export const PatchQuoteInput = z
       .array(QuoteSelectedAssemblyInput)
       .optional()
       .describe('Complete replacement selection. Omit to keep current assemblies; use [] to clear them.'),
-    status: QuoteStatus.optional(),
+    status: z
+      .enum([...pickableQuoteStatuses, 'cancelled'])
+      .optional()
+      .describe('Omit to keep the current status, which may be one this tool cannot set.'),
     validUntil: DateIsoString.nullable().optional(),
   })
   .strict()

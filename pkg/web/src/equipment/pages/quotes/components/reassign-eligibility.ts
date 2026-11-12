@@ -1,4 +1,4 @@
-import type { QuoteDetail } from '@pkg/schema/equipment';
+import { hasQuoteStatus, type QuoteDetail, uninvoicedSoldQuoteStatuses } from '@pkg/schema/equipment';
 
 /** The facts that decide whether a deal can be handed someone else's machine. */
 export type ReceivableQuote = Pick<QuoteDetail, 'invoiceNumber' | 'kind' | 'productUnitId' | 'status'>;
@@ -14,7 +14,7 @@ export type ReceivableQuote = Pick<QuoteDetail, 'invoiceNumber' | 'kind' | 'prod
 export function canReceiveReassignedUnit(quote: ReceivableQuote): boolean {
   return (
     quote.kind === 'product' &&
-    quote.status === 'accepted' &&
+    hasQuoteStatus(uninvoicedSoldQuoteStatuses, quote.status) &&
     quote.invoiceNumber === null &&
     quote.productUnitId === null
   );

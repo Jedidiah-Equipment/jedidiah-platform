@@ -2,7 +2,12 @@ import type { DatabaseTransaction } from '@pkg/db';
 import { customers, productUnitOwnershipTransfers } from '@pkg/db/equipment';
 import { getPlantDateNow } from '@pkg/domain';
 import type { AuthId, UUID } from '@pkg/schema';
-import type { QuoteSelectedAssemblyInput, QuoteStatus } from '@pkg/schema/equipment';
+import {
+  hasQuoteStatus,
+  type QuoteSelectedAssemblyInput,
+  type QuoteStatus,
+  soldQuoteStatuses,
+} from '@pkg/schema/equipment';
 import { and, eq, isNull } from 'drizzle-orm';
 
 import { loadAsBuiltSpec } from '../units/product-unit-as-built.js';
@@ -36,7 +41,11 @@ export async function transferAllocationQuoteOnAcceptance({
   };
   tx: DatabaseTransaction;
 }): Promise<void> {
-  if (!quote.productUnitId || quote.status !== 'accepted' || previousStatus === 'accepted') {
+  const entersSale =
+    hasQuoteStatus(soldQuoteStatuses, quote.status) &&
+    (previousStatus === null || !hasQuoteStatus(soldQuoteStatuses, previousStatus));
+
+  if (!quote.productUnitId || !entersSale) {
     return;
   }
 

@@ -1,4 +1,4 @@
-import type { QuoteStatus } from '@pkg/schema/equipment';
+import { presaleQuoteStatuses, type QuoteStatus, soldQuoteStatuses } from '@pkg/schema/equipment';
 
 /**
  * A Checkout Without a Job: stock drawn to a Recipient rather than a Job or a Parts Sale. The ledger's
@@ -18,4 +18,7 @@ export function isCheckoutWithoutJob<
 }
 
 /** The Parts Sale statuses a Checkout may draw to. Returns ignore status: recovered stock must reach the ledger. */
-export const PARTS_SALE_CHECKOUT_STATUSES: ReadonlySet<QuoteStatus> = new Set(['draft', 'sent', 'accepted']);
+export const PARTS_SALE_CHECKOUT_STATUSES: ReadonlySet<QuoteStatus> = new Set([
+  ...presaleQuoteStatuses,
+  ...soldQuoteStatuses,
+]);

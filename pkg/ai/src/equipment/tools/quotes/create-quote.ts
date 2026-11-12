@@ -15,7 +15,7 @@ import {
   CustomerCompanyName,
   CustomerEmail,
   CustomerOptionalText,
-  QuoteCancellationReason,
+  PickableQuoteStatus,
   QuoteDeliveryTerms,
   QuoteDepositPercent,
   type QuoteDetail,
@@ -23,7 +23,6 @@ import {
   QuoteDocumentNotes,
   QuoteNotes,
   QuoteSelectedAssemblyInput,
-  QuoteStatus,
   QuoteWorkTitle,
 } from '@pkg/schema/equipment';
 import { z } from 'zod';
@@ -72,9 +71,6 @@ const CreateQuoteOfferingInput = z.discriminatedUnion('kind', [
 export type CreateQuoteInput = z.infer<typeof CreateQuoteInput>;
 export const CreateQuoteInput = z
   .object({
-    cancellationReason: QuoteCancellationReason.nullable()
-      .default(null)
-      .describe('Required when status is cancelled; explain why the Quote is being cancelled.'),
     customer: CreateQuoteCustomerInput.describe(
       'Use an existing Customer UUID from findCustomers, or inline Customer details to create one with the Quote.',
     ),
@@ -97,25 +93,10 @@ export const CreateQuoteInput = z
       'Optional salesperson User ID. Omit to assign the acting user; set only when the user explicitly requests another salesperson.',
     ),
     selectedAssemblies: z.array(QuoteSelectedAssemblyInput).default([]),
-    status: QuoteStatus.default('draft'),
+    status: PickableQuoteStatus.default('draft'),
     validUntil: DateIsoString.nullable().default(null),
   })
-  .strict()
-  .superRefine((input, context) => {
-    if (input.status === 'cancelled' && input.cancellationReason == null) {
-      context.addIssue({
-        code: 'custom',
-        message: 'Cancellation reason is required',
-        path: ['cancellationReason'],
-      });
-    } else if (input.status !== 'cancelled' && input.cancellationReason != null) {
-      context.addIssue({
-        code: 'custom',
-        message: 'Cancellation reason is only allowed for cancelled quotes',
-        path: ['cancellationReason'],
-      });
-    }
-  });
+  .strict();
 
 export type CreateQuoteResponse = SharedQuoteDetailResponseType | CustomerMatchResponse;
 export const CreateQuoteResponse = z.union([SharedQuoteDetailResponse, CustomerMatchResponse]);
@@ -142,7 +123,6 @@ export const createQuoteDefinition = {
     'A Parts Sale sells loose or machined parts and never becomes a Job; its type cannot be changed later.',
     'Use findProducts to resolve a Product Quote productId and findCustomers to resolve an existing Customer; use an inline Customer when the company is new.',
     'Omit salesPersonId to assign the acting user. Do not choose another salesperson unless the user explicitly requests it.',
-    'A cancelled Quote always requires cancellationReason; omit it for every other status.',
     'Returns the created Quote details and permission-safe relationship links without thumbnail data.',
   ].join('\n'),
   inputSchema: CreateQuoteInput,

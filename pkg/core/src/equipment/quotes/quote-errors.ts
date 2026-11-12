@@ -13,7 +13,8 @@ export type QuoteErrorCode =
   // A persisted Quote row violating the product/custom offering shape the DB constraint guarantees
   // (e.g. a custom Quote missing its Work Title). A true invariant, not user-facing input.
   | 'quote.offering_invariant'
-  | 'quote.product_bay_availability_not_applicable';
+  | 'quote.product_bay_availability_not_applicable'
+  | 'quote.status_not_pickable';
 
 export class QuoteError extends Error {
   constructor(
@@ -50,3 +51,6 @@ export const quoteCancelNotAnUpdate = () =>
     'quote.cancel_not_an_update',
     'Cancelling a quote also settles its job and machine, so it cannot be done by changing the status.',
   );
+
+export const quoteStatusNotPickable = (status: string) =>
+  new QuoteError('quote.status_not_pickable', `A quote cannot be moved to ${status} by changing its status.`);

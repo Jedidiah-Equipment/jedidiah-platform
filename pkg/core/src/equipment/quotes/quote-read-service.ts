@@ -23,6 +23,7 @@ import {
   CompetingAllocationQuote,
   type PriorityQuote,
   parseQuoteCodeNumber,
+  presaleQuoteStatuses,
   type QuoteDetail,
   type QuoteListInput,
   type QuoteListResult,
@@ -30,6 +31,7 @@ import {
   QuoteProductBayAvailabilityResult,
   type QuoteSortBy,
   type QuoteSummary,
+  soldQuoteStatuses,
   UpcomingDeliveryQuotesResult,
 } from '@pkg/schema/equipment';
 import { and, asc, eq, inArray, isNotNull, isNull, ne, or, type SQL, sql } from 'drizzle-orm';
@@ -242,7 +244,7 @@ export async function listUpcomingDeliveryQuotes({
     .leftJoin(user, eq(quotes.salesPersonId, user.id))
     .where(
       and(
-        eq(quotes.status, 'accepted'),
+        inArray(quotes.status, [...soldQuoteStatuses]),
         sql`${quotes.plannedDeliveryDate} is not null`,
         sql`${quotes.plannedDeliveryDate} <= ${windowEndDate}::date`,
       ),
@@ -414,7 +416,11 @@ async function listCompetingAllocationQuotes({
     .innerJoin(customers, eq(customers.id, quotes.customerId))
     .leftJoin(user, eq(user.id, quotes.salesPersonId))
     .where(
-      and(eq(quotes.productUnitId, productUnitId), ne(quotes.id, quoteId), inArray(quotes.status, ['draft', 'sent'])),
+      and(
+        eq(quotes.productUnitId, productUnitId),
+        ne(quotes.id, quoteId),
+        inArray(quotes.status, [...presaleQuoteStatuses]),
+      ),
     )
     .orderBy(asc(quotes.code), asc(quotes.id));
 
@@ -541,12 +547,12 @@ export async function getJobByQuoteId({
 }
 
 /**
- * An accepted Quote still owed a Job: the SQL twin of `canStartJobFromQuote`. An Allocation Quote
+ * A sold Quote still owed a Job: the SQL twin of `canStartJobFromQuote`. An Allocation Quote
  * (one naming a Product Unit) and a Parts Sale are complete without one, so neither is owed.
  */
 function awaitsJobCreationCondition(): SQL | undefined {
   return and(
-    eq(quotes.status, 'accepted'),
+    inArray(quotes.status, [...soldQuoteStatuses]),
     isNull(quotes.productUnitId),
     eq(quotes.isPartsSale, false),
     sql`not exists (

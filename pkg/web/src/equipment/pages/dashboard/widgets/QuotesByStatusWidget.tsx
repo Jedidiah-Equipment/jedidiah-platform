@@ -1,5 +1,5 @@
 import { quoteStatusLabels } from '@pkg/domain/equipment';
-import type { QuoteStatusSummary } from '@pkg/schema/equipment';
+import type { QuoteStatus, QuoteStatusSummary } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { DashboardWidgetEmpty, DashboardWidgetError } from '@/components/common/dashboard/DashboardWidgetCard.js';
@@ -8,6 +8,15 @@ import { useTRPC } from '@/lib/trpc.js';
 
 const quoteStatusColors = {
   accepted: {
+    color: 'var(--chart-3)',
+  },
+  'awaiting-approval': {
+    color: 'var(--chart-3)',
+  },
+  'awaiting-invoice': {
+    color: 'var(--chart-3)',
+  },
+  invoiced: {
     color: 'var(--chart-3)',
   },
   cancelled: {
@@ -22,7 +31,16 @@ const quoteStatusColors = {
   sent: {
     color: 'var(--chart-2)',
   },
-} as const;
+} as const satisfies Record<QuoteStatus, { color: string }>;
+
+// The statuses `quotes.summaryByStatus` returns.
+const skeletonStatuses = [
+  'draft',
+  'sent',
+  'accepted',
+  'rejected',
+  'cancelled',
+] as const satisfies readonly QuoteStatus[];
 
 export const QuotesByStatusWidget: React.FC = () => {
   const trpc = useTRPC();
@@ -89,7 +107,7 @@ function QuotesByStatusWidgetSkeleton() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-3">
-        {['draft', 'sent', 'accepted', 'rejected', 'cancelled'].map((status) => (
+        {skeletonStatuses.map((status) => (
           <div key={status} className="grid grid-cols-[4.5rem_1fr] items-center gap-3">
             <Skeleton className="h-4 w-16" />
             <Skeleton className="h-3 w-full" />
@@ -97,7 +115,7 @@ function QuotesByStatusWidgetSkeleton() {
         ))}
       </div>
       <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3">
-        {['draft', 'sent', 'accepted', 'rejected', 'cancelled'].map((status) => (
+        {skeletonStatuses.map((status) => (
           <div key={status} className="flex items-center justify-between gap-3">
             <Skeleton className="h-4 w-20" />
             <Skeleton className="h-4 w-6" />

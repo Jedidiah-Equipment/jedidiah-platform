@@ -680,6 +680,7 @@ async function createQuote(
       quotedBasePrice: 1_000,
       quotedCurrencyCode: 'ZAR',
       salesPersonId: ACTOR_USER_ID,
+      acceptedAt: (options.status ?? 'accepted') === 'accepted' ? new Date() : null,
       status: options.status ?? 'accepted',
     })
     .returning({ id: quotes.id });
@@ -698,6 +699,7 @@ async function createCustomQuote(db: Db, customerId: string): Promise<UUID> {
       quotedBasePrice: 0,
       quotedCurrencyCode: 'ZAR',
       salesPersonId: ACTOR_USER_ID,
+      acceptedAt: new Date(),
       status: 'accepted',
       workTitle: 'Hydraulic overhaul',
     })

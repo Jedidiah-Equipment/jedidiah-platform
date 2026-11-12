@@ -317,6 +317,7 @@ async function makeQuote(
     .values({
       customerId,
       productId,
+      acceptedAt: status === 'accepted' ? new Date() : null,
       status,
       quotedBasePrice: 1000,
       quotedCurrencyCode: 'ZAR',

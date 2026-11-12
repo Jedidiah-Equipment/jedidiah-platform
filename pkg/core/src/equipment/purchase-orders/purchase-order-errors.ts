@@ -168,6 +168,7 @@ const consequences: Record<PurchaseOrderActionName, string> = {
   edit: 'it cannot be edited',
   fileDocuments: 'nothing can be filed against it',
   preview: 'it cannot be previewed',
+  priceCustomLine: 'its Custom Lines cannot be priced',
   receive: 'nothing can be received against it',
   returnToSupplier: 'nothing can be returned against it',
   revertToDraft: 'it cannot be reverted to draft',

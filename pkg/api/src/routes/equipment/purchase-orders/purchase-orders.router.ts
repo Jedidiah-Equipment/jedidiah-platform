@@ -30,6 +30,7 @@ import {
   postReturnToSupplier,
   revertPurchaseOrderToDraft,
   savePurchaseOrderDraft,
+  setPurchaseOrderCustomLinePrice,
 } from '@pkg/core/equipment';
 import { renderPurchaseOrderPdf } from '@pkg/pdf/equipment';
 import {
@@ -59,6 +60,7 @@ import {
   PurchaseOrderListInput,
   PurchaseOrderListViewResult,
   PurchaseOrderOutstandingResult,
+  PurchaseOrderPriceCustomLineInput,
   PurchaseOrderReturnListResult,
   PurchaseOrderReturnRowCostFields,
   PurchaseOrderSaveDraftInput,
@@ -120,6 +122,19 @@ export const purchaseOrdersRouter = router({
           pdfRenderer: renderPurchaseOrderPdf,
           storage: ctx.storage,
         }),
+      );
+
+      return toPurchaseOrderView(purchaseOrder, ctx.access);
+    }),
+
+  /** Procurement's right, like an amendment; the cost read is asserted because the input is a price. */
+  priceCustomLine: authorizedProcedure('equipment_purchase_order:amend')
+    .input(PurchaseOrderPriceCustomLineInput)
+    .output(PurchaseOrderView)
+    .mutation(async ({ ctx, input }) => {
+      assertCanReadInventoryCost(ctx.access);
+      const purchaseOrder = await mapPurchaseOrderErrors(() =>
+        setPurchaseOrderCustomLinePrice({ actorUserId: ctx.session.user.id, db: ctx.db, input }),
       );
 
       return toPurchaseOrderView(purchaseOrder, ctx.access);

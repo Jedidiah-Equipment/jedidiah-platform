@@ -16,6 +16,7 @@ import type {
   PurchaseOrderLine,
   PurchaseOrderPartLine,
   PurchaseOrderPdfRenderer,
+  PurchaseOrderPriceCustomLineInput,
 } from '@pkg/schema/equipment';
 import {
   findPurchaseOrderPartLine,
@@ -220,6 +221,43 @@ export async function amendPurchaseOrderAddCustomLine({
       note: input.note,
       oldQuantity: null,
     };
+  });
+}
+
+/**
+ * Records a sent Custom Line's price once the delivery note or invoice shows it. Not an amendment:
+ * the Supplier's copy carries no prices, so nothing goes out and no revision is filed. The audit
+ * trail keeps the before and after. A Part Line is refused, because its price is what receipts
+ * already stamped onto the ledger.
+ */
+export async function setPurchaseOrderCustomLinePrice({
+  actorUserId,
+  db,
+  input,
+}: {
+  actorUserId: AuthId;
+  db: Db;
+  input: PurchaseOrderPriceCustomLineInput;
+}): Promise<PurchaseOrder> {
+  return db.transaction(async (tx) => {
+    await openPurchaseOrder(tx, input.id, 'priceCustomLine');
+    const before = await getPurchaseOrder({ db: tx, id: input.id });
+    const line = findCustomLine(before, input.lineId);
+    await tx.update(purchaseOrderLines).set({ unitPrice: input.unitPrice }).where(eq(purchaseOrderLines.id, line.id));
+
+    const after = await getPurchaseOrder({ db: tx, id: input.id });
+    const changes = diffAuditUpdate(purchaseOrderAggregateAuditDescriptor, before, after);
+    if (changes) {
+      await recordAuditUpdate({
+        actorUserId,
+        after,
+        changes,
+        db: tx,
+        descriptor: purchaseOrderAggregateAuditDescriptor,
+      });
+    }
+
+    return after;
   });
 }
 

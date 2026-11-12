@@ -204,6 +204,8 @@ export const PurchaseOrderActions = z.object({
   fileDocuments: PurchaseOrderActionVerdict,
   /** The generated Supplier copy, offered until sending saves the as-sent PDF in its place. */
   preview: PurchaseOrderActionVerdict,
+  /** Recording a sent Custom Line's price from the delivery note or invoice. */
+  priceCustomLine: PurchaseOrderActionVerdict,
   receive: PurchaseOrderActionVerdict,
   returnToSupplier: PurchaseOrderActionVerdict,
   /** The audited un-approve: approval locks the order, and this is the one way back to editing. */
@@ -319,6 +321,11 @@ export const PurchaseOrderSaveDraftInput = PurchaseOrderCreateInput.extend({
 
 export type PurchaseOrderActionInput = z.infer<typeof PurchaseOrderActionInput>;
 export const PurchaseOrderActionInput = z.object({ id: UUID }).strict();
+
+export type PurchaseOrderPriceCustomLineInput = z.infer<typeof PurchaseOrderPriceCustomLineInput>;
+export const PurchaseOrderPriceCustomLineInput = z
+  .object({ id: UUID, lineId: UUID, unitPrice: PurchaseOrderUnitPrice })
+  .strict();
 
 export type PurchaseOrderListSortBy = z.infer<typeof PurchaseOrderListSortBy>;
 export const PurchaseOrderListSortBy = z.enum(['code', 'createdAt', 'expectedDeliveryDate', 'status', 'supplier']);

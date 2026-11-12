@@ -30,6 +30,7 @@ import {
   amendPurchaseOrderRemoveCustomLine,
   amendPurchaseOrderSubstitutePart,
   listPurchaseOrderAmendments,
+  setPurchaseOrderCustomLinePrice,
 } from './purchase-order-amendment-service.js';
 import { closePurchaseOrderShort, createPurchaseOrder, getPurchaseOrder } from './purchase-order-service.js';
 import { listLatePurchaseOrders } from './purchase-order-signals.js';
@@ -52,6 +53,44 @@ describe('Purchase Order amendments', () => {
       context.db.insert(purchaseOrderAmendments).values({ ...base, kind: 'remove-line', partId: PIECE_PART_ID }),
     ).rejects.toThrow();
   });
+  test('prices a sent Custom Line from its invoice without a revision, and refuses a Part Line', async ({
+    context,
+  }) => {
+    const order = await sendCustomOrder(context, [{ description: 'Office chair', quantity: 5, unitPrice: 0 }]);
+    const lineId = order.lines[0]?.id;
+    if (!lineId) throw new Error('Missing custom line');
+
+    const priced = await setPurchaseOrderCustomLinePrice({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: { id: order.id, lineId, unitPrice: 800 },
+    });
+
+    expect(priced.lines).toMatchObject([{ id: lineId, unitPrice: 800 }]);
+    // The Supplier's copy carries no prices, so nothing new goes out and nothing is logged as an amendment.
+    const documents = await listPurchaseOrderDocuments({ db: context.db, purchaseOrderId: order.id });
+    expect(documents.items.map((item) => item.revision)).toEqual([1]);
+    await expect(listPurchaseOrderAmendments({ db: context.db, purchaseOrderId: order.id })).resolves.toEqual({
+      items: [],
+    });
+    const audit = await context.db
+      .select()
+      .from(auditEvents)
+      .where(and(eq(auditEvents.action, 'updated'), eq(auditEvents.entityId, order.id)))
+      .orderBy(auditEvents.occurredAt, auditEvents.id);
+    expect(audit.at(-1)?.actorUserId).toBe(ACTOR_ID);
+    expect(JSON.stringify(audit.at(-1)?.changes)).toMatch(/"unitPrice".*800/);
+
+    const partOrder = await sendOrder(context, [{ partId: PIECE_PART_ID, quantity: 2, unitPrice: 20 }]);
+    await expect(
+      setPurchaseOrderCustomLinePrice({
+        actorUserId: ACTOR_ID,
+        db: context.db,
+        input: { id: partOrder.id, lineId: partLineId(partOrder, PIECE_PART_ID), unitPrice: 25 },
+      }),
+    ).rejects.toMatchObject({ code: 'purchase_order.line_not_found' });
+  });
+
   test('amends a Custom Line above its arrived quantity and files its new PDF revision', async ({ context }) => {
     const order = await sendCustomOrder(context, [{ description: 'Office chair', quantity: 5, unitPrice: 800 }]);
     const lineId = order.lines[0]?.id;

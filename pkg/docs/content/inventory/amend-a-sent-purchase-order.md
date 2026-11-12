@@ -37,6 +37,19 @@ unit, optional Supplier code, quantity, unit price if known, and the mandatory n
 **Add custom line**. A Supplier needs no catalogue Parts for this option. A Part Line must carry a
 price; a Custom Line may be added unpriced.
 
+## Set a Custom Line's price
+
+A Custom Line sent without a price shows **Not priced**. Once the delivery note or invoice shows
+the price, record it:
+
+1. On the **Lines** card, click **Set price** on the Custom Line.
+2. Enter the **Unit price** and click **Save price**.
+
+Setting a price is not an amendment. The Supplier's copy carries no prices, so no revision is filed
+and no note is needed; the **Audit** tab keeps the old and new price. It stays available after the
+order is closed short, because the invoice often arrives later. A Part Line's price cannot change
+once the order is sent.
+
 ## Remove a Custom Line
 
 1. On the **Lines** card, click **Remove line** on a Custom Line that has no Arrival history.

@@ -1795,86 +1795,13 @@ describe('quotes.upcomingDeliveries', () => {
   });
 });
 
-describe('quotes.summaryByStatus', () => {
-  test('requires quote read access and returns a zero-filled status summary', async ({ context }) => {
-    const salesCaller = context.createCaller(mockSession('sales'));
-    const jobViewerCaller = context.createCaller(mockSession('job-viewer'));
-
-    await expect(jobViewerCaller.quotes.summaryByStatus()).rejects.toMatchObject({
+describe('quotes.invoicedByMonth', () => {
+  test('serves the four months only to whoever prices Quotes', async ({ context }) => {
+    await expect(context.createCaller(mockSession('sales')).quotes.invoicedByMonth()).rejects.toMatchObject({
       code: 'FORBIDDEN',
     });
-    await expect(salesCaller.quotes.summaryByStatus()).resolves.toEqual({
-      items: [
-        { count: 0, status: 'draft' },
-        { count: 0, status: 'sent' },
-        { count: 0, status: 'accepted' },
-        { count: 0, status: 'rejected' },
-        { count: 0, status: 'cancelled' },
-      ],
-    });
-  });
-});
-
-describe('quotes.pipelineSummary', () => {
-  test('requires quote read access and aggregates sent pipeline value with decision counts', async ({ context }) => {
-    const salesCaller = context.createCaller(mockSession('sales'));
-    const jobViewerCaller = context.createCaller(mockSession('job-viewer'));
-
-    await expect(jobViewerCaller.quotes.pipelineSummary()).rejects.toMatchObject({
-      code: 'FORBIDDEN',
-    });
-
-    await createNamedQuote(salesCaller, {
-      customerCompanyName: 'Pipeline Sent Customer',
-      deliveryPrice: 100,
-      discountPercent: 10,
-      productId: context.product.id,
-      status: 'sent',
-    });
-    await createNamedQuote(salesCaller, {
-      customerCompanyName: 'Pipeline Accepted Customer',
-      discountPercent: 0,
-      productId: context.product.id,
-      status: 'accepted',
-    });
-    await createNamedQuote(salesCaller, {
-      customerCompanyName: 'Pipeline Cancelled Customer',
-      discountPercent: 0,
-      productId: context.product.id,
-      status: 'cancelled',
-    });
-    // An accepted decision older than the 90-day window stays out of the win-rate counts.
-    const staleDecision = await createNamedQuote(salesCaller, {
-      customerCompanyName: 'Pipeline Old Decision Customer',
-      discountPercent: 0,
-      productId: context.product.id,
-      status: 'rejected',
-    });
-    await context.db
-      .update(quotes)
-      .set({ statusChangedAt: daysAgo(91) })
-      .where(sql`${quotes.id} = ${staleDecision.id}`);
-
-    // Base 1000 + delivery 100 - 10% discount = 1000 for the single sent quote, freshly sent.
-    await expect(salesCaller.quotes.pipelineSummary()).resolves.toEqual({
-      accepted90dCount: 1,
-      newlySent30dValue: 1000,
-      openPipelineCount: 1,
-      openPipelineValue: 1000,
-      rejected90dCount: 0,
-    });
-
-    // Pushing the sent transition outside the 30-day window keeps the quote in the open pipeline only.
-    const [sentRow] = await context.db.select({ id: quotes.id }).from(quotes).where(sql`${quotes.status} = 'sent'`);
-    await context.db
-      .update(quotes)
-      .set({ statusChangedAt: daysAgo(31) })
-      .where(sql`${quotes.id} = ${sentRow?.id}`);
-
-    await expect(salesCaller.quotes.pipelineSummary()).resolves.toMatchObject({
-      newlySent30dValue: 0,
-      openPipelineCount: 1,
-      openPipelineValue: 1000,
+    await expect(context.createCaller(mockSession('admin')).quotes.invoicedByMonth()).resolves.toMatchObject({
+      months: [{ quotes: 0, total: 0 }, { quotes: 0 }, { quotes: 0 }, { quotes: 0 }],
     });
   });
 });

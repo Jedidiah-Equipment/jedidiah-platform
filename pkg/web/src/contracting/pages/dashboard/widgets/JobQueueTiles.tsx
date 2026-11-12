@@ -3,7 +3,7 @@ import type { JobQueue } from '@pkg/schema/contracting';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { DashboardTile, dashboardTileLinkClassName } from '@/components/common/dashboard/DashboardTile.js';
-import { DASHBOARD_REFETCH_INTERVAL_MS } from '@/contracting/lib/dashboard-refresh.js';
+import { DASHBOARD_REFETCH_INTERVAL_MS } from '@/components/common/dashboard/dashboard-refresh.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 function useQueueCount(queue: JobQueue) {

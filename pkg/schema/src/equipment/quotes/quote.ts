@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { AuthId } from '../../auth/auth-id.js';
 import { DateIso, DateOnlyIso } from '../../common/date.js';
+import { INVOICED_MONTHS_SHOWN } from '../../common/invoiced-months.js';
 import { createCursorQueryResult, createSearchedSortedCursorQueryInput } from '../../common/pagination.js';
 import { Price, PriceDelta } from '../../common/price.js';
 import {
@@ -751,27 +752,18 @@ export const QuoteListInput = createSearchedSortedCursorQueryInput({
 export type QuoteListResult = z.infer<typeof QuoteListResult>;
 export const QuoteListResult = createCursorQueryResult(QuoteSummary);
 
-export type QuoteStatusCount = z.infer<typeof QuoteStatusCount>;
-export const QuoteStatusCount = z.object({
-  status: QuoteStatus,
-  count: z.number().int().min(0),
+/** One plant-time month of Quotes stamped Invoiced: their Quote totals ex VAT after discount, and how many. */
+export type QuoteInvoicedMonth = z.infer<typeof QuoteInvoicedMonth>;
+export const QuoteInvoicedMonth = z.object({
+  /** The month's first day. */
+  month: DateOnlyIso,
+  total: Price,
+  quotes: z.number().int().nonnegative(),
 });
 
-export type QuoteStatusSummary = z.infer<typeof QuoteStatusSummary>;
-export const QuoteStatusSummary = z.object({
-  items: z.array(QuoteStatusCount),
-});
-
-export type QuotePipelineSummary = z.infer<typeof QuotePipelineSummary>;
-export const QuotePipelineSummary = z.object({
-  accepted90dCount: z.number().int().min(0),
-  newlySent30dValue: Price,
-  /** Sent Quotes plus Jobs with unfinished Work Slots, counting a Quote behind a Job only once. */
-  openPipelineCount: z.number().int().min(0),
-  /** Combined value of everything in {@link openPipelineCount}, excluding VAT. */
-  openPipelineValue: Price,
-  rejected90dCount: z.number().int().min(0),
-});
+/** This month to date, then the three full months before it; a month with nothing invoiced is zero, not missing. */
+export type QuoteInvoicedByMonth = z.infer<typeof QuoteInvoicedByMonth>;
+export const QuoteInvoicedByMonth = z.object({ months: QuoteInvoicedMonth.array().length(INVOICED_MONTHS_SHOWN) });
 
 export type QuoteWeeklyFlowPoint = z.infer<typeof QuoteWeeklyFlowPoint>;
 export const QuoteWeeklyFlowPoint = z.object({

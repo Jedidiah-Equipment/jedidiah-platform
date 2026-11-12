@@ -1,13 +1,13 @@
-import type { CSSProperties } from 'react';
-import { DashboardWidgetCard } from '@/components/common/dashboard/DashboardWidgetCard.js';
+import { DashboardRowGrid } from '@/components/common/dashboard/DashboardRowGrid.js';
+import { visibleDashboardRows } from '@/components/common/dashboard/dashboard-rows.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { useAccess } from '@/hooks/use-access.js';
 
-import { dashboardRowColumns, visibleContractingDashboardRows } from './dashboard-widgets.js';
+import { contractingDashboardRows } from './dashboard-widgets.js';
 
 export function ContractingDashboardPage() {
   const access = useAccess();
-  const rows = visibleContractingDashboardRows(access.data);
+  const rows = visibleDashboardRows(access.data, contractingDashboardRows);
   return (
     <PageLayout title="Dashboard">
       {access.data && rows.length === 0 ? (
@@ -17,21 +17,7 @@ export function ContractingDashboardPage() {
           </p>
         </div>
       ) : (
-        <div className="flex flex-col gap-4">
-          {rows.map((row) => (
-            <div
-              key={row[0]?.id}
-              className="grid grid-cols-1 gap-4 md:grid-cols-6 xl:grid-cols-(--row-columns)"
-              style={{ '--row-columns': dashboardRowColumns(row) } as CSSProperties}
-            >
-              {row.map((widget) => (
-                <DashboardWidgetCard className="xl:col-span-1" key={widget.id} size={widget.size} title={widget.title}>
-                  <widget.Component />
-                </DashboardWidgetCard>
-              ))}
-            </div>
-          ))}
-        </div>
+        <DashboardRowGrid rows={rows} />
       )}
     </PageLayout>
   );

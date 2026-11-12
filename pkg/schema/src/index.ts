@@ -11,6 +11,7 @@ export * from './common/file.js';
 export * from './common/form.js';
 export * from './common/image.js';
 export * from './common/invoice-number.js';
+export * from './common/invoiced-months.js';
 export * from './common/locale.js';
 export * from './common/pagination.js';
 export * from './common/phone-number.js';

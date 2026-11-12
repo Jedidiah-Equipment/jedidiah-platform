@@ -2,16 +2,15 @@ import type { Db } from '@pkg/db';
 import { customers, products, quotes } from '@pkg/db/equipment';
 import {
   addDateOnlyDays,
-  addDateOnlyMonths,
   getPlantDateNow,
+  invoicedMonthsWindow,
   JOHANNESBURG_TIME_ZONE,
   roundToCents,
-  startOfDateOnlyMonth,
   startOfDateOnlyWeek,
   toPlantDateOnly,
   zonedDateStartToUtcInstant,
 } from '@pkg/domain';
-import { type DateOnlyIso, INVOICED_MONTHS_SHOWN } from '@pkg/schema';
+import type { DateOnlyIso } from '@pkg/schema';
 import { QuoteInvoicedByMonth, QuoteWeeklyFlowSummary, StaleSentQuoteList } from '@pkg/schema/equipment';
 import { and, asc, eq, gte, lt, sql } from 'drizzle-orm';
 
@@ -82,12 +81,7 @@ export async function summarizeInvoicedByMonth({
   db: Db;
   today?: DateOnlyIso;
 }): Promise<QuoteInvoicedByMonth> {
-  const thisMonth = startOfDateOnlyMonth(today);
-  const months = Array.from({ length: INVOICED_MONTHS_SHOWN }, (_, back) => addDateOnlyMonths(thisMonth, -back));
-  const from = zonedDateStartToUtcInstant(
-    addDateOnlyMonths(thisMonth, 1 - INVOICED_MONTHS_SHOWN),
-    JOHANNESBURG_TIME_ZONE,
-  );
+  const { months, from } = invoicedMonthsWindow(today);
   const rows = await db
     .select({
       deliveryPrice: quotes.deliveryPrice,

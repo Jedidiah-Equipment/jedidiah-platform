@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { AuthId } from '../../auth/auth-id.js';
 import { DateIso, DateOnlyIso } from '../../common/date.js';
-import { INVOICED_MONTHS_SHOWN } from '../../common/invoice-number.js';
+import { INVOICED_MONTHS_SHOWN } from '../../common/invoiced-months.js';
 import { createCursorQueryResult, createSearchedSortedCursorQueryInput } from '../../common/pagination.js';
 import { nullableTrimmedTextInput, nullableTrimmedTextInputOptional, requiredTrimmedText } from '../../common/text.js';
 import { UUID } from '../../common/uuid.js';

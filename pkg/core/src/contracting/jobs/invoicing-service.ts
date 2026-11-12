@@ -1,14 +1,8 @@
 import type { Db } from '@pkg/db';
 import { contractingCustomers, contractingJobs } from '@pkg/db/contracting';
-import {
-  addDateOnlyMonths,
-  getPlantDateNow,
-  JOHANNESBURG_TIME_ZONE,
-  startOfDateOnlyMonth,
-  zonedDateStartToUtcInstant,
-} from '@pkg/domain';
+import { getPlantDateNow, invoicedMonthsWindow, JOHANNESBURG_TIME_ZONE } from '@pkg/domain';
 import { formatJobNumber, type JobActor, jobTransitions, readsJobMoney } from '@pkg/domain/contracting';
-import { type DateOnlyIso, INVOICED_MONTHS_SHOWN } from '@pkg/schema';
+import type { DateOnlyIso } from '@pkg/schema';
 import { InvoicedByMonth, type JobStampInvoiceInput } from '@pkg/schema/contracting';
 import { and, asc, eq, gte, sql } from 'drizzle-orm';
 import { JobError, totalChanged } from './job-errors.js';
@@ -61,12 +55,7 @@ export async function summarizeInvoicedByMonth({
 }): Promise<InvoicedByMonth> {
   if (!readsJobMoney(actor))
     throw new JobError('contracting_job.forbidden', 'You do not have permission to view invoiced amounts.');
-  const thisMonth = startOfDateOnlyMonth(today);
-  const months = Array.from({ length: INVOICED_MONTHS_SHOWN }, (_, back) => addDateOnlyMonths(thisMonth, -back));
-  const from = zonedDateStartToUtcInstant(
-    addDateOnlyMonths(thisMonth, 1 - INVOICED_MONTHS_SHOWN),
-    JOHANNESBURG_TIME_ZONE,
-  );
+  const { months, from } = invoicedMonthsWindow(today);
   const month = sql<string>`to_char(${contractingJobs.invoicedAt} at time zone ${JOHANNESBURG_TIME_ZONE}, 'YYYY-MM-01')`;
   const rows = await db
     .select({

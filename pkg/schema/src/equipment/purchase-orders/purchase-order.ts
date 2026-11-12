@@ -145,6 +145,8 @@ export function findPurchaseOrderPartLine<TLine extends { kind: 'custom' } | { k
 export type PurchaseOrderLinkedJob = z.infer<typeof PurchaseOrderLinkedJob>;
 export const PurchaseOrderLinkedJob = z.object({
   code: JobCode,
+  /** Whose the Job is, so accounts can allocate the order from the order itself. Null reads as Stock. */
+  customerCompanyName: z.string().trim().min(1).nullable(),
   id: UUID,
 });
 

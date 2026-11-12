@@ -77,7 +77,7 @@ const purchaseOrder = PurchaseOrderView.parse({
   documentId: null,
   expectedDeliveryDate: '2026-08-20',
   id: 'f0e6a166-6958-46c0-a2e6-271bad486859',
-  jobs: [{ code: 'JOB-00007', id: JOB_ID }],
+  jobs: [{ code: 'JOB-00007', customerCompanyName: null, id: JOB_ID }],
   lines,
   sentAt: null,
   status: 'draft',

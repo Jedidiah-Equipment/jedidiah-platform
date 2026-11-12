@@ -64,7 +64,11 @@ const part: Part = {
   unitOfMeasure: 'piece',
   unitOfMeasureLocked: false,
 };
-const linkedJob = PurchaseOrderLinkedJob.parse({ code: 'JOB-00007', id: '8c6f2a1e-4d3b-4c5a-9e8f-7a6b5c4d3e2f' });
+const linkedJob = PurchaseOrderLinkedJob.parse({
+  code: 'JOB-00007',
+  customerCompanyName: 'Karoo Farms',
+  id: '8c6f2a1e-4d3b-4c5a-9e8f-7a6b5c4d3e2f',
+});
 const purchaseOrder = PurchaseOrderView.parse({
   actions: derivePurchaseOrderActions({
     closedShortAt: null,
@@ -285,6 +289,18 @@ it.each([
     );
   },
 );
+
+it('names the Customer beside each linked Job on a Draft', async () => {
+  const job = { ...linkedJob, createdAt: '2026-09-01T06:00:00.000Z', updatedAt: '2026-09-01T06:00:00.000Z' };
+  const container = await mount(
+    { 'jobs.list': () => ({ items: [job], nextCursor: null, total: 1 }) },
+    { ...purchaseOrder, jobs: [linkedJob] },
+  );
+
+  await act(async () => {
+    await vi.waitFor(() => expect(container.textContent).toContain('JOB-00007 · Karoo Farms'));
+  });
+});
 
 it('leaves an approved order whose server copy changed without saving it', async () => {
   let served = orderInStatus('approved');

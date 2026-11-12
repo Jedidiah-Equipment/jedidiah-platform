@@ -222,7 +222,10 @@ describe('Purchase Order draft lifecycle', () => {
 
     expect(updated).toMatchObject({
       expectedDeliveryDate: '2026-08-20',
-      jobs: [{ id: context.jobIds[0] }, { id: context.jobIds[1] }],
+      jobs: [
+        { customerCompanyName: 'PO Job Customer', id: context.jobIds[0] },
+        { customerCompanyName: 'PO Job Customer', id: context.jobIds[1] },
+      ],
       lines: [
         { partId: PIECE_PART_ID, quantity: 4, standardPurchaseLengthMm: null, unitPrice: 125.5 },
         { partId: LINEAR_PART_ID, quantity: 2, standardPurchaseLengthMm: 6_000, unitPrice: 900 },

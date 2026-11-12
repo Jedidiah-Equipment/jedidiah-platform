@@ -29,6 +29,8 @@ import {
   formatPurchaseOrderLineLabel,
   purchaseOrderActionFacts,
   purchaseOrderLineSubjectKey,
+  resolveJobCustomer,
+  resolveNewestOwnershipTransfer,
 } from '@pkg/domain/equipment';
 import { type AuthId, DateIso, getNextCursor, type UUID } from '@pkg/schema';
 import {
@@ -781,7 +783,27 @@ export async function readPurchaseOrderDocument({
 }
 
 const purchaseOrderWith = {
-  jobLinks: { with: { job: true } },
+  jobLinks: {
+    with: {
+      job: {
+        with: {
+          productUnit: {
+            columns: {},
+            with: {
+              ownershipTransfers: {
+                columns: { createdAt: true, id: true, occurredOn: true, toCustomerId: true },
+                with: { toCustomer: { columns: { companyName: true, id: true, thumbnailDataUrl: true } } },
+              },
+            },
+          },
+          quote: {
+            columns: {},
+            with: { customer: { columns: { companyName: true, id: true, thumbnailDataUrl: true } } },
+          },
+        },
+      },
+    },
+  },
   lines: { with: { part: true } },
   supplier: true,
 } as const;
@@ -840,7 +862,17 @@ function mapPurchaseOrder({
     expectedDeliveryDate: row.expectedDeliveryDate,
     id: row.id,
     jobs: row.jobLinks
-      .map((link) => ({ code: link.job.code, id: link.job.id }))
+      .map(({ job }) => ({
+        code: job.code,
+        customerCompanyName:
+          resolveJobCustomer({
+            productUnit: job.productUnit
+              ? { owner: resolveNewestOwnershipTransfer(job.productUnit.ownershipTransfers)?.toCustomer ?? null }
+              : null,
+            quoteCustomer: job.quote?.customer ?? null,
+          })?.companyName ?? null,
+        id: job.id,
+      }))
       .sort((left, right) => left.code - right.code),
     lines: [...row.lines]
       .sort((left, right) => comparePurchaseOrderLines(lineOrderKey(left), lineOrderKey(right)))

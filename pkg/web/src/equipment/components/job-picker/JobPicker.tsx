@@ -16,6 +16,7 @@ import {
   ComboboxValue,
 } from '@/components/ui/combobox.js';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
+import { JobCodeWithCustomer } from '@/equipment/components/common/JobCodeWithCustomer.js';
 import { OfferingThumbnail } from '@/equipment/components/thumbnail/OfferingThumbnail.js';
 import { getApiQueryErrorMessage } from '@/lib/api-errors.js';
 import { JOB_PICKER_SEARCH_PLACEHOLDER, JOB_PICKER_TABS } from './job-picker-model.js';
@@ -159,8 +160,8 @@ function ComboboxChipsTrigger({
     <ComboboxChips>
       <ComboboxValue>
         {value.map((job) => (
-          <ComboboxChip className="font-mono" key={job.id}>
-            {job.code}
+          <ComboboxChip className="max-w-full" key={job.id}>
+            <JobCodeWithCustomer job={job} />
           </ComboboxChip>
         ))}
       </ComboboxValue>

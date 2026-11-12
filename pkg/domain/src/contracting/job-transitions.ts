@@ -1,22 +1,10 @@
 import type { AuthId } from '@pkg/schema';
 import { type JobStatus, unpricedJobStatuses } from '@pkg/schema/contracting';
+import { transitionEdges } from '../lifecycle/transition-edges.js';
 import { jobStatusLabels } from './jobs.js';
 
-/**
- * One move along the Job lifecycle: the statuses it leaves and the columns that travel with it, including
- * the ones the database requires cleared. It judges no one: the caller has already asserted the Job Action.
- * A move the lifecycle has no edge for is a programming error, not a refusal.
- */
-const edge =
-  <Event, Columns extends { readonly status: JobStatus }>(
-    verb: string,
-    from: readonly JobStatus[],
-    columns: (event: Event) => Columns,
-  ) =>
-  (job: { status: JobStatus }, event: Event): Columns => {
-    if (!from.includes(job.status)) throw new Error(`Cannot ${verb} a Job that is ${jobStatusLabels[job.status]}.`);
-    return columns(event);
-  };
+/** One move along the Job lifecycle; the caller has already asserted the Job Action. */
+const edge = transitionEdges<JobStatus, { status: JobStatus }>('Job', jobStatusLabels);
 
 export const jobTransitions = {
   activate: edge(

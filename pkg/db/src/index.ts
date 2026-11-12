@@ -14,6 +14,7 @@ export {
 } from './database-target.js';
 export { getDatabaseConfig, getDatabaseUrl } from './env.js';
 export {
+  calendarMonthOf,
   createEscapedContainsSearchCondition,
   createGlobalSearchCondition,
   createLikeSearchPattern,

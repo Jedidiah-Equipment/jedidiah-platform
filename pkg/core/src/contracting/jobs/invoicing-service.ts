@@ -1,4 +1,4 @@
-import type { Db } from '@pkg/db';
+import { calendarMonthOf, type Db } from '@pkg/db';
 import { contractingCustomers, contractingJobs } from '@pkg/db/contracting';
 import { getPlantDateNow, invoicedMonthsWindow, JOHANNESBURG_TIME_ZONE } from '@pkg/domain';
 import { formatJobNumber, type JobActor, jobTransitions, readsJobMoney } from '@pkg/domain/contracting';
@@ -56,7 +56,7 @@ export async function summarizeInvoicedByMonth({
   if (!readsJobMoney(actor))
     throw new JobError('contracting_job.forbidden', 'You do not have permission to view invoiced amounts.');
   const { months, from } = invoicedMonthsWindow(today);
-  const month = sql<string>`to_char(${contractingJobs.invoicedAt} at time zone ${JOHANNESBURG_TIME_ZONE}, 'YYYY-MM-01')`;
+  const month = calendarMonthOf(contractingJobs.invoicedAt, JOHANNESBURG_TIME_ZONE);
   const rows = await db
     .select({
       month,

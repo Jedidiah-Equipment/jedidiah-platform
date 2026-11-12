@@ -1,4 +1,4 @@
-import type { Db } from '@pkg/db';
+import { calendarMonthOf, type Db } from '@pkg/db';
 import { customers, products, quotes } from '@pkg/db/equipment';
 import {
   addDateOnlyDays,
@@ -89,7 +89,7 @@ export async function summarizeInvoicedByMonth({
       discountPercent: quotes.discountPercent,
       id: quotes.id,
       kind: quotes.kind,
-      month: sql<DateOnlyIso>`to_char(${quotes.invoicedAt} at time zone ${JOHANNESBURG_TIME_ZONE}, 'YYYY-MM-01')`,
+      month: calendarMonthOf<DateOnlyIso>(quotes.invoicedAt, JOHANNESBURG_TIME_ZONE),
       quotedBasePrice: quotes.quotedBasePrice,
     })
     .from(quotes)

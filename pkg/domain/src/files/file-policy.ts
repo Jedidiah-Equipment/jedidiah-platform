@@ -1,3 +1,5 @@
+import { joinOr } from '../formatting/text.js';
+
 export const DOCUMENT_PDF_CONTENT_TYPE = 'application/pdf';
 export const DOCUMENT_PNG_CONTENT_TYPE = 'image/png';
 export const DOCUMENT_JPEG_CONTENT_TYPE = 'image/jpeg';
@@ -82,13 +84,7 @@ export function fileTooLargeMessage(maxBytes: number): string {
 
 // Comma/`or`-joined human label for a set of content types, e.g. "PNG or JPEG".
 export function describeFileContentTypes(contentTypes: readonly string[]): string {
-  const labels = contentTypes.map(documentContentTypeLabel);
-
-  if (labels.length <= 1) {
-    return labels[0] ?? '';
-  }
-
-  return `${labels.slice(0, -1).join(', ')} or ${labels[labels.length - 1]}`;
+  return joinOr(contentTypes.map(documentContentTypeLabel));
 }
 
 export function sniffDocumentContentType(bytes: Uint8Array): string | null {

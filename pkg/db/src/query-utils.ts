@@ -33,6 +33,10 @@ export function onCalendarDays(
   return and(from ? sql`${day} >= ${from}::date` : undefined, to ? sql`${day} <= ${to}::date` : undefined);
 }
 
+/** The first day of the calendar month `column` falls in, in `timeZone`, as an ISO date. */
+export const calendarMonthOf = <Month extends string = string>(column: SQLWrapper, timeZone: string) =>
+  sql<Month>`to_char(${column} at time zone ${timeZone}, 'YYYY-MM-01')`;
+
 export function getPaginationQueryOptions({ cursor, limit }: CursorQueryInput): {
   limit?: number;
   offset?: number;

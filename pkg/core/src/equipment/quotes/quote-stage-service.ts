@@ -64,7 +64,12 @@ async function moveQuote(
       listQuoteSelectedAssemblies({ quoteId: before.id, tx }),
       listQuoteWorkItems({ quoteId: before.id, tx }),
     ]);
-    const [row] = await tx.update(quotes).set(columns(before, new Date())).where(eq(quotes.id, before.id)).returning();
+    const at = new Date();
+    const [row] = await tx
+      .update(quotes)
+      .set({ ...columns(before, at), updatedAt: at })
+      .where(eq(quotes.id, before.id))
+      .returning();
     if (!row) throw quoteNotFound(input.id);
     const changes = diffAuditUpdate(
       quoteAuditDescriptor,

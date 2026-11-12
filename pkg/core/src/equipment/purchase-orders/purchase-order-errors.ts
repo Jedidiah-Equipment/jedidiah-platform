@@ -74,11 +74,10 @@ export const purchaseOrderPartNotPurchasable = () =>
   );
 
 /**
- * A never-costed line is written unpriced — a zero standing for "not priced yet". Sending is the
- * human assertion that the price was agreed (spec §4), and a receipt against a zero-priced line
- * would stamp that zero onto the ledger as cost, establishing a zero moving average for a Part that
- * should read "no cost yet" (GLOSSARY-EQUIPMENT.md). This check keeps the assertion honest; an order that
- * genuinely costs nothing has to say so on the draft rather than by omission.
+ * A never-costed line is written unpriced — a zero standing for "not priced yet". A receipt against a
+ * zero-priced Part Line would stamp that zero onto the ledger as cost, establishing a zero moving
+ * average for a Part that should read "no cost yet" (GLOSSARY-EQUIPMENT.md), so a Part Line must be
+ * priced before it is sent. Custom Lines never reach the ledger and are exempt.
  */
 export const purchaseOrderLineNotPriced = (lineLabel: string) =>
   new PurchaseOrderError(

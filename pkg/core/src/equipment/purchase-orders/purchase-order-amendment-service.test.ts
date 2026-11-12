@@ -137,23 +137,6 @@ describe('Purchase Order amendments', () => {
       [{ description: 'Office chair', quantity: 5, unitPrice: 800 }],
       newSupplierId,
     );
-    await expect(
-      amendPurchaseOrderAddCustomLine({
-        actorUserId: ACTOR_ID,
-        db: context.db,
-        input: {
-          id: order.id,
-          description: 'Unpriced lamp',
-          quantity: 1,
-          supplierCode: null,
-          unit: 'each',
-          unitPrice: 0,
-          note: 'Phone call',
-        },
-        pdfRenderer: renderStubPdf,
-        storage: context.storage,
-      }),
-    ).rejects.toMatchObject({ code: 'purchase_order.line_not_priced' });
     const added = await amendPurchaseOrderAddCustomLine({
       actorUserId: ACTOR_ID,
       db: context.db,
@@ -163,7 +146,7 @@ describe('Purchase Order amendments', () => {
         quantity: 2,
         supplierCode: null,
         unit: 'each',
-        unitPrice: 80,
+        unitPrice: 0,
         note: 'Phone call',
       },
       pdfRenderer: renderStubPdf,

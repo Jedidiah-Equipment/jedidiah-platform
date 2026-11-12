@@ -32,5 +32,6 @@ back to the Job — so the order's PDF lands on that Job's Documents tab.
 - A Built Part can appear on the buy list but can never be ticked: it is made in-house, so there is
   no Supplier to order it from. Build it instead — see [Build stock](./build-stock.md).
 - **Late Purchase Orders**, below the buy list, is every Sent order past its expected date with
-  lines still owed. Either chase it, or close it short.
+  lines still owed. An order sent with no expected date appears once 30 days have passed since it
+  was sent. Either chase it, or close it short.
 - **Minimum Stock** is a field on the Part, edited there like any other Part attribute.

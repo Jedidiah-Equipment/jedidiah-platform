@@ -77,14 +77,18 @@ export const BuyListRow = z.object({
 export type BuyListResult = z.infer<typeof BuyListResult>;
 export const BuyListResult = z.object({ items: z.array(BuyListRow) });
 
-/** A sent order past the date it was promised for, with a remainder nobody has released. */
+/**
+ * A sent order past its due date, with a remainder nobody has released. It is due on its expected
+ * delivery date, or a fixed number of days after it was sent when it has none.
+ */
 export type LatePurchaseOrderRow = z.infer<typeof LatePurchaseOrderRow>;
 export const LatePurchaseOrderRow = z.object({
   code: PurchaseOrderCode,
   daysLate: z.int().positive(),
-  expectedDeliveryDate: DateOnlyIso,
+  expectedDeliveryDate: DateOnlyIso.nullable(),
   id: UUID,
   openLineCount: z.int().positive(),
+  sentOn: DateOnlyIso,
   supplierName: SupplierCompanyName,
 });
 

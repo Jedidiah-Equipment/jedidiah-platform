@@ -10,11 +10,11 @@ import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/compo
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { useDataTable } from '@/components/data-table/features.js';
 import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
+import { StatusQuickFilters } from '@/components/data-table/StatusQuickFilters.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Button } from '@/components/ui/button.js';
-import { StatusQuickFilters } from '@/contracting/components/StatusQuickFilters.js';
 import { useContractingWrite } from '@/contracting/hooks/use-contracting-write.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useCan } from '@/hooks/use-access.js';

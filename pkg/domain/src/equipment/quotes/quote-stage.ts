@@ -46,7 +46,7 @@ export const quoteStageLabels: Record<QuoteStage, string> = {
   'awaiting-pricing': 'Awaiting pricing',
 };
 
-export const quoteStageColorClassNames: Record<QuoteStage, BadgeColorClassNames> = {
+export const quoteStageColorClassNames = {
   ...quoteStatusColorClassNames,
   'awaiting-pricing': statusBadgeColorClassNames.orange,
-};
+} satisfies Record<QuoteStage, BadgeColorClassNames & { dot: string }>;

@@ -3,6 +3,7 @@ import {
   type DatabaseTransaction,
   type Db,
   getSortOrder,
+  onCalendarDays,
   user,
   withPagination,
 } from '@pkg/db';
@@ -16,7 +17,7 @@ import {
   quoteWorkItemParts,
   quoteWorkItems,
 } from '@pkg/db/equipment';
-import { addDateOnlyDays, parseDateOnlyParts, toPlantDateOnly } from '@pkg/domain';
+import { addDateOnlyDays, JOHANNESBURG_TIME_ZONE, parseDateOnlyParts, toPlantDateOnly } from '@pkg/domain';
 import {
   parseJobCodeSearch,
   type QuoteActor,
@@ -66,6 +67,7 @@ function quoteSummaryColumns() {
   return {
     quote: quotes,
     stage: quoteStageExpression(),
+    jobCompletedOn: liveJobCompletedOn(),
     customerCompanyName: customers.companyName,
     customerThumbnailDataUrl: customers.thumbnailDataUrl,
     productBuildTimeDays: products.buildTimeDays,
@@ -81,8 +83,7 @@ function quoteSummaryColumns() {
 
 export async function listQuotes({ db, input }: { db: Db; input: QuoteListInput }): Promise<QuoteListResult> {
   const where = buildQuoteListWhere(input);
-  const sortColumn = getQuoteSortColumn(input.sortBy);
-  const orderBy = getSortOrder(sortColumn, input.sortDirection);
+  const orderBy = getQuoteSortOrder(input);
 
   const rowsQuery = withPagination(
     db
@@ -600,6 +601,14 @@ export async function readLiveJob({
   return job ? (job.completedOn ? 'completed' : 'open') : 'none';
 }
 
+/** The live Job's completed date, null without a live Job; the partial unique index allows at most one. */
+const liveJobCompletedOn = () =>
+  sql<
+    string | null
+  >`(select ${jobs.completedOn} from ${jobs} where ${jobs.quoteId} = ${quotes.id} and ${jobs.cancelledAt} is null)`.mapWith(
+    jobs.completedOn,
+  );
+
 const liveJobOf = (completed: boolean) => sql`exists (
   select 1
   from ${jobs}
@@ -651,6 +660,12 @@ export function buildQuoteListWhere(input: QuoteListInput): SQL | undefined {
   if (input.filters.customerId) {
     conditions.push(eq(quotes.customerId, input.filters.customerId));
   }
+
+  const invoicedOn = onCalendarDays(quotes.invoicedAt, JOHANNESBURG_TIME_ZONE, {
+    from: input.filters.invoicedFrom,
+    to: input.filters.invoicedTo,
+  });
+  if (invoicedOn) conditions.push(invoicedOn);
 
   if (input.filters.offeringType === 'product') conditions.push(eq(quotes.kind, 'product'));
   if (input.filters.offeringType === 'custom')
@@ -708,6 +723,16 @@ export function buildQuoteListWhere(input: QuoteListInput): SQL | undefined {
   return conditions.length > 0 ? and(...conditions) : undefined;
 }
 
+/** Sorts that leave Quotes without the value last whichever way they run. */
+const nullsLastSorts = new Set<QuoteSortBy>(['invoicedAt', 'jobCompletedOn']);
+
+function getQuoteSortOrder({ sortBy, sortDirection }: Pick<QuoteListInput, 'sortBy' | 'sortDirection'>): SQL {
+  const column = getQuoteSortColumn(sortBy);
+  return nullsLastSorts.has(sortBy)
+    ? sql`${column} ${sortDirection === 'desc' ? sql`desc` : sql`asc`} nulls last`
+    : getSortOrder(column, sortDirection);
+}
+
 export function getQuoteSortColumn(sortBy: QuoteSortBy): SQL {
   const columns = {
     code: sql`${quotes.code}`,
@@ -715,6 +740,8 @@ export function getQuoteSortColumn(sortBy: QuoteSortBy): SQL {
     customerCompanyName: sql`${customers.companyName}`,
     // Sorted as blank rather than null so an uninvoiced Quote sorts alongside the other empty values.
     invoiceNumber: sql`coalesce(${quotes.invoiceNumber}, '')`,
+    invoicedAt: sql`${quotes.invoicedAt}`,
+    jobCompletedOn: liveJobCompletedOn(),
     productName: sql`coalesce(${products.name}, ${quotes.workTitle}, '')`,
     salesPersonName: sql`${user.name}`,
     stage: sql`array_position(array[${sql.join(

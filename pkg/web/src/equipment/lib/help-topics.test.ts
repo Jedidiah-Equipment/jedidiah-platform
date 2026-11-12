@@ -16,6 +16,7 @@ describe('helpTopicForPath', () => {
     expect(helpTopicForPath('/equipment/parts')).toBe('parts');
     expect(helpTopicForPath('/equipment/purchase-orders')).toBe('purchaseOrders');
     expect(helpTopicForPath('/equipment/quotes/42/edit')).toBe('quotes');
+    expect(helpTopicForPath('/equipment/invoicing')).toBe('equipmentInvoicing');
     expect(helpTopicForPath('/equipment/suppliers')).toBe('suppliers');
   });
 

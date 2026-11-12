@@ -1,7 +1,7 @@
 import type { ColumnFiltersState, Updater } from '@tanstack/react-table';
 import { isPickedExactly, togglePick } from '@/components/data-table/column-filter-values.js';
-import { QuickFilterButton } from '@/contracting/components/QuickFilterButton.js';
 import { cn } from '@/lib/utils.js';
+import { QuickFilterButton } from './QuickFilterButton.js';
 
 /**
  * The quick filters over one status column: a chip per status in `shown`, then All. A chip presses only while exactly

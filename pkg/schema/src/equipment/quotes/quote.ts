@@ -367,12 +367,15 @@ const quoteSummaryShape = {
   selectedAssemblies: z.array(QuoteSelectedAssembly),
 };
 
+/** What a listed Quote adds: the live Job's completed date, null without a live Job or before it completes. */
+const quoteListedShape = { ...quoteSummaryShape, jobCompletedOn: DateOnlyIso.nullable() };
+
 const quoteCustomCollectionsShape = { workItems: z.array(QuoteWorkItem) };
 
 export type QuoteSummary = z.infer<typeof QuoteSummary>;
 export const QuoteSummary = z.discriminatedUnion('kind', [
-  z.object({ ...quoteBaseShape, ...quoteProductOfferingShape, ...quoteSummaryShape }),
-  z.object({ ...quoteBaseShape, ...quoteCustomOfferingShape, ...quoteSummaryShape, ...quoteCustomCollectionsShape }),
+  z.object({ ...quoteBaseShape, ...quoteProductOfferingShape, ...quoteListedShape }),
+  z.object({ ...quoteBaseShape, ...quoteCustomOfferingShape, ...quoteListedShape, ...quoteCustomCollectionsShape }),
 ]);
 
 export type PriorityQuote = z.infer<typeof PriorityQuote>;
@@ -380,13 +383,13 @@ export const PriorityQuote = z.discriminatedUnion('kind', [
   z.object({
     ...quoteBaseShape,
     ...quoteProductOfferingShape,
-    ...quoteSummaryShape,
+    ...quoteListedShape,
     earliestDeliveryDate: DateOnlyIso,
   }),
   z.object({
     ...quoteBaseShape,
     ...quoteCustomOfferingShape,
-    ...quoteSummaryShape,
+    ...quoteListedShape,
     ...quoteCustomCollectionsShape,
     earliestDeliveryDate: DateOnlyIso,
   }),
@@ -404,13 +407,13 @@ export const UpcomingDeliveryQuote = z.discriminatedUnion('kind', [
   z.object({
     ...quoteBaseShape,
     ...quoteProductOfferingShape,
-    ...quoteSummaryShape,
+    ...quoteListedShape,
     plannedDeliveryDate: DateOnlyIso,
   }),
   z.object({
     ...quoteBaseShape,
     ...quoteCustomOfferingShape,
-    ...quoteSummaryShape,
+    ...quoteListedShape,
     ...quoteCustomCollectionsShape,
     plannedDeliveryDate: DateOnlyIso,
   }),
@@ -710,6 +713,8 @@ export const QuoteSortBy = z.enum([
   'createdAt',
   'customerCompanyName',
   'invoiceNumber',
+  'invoicedAt',
+  'jobCompletedOn',
   'productName',
   'salesPersonName',
   'stage',
@@ -719,6 +724,9 @@ export type QuoteListFilters = z.infer<typeof QuoteListFilters>;
 export const QuoteListFilters = z
   .object({
     customerId: UUID.optional(),
+    /** Plant calendar days over `invoicedAt`, both ends inclusive. */
+    invoicedFrom: DateOnlyIso.optional(),
+    invoicedTo: DateOnlyIso.optional(),
     offeringType: QuoteOfferingType.optional(),
     productId: UUID.optional(),
     quoteCode: QuoteCode.optional(),

@@ -3,6 +3,18 @@
 A sold Quote moves through its [Quote Stages](/sales/quote-stages) one person's queue at a time; the
 Quote's **Stage** card shows where it stands and the buttons you may use there.
 
+## Find a Quote on the Invoicing page
+
+**Invoicing**, under Operations, lists every sold Quote from Awaiting pricing through Invoiced.
+
+- It opens on the three open stages, the Quotes whose Job finished longest ago on top. Quotes with no
+  Job completed date, such as a Parts Sale, come last. When nothing is open, it lists the Invoiced Quotes.
+- Click a stage above the table to see only its Quotes, with the count beside each. **All** includes
+  Invoiced.
+- Find Invoiced Quotes through the **Stage** column filter, or pick dates on the **Invoiced** column to
+  see what was invoiced on those days.
+- Click a row to open the Quote.
+
 ## Send a Quote for approval
 
 1. Open the Quote and complete it. On any Quote that means its discount, deposit, Delivery Terms and
@@ -27,7 +39,8 @@ A Quote Awaiting invoice can still be sent back the same way.
 ## Enter the Invoice Number
 
 1. Create the invoice in the accounting system.
-2. On the Quote's **Stage** card, click **Enter Invoice Number**.
+2. On the Quote's **Stage** card, click **Enter Invoice Number**, or click **Stamp** on its row on the
+   Invoicing page.
 3. Type the number and click **Invoice**.
 
 One accounting invoice can cover several Quotes, so the same number may go on more than one. The dialog

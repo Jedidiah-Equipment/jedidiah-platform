@@ -31,7 +31,7 @@ export const quoteStatusLabels: Record<QuoteStatus, string> = {
 };
 
 /** Tailwind classes split so native surfaces can put the text colour on the Text element. */
-export const quoteStatusColorClassNames: Record<QuoteStatus, BadgeColorClassNames> = {
+export const quoteStatusColorClassNames = {
   accepted: statusBadgeColorClassNames.green,
   'awaiting-approval': statusBadgeColorClassNames.purple,
   'awaiting-invoice': statusBadgeColorClassNames.yellow,
@@ -40,7 +40,7 @@ export const quoteStatusColorClassNames: Record<QuoteStatus, BadgeColorClassName
   invoiced: statusBadgeColorClassNames.teal,
   rejected: statusBadgeColorClassNames.red,
   sent: statusBadgeColorClassNames.blue,
-};
+} satisfies Record<QuoteStatus, BadgeColorClassNames & { dot: string }>;
 
 /**
  * What an existing Quote's Status field offers: the pickable statuses, Cancelled (which opens Quote

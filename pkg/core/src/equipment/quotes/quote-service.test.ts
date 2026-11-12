@@ -1702,6 +1702,79 @@ describe('listQuotes', () => {
       finished.id,
     ]);
   });
+
+  test('lists exactly the Quotes invoiced on the picked plant days', async ({ context }) => {
+    const invoicedAt = async (instant: string) => {
+      const quote = await createQuote(context.db, {
+        customerId: context.customer.id,
+        productId: context.product.id,
+        salesPersonId: context.salesPerson.id,
+        status: 'accepted',
+      });
+      await context.db
+        .update(quotes)
+        .set({ invoicedAt: new Date(instant), invoiceNumber: `INV-${instant}`, status: 'invoiced' })
+        .where(eq(quotes.id, quote.id));
+      return quote.id;
+    };
+    await invoicedAt('2026-11-09T21:59:00.000Z');
+    const firstMinute = await invoicedAt('2026-11-09T22:00:00.000Z');
+    const lastMinute = await invoicedAt('2026-11-10T21:59:00.000Z');
+    await invoicedAt('2026-11-10T22:00:00.000Z');
+
+    const listed = await listQuotes({
+      db: context.db,
+      input: {
+        filters: {
+          invoicedFrom: DateOnlyIso.parse('2026-11-10'),
+          invoicedTo: DateOnlyIso.parse('2026-11-10'),
+          stages: ['invoiced'],
+        },
+        cursor: 0,
+        limit: 10,
+        search: '',
+        sortBy: 'invoicedAt',
+        sortDirection: 'asc',
+      },
+    });
+
+    expect(listed.items.map((item) => item.id)).toEqual([firstMinute, lastMinute]);
+  });
+
+  test('serves the live Job completed date and sorts Quotes without one last both ways', async ({ context }) => {
+    const finishedOn = async (completedOn: string | null) => {
+      const quote = await createQuote(context.db, {
+        customerId: context.customer.id,
+        productId: context.product.id,
+        salesPersonId: context.salesPerson.id,
+        status: 'accepted',
+      });
+      if (completedOn) {
+        await context.db.insert(jobs).values({ cancelledAt: new Date(), completedOn: '2026-01-01', quoteId: quote.id });
+        await context.db.insert(jobs).values({ completedOn, quoteId: quote.id });
+      }
+      return quote.id;
+    };
+    const noJob = await finishedOn(null);
+    const later = await finishedOn('2026-11-05');
+    const earlier = await finishedOn('2026-11-01');
+    const list = (sortDirection: 'asc' | 'desc') =>
+      listQuotes({
+        db: context.db,
+        input: { filters: { stages: [] }, cursor: 0, limit: 10, search: '', sortBy: 'jobCompletedOn', sortDirection },
+      }).then(({ items }) => items.map((item) => [item.id, item.jobCompletedOn]));
+
+    await expect(list('asc')).resolves.toEqual([
+      [earlier, '2026-11-01'],
+      [later, '2026-11-05'],
+      [noJob, null],
+    ]);
+    await expect(list('desc')).resolves.toEqual([
+      [later, '2026-11-05'],
+      [earlier, '2026-11-01'],
+      [noJob, null],
+    ]);
+  });
 });
 
 describe('delivery terms', () => {

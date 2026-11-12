@@ -27,6 +27,7 @@ export type QuoteRow = typeof quotes.$inferSelect;
 export type QuoteListRow = {
   quote: QuoteRow;
   stage: QuoteStage;
+  jobCompletedOn: string | null;
   customerCompanyName: string;
   customerThumbnailDataUrl: string | null;
   productBuildTimeDays: number | null;
@@ -114,6 +115,7 @@ export function mapQuoteSummary(
     customerCompanyName: row.customerCompanyName,
     customerThumbnailDataUrl: row.customerThumbnailDataUrl,
     job: job ? mapQuoteLinkedJob(job) : null,
+    jobCompletedOn: row.jobCompletedOn,
     product: mapQuoteSummaryProduct(row),
     salesPersonEmail: row.salesPersonEmail,
     salesPersonName: row.salesPersonName,

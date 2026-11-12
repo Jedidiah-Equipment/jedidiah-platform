@@ -75,7 +75,11 @@ import {
   toProjectedBoard,
   withoutCancelledJobSlots,
 } from './board-read.js';
-import { jobOwnershipTransfersWith, resolveJobCustomerForRow } from './job-customer-read.js';
+import {
+  type JobOwnershipTransferRow,
+  jobOwnershipTransfersWith,
+  resolveJobCustomerForRow,
+} from './job-customer-read.js';
 import { jobNotFound } from './job-errors.js';
 import { type JobProductUnitRow, type JobRow, mapJob } from './job-mappers.js';
 import { listWorkingCalendarOffDays } from './working-calendar-service.js';
@@ -123,13 +127,7 @@ type JobDetailQuoteRow = QuoteRow & {
 };
 
 type JobProductUnitWithOwnershipRow = JobProductUnitRow & {
-  ownershipTransfers: {
-    createdAt: Date;
-    id: string;
-    occurredOn: string;
-    toCustomerId: string | null;
-    toCustomer: CustomerRow | null;
-  }[];
+  ownershipTransfers: JobOwnershipTransferRow<CustomerRow>[];
   product: (ProductRow & { id: string }) | null;
 };
 

@@ -7,10 +7,14 @@ import {
 
 type CustomerColumns = Partial<Record<keyof typeof customers.$inferSelect, true>>;
 
+/** One row of the ownership log `jobOwnershipTransfersWith` loads, carrying the Customer it names. */
+export type JobOwnershipTransferRow<TCustomer> = ProductUnitOwnershipTransferRecency & {
+  toCustomer: TCustomer | null;
+};
+
 /**
  * The Product Unit's ownership log a Job read loads so `resolveJobCustomerForRow` can name its current
- * Owner. Each read picks the Customer columns it shows, and passes the same ones to its Quote's
- * `customer`.
+ * Owner, with whichever Customer columns that read shows.
  */
 export function jobOwnershipTransfersWith<const TColumns extends CustomerColumns>(customerColumns: TColumns) {
   return {
@@ -24,9 +28,7 @@ export function jobOwnershipTransfersWith<const TColumns extends CustomerColumns
  * its machine's current Owner — `null` means Stock — and a Custom Job follows its Quote.
  */
 export function resolveJobCustomerForRow<TCustomer>(row: {
-  productUnit: {
-    ownershipTransfers: readonly (ProductUnitOwnershipTransferRecency & { toCustomer: TCustomer | null })[];
-  } | null;
+  productUnit: { ownershipTransfers: readonly JobOwnershipTransferRow<TCustomer>[] } | null;
   quote: { customer: TCustomer | null } | null;
 }): TCustomer | null {
   return resolveJobCustomer({

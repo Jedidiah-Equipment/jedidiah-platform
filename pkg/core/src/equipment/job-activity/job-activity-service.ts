@@ -24,8 +24,6 @@ import {
   getJobOfferingKind,
   JOB_ACTIVITY_EVENT_SENTENCES,
   jobWorkTimeActivitySentence,
-  resolveJobCustomer,
-  resolveNewestOwnershipTransfer,
 } from '@pkg/domain/equipment';
 import type { AuditChanges, AuthId, DateIso } from '@pkg/schema';
 import { getNextCursor } from '@pkg/schema';
@@ -51,6 +49,7 @@ import { unionAll } from 'drizzle-orm/pg-core';
 
 import { getActivityView, setActivityView } from '../../users/activity-view-service.js';
 import { feedbackPurchaseOrderRelation, toFeedbackPurchaseOrder } from '../feedback/feedback-purchase-order.js';
+import { jobOwnershipTransfersWith, resolveJobCustomerForRow } from '../jobs/job-customer-read.js';
 
 /**
  * The said half of the feed. Quote general feedback is still private to the `/feedback` inbox and
@@ -320,16 +319,13 @@ const jobActivityJobRead = {
       columns: {},
       with: {
         // Ownership is the log, not a stored field, so the Owner comes from the newest transfer.
-        ownershipTransfers: {
-          columns: { createdAt: true, id: true, occurredOn: true, toCustomerId: true },
-          with: { toCustomer: { columns: { companyName: true, id: true, thumbnailDataUrl: true } } },
-        },
+        ownershipTransfers: jobOwnershipTransfersWith({ companyName: true }),
         product: { columns: { name: true, thumbnailDataUrl: true } },
       },
     },
     quote: {
       columns: { kind: true, workTitle: true },
-      with: { customer: { columns: { companyName: true, id: true, thumbnailDataUrl: true } } },
+      with: { customer: { columns: { companyName: true } } },
     },
   },
 } as const;
@@ -646,14 +642,7 @@ function readChangeTo(changes: unknown, field: string): unknown {
 function mapJobActivityJobRef(job: JobActivityJobRow): JobActivityJobRef {
   const code = JobCode.parse(job.code);
   const productName = job.productUnit?.product?.name ?? null;
-  // The Unit's current Owner wins over the Customer who bought it, so a transferred machine reads as
-  // whoever holds it now; both null means Stock.
-  const owner = resolveJobCustomer({
-    productUnit: job.productUnit
-      ? { owner: resolveNewestOwnershipTransfer(job.productUnit.ownershipTransfers)?.toCustomer ?? null }
-      : null,
-    quoteCustomer: job.quote?.customer ?? null,
-  });
+  const owner = resolveJobCustomerForRow(job);
 
   return JobActivityJobRefSchema.parse({
     id: job.id,

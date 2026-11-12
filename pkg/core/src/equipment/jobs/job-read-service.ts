@@ -34,8 +34,6 @@ import {
   getBoardJobIds,
   parseJobCodeSearch,
   resolveBoardWindowFrom,
-  resolveJobCustomer,
-  resolveNewestOwnershipTransfer,
   sliceJobSchedule,
   summarizeSlotCalendarDays,
   windowActiveBoard,
@@ -77,12 +75,15 @@ import {
   toProjectedBoard,
   withoutCancelledJobSlots,
 } from './board-read.js';
+import { jobOwnershipTransfersWith, resolveJobCustomerForRow } from './job-customer-read.js';
 import { jobNotFound } from './job-errors.js';
 import { type JobProductUnitRow, type JobRow, mapJob } from './job-mappers.js';
 import { listWorkingCalendarOffDays } from './working-calendar-service.js';
 
 type ProductRow = Pick<typeof products.$inferSelect, 'buildTimeDays' | 'modelCode' | 'name' | 'thumbnailDataUrl'>;
 type CustomerRow = Pick<typeof customers.$inferSelect, 'companyName' | 'id' | 'thumbnailDataUrl'>;
+
+const jobCustomerColumns = { companyName: true, id: true, thumbnailDataUrl: true } as const;
 
 // The machine a Job is bound to, and the log that says who owns it now. Every Job read pulls this,
 // because the serial, VIN, Product, and Customer are all facts about the machine, not about the Job.
@@ -92,10 +93,7 @@ const productUnitWith = {
     vinNumber: true,
   },
   with: {
-    ownershipTransfers: {
-      columns: { createdAt: true, id: true, occurredOn: true, toCustomerId: true },
-      with: { toCustomer: { columns: { companyName: true, id: true, thumbnailDataUrl: true } } },
-    },
+    ownershipTransfers: jobOwnershipTransfersWith(jobCustomerColumns),
     product: {
       columns: { buildTimeDays: true, id: true, modelCode: true, name: true, thumbnailDataUrl: true },
     },
@@ -110,9 +108,7 @@ const jobQuoteWith = {
     workTitle: true,
   },
   with: {
-    customer: {
-      columns: { companyName: true, id: true, thumbnailDataUrl: true },
-    },
+    customer: { columns: jobCustomerColumns },
   },
 } as const;
 type CustomQuoteWorkRow = Pick<
@@ -670,22 +666,6 @@ async function listJobDepartmentTimings({
 
 function toCrewMember(row: { name: string; userId: string }): { name: string; userId: string } {
   return { name: row.name, userId: row.userId };
-}
-
-/**
- * The one place a read turns stored rows into "who does this Job belong to". A Unit-bound Job follows
- * its machine's current Owner — `null` means Stock — and a Custom Job follows its Quote.
- */
-function resolveJobCustomerForRow(row: {
-  productUnit: JobProductUnitWithOwnershipRow | null;
-  quote: { customer: CustomerRow | null } | null;
-}): CustomerRow | null {
-  return resolveJobCustomer({
-    productUnit: row.productUnit
-      ? { owner: resolveNewestOwnershipTransfer(row.productUnit.ownershipTransfers)?.toCustomer ?? null }
-      : null,
-    quoteCustomer: row.quote?.customer ?? null,
-  });
 }
 
 function listJobWorkRows(quote: Pick<JobDetailQuoteRow, 'kind' | 'workItems'> | null): JobDetail['workRows'] {

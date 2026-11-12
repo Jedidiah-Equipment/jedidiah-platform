@@ -1,0 +1,23 @@
+{
+  "business": "equipment",
+  "releasedAt": "2026-11-12T12:27:58.460Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Identify customers on purchase orders",
+          "description": "Linked jobs now show the customer name in the purchase order list and on individual orders, helping you allocate orders without opening each job. Jobs held in stock show “Stock”."
+        },
+        {
+          "title": "Send custom lines before prices are confirmed",
+          "description": "Send purchase orders with unpriced custom lines, then add their prices when the delivery note or invoice arrives. Part lines still need prices before sending."
+        },
+        {
+          "title": "Track late orders without delivery dates",
+          "description": "Sent orders without an expected delivery date now become due after 30 days and appear in Late Purchase Orders once overdue."
+        }
+      ]
+    }
+  ]
+}

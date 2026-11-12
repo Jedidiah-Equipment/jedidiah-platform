@@ -80,6 +80,18 @@ describe('Purchase Order amendments', () => {
       .orderBy(auditEvents.occurredAt, auditEvents.id);
     expect(audit.at(-1)?.actorUserId).toBe(ACTOR_ID);
     expect(JSON.stringify(audit.at(-1)?.changes)).toMatch(/"unitPrice".*800/);
+    // Saving the same price again changes nothing, so it records nothing.
+    await setPurchaseOrderCustomLinePrice({
+      actorUserId: ACTOR_ID,
+      db: context.db,
+      input: { id: order.id, lineId, unitPrice: 800 },
+    });
+    await expect(
+      context.db
+        .select()
+        .from(auditEvents)
+        .where(and(eq(auditEvents.action, 'updated'), eq(auditEvents.entityId, order.id))),
+    ).resolves.toHaveLength(audit.length);
 
     const partOrder = await sendOrder(context, [{ partId: PIECE_PART_ID, quantity: 2, unitPrice: 20 }]);
     await expect(

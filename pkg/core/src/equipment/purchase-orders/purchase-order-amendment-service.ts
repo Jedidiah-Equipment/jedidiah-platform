@@ -243,6 +243,7 @@ export async function setPurchaseOrderCustomLinePrice({
     await openPurchaseOrder(tx, input.id, 'priceCustomLine');
     const before = await getPurchaseOrder({ db: tx, id: input.id });
     const line = findCustomLine(before, input.lineId);
+    if (line.unitPrice === input.unitPrice) return before;
     await tx.update(purchaseOrderLines).set({ unitPrice: input.unitPrice }).where(eq(purchaseOrderLines.id, line.id));
 
     const after = await getPurchaseOrder({ db: tx, id: input.id });

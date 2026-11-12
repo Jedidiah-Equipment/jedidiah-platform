@@ -1,10 +1,9 @@
 import { actionSheet, formatDate, getFirstName } from '@pkg/domain';
 import { pricePersistedQuote } from '@pkg/domain/equipment';
-import { type QuoteDetail, QuoteSentBackNote, type QuoteStage } from '@pkg/schema/equipment';
+import { type QuoteActionName, type QuoteDetail, QuoteSentBackNote, type QuoteStage } from '@pkg/schema/equipment';
 import { IconArrowBackUp } from '@tabler/icons-react';
 import { useMutation } from '@tanstack/react-query';
-import type React from 'react';
-import { useState } from 'react';
+import { type ComponentProps, useState } from 'react';
 import { toast } from 'sonner';
 import { RemoveEntityDialog } from '@/components/common/RemoveEntityButton.js';
 import { ReasonDialog } from '@/components/form/ReasonDialog.js';
@@ -68,28 +67,35 @@ export function QuoteStageCard({
   if (!sentence) return null;
 
   const sheet = actionSheet(quote.actions);
-  const sendBlocked = sheet.verdict('sendForApproval');
-  const sendForApprovalAction = sheet.action('sendForApproval');
-  const approveAction = sheet.action('approve');
-  const stampAction = sheet.action('stampInvoice');
-  const correctAction = sheet.action('correctInvoiceNumber');
-  const sendBackAction = sheet.action('sendBack');
-  const removeAction = sheet.action('removeInvoiceNumber');
+  const sendVerdict = sheet.verdict('sendForApproval');
   const busy = saving || sendForApproval.isPending || approve.isPending || removeInvoiceNumber.isPending;
-  const afterSaving = (run: () => void) => ({
-    onClick: async () => {
-      setSaving(true);
-      try {
-        if (await flushAutosave()) run();
-        else toast.error('Fix the highlighted quote fields before moving the quote.');
-      } finally {
-        setSaving(false);
-      }
+  const stageActions: {
+    name: QuoteActionName;
+    label: string;
+    run: () => void;
+    variant?: ComponentProps<typeof Button>['variant'];
+  }[] = [
+    { name: 'sendForApproval', label: 'Send for approval', run: () => setConfirming('sendForApproval') },
+    { name: 'approve', label: 'Approve', run: () => approve.mutate({ id: quote.id }) },
+    { name: 'stampInvoice', label: 'Enter Invoice Number', run: () => setStamping(true) },
+    { name: 'correctInvoiceNumber', label: 'Correct', run: () => setStamping(true), variant: 'outline' },
+    { name: 'sendBack', label: 'Send back', run: () => setSendingBack(true), variant: 'outline' },
+    {
+      name: 'removeInvoiceNumber',
+      label: 'Remove',
+      run: () => setConfirming('removeInvoiceNumber'),
+      variant: 'destructive',
     },
-    // A field blurred on mousedown flushes and can raise the autosave banner, which moves this button before the
-    // click lands. The click flushes anyway, so the field keeps focus until then.
-    onMouseDown: (event: React.MouseEvent) => event.preventDefault(),
-  });
+  ];
+  const runAfterSaving = async (run: () => void) => {
+    setSaving(true);
+    try {
+      if (await flushAutosave()) run();
+      else toast.error('Fix the highlighted quote fields before moving the quote.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <Card size="sm">
@@ -123,73 +129,28 @@ export function QuoteStageCard({
             </span>
           </div>
         ) : null}
-        {!sendBlocked.allowed && sendBlocked.reason === 'delivery-unconfirmed' ? (
-          <p className="text-sm text-warning-foreground">{sendBlocked.message}</p>
+        {!sendVerdict.allowed && sendVerdict.reason === 'delivery-unconfirmed' ? (
+          <p className="text-sm text-warning-foreground">{sendVerdict.message}</p>
         ) : null}
         <div className="flex flex-wrap gap-2">
-          {sendForApprovalAction ? (
-            <Button
-              {...sendForApprovalAction}
-              disabled={busy || sendForApprovalAction.disabled}
-              {...afterSaving(() => setConfirming('sendForApproval'))}
-              type="button"
-            >
-              Send for approval
-            </Button>
-          ) : null}
-          {approveAction ? (
-            <Button
-              {...approveAction}
-              disabled={busy || approveAction.disabled}
-              {...afterSaving(() => approve.mutate({ id: quote.id }))}
-              type="button"
-            >
-              Approve
-            </Button>
-          ) : null}
-          {stampAction ? (
-            <Button
-              {...stampAction}
-              disabled={busy || stampAction.disabled}
-              {...afterSaving(() => setStamping(true))}
-              type="button"
-            >
-              Enter Invoice Number
-            </Button>
-          ) : null}
-          {correctAction ? (
-            <Button
-              {...correctAction}
-              disabled={busy || correctAction.disabled}
-              {...afterSaving(() => setStamping(true))}
-              type="button"
-              variant="outline"
-            >
-              Correct
-            </Button>
-          ) : null}
-          {sendBackAction ? (
-            <Button
-              {...sendBackAction}
-              disabled={busy || sendBackAction.disabled}
-              {...afterSaving(() => setSendingBack(true))}
-              type="button"
-              variant="outline"
-            >
-              Send back
-            </Button>
-          ) : null}
-          {removeAction ? (
-            <Button
-              {...removeAction}
-              disabled={busy || removeAction.disabled}
-              {...afterSaving(() => setConfirming('removeInvoiceNumber'))}
-              type="button"
-              variant="destructive"
-            >
-              Remove
-            </Button>
-          ) : null}
+          {stageActions.map(({ name, label, run, variant }) => {
+            const action = sheet.action(name);
+            return action ? (
+              <Button
+                key={name}
+                {...action}
+                disabled={busy || action.disabled}
+                onClick={() => void runAfterSaving(run)}
+                // A field blurred on mousedown flushes and can raise the autosave banner, which moves this button
+                // before the click lands. The click flushes anyway, so the field keeps focus until then.
+                onMouseDown={(event) => event.preventDefault()}
+                type="button"
+                variant={variant}
+              >
+                {label}
+              </Button>
+            ) : null;
+          })}
         </div>
       </CardContent>
       <Dialog

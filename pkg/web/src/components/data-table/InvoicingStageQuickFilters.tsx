@@ -4,6 +4,7 @@ import { pickWithoutStaleRange, STAGE_COLUMN_ID } from './stage-filter.js';
 
 /** An Invoicing page's stage chips. Picking only open stages drops the invoiced date range, which would empty the list. */
 export function InvoicingStageQuickFilters<Stage extends string>({
+  stages,
   onColumnFiltersChange,
   ...props
 }: {
@@ -20,7 +21,7 @@ export function InvoicingStageQuickFilters<Stage extends string>({
       {...props}
       label="Invoicing stages"
       columnId={STAGE_COLUMN_ID}
-      statuses={props.stages}
+      statuses={stages}
       onColumnFiltersChange={(updater) => onColumnFiltersChange((current) => pickWithoutStaleRange(current, updater))}
     />
   );

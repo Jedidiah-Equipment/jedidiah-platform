@@ -601,19 +601,16 @@ export async function readLiveJob({
   return job ? (job.completedOn ? 'completed' : 'open') : 'none';
 }
 
+const isLiveJobOfQuote = sql`${jobs.quoteId} = ${quotes.id} and ${jobs.cancelledAt} is null`;
+
 /** The live Job's completed date, null without a live Job; the partial unique index allows at most one. */
 const liveJobCompletedOn = () =>
-  sql<
-    string | null
-  >`(select ${jobs.completedOn} from ${jobs} where ${jobs.quoteId} = ${quotes.id} and ${jobs.cancelledAt} is null)`.mapWith(
-    jobs.completedOn,
-  );
+  sql<string | null>`(select ${jobs.completedOn} from ${jobs} where ${isLiveJobOfQuote})`.mapWith(jobs.completedOn);
 
 const liveJobOf = (completed: boolean) => sql`exists (
   select 1
   from ${jobs}
-  where ${jobs.quoteId} = ${quotes.id}
-    and ${jobs.cancelledAt} is null
+  where ${isLiveJobOfQuote}
     ${completed ? sql`and ${jobs.completedOn} is not null` : sql``}
 )`;
 
@@ -727,10 +724,8 @@ export function buildQuoteListWhere(input: QuoteListInput): SQL | undefined {
 const nullsLastSorts = new Set<QuoteSortBy>(['invoicedAt', 'jobCompletedOn']);
 
 function getQuoteSortOrder({ sortBy, sortDirection }: Pick<QuoteListInput, 'sortBy' | 'sortDirection'>): SQL {
-  const column = getQuoteSortColumn(sortBy);
-  return nullsLastSorts.has(sortBy)
-    ? sql`${column} ${sortDirection === 'desc' ? sql`desc` : sql`asc`} nulls last`
-    : getSortOrder(column, sortDirection);
+  const ordered = getSortOrder(getQuoteSortColumn(sortBy), sortDirection);
+  return nullsLastSorts.has(sortBy) ? sql`${ordered} nulls last` : ordered;
 }
 
 export function getQuoteSortColumn(sortBy: QuoteSortBy): SQL {

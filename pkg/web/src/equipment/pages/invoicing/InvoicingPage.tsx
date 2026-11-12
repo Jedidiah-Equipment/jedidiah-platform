@@ -51,7 +51,7 @@ const useInvoicingTableStore = createPersistedDataTableStore({
 
 /** Writes the Dashboard's stage into the saved filters, once; the persisted filters own it from then on. */
 export function focusInvoicingOn(stage: InvoicingQuoteStage) {
-  useInvoicingTableStore.getState().setColumnFilters(focusOnInvoicingStage(stage));
+  useInvoicingTableStore.getState().setColumnFilters((current) => focusOnInvoicingStage(current, stage));
 }
 
 const invoicingSortOptions: SortOptions<QuoteListInput> = {

@@ -1,6 +1,6 @@
 import { QuoteStage, type QuoteStageCounts } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
-import { invoicingListFilters, listedInvoicingStages } from './types.js';
+import { focusOnInvoicingStage, invoicingListFilters, listedInvoicingStages } from './types.js';
 
 const counts = (open: number): QuoteStageCounts['counts'] => ({
   ...(Object.fromEntries(QuoteStage.options.map((stage) => [stage, 0])) as QuoteStageCounts['counts']),
@@ -53,5 +53,19 @@ describe('invoicingListFilters', () => {
         counts(1),
       ),
     ).toEqual({ filters: { stages: ['invoiced'], offeringType: 'parts-sale', invoicedFrom: '2026-11-01' } });
+  });
+});
+
+describe('focusOnInvoicingStage', () => {
+  it('picks the one stage and drops the invoiced range, keeping the type', () => {
+    expect(
+      focusOnInvoicingStage(
+        [{ id: 'offeringType', value: 'product' }, ...stage(['invoiced']), ...invoiced({ start: '2026-11-01' })],
+        'awaiting-pricing',
+      ),
+    ).toEqual([
+      { id: 'offeringType', value: 'product' },
+      { id: 'stage', value: ['awaiting-pricing'] },
+    ]);
   });
 });

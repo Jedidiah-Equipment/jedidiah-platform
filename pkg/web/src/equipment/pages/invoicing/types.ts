@@ -54,10 +54,8 @@ export function invoicingListFilters(
   };
 }
 
-/**
- * The Dashboard opens Invoicing on one stage this way. The other column filters go, so the list matches the tile's
- * count, which spans every type and invoice date.
- */
-export const focusOnInvoicingStage = (stage: InvoicingQuoteStage): ColumnFiltersState => [
+/** The Dashboard opens Invoicing on one stage this way; the invoiced range goes too, or it would hide the open Quotes. */
+export const focusOnInvoicingStage = (columnFilters: ColumnFiltersState, stage: InvoicingQuoteStage) => [
+  ...columnFilters.filter((filter) => filter.id !== STAGE_COLUMN_ID && filter.id !== INVOICED_COLUMN_ID),
   { id: STAGE_COLUMN_ID, value: [stage] },
 ];

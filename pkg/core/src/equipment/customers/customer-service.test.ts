@@ -9,6 +9,7 @@ import { createTester, type TesterScope } from '../../test/create-tester.js';
 import { getQuote } from '../quotes/quote-read-service.js';
 import { cancelQuote, createQuote } from '../quotes/quote-service.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
+import { testQuoteActor } from '../test/quote-actor.js';
 import { getProductUnit } from '../units/product-unit-read-service.js';
 import { reassignProductUnitToQuote } from '../units/product-unit-reassignment.js';
 import {
@@ -368,7 +369,10 @@ test('moves every Quote status and counts only Units currently owned in preview 
   });
   await expect(getCustomerMergePreview({ db, sourceId: source.id })).resolves.toEqual({ quoteCount: 4, unitCount: 1 });
   await mergeCustomer({ actorUserId: 'actor-user-id', db, input: { sourceId: source.id, targetId: target.id } });
-  for (const id of quoteIds) await expect(getQuote({ db, id })).resolves.toMatchObject({ customerId: target.id });
+  for (const id of quoteIds)
+    await expect(getQuote({ actor: testQuoteActor('quote-reader'), db, id })).resolves.toMatchObject({
+      customerId: target.id,
+    });
   await expect(getProductUnit({ db, id: owned.id })).resolves.toMatchObject({ owner: { id: target.id } });
   await expect(getProductUnit({ db, id: sold.id })).resolves.toMatchObject({ owner: { id: third.id } });
   const events = await db.select().from(auditEvents).where(eq(auditEvents.action, 'merged'));
@@ -409,7 +413,10 @@ test('preserves the vacated survivor Quote lock when a Unit moves on to a third 
       input: { productUnitId: unit.id, toQuoteId, note: null },
     });
   await mergeCustomer({ actorUserId: 'actor-user-id', db, input: { sourceId: source.id, targetId: target.id } });
-  await expect(getQuote({ db, id: qb })).resolves.toMatchObject({ hasEverSourcedJob: true, job: null });
+  await expect(getQuote({ actor: testQuoteActor('quote-reader'), db, id: qb })).resolves.toMatchObject({
+    hasEverSourcedJob: true,
+    job: null,
+  });
   await expect(getProductUnit({ db, id: unit.id })).resolves.toMatchObject({ owner: { id: third.id } });
 });
 
@@ -429,7 +436,7 @@ test('still reverses an Allocation sale to Stock when its Customer was merged', 
   );
   await db.insert(jobs).values({ productUnitId: unit.id, completedOn: getPlantDateNow() });
   const quote = await createQuote({
-    actorUserId: 'actor-user-id',
+    actor: testQuoteActor('actor-user-id'),
     db,
     input: QuoteCreateInput.parse({
       customer: { type: 'existing', customerId: source.id },
@@ -546,7 +553,7 @@ test('releases Quote locks while a Unit writer holds the Unit and then needs tha
     await writer;
     await merging;
   }
-  await expect(getQuote({ db, id: quoteId })).resolves.toMatchObject({
+  await expect(getQuote({ actor: testQuoteActor('quote-reader'), db, id: quoteId })).resolves.toMatchObject({
     customerId: target.id,
     notes: 'Unit writer finished',
   });
@@ -590,7 +597,9 @@ contentionTest('lets Customer removal fail its restrictive FK while a merge back
     await removed;
     await merging;
   }
-  await expect(getQuote({ db, id: quoteId })).resolves.toMatchObject({ customerId: target.id });
+  await expect(getQuote({ actor: testQuoteActor('quote-reader'), db, id: quoteId })).resolves.toMatchObject({
+    customerId: target.id,
+  });
 });
 
 test('waits for a Quote edit before merging and preserves the edit', async ({ context }) => {
@@ -622,7 +631,7 @@ test('waits for a Quote edit before merging and preserves the edit', async ({ co
     await writer;
   }
   await merging;
-  await expect(getQuote({ db, id: quoteId })).resolves.toMatchObject({
+  await expect(getQuote({ actor: testQuoteActor('quote-reader'), db, id: quoteId })).resolves.toMatchObject({
     customerId: target.id,
     notes: 'Concurrent edit',
   });
@@ -690,19 +699,19 @@ test('inline Quote creation requires an explicit choice and can reuse a matching
     status: 'draft',
     salesPersonId: 'actor-user-id',
   });
-  await expect(createQuote({ db, actorUserId: 'actor-user-id', input })).rejects.toMatchObject({
+  await expect(createQuote({ db, actor: testQuoteActor('actor-user-id'), input })).rejects.toMatchObject({
     code: 'customer.possible_match',
   });
   expect(await findPossibleCustomerMatches({ db, companyName: 'MRB Farming' })).toHaveLength(1);
   const reused = await createQuote({
     db,
-    actorUserId: 'actor-user-id',
+    actor: testQuoteActor('actor-user-id'),
     input: { ...input, customer: { type: 'existing', customerId: existing.id } },
   });
-  expect((await getQuote({ db, id: reused.id })).customerId).toBe(existing.id);
+  expect((await getQuote({ actor: testQuoteActor('quote-reader'), db, id: reused.id })).customerId).toBe(existing.id);
   const created = await createQuote({
     db,
-    actorUserId: 'actor-user-id',
+    actor: testQuoteActor('actor-user-id'),
     input: {
       ...input,
       customer: {
@@ -716,7 +725,9 @@ test('inline Quote creation requires an explicit choice and can reuse a matching
       },
     },
   });
-  expect((await getQuote({ db, id: created.id })).customerId).not.toBe(existing.id);
+  expect((await getQuote({ actor: testQuoteActor('quote-reader'), db, id: created.id })).customerId).not.toBe(
+    existing.id,
+  );
   expect(await findPossibleCustomerMatches({ db, companyName: 'MRB Farming' })).toHaveLength(2);
 });
 

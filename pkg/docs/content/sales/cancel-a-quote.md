@@ -4,6 +4,10 @@ Cancelling ends the sale. The Quote reads **Cancelled**, drops out of every live
 cannot be reopened — raise a new Quote instead. To replace an accepted Quote whose prices or specification
 changed, follow [Change an accepted Quote](/sales/change-an-accepted-quote) rather than cancelling first.
 
+An **Invoiced** Quote cannot be cancelled. A Super Administrator first
+[removes its Invoice Number](/sales/take-a-finished-sale-to-its-invoice#correct-or-remove-an-invoice-number),
+which returns it to Awaiting invoice, and it can then be cancelled like any other Locked Quote.
+
 It is also the moment to settle everything the sale left behind. One confirmation shows you the Job it
 started and the machine that Job is building, and each of them is a choice you make there and then
 rather than a chore to hunt down afterwards.
@@ -74,5 +78,5 @@ this sale and outlives it — it returns to Stock and stays on the Units list.
 
 ## After cancelling
 
-The Quote keeps its notes, delivery dates, and invoice number editable so the record can still be
+The Quote keeps its notes, delivery dates, and quote document fields editable so the record can still be
 tidied. Nothing else about it can change, and the status cannot be moved back.

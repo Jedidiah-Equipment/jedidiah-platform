@@ -422,6 +422,27 @@ describe('Quote cancellation inputs', () => {
   });
 });
 
+const stageFacts = {
+  invoicedAt: null,
+  sentBackAt: null,
+  sentBackNote: null,
+  stage: 'accepted',
+} as const;
+
+const refused = { allowed: false, message: 'Not now.', reason: 'wrong-status' } as const;
+const detailStageFacts = {
+  actions: {
+    approve: refused,
+    correctInvoiceNumber: refused,
+    removeInvoiceNumber: refused,
+    sendBack: refused,
+    sendForApproval: { allowed: true },
+    stampInvoice: refused,
+  },
+  invoicedByName: null,
+  sentBackByName: null,
+} as const;
+
 describe('QuoteDetail', () => {
   it('parses quote read models without product-derived facts', () => {
     const quoteSummary = {
@@ -454,6 +475,7 @@ describe('QuoteDetail', () => {
       workItems: [],
       selectedAssemblies: [],
       status: 'accepted',
+      ...stageFacts,
       acceptedAt: null,
       statusChangedAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-01-01T00:00:00.000Z',
@@ -474,6 +496,7 @@ describe('QuoteDetail', () => {
         customerPhone: null,
         customerVatNumber: null,
         hasEverSourcedJob: false,
+        ...detailStageFacts,
       }),
     ).toMatchObject({
       product: null,
@@ -540,6 +563,8 @@ describe('QuoteDetail', () => {
         salesPersonThumbnailDataUrl: null,
         selectedAssemblies: [],
         status: 'accepted',
+        ...stageFacts,
+        ...detailStageFacts,
         acceptedAt: null,
         statusChangedAt: '2026-01-01T00:00:00.000Z',
         updatedAt: '2026-01-01T00:00:00.000Z',
@@ -637,6 +662,7 @@ describe('PriorityQuote', () => {
       salesPersonThumbnailDataUrl: null,
       selectedAssemblies: [],
       status: 'accepted',
+      ...stageFacts,
       acceptedAt: null,
       statusChangedAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-01-01T00:00:00.000Z',
@@ -695,6 +721,7 @@ describe('UpcomingDeliveryQuotesResult', () => {
       salesPersonThumbnailDataUrl: null,
       selectedAssemblies: [],
       status: 'accepted',
+      ...stageFacts,
       acceptedAt: null,
       statusChangedAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-01-01T00:00:00.000Z',

@@ -53,7 +53,7 @@ export function isReworkJob(job: ClassifiableJob): boolean {
 
 /** A deal, as the eligibility rules read it: only whether it has been billed, and what it names. */
 export type ReassignSourceQuote = {
-  invoiceNumber: string | null;
+  status: QuoteStatus;
   productUnitId: string | null;
 };
 
@@ -90,10 +90,10 @@ export function resolveReassignUnitIneligibility(
   if (facts.productId !== receivingProductId) return 'wrong-product';
   if (facts.liveJobs.some(isReworkJob)) return 'live-rework';
   if (facts.liveJobs.length === 0) return 'no-live-build-job';
-  if (facts.buildJobQuote && facts.buildJobQuote.invoiceNumber !== null) return 'selling-quote-invoiced';
+  if (facts.buildJobQuote?.status === 'invoiced') return 'selling-quote-invoiced';
   if (facts.ownerId === null) return null;
   if (!facts.sellingQuote) return 'owned-outside-deal';
-  if (facts.sellingQuote.invoiceNumber !== null) return 'selling-quote-invoiced';
+  if (facts.sellingQuote.status === 'invoiced') return 'selling-quote-invoiced';
 
   return null;
 }
@@ -207,7 +207,6 @@ export async function reassignProductUnitToQuote({
 
 export type ReceiverCandidateQuote = {
   id: string;
-  invoiceNumber: string | null;
   kind: string;
   productId: string | null;
   productUnitId: string | null;
@@ -226,11 +225,11 @@ export function assertQuoteCanReceive<TQuote extends ReceiverCandidateQuote>(
   if (quote.kind !== 'product' || quote.productId === null) {
     throw productUnitReassignQuoteIneligible('not-product');
   }
+  if (quote.status === 'invoiced') {
+    throw productUnitReassignQuoteIneligible('invoiced');
+  }
   if (!hasQuoteStatus(uninvoicedSoldQuoteStatuses, quote.status)) {
     throw productUnitReassignQuoteIneligible('not-accepted');
-  }
-  if (quote.invoiceNumber !== null) {
-    throw productUnitReassignQuoteIneligible('invoiced');
   }
   if (quote.productUnitId !== null) {
     throw productUnitReassignQuoteIneligible('allocation-quote');
@@ -242,7 +241,6 @@ async function lockReceivingQuote(tx: DatabaseTransaction, quoteId: UUID): Promi
     .select({
       customerId: quotes.customerId,
       id: quotes.id,
-      invoiceNumber: quotes.invoiceNumber,
       kind: quotes.kind,
       productId: quotes.productId,
       productUnitId: quotes.productUnitId,
@@ -396,11 +394,11 @@ export async function loadReassignSourceQuotes(
   if (ids.length === 0) return new Map();
 
   const rows = await db
-    .select({ id: quotes.id, invoiceNumber: quotes.invoiceNumber, productUnitId: quotes.productUnitId })
+    .select({ id: quotes.id, productUnitId: quotes.productUnitId, status: quotes.status })
     .from(quotes)
     .where(inArray(quotes.id, ids));
 
-  return new Map(rows.map((row) => [row.id, { invoiceNumber: row.invoiceNumber, productUnitId: row.productUnitId }]));
+  return new Map(rows.map((row) => [row.id, { productUnitId: row.productUnitId, status: row.status }]));
 }
 
 /**

@@ -7,13 +7,12 @@ import {
   QuoteCancellationReason,
   type QuoteDetail,
   QuoteDocumentNotes,
-  QuoteInvoiceNumber,
   QuoteNotes,
   QuoteSelectedAssemblyInput,
 } from '@pkg/schema/equipment';
 import { z } from 'zod';
 
-import { requireAiActorId } from '@/equipment/actor.js';
+import { requireAiActor } from '@/equipment/actor.js';
 import type { AiContext } from '@/equipment/context.js';
 import {
   QuoteDetailResponse as SharedQuoteDetailResponse,
@@ -30,7 +29,6 @@ export const PatchQuoteInput = z
     ),
     documentNotes: QuoteDocumentNotes.optional(),
     id: UUID,
-    invoiceNumber: QuoteInvoiceNumber.optional(),
     notes: QuoteNotes.optional(),
     plannedDeliveryDate: DateOnlyIsoString.nullable().optional(),
     preferredDeliveryDate: DateOnlyIsoString.nullable().optional(),
@@ -76,13 +74,14 @@ export function toPatchQuoteResponse(quote: QuoteDetail, access: UserAccessSumma
 export const patchQuoteDefinition = {
   name: 'patchQuote',
   description: [
-    'Patch one Quote, changing only explicitly provided fields: status, salesperson, invoice number, delivery dates, valid-until, notes, or selected assemblies.',
+    'Patch one Quote, changing only explicitly provided fields: status, salesperson, delivery dates, valid-until, notes, or selected assemblies.',
     'Use findQuotes first when the Quote UUID is not already known.',
     'Do not change status to accepted or rejected unless the user explicitly requested that exact decision.',
     'A Quote whose deliveryTerms are tbc cannot be accepted; relay the refusal ("Confirm delivery before accepting this quote.") rather than changing the delivery term, which only the Quote form can do.',
     'Changing status to cancelled requires cancellationReason in the same call.',
     'When selectedAssemblies are provided, they replace the complete collection; use getQuote first to preserve entries the user did not ask to remove.',
     'Offering and quote-level pricing fields remain excluded and must be edited in the Quote form.',
+    'The Invoice Number and the stages after Accepted are set only from the Quote page, never by this tool.',
     'Omitted fields remain unchanged; null clears a nullable date or note.',
   ].join('\n'),
   inputSchema: PatchQuoteInput,
@@ -91,7 +90,7 @@ export const patchQuoteDefinition = {
   async handler(args: unknown, ctx: AiContext): Promise<PatchQuoteResponse> {
     const input = toCoreQuotePatchInput(PatchQuoteInput.parse(args));
     const quote = await quotesCore.patchQuote({
-      actorUserId: requireAiActorId(ctx),
+      actor: requireAiActor(ctx),
       db: ctx.db,
       input,
     });

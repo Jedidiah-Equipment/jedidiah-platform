@@ -15,17 +15,13 @@ import {
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { offeringAvatarProps } from '@/equipment/components/OfferingAvatar';
-import { QuoteStatusChip } from '@/equipment/components/quotes/QuoteStatusChip';
-import {
-  QUOTE_STATUS_FILTER_OPTIONS,
-  type QuoteSort,
-  type QuoteStatusFilter,
-} from '@/equipment/lib/quote-presentation';
+import { QuoteStageChip } from '@/equipment/components/quotes/QuoteStageChip';
+import { QUOTE_STAGE_FILTER_OPTIONS, type QuoteSort, type QuoteStageFilter } from '@/equipment/lib/quote-presentation';
 import { useColorMode } from '@/theme/use-color-mode';
 
-const STATUS_OPTIONS: readonly ListControlOption<QuoteStatusFilter>[] = [
-  { label: 'All statuses', value: 'all' },
-  ...QUOTE_STATUS_FILTER_OPTIONS,
+const STAGE_OPTIONS: readonly ListControlOption<QuoteStageFilter>[] = [
+  { label: 'All stages', value: 'all' },
+  ...QUOTE_STAGE_FILTER_OPTIONS,
 ];
 const QUOTE_SORT_OPTIONS: readonly ListControlOption<QuoteSort>[] = [
   { label: 'Newest', value: 'newest' },
@@ -37,19 +33,19 @@ export function QuoteCatalogControls({
   onCreate,
   onSearchChange,
   onSortChange,
-  onStatusChange,
+  onStageChange,
   search,
   sort,
-  status,
+  stage,
 }: {
   canCreate: boolean;
   onCreate: () => void;
   onSearchChange: (search: string) => void;
   onSortChange: (sort: QuoteSort) => void;
-  onStatusChange: (status: QuoteStatusFilter) => void;
+  onStageChange: (stage: QuoteStageFilter) => void;
   search: string;
   sort: QuoteSort;
-  status: QuoteStatusFilter;
+  stage: QuoteStageFilter;
 }) {
   return (
     <ListControlRow
@@ -64,13 +60,13 @@ export function QuoteCatalogControls({
       trailing={
         <View className="flex-row items-center gap-2">
           <ListDropdownControl
-            accessibilityLabel="Filter quotes by status"
+            accessibilityLabel="Filter quotes by stage"
             defaultValue="all"
-            dismissLabel="Dismiss Quote status filter"
+            dismissLabel="Dismiss Quote stage filter"
             icon={IconFilter}
-            onChange={onStatusChange}
-            options={STATUS_OPTIONS}
-            value={status}
+            onChange={onStageChange}
+            options={STAGE_OPTIONS}
+            value={stage}
           />
           <ListDropdownControl
             accessibilityLabel="Sort quotes"
@@ -123,7 +119,7 @@ export function QuoteCatalogCard({ quote }: { quote: QuoteSummary }) {
           <Text className="text-[15px] text-primary" numberOfLines={1} weight="bold">
             {formatCurrency(total, quote.quotedCurrencyCode, { decimals: 0 })}
           </Text>
-          <QuoteStatusChip status={quote.status} />
+          <QuoteStageChip stage={quote.stage} />
         </View>
       }
     />

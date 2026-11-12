@@ -1,4 +1,4 @@
-import { formatCurrency, formatPercent, getFirstName } from '@pkg/domain';
+import { formatCurrency, formatNumber, formatPercent, getFirstName } from '@pkg/domain';
 import {
   getQuoteOfferingName,
   getQuoteOfferingSubtitle,
@@ -6,13 +6,13 @@ import {
   quoteOfferingType,
   quoteOfferingTypeLabels,
   quoteProductSourceOf,
-  quoteStatusLabels,
+  quoteStageLabels,
 } from '@pkg/domain/equipment';
 import {
   type PriorityQuote,
-  QuoteInvoicedFilter,
   QuoteOfferingType,
-  QuoteStatus,
+  QuoteStage,
+  type QuoteStageCounts,
   type QuoteSummary,
 } from '@pkg/schema/equipment';
 import { IconAlertTriangle } from '@tabler/icons-react';
@@ -25,7 +25,7 @@ import { cn } from '@/lib/utils.js';
 import { QuoteLinkedJob } from './QuoteLinkedJob.js';
 import { QuoteOfferingTypeBadge } from './QuoteOfferingTypeBadge.js';
 import { QuoteProductSourceBadge } from './QuoteProductSourceBadge.js';
-import { QuoteStatusBadge } from './QuoteStatusBadge.js';
+import { QuoteStageBadge } from './QuoteStageBadge.js';
 
 type FilterOption = {
   label: string;
@@ -42,28 +42,21 @@ export type QuoteTableRow =
       quote: PriorityQuote;
     };
 
-export const quoteStatusFilterOptions = QuoteStatus.options.map((status) => ({
-  label: quoteStatusLabels[status],
-  value: status,
-}));
+/** Every Stage, each labelled with how many Quotes stand in it once the counts arrive. */
+export function quoteStageFilterOptions(counts: QuoteStageCounts['counts'] | undefined): FilterOption[] {
+  return QuoteStage.options.map((stage) => ({
+    label: counts ? `${quoteStageLabels[stage]} (${formatNumber(counts[stage])})` : quoteStageLabels[stage],
+    value: stage,
+  }));
+}
 
 export const quoteOfferingTypeFilterOptions = QuoteOfferingType.options.map((offeringType) => ({
   label: quoteOfferingTypeLabels[offeringType],
   value: offeringType,
 }));
 
-export const quoteInvoicedLabels = {
-  invoiced: 'With invoice',
-  'not-invoiced': 'Without invoice',
-} as const satisfies Record<QuoteInvoicedFilter, string>;
-
-export const quoteInvoicedFilterOptions = QuoteInvoicedFilter.options.map((invoiced) => ({
-  label: quoteInvoicedLabels[invoiced],
-  value: invoiced,
-}));
-
 export const quoteTablePinnedStartColumns = ['code'];
-export const quoteTablePinnedEndColumns = ['status', 'job'];
+export const quoteTablePinnedEndColumns = ['stage', 'job'];
 
 export function createQuoteTableRow(quote: QuoteSummary): QuoteTableRow {
   return {
@@ -89,12 +82,14 @@ export function createQuoteTableColumns({
   productOptions,
   salespersonOptions,
   showCustomerColumn,
+  stageOptions,
 }: {
   canOpenJobs: boolean;
   customerOptions: FilterOption[];
   productOptions: FilterOption[];
   salespersonOptions: FilterOption[];
   showCustomerColumn: boolean;
+  stageOptions: FilterOption[];
 }): DataTableColumnDef<QuoteTableRow>[] {
   return [
     {
@@ -185,14 +180,12 @@ export function createQuoteTableColumns({
     {
       accessorFn: (row) => row.quote.invoiceNumber,
       cell: ({ row }) => <InvoiceNumberCell isPriority={row.original.kind === 'priority'} quote={row.original.quote} />,
-      enableColumnFilter: true,
+      enableColumnFilter: false,
       enableSorting: true,
       header: 'Invoice number',
       id: 'invoiceNumber',
       meta: {
         cellClassName: 'max-w-40 overflow-hidden',
-        filterOptions: quoteInvoicedFilterOptions,
-        filterVariant: 'select',
         headerClassName: 'min-w-40 max-w-40',
       },
       size: 160,
@@ -230,18 +223,18 @@ export function createQuoteTableColumns({
       },
     },
     {
-      accessorFn: (row) => row.quote.status,
-      cell: ({ row }) => <QuoteStatusBadge status={row.original.quote.status} />,
+      accessorFn: (row) => row.quote.stage,
+      cell: ({ row }) => <QuoteStageBadge stage={row.original.quote.stage} />,
       enableColumnFilter: true,
       enableSorting: true,
-      header: 'Status',
-      id: 'status',
+      header: 'Stage',
+      id: 'stage',
       meta: {
-        filterOptions: quoteStatusFilterOptions,
+        filterOptions: stageOptions,
         filterVariant: 'multi-select',
-        headerClassName: 'min-w-32',
+        headerClassName: 'min-w-36',
       },
-      size: 128,
+      size: 144,
     },
     {
       accessorFn: (row) => row.quote.job,

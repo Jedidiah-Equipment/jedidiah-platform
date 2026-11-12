@@ -33,6 +33,7 @@ import { OfferingThumbnail } from '@/equipment/components/thumbnail/OfferingThum
 import { JobScheduleStateBadges } from '@/equipment/pages/jobs/components/JobScheduleStateBadges.js';
 import { cn } from '@/lib/utils.js';
 import { QuoteProductSourceBadge } from '../QuoteProductSourceBadge.js';
+import { QuoteStageCard } from '../QuoteStageCard.js';
 import { ReassignUnitDialog } from '../ReassignUnitDialog.js';
 import { StartJobLink } from '../StartJobLink.js';
 import { canStartJobFromQuote } from '../start-job-eligibility.js';
@@ -60,6 +61,7 @@ export function QuoteRightPanel({
 }) {
   return (
     <aside className="order-first grid h-fit gap-4 border-b pb-5 text-sm xl:sticky xl:top-4 xl:order-0 xl:border-b-0 xl:pb-0 xl:pl-5">
+      <QuoteStageCard quote={quote} />
       <QuoteCustomerCard quote={quote} />
       <QuoteProductCard quote={quote} />
       {quote.kind === 'product' && quote.productUnit ? <QuoteAllocationCard quote={quote} /> : null}

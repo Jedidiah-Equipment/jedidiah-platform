@@ -191,10 +191,18 @@ describe('snapshot table registry', () => {
   });
 
   it('backfills rollout quote fields when loading snapshots captured before they existed', () => {
+    const noStageFacts = {
+      invoicedAt: null,
+      invoicedByUserId: null,
+      sentBackAt: null,
+      sentBackByUserId: null,
+      sentBackNote: null,
+    };
     expect(configFor('quote').seedRowDefaults?.({ deliveryPrice: 0, kind: 'custom', status: 'draft' }, 0)).toEqual({
       acceptedAt: null,
       cancellationReason: null,
       deliveryTerms: 'included',
+      ...noStageFacts,
       isPartsSale: false,
     });
     expect(
@@ -203,9 +211,15 @@ describe('snapshot table registry', () => {
       acceptedAt: null,
       cancellationReason: 'Reason not recorded (cancelled before cancellation reasons were required).',
       deliveryTerms: 'additional_charge',
+      ...noStageFacts,
       isPartsSale: false,
     });
     expect(configFor('quote').optionalReadColumns).toEqual([
+      'invoicedAt',
+      'invoicedByUserId',
+      'sentBackAt',
+      'sentBackByUserId',
+      'sentBackNote',
       'acceptedAt',
       'isPartsSale',
       'deliveryTerms',

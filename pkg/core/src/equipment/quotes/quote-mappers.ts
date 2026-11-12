@@ -1,5 +1,6 @@
 import type { user } from '@pkg/db';
 import type { customers, jobs, products, productUnits, quotes } from '@pkg/db/equipment';
+import { deriveQuoteActions, type QuoteActor, type QuoteStageFacts, quoteStageOf } from '@pkg/domain/equipment';
 import { DateOnlyIso } from '@pkg/schema';
 import {
   type Assembly,
@@ -12,6 +13,7 @@ import {
   QuoteDetail,
   type QuoteProductDetailFacts,
   type QuoteProductSummaryFacts,
+  type QuoteStage,
   QuoteSummary,
   UpcomingDeliveryQuote,
 } from '@pkg/schema/equipment';
@@ -24,6 +26,7 @@ export type QuoteRow = typeof quotes.$inferSelect;
 
 export type QuoteListRow = {
   quote: QuoteRow;
+  stage: QuoteStage;
   customerCompanyName: string;
   customerThumbnailDataUrl: string | null;
   productBuildTimeDays: number | null;
@@ -50,11 +53,14 @@ export type PriorityQuoteRow = QuoteListRow & {
 export type QuoteDetailRow = QuoteRow & {
   /** Durable proof this deal sourced production even after Reassignment took its Job away. */
   everPlacedAUnit: boolean;
+  invoicedByName: string | null;
+  sentBackByName: string | null;
   customer: Pick<
     typeof customers.$inferSelect,
     'address' | 'companyName' | 'contactPerson' | 'email' | 'phone' | 'thumbnailDataUrl' | 'vatNumber'
   >;
   jobs: Pick<typeof jobs.$inferSelect, 'cancelledAt' | 'code' | 'description' | 'id'>[];
+  liveJob: QuoteStageFacts['liveJob'];
   product: Pick<
     typeof products.$inferSelect,
     'buildTimeDays' | 'currencyCode' | 'description' | 'modelCode' | 'name' | 'requiresVinNumber' | 'thumbnailDataUrl'
@@ -65,9 +71,13 @@ export type QuoteDetailRow = QuoteRow & {
   workItems: QuoteWorkItemRow[];
 };
 
-export function mapQuote(row: QuoteRow) {
+export function mapQuote(row: QuoteRow, stage: QuoteStage) {
   return Quote.parse({
     acceptedAt: row.acceptedAt?.toISOString() ?? null,
+    invoicedAt: row.invoicedAt?.toISOString() ?? null,
+    sentBackAt: row.sentBackAt?.toISOString() ?? null,
+    sentBackNote: row.sentBackNote,
+    stage,
     cancellationReason: row.cancellationReason,
     code: row.code,
     createdAt: row.createdAt.toISOString(),
@@ -100,7 +110,7 @@ export function mapQuoteSummary(
   workItems: readonly QuoteWorkItemRow[],
 ): QuoteSummary {
   return QuoteSummary.parse({
-    ...mapQuote(row.quote),
+    ...mapQuote(row.quote, row.stage),
     customerCompanyName: row.customerCompanyName,
     customerThumbnailDataUrl: row.customerThumbnailDataUrl,
     job: job ? mapQuoteLinkedJob(job) : null,
@@ -147,11 +157,16 @@ export function mapQuoteDetail(
   productBaysForQuote: ProductBay[],
   competingAllocationQuotes: CompetingAllocationQuote[],
   reworkRequired: boolean,
+  actor: QuoteActor,
 ): QuoteDetail {
   const liveJob = row.jobs.find((job) => job.cancelledAt === null);
+  const stage = quoteRowStage(row, row.liveJob);
 
   return QuoteDetail.parse({
-    ...mapQuote(row),
+    ...mapQuote(row, stage),
+    actions: deriveQuoteActions({ deliveryTerms: row.deliveryTerms, stage }, actor),
+    invoicedByName: row.invoicedByName,
+    sentBackByName: row.sentBackByName,
     customerAddress: row.customer.address,
     customerCompanyName: row.customer.companyName,
     customerContactPerson: row.customer.contactPerson,
@@ -226,4 +241,19 @@ export function mapQuoteLinkedJob(job: Pick<QuoteLinkedJobRow, 'jobCode' | 'jobD
     jobDescription: job.jobDescription,
     jobId: job.jobId,
   };
+}
+
+/** A Quote row's Stage, given what its live Job is doing. */
+export function quoteRowStage(
+  row: Pick<QuoteRow, 'isPartsSale' | 'kind' | 'productUnitId' | 'sentBackAt' | 'status'>,
+  liveJob: QuoteStageFacts['liveJob'],
+): QuoteStage {
+  return quoteStageOf({
+    hasProductUnit: row.productUnitId !== null,
+    isPartsSale: row.isPartsSale,
+    kind: row.kind,
+    liveJob,
+    sentBack: row.sentBackAt !== null,
+    status: row.status,
+  });
 }

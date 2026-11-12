@@ -17,7 +17,12 @@ import {
   quoteWorkItems,
 } from '@pkg/db/equipment';
 import { addDateOnlyDays, parseDateOnlyParts, toPlantDateOnly } from '@pkg/domain';
-import { parseJobCodeSearch, selectReworkBuildSpec } from '@pkg/domain/equipment';
+import {
+  parseJobCodeSearch,
+  type QuoteActor,
+  type QuoteStageFacts,
+  selectReworkBuildSpec,
+} from '@pkg/domain/equipment';
 import { DateOnlyIso, getNextCursor, type UserAccount, UUID } from '@pkg/schema';
 import {
   CompetingAllocationQuote,
@@ -30,11 +35,12 @@ import {
   type QuoteProductBayAvailabilityInput,
   QuoteProductBayAvailabilityResult,
   type QuoteSortBy,
+  QuoteStage,
   type QuoteSummary,
   soldQuoteStatuses,
   UpcomingDeliveryQuotesResult,
 } from '@pkg/schema/equipment';
-import { and, asc, eq, inArray, isNotNull, isNull, ne, or, type SQL, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, ne, or, type SQL, sql } from 'drizzle-orm';
 import { mapUserAccount } from '../../users/user-service.js';
 import { listBayQueueAvailability } from '../jobs/job-read-service.js';
 import { listAssemblies } from '../products/product-assembly-service.js';
@@ -55,6 +61,24 @@ import { getWorkItemsByQuoteId, type QuoteWorkItemRow } from './quote-work-items
 const PRIORITY_QUOTE_WINDOW_MONTHS = 2;
 const UPCOMING_DELIVERY_WINDOW_DAYS = 30;
 
+/** What every QuoteSummary-shaped read selects, the served Stage included. */
+function quoteSummaryColumns() {
+  return {
+    quote: quotes,
+    stage: quoteStageExpression(),
+    customerCompanyName: customers.companyName,
+    customerThumbnailDataUrl: customers.thumbnailDataUrl,
+    productBuildTimeDays: products.buildTimeDays,
+    productCurrencyCode: products.currencyCode,
+    productModelCode: products.modelCode,
+    productName: products.name,
+    productThumbnailDataUrl: products.thumbnailDataUrl,
+    salesPersonEmail: user.email,
+    salesPersonName: user.name,
+    salesPersonThumbnailDataUrl: user.image,
+  };
+}
+
 export async function listQuotes({ db, input }: { db: Db; input: QuoteListInput }): Promise<QuoteListResult> {
   const where = buildQuoteListWhere(input);
   const sortColumn = getQuoteSortColumn(input.sortBy);
@@ -63,17 +87,7 @@ export async function listQuotes({ db, input }: { db: Db; input: QuoteListInput 
   const rowsQuery = withPagination(
     db
       .select({
-        quote: quotes,
-        customerCompanyName: customers.companyName,
-        customerThumbnailDataUrl: customers.thumbnailDataUrl,
-        productBuildTimeDays: products.buildTimeDays,
-        productCurrencyCode: products.currencyCode,
-        productModelCode: products.modelCode,
-        productName: products.name,
-        productThumbnailDataUrl: products.thumbnailDataUrl,
-        salesPersonEmail: user.email,
-        salesPersonName: user.name,
-        salesPersonThumbnailDataUrl: user.image,
+        ...quoteSummaryColumns(),
       })
       .from(quotes)
       .innerJoin(customers, eq(quotes.customerId, customers.id))
@@ -131,18 +145,8 @@ export async function listPriorityQuotes({
 
   const rows = await db
     .select({
-      quote: quotes,
-      customerCompanyName: customers.companyName,
-      customerThumbnailDataUrl: customers.thumbnailDataUrl,
+      ...quoteSummaryColumns(),
       earliestDeliveryDate,
-      productBuildTimeDays: products.buildTimeDays,
-      productCurrencyCode: products.currencyCode,
-      productModelCode: products.modelCode,
-      productName: products.name,
-      productThumbnailDataUrl: products.thumbnailDataUrl,
-      salesPersonEmail: user.email,
-      salesPersonName: user.name,
-      salesPersonThumbnailDataUrl: user.image,
     })
     .from(quotes)
     .innerJoin(customers, eq(quotes.customerId, customers.id))
@@ -179,17 +183,7 @@ export async function listAwaitingJobCreationQuotes({ db }: { db: Db }): Promise
   const earliestDeliveryDate = getEarliestDeliveryDateExpression();
   const rows = await db
     .select({
-      quote: quotes,
-      customerCompanyName: customers.companyName,
-      customerThumbnailDataUrl: customers.thumbnailDataUrl,
-      productBuildTimeDays: products.buildTimeDays,
-      productCurrencyCode: products.currencyCode,
-      productModelCode: products.modelCode,
-      productName: products.name,
-      productThumbnailDataUrl: products.thumbnailDataUrl,
-      salesPersonEmail: user.email,
-      salesPersonName: user.name,
-      salesPersonThumbnailDataUrl: user.image,
+      ...quoteSummaryColumns(),
     })
     .from(quotes)
     .innerJoin(customers, eq(quotes.customerId, customers.id))
@@ -226,17 +220,7 @@ export async function listUpcomingDeliveryQuotes({
 
   const rows = await db
     .select({
-      quote: quotes,
-      customerCompanyName: customers.companyName,
-      customerThumbnailDataUrl: customers.thumbnailDataUrl,
-      productBuildTimeDays: products.buildTimeDays,
-      productCurrencyCode: products.currencyCode,
-      productModelCode: products.modelCode,
-      productName: products.name,
-      productThumbnailDataUrl: products.thumbnailDataUrl,
-      salesPersonEmail: user.email,
-      salesPersonName: user.name,
-      salesPersonThumbnailDataUrl: user.image,
+      ...quoteSummaryColumns(),
     })
     .from(quotes)
     .innerJoin(customers, eq(quotes.customerId, customers.id))
@@ -271,7 +255,15 @@ export async function listUpcomingDeliveryQuotes({
   });
 }
 
-export async function getQuote({ db, id }: { db: Db | DatabaseTransaction; id: UUID }): Promise<QuoteDetail> {
+export async function getQuote({
+  actor,
+  db,
+  id,
+}: {
+  actor: QuoteActor;
+  db: Db | DatabaseTransaction;
+  id: UUID;
+}): Promise<QuoteDetail> {
   const row = await db.query.quotes.findFirst({
     where: eq(quotes.id, id),
     with: {
@@ -339,7 +331,7 @@ export async function getQuote({ db, id }: { db: Db | DatabaseTransaction; id: U
   }
 
   const offering = narrowQuoteOffering(row);
-  const [assemblies, productBaysForQuote, competingAllocationQuotes, reworkRequired, everPlacedAUnit] =
+  const [assemblies, productBaysForQuote, competingAllocationQuotes, reworkRequired, everPlacedAUnit, names, liveJob] =
     await Promise.all([
       offering.kind === 'product' ? listAssemblies({ tx: db, productId: offering.productId }) : Promise.resolve([]),
       offering.kind === 'product' ? listProductBays({ db, productId: offering.productId }) : Promise.resolve([]),
@@ -356,15 +348,37 @@ export async function getQuote({ db, id }: { db: Db | DatabaseTransaction; id: U
       // Durable proof this deal sourced production: Reassignment moves its build Job away, and the
       // Locked derivation must keep reading true afterwards. See `quoteEverPlacedAUnit`.
       quoteEverPlacedAUnit({ db, quoteId: row.id }),
+      userNamesById({ db, ids: [row.invoicedByUserId, row.sentBackByUserId] }),
+      readLiveJob({ db, quoteId: row.id }),
     ]);
 
   return mapQuoteDetail(
-    { ...row, everPlacedAUnit },
+    {
+      ...row,
+      everPlacedAUnit,
+      invoicedByName: (row.invoicedByUserId && names.get(row.invoicedByUserId)) ?? null,
+      liveJob,
+      sentBackByName: (row.sentBackByUserId && names.get(row.sentBackByUserId)) ?? null,
+    },
     assemblies,
     productBaysForQuote,
     competingAllocationQuotes,
     reworkRequired,
+    actor,
   );
+}
+
+async function userNamesById({
+  db,
+  ids,
+}: {
+  db: Db | DatabaseTransaction;
+  ids: readonly (string | null)[];
+}): Promise<Map<string, string>> {
+  const present = ids.filter((id): id is string => id !== null);
+  if (present.length === 0) return new Map();
+  const rows = await db.select({ id: user.id, name: user.name }).from(user).where(inArray(user.id, present));
+  return new Map(rows.map((row) => [row.id, row.name]));
 }
 
 async function allocationQuoteRequiresRework({
@@ -434,7 +448,14 @@ export async function getQuoteProductBayAvailability({
   db: Db | DatabaseTransaction;
   input: QuoteProductBayAvailabilityInput;
 }): Promise<QuoteProductBayAvailabilityResult> {
-  const quote = await getQuote({ db, id: input.quoteId });
+  const [quote] = await db
+    .select({ buildTimeDays: products.buildTimeDays, kind: quotes.kind, productId: quotes.productId })
+    .from(quotes)
+    .leftJoin(products, eq(products.id, quotes.productId))
+    .where(eq(quotes.id, input.quoteId));
+  if (!quote) {
+    throw quoteNotFound(input.quoteId);
+  }
   if (quote.kind === 'custom') {
     throw new QuoteError(
       'quote.product_bay_availability_not_applicable',
@@ -442,7 +463,7 @@ export async function getQuoteProductBayAvailability({
     );
   }
 
-  if (!quote.productId || quote.product === null) {
+  if (!quote.productId || quote.buildTimeDays === null) {
     throw new QuoteError('quote.invalid_reference', 'Quote product was not found.');
   }
 
@@ -477,8 +498,8 @@ export async function getQuoteProductBayAvailability({
 
   return QuoteProductBayAvailabilityResult.parse({
     bays,
-    buildTimeDays: quote.product.buildTimeDays,
-    defaultLeadTimeWorkingDays: quote.product.buildTimeDays + maxBayWaitWorkingDays,
+    buildTimeDays: quote.buildTimeDays,
+    defaultLeadTimeWorkingDays: quote.buildTimeDays + maxBayWaitWorkingDays,
     maxBayWaitWorkingDays,
   });
 }
@@ -564,23 +585,71 @@ function awaitsJobCreationCondition(): SQL | undefined {
   );
 }
 
+/** What a Quote's live Job is doing, as its Stage reads it. */
+export async function readLiveJob({
+  db,
+  quoteId,
+}: {
+  db: Db | DatabaseTransaction;
+  quoteId: UUID;
+}): Promise<QuoteStageFacts['liveJob']> {
+  const [job] = await db
+    .select({ completedOn: jobs.completedOn })
+    .from(jobs)
+    .where(and(eq(jobs.quoteId, quoteId), isNull(jobs.cancelledAt)));
+  return job ? (job.completedOn ? 'completed' : 'open') : 'none';
+}
+
+const liveJobOf = (completed: boolean) => sql`exists (
+  select 1
+  from ${jobs}
+  where ${jobs.quoteId} = ${quotes.id}
+    and ${jobs.cancelledAt} is null
+    ${completed ? sql`and ${jobs.completedOn} is not null` : sql``}
+)`;
+
+/**
+ * A Quote waiting for an Administrator to complete it and send it for approval: the SQL twin of `awaitsPricing`
+ * in `@pkg/domain/equipment`, held to it by one table of cases in `quote-stage.test.ts`.
+ */
+export function awaitsPricingCondition(): SQL {
+  return sql`(
+    (
+      ${quotes.status} = 'accepted'
+      and (
+        ${quotes.sentBackAt} is not null
+        or ${liveJobOf(true)}
+        or (not ${liveJobOf(false)} and (${quotes.isPartsSale} or ${quotes.productUnitId} is not null))
+      )
+    )
+    or (${quotes.kind} = 'custom' and ${inArray(quotes.status, [...presaleQuoteStatuses])} and ${liveJobOf(true)})
+  )`;
+}
+
+/** The served Quote Stage: the status, except that a Quote awaiting pricing reads `awaiting-pricing`. */
+export function quoteStageExpression(): SQL<QuoteStage> {
+  return sql<QuoteStage>`(case when ${awaitsPricingCondition()} then 'awaiting-pricing' else ${quotes.status} end)`.mapWith(
+    (value: string) => QuoteStage.parse(value),
+  );
+}
+
 export function buildQuoteListWhere(input: QuoteListInput): SQL | undefined {
   const conditions: SQL[] = [];
+  const stages = input.filters.stages.length > 0 ? input.filters.stages : (input.filters.statuses ?? []);
 
-  if (input.filters.statuses.length > 0) {
-    conditions.push(inArray(quotes.status, input.filters.statuses));
+  if (stages.length > 0) {
+    conditions.push(
+      sql`${quoteStageExpression()} in (${sql.join(
+        stages.map((stage) => sql`${stage}`),
+        sql`, `,
+      )})`,
+    );
   } else {
     conditions.push(ne(quotes.status, 'cancelled'));
   }
 
   if (input.filters.customerId) {
     conditions.push(eq(quotes.customerId, input.filters.customerId));
-  }
-
-  if (input.filters.invoiced) {
-    conditions.push(
-      input.filters.invoiced === 'invoiced' ? isNotNull(quotes.invoiceNumber) : isNull(quotes.invoiceNumber),
-    );
   }
 
   if (input.filters.offeringType === 'product') conditions.push(eq(quotes.kind, 'product'));
@@ -648,7 +717,10 @@ export function getQuoteSortColumn(sortBy: QuoteSortBy): SQL {
     invoiceNumber: sql`coalesce(${quotes.invoiceNumber}, '')`,
     productName: sql`coalesce(${products.name}, ${quotes.workTitle}, '')`,
     salesPersonName: sql`${user.name}`,
-    status: sql`${quotes.status}`,
+    stage: sql`array_position(array[${sql.join(
+      QuoteStage.options.map((stage) => sql`${stage}`),
+      sql`, `,
+    )}]::text[], ${quoteStageExpression()})`,
   } as const satisfies Record<QuoteSortBy, SQL>;
 
   return columns[sortBy];

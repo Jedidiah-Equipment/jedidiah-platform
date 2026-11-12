@@ -2,13 +2,11 @@ import { canSeeActivity, type presentAction } from '@pkg/domain/contracting';
 import { NoteText } from '@pkg/schema/contracting';
 import { IconActivity, IconMessagePlus } from '@tabler/icons-react';
 import { useState } from 'react';
-
+import { ReasonDialog } from '@/components/form/ReasonDialog.js';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
 import { useResetOnOpen } from '@/contracting/hooks/use-contracting-write.js';
 import { useAccess } from '@/hooks/use-access.js';
-
-import { ReasonDialog } from '../ReasonDialog.js';
 import { ActivityFeed } from './ActivityFeed.js';
 import { type NoteThreadRef, useAddNote } from './use-add-note.js';
 

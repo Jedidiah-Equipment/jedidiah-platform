@@ -1,6 +1,9 @@
 import {
+  approveQuote,
   cancelQuote,
+  correctQuoteInvoiceNumber,
   createQuote,
+  findQuotesByInvoiceNumber,
   generateQuoteDocument,
   getQuote,
   getQuoteCancellationPlan,
@@ -17,14 +20,19 @@ import {
   listQuotes,
   listStaleSentQuotes,
   listUpcomingDeliveryQuotes,
+  removeQuoteInvoiceNumber,
+  sendQuoteBack,
+  sendQuoteForApproval,
+  stampQuoteInvoice,
   summarizeQuotePipeline,
+  summarizeQuoteStages,
   summarizeQuotesByStatus,
   summarizeQuoteWeeklyFlow,
   updateQuote,
 } from '@pkg/core/equipment';
 import { hasPermission } from '@pkg/domain';
 import { renderBrochurePdf, renderQuoteDocumentPdf } from '@pkg/pdf/equipment';
-import { UUID } from '@pkg/schema';
+import { InvoiceNumberLookupInput, UUID } from '@pkg/schema';
 import {
   CustomerListInput,
   ProductListInput,
@@ -36,6 +44,9 @@ import {
   QuoteListInput,
   QuotePriorityListInput,
   QuoteProductBayAvailabilityInput,
+  QuoteSendBackInput,
+  QuoteStageActionInput,
+  QuoteStampInvoiceInput,
   QuoteUpdateInput,
 } from '@pkg/schema/equipment';
 import { z } from 'zod';
@@ -65,7 +76,9 @@ export const quotesRouter = router({
 
   get: authorizedProcedure('equipment_quote:read')
     .input(z.object({ id: UUID }))
-    .query(({ ctx, input }) => mapCoreErrors(() => getQuote({ db: ctx.db, id: input.id }), quoteErrorFamily)),
+    .query(({ ctx, input }) =>
+      mapCoreErrors(() => getQuote({ actor: ctx.access, db: ctx.db, id: input.id }), quoteErrorFamily),
+    ),
 
   /** What the cancel dialog is about to touch: the live Job, and the machine that Job is building. */
   cancellationPlan: authorizedProcedure('equipment_quote:read')
@@ -131,7 +144,7 @@ export const quotesRouter = router({
     .input(QuoteCreateInput)
     .mutation(({ ctx, input }) =>
       mapCoreErrors(
-        () => createQuote({ actorUserId: ctx.session.user.id, db: ctx.db, input }),
+        () => createQuote({ actor: ctx.access, db: ctx.db, input }),
         quoteErrorFamily,
         productUnitErrorFamily,
         customerErrorFamily,
@@ -166,7 +179,7 @@ export const quotesRouter = router({
       mapCoreErrors(
         () =>
           updateQuote({
-            actorUserId: ctx.session.user.id,
+            actor: ctx.access,
             db: ctx.db,
             input,
           }),
@@ -174,6 +187,49 @@ export const quotesRouter = router({
         productUnitErrorFamily,
         customerErrorFamily,
       ),
+    ),
+
+  stageCounts: authorizedProcedure('equipment_quote:read').query(({ ctx }) => summarizeQuoteStages({ db: ctx.db })),
+
+  findByInvoiceNumber: authorizedProcedure('equipment_invoice:update')
+    .input(InvoiceNumberLookupInput)
+    .query(({ ctx, input }) => findQuotesByInvoiceNumber({ db: ctx.db, invoiceNumber: input.invoiceNumber })),
+
+  // The Quote Actions. Each verdict carries its own permission, so the procedures only require a Quote reader.
+  sendForApproval: authorizedProcedure('equipment_quote:read')
+    .input(QuoteStageActionInput)
+    .mutation(({ ctx, input }) =>
+      mapCoreErrors(() => sendQuoteForApproval({ actor: ctx.access, db: ctx.db, input }), quoteErrorFamily),
+    ),
+
+  approve: authorizedProcedure('equipment_quote:read')
+    .input(QuoteStageActionInput)
+    .mutation(({ ctx, input }) =>
+      mapCoreErrors(() => approveQuote({ actor: ctx.access, db: ctx.db, input }), quoteErrorFamily),
+    ),
+
+  sendBack: authorizedProcedure('equipment_quote:read')
+    .input(QuoteSendBackInput)
+    .mutation(({ ctx, input }) =>
+      mapCoreErrors(() => sendQuoteBack({ actor: ctx.access, db: ctx.db, input }), quoteErrorFamily),
+    ),
+
+  stampInvoice: authorizedProcedure('equipment_quote:read')
+    .input(QuoteStampInvoiceInput)
+    .mutation(({ ctx, input }) =>
+      mapCoreErrors(() => stampQuoteInvoice({ actor: ctx.access, db: ctx.db, input }), quoteErrorFamily),
+    ),
+
+  correctInvoiceNumber: authorizedProcedure('equipment_quote:read')
+    .input(QuoteStampInvoiceInput)
+    .mutation(({ ctx, input }) =>
+      mapCoreErrors(() => correctQuoteInvoiceNumber({ actor: ctx.access, db: ctx.db, input }), quoteErrorFamily),
+    ),
+
+  removeInvoiceNumber: authorizedProcedure('equipment_quote:read')
+    .input(QuoteStageActionInput)
+    .mutation(({ ctx, input }) =>
+      mapCoreErrors(() => removeQuoteInvoiceNumber({ actor: ctx.access, db: ctx.db, input }), quoteErrorFamily),
     ),
 
   generateDocument: authorizedProcedure('equipment_quote:update')

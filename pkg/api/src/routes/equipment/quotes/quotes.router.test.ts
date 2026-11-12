@@ -769,10 +769,11 @@ describe('quotes.update', () => {
     });
   });
 
-  test('lets a equipment_quote:update holder change the Settling Terms of an accepted Allocation Quote', async ({
+  test('lets an Administrator, not a salesperson, change the Settling Terms of an accepted Quote', async ({
     context,
   }) => {
     const salesCaller = context.createCaller(mockSession('sales'));
+    const adminCaller = context.createCaller(mockSession('admin'));
     const [unit] = await context.db
       .insert(productUnits)
       .values({
@@ -795,8 +796,10 @@ describe('quotes.update', () => {
     });
     const accepted = await salesCaller.quotes.update({ ...toUpdateInput(created), status: 'accepted' });
 
-    // equipment_quote:update alone reopens the Settling Terms on an accepted Locked Quote; the lock holds elsewhere.
-    const settled = await salesCaller.quotes.update({
+    await expect(salesCaller.quotes.update({ ...toUpdateInput(accepted), depositPercent: 10 })).rejects.toMatchObject({
+      appCode: 'quote.locked',
+    });
+    const settled = await adminCaller.quotes.update({
       ...toUpdateInput(accepted),
       depositPercent: 10,
       discountPercent: 5,
@@ -850,7 +853,7 @@ describe('quotes.update', () => {
     if (notesUpdated.kind !== 'custom') throw new Error('Expected a Custom Quote');
     expect(notesUpdated.workItems).toEqual(accepted.workItems);
 
-    const workItemsUpdated = await salesCaller.quotes.update({
+    const workItemsUpdated = await adminCaller.quotes.update({
       ...toUpdateInput(notesUpdated),
       offering: {
         kind: 'custom',
@@ -905,7 +908,7 @@ describe('quotes.update', () => {
 
     // An edited rate is snapshotted per Work Item, so it stays editable after acceptance without a
     // rate-card change ever reaching an existing Quote.
-    const rateUpdated = await salesCaller.quotes.update({
+    const rateUpdated = await adminCaller.quotes.update({
       ...toUpdateInput(accepted),
       offering: {
         kind: 'custom',
@@ -1613,28 +1616,22 @@ describe('quotes.list', () => {
     expect(customerEndpointResult.map((quote) => quote.code)).toEqual([overdueAlert.code]);
   });
 
-  test('separates invoiced from uninvoiced quotes, sorts by invoice number, and searches it', async ({ context }) => {
+  test('sorts by invoice number and searches it', async ({ context }) => {
     const caller = context.createCaller(mockSession('sales'));
-    const firstInvoiced = await caller.quotes.update({
-      ...toUpdateInput(
-        await createNamedQuote(caller, {
-          customerCompanyName: 'Invoiced Alpha',
-          discountPercent: 0,
-          productId: context.product.id,
-        }),
-      ),
-      invoiceNumber: 'INV-1099-A',
-    });
-    const secondInvoiced = await caller.quotes.update({
-      ...toUpdateInput(
-        await createNamedQuote(caller, {
-          customerCompanyName: 'Invoiced Beta',
-          discountPercent: 0,
-          productId: context.product.id,
-        }),
-      ),
-      invoiceNumber: 'INV-1099-B',
-    });
+    const invoiced = async (customerCompanyName: string, invoiceNumber: string) => {
+      const quote = await createNamedQuote(caller, {
+        customerCompanyName,
+        discountPercent: 0,
+        productId: context.product.id,
+      });
+      await context.db
+        .update(quotes)
+        .set({ acceptedAt: new Date(), invoiceNumber, invoicedAt: new Date(), status: 'invoiced' })
+        .where(sql`${quotes.id} = ${quote.id}`);
+      return quote;
+    };
+    const firstInvoiced = await invoiced('Invoiced Alpha', 'INV-1099-A');
+    const secondInvoiced = await invoiced('Invoiced Beta', 'INV-1099-B');
     const uninvoiced = await createNamedQuote(caller, {
       customerCompanyName: 'Uninvoiced Gamma',
       discountPercent: 0,
@@ -1642,34 +1639,16 @@ describe('quotes.list', () => {
     });
     const listInput = {
       cursor: 0,
+      filters: { stages: [] },
       limit: 10,
       search: '',
-      sortDirection: 'asc',
-      sortBy: 'invoiceNumber',
-    } as const;
+      sortDirection: 'asc' as const,
+      sortBy: 'invoiceNumber' as const,
+    };
 
-    const invoicedResult = await caller.quotes.list({
-      ...listInput,
-      filters: { invoiced: 'invoiced', statuses: [] },
-    });
-    const uninvoicedResult = await caller.quotes.list({
-      ...listInput,
-      filters: { invoiced: 'not-invoiced', statuses: [] },
-    });
-    const unfilteredResult = await caller.quotes.list({
-      ...listInput,
-      filters: { statuses: [] },
-    });
-    const searchResult = await caller.quotes.list({
-      ...listInput,
-      filters: { statuses: [] },
-      search: 'INV-1099-B',
-    });
+    const unfilteredResult = await caller.quotes.list(listInput);
+    const searchResult = await caller.quotes.list({ ...listInput, search: 'INV-1099-B' });
 
-    expect(invoicedResult).toMatchObject({ total: 2 });
-    expect(invoicedResult.items.map((quote) => quote.invoiceNumber)).toEqual(['INV-1099-A', 'INV-1099-B']);
-    expect(uninvoicedResult).toMatchObject({ total: 1 });
-    expect(uninvoicedResult.items.map((quote) => quote.id)).toEqual([uninvoiced.id]);
     // Ascending by invoice number puts the quotes with no invoice ahead of the invoiced ones.
     expect(unfilteredResult.items.map((quote) => quote.id)).toEqual([
       uninvoiced.id,
@@ -1929,6 +1908,48 @@ describe('quotes.weeklyFlow', () => {
     const acceptedTotal = result.items.reduce((total, item) => total + item.acceptedCount, 0);
     expect(createdTotal).toBe(2);
     expect(acceptedTotal).toBe(1);
+  });
+});
+
+describe('quote Stage actions', () => {
+  test('walk a finished sale to its invoice, refusing the wrong role and the wrong Stage', async ({ context }) => {
+    const admin = context.createCaller(mockSession('admin'));
+    const superAdmin = context.createCaller(mockSession('super-admin'));
+    const sales = context.createCaller(mockSession('sales'));
+    const quote = await createNamedQuote(sales, {
+      customerCompanyName: 'Stage Mining',
+      discountPercent: 0,
+      productId: context.product.id,
+      status: 'accepted',
+    });
+    await context.db.insert(jobs).values({ completedOn: '2026-11-01', quoteId: quote.id });
+
+    await expect(admin.quotes.get({ id: quote.id })).resolves.toMatchObject({
+      actions: { approve: { allowed: false, reason: 'no-permission' }, sendForApproval: { allowed: true } },
+      stage: 'awaiting-pricing',
+    });
+    await expect(sales.quotes.sendForApproval({ id: quote.id })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await admin.quotes.sendForApproval({ id: quote.id });
+    await expect(admin.quotes.approve({ id: quote.id })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await superAdmin.quotes.approve({ id: quote.id });
+    await expect(superAdmin.quotes.approve({ id: quote.id })).rejects.toMatchObject({
+      code: 'CONFLICT',
+      message: 'You can only approve a Quote while it is Awaiting approval.',
+    });
+    await admin.quotes.stampInvoice({ id: quote.id, invoiceNumber: ' INV-9 ' });
+
+    await expect(superAdmin.quotes.get({ id: quote.id })).resolves.toMatchObject({
+      invoiceNumber: 'INV-9',
+      invoicedByName: 'Test User',
+      stage: 'invoiced',
+    });
+    await expect(admin.quotes.findByInvoiceNumber({ invoiceNumber: 'inv-9' })).resolves.toEqual([
+      { code: quote.code, customerCompanyName: 'Stage Mining', id: quote.id },
+    ]);
+    await expect(sales.quotes.findByInvoiceNumber({ invoiceNumber: 'INV-9' })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+    await expect(sales.quotes.stageCounts()).resolves.toMatchObject({ counts: { invoiced: 1 } });
   });
 });
 
@@ -2271,7 +2292,7 @@ describe('jobs.create with quote links', () => {
     });
 
     await expect(
-      salesCaller.quotes.update({
+      adminCaller.quotes.update({
         ...toUpdateInput(accepted),
         deliveryPrice: 3500,
         deliveryTerms: 'additional_charge',

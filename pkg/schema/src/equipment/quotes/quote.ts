@@ -34,6 +34,7 @@ import {
   ProductRequiresVinNumber,
 } from '../products/product.js';
 import { QuoteOfferingType, QuoteWorkTitle } from './quote-shared.js';
+import { QuoteActions, QuoteSentBackNote, QuoteStage } from './quote-stage.js';
 
 export type QuoteStatus = z.infer<typeof QuoteStatus>;
 export const QuoteStatus = z.enum([
@@ -102,11 +103,12 @@ export const QuoteDocumentNotesInput = nullableTrimmedTextInput();
 export type QuoteInvoiceNumber = z.infer<typeof QuoteInvoiceNumber>;
 export const QuoteInvoiceNumber = nullableTrimmedText();
 
-export type QuoteInvoiceNumberInput = z.infer<typeof QuoteInvoiceNumberInput>;
-export const QuoteInvoiceNumberInput = nullableTrimmedTextInput();
-
-export type QuoteInvoiceNumberInputOptional = z.infer<typeof QuoteInvoiceNumberInputOptional>;
-export const QuoteInvoiceNumberInputOptional = nullableTrimmedTextInputOptional();
+/**
+ * The Invoice Number is written only by the invoice Quote Actions. For one release the Quote inputs still take it
+ * from phones on the earlier build, which send it on every save: core accepts null or the stored value and changes
+ * nothing, and refuses any other.
+ */
+const LegacyQuoteInvoiceNumberInput = nullableTrimmedTextInputOptional();
 
 export type QuoteDocumentLeadTime = z.infer<typeof QuoteDocumentLeadTime>;
 export const QuoteDocumentLeadTime = requiredTrimmedText('Lead time is required');
@@ -131,6 +133,10 @@ const quoteBaseShape = {
   status: QuoteStatus,
   statusChangedAt: DateIso,
   acceptedAt: DateIso.nullable(),
+  invoicedAt: DateIso.nullable(),
+  sentBackAt: DateIso.nullable(),
+  sentBackNote: QuoteSentBackNote.nullable(),
+  stage: QuoteStage,
   discountPercent: QuoteDiscountPercent,
   depositPercent: QuoteDepositPercent,
   deliveryTerms: QuoteDeliveryTerms,
@@ -426,6 +432,9 @@ const quoteDetailShape = {
   customerVatNumber: CustomerVatNumber,
   hasEverSourcedJob: z.boolean(),
   product: QuoteProductDetailFacts.nullable(),
+  actions: QuoteActions,
+  invoicedByName: z.string().nullable(),
+  sentBackByName: z.string().nullable(),
 };
 
 export type QuoteDetail = z.infer<typeof QuoteDetail>;
@@ -560,7 +569,7 @@ export const QuoteCreateInput = z
     plannedDeliveryDate: DateOnlyIso.nullable().default(null),
     notes: QuoteNotesInput,
     documentNotes: QuoteDocumentNotesInput,
-    invoiceNumber: QuoteInvoiceNumberInput,
+    invoiceNumber: LegacyQuoteInvoiceNumberInput,
     selectedAssemblies: z.array(QuoteSelectedAssemblyInput).default([]),
   })
   .strict()
@@ -596,7 +605,7 @@ export const QuoteUpdateInput = z
     plannedDeliveryDate: DateOnlyIso.nullable().default(null),
     notes: QuoteNotesInput,
     documentNotes: QuoteDocumentNotesInput,
-    invoiceNumber: QuoteInvoiceNumberInput,
+    invoiceNumber: LegacyQuoteInvoiceNumberInput,
     selectedAssemblies: z.array(QuoteSelectedAssemblyInput).optional(),
   })
   .strict()
@@ -616,7 +625,7 @@ export const QuotePatchInput = z
     salesPersonId: AuthId.optional(),
     // The `-Optional` text variant preserves `undefined` (keep) instead of defaulting it to `null` (clear).
     documentNotes: nullableTrimmedTextInputOptional(),
-    invoiceNumber: QuoteInvoiceNumberInputOptional,
+    invoiceNumber: LegacyQuoteInvoiceNumberInput,
     notes: nullableTrimmedTextInputOptional(),
     preferredDeliveryDate: DateOnlyIso.nullable().optional(),
     plannedDeliveryDate: DateOnlyIso.nullable().optional(),
@@ -703,26 +712,23 @@ export const QuoteSortBy = z.enum([
   'invoiceNumber',
   'productName',
   'salesPersonName',
-  'status',
+  'stage',
 ]);
-
-/** Whether a Quote carries an Invoice Number at all, which is how the books tell billed work from unbilled. */
-export type QuoteInvoicedFilter = z.infer<typeof QuoteInvoicedFilter>;
-export const QuoteInvoicedFilter = z.enum(['invoiced', 'not-invoiced']);
 
 export type QuoteListFilters = z.infer<typeof QuoteListFilters>;
 export const QuoteListFilters = z
   .object({
     customerId: UUID.optional(),
-    invoiced: QuoteInvoicedFilter.optional(),
     offeringType: QuoteOfferingType.optional(),
     productId: UUID.optional(),
     quoteCode: QuoteCode.optional(),
     salesPersonId: AuthId.optional(),
-    statuses: z.array(QuoteStatus),
+    stages: z.array(QuoteStage).default([]),
+    /** What phones on the build before Quote Stages send; read as the Stages of the same names. */
+    statuses: z.array(QuoteStatus).optional(),
   })
   .default({
-    statuses: [],
+    stages: [],
   });
 
 export type QuoteListInput = z.infer<typeof QuoteListInput>;

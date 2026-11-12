@@ -94,7 +94,6 @@ const defaultValues: QuoteEditFormValues = {
   depositPercent: 0,
   discountPercent: 0,
   documentNotes: '',
-  invoiceNumber: '',
   notes: '',
   plannedDeliveryDate: '',
   preferredDeliveryDate: '',

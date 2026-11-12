@@ -232,7 +232,10 @@ describe('productUnits.reassign', () => {
 
   test('surfaces a deal that cannot receive a machine as a conflict carrying its appCode', async ({ context }) => {
     const toQuoteId = await seedReceivingQuote(context.db, context.seed, context.seed.hilltopId);
-    await context.db.update(quotes).set({ invoiceNumber: 'INV-3' }).where(eq(quotes.id, toQuoteId));
+    await context.db
+      .update(quotes)
+      .set({ invoiceNumber: 'INV-3', invoicedAt: new Date(), status: 'invoiced' })
+      .where(eq(quotes.id, toQuoteId));
 
     await expect(
       context

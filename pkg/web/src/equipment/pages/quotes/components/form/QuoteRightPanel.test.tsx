@@ -10,6 +10,7 @@ vi.mock('../StartJobLink.js', () => ({
   StartJobLink: ({ className }: { className?: string }) => <span className={className} data-start-job-link />,
 }));
 vi.mock('../ReassignUnitDialog.js', () => ({ ReassignUnitDialog: () => null }));
+vi.mock('../QuoteStageCard.js', () => ({ QuoteStageCard: () => null }));
 
 test('shows labour and Parts beneath each Work Item so the aside breakdown adds up', () => {
   const workItem = {

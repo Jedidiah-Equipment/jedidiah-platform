@@ -22,6 +22,7 @@ import {
   hasQuoteStatus,
   QuoteCreateInput,
   type QuoteDetail,
+  type QuoteStage,
   type QuoteStatus,
   QuoteUpdateInput,
   soldQuoteStatuses,
@@ -32,6 +33,7 @@ import { createTester } from '../../test/create-tester.js';
 import { getQuoteCancellationPlan } from '../cancellation/cancellation-plan-service.js';
 import { getJob } from '../jobs/job-read-service.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
+import { testQuoteActor } from '../test/quote-actor.js';
 import { createProductUnit } from '../units/product-unit-service.js';
 import {
   getQuote,
@@ -115,7 +117,9 @@ describe('getQuote', () => {
       throw new Error('Quote insert did not return a row');
     }
 
-    await expect(getQuote({ db: context.db, id: quote.id })).resolves.toMatchObject({
+    await expect(
+      getQuote({ actor: testQuoteActor('quote-reader'), db: context.db, id: quote.id }),
+    ).resolves.toMatchObject({
       product: {
         bays: [
           {
@@ -151,7 +155,9 @@ describe('getQuote', () => {
       throw new Error('Quote insert did not return a row');
     }
 
-    await expect(getQuote({ db: context.db, id: quote.id })).resolves.toMatchObject({
+    await expect(
+      getQuote({ actor: testQuoteActor('quote-reader'), db: context.db, id: quote.id }),
+    ).resolves.toMatchObject({
       product: { bays: [] },
     });
   });
@@ -175,7 +181,9 @@ describe('getQuote', () => {
       throw new Error('Job insert did not return a row');
     }
 
-    await expect(getQuote({ db: context.db, id: quote.id })).resolves.toMatchObject({
+    await expect(
+      getQuote({ actor: testQuoteActor('quote-reader'), db: context.db, id: quote.id }),
+    ).resolves.toMatchObject({
       hasEverSourcedJob: true,
       job: { jobCode: formatJobCode(job.code), jobId: job.id },
     });
@@ -194,7 +202,9 @@ describe('getQuote', () => {
       .returning();
     if (!cancelled) throw new Error('Cancelled Job insert did not return a row');
 
-    await expect(getQuote({ db: context.db, id: quote.id })).resolves.toMatchObject({
+    await expect(
+      getQuote({ actor: testQuoteActor('quote-reader'), db: context.db, id: quote.id }),
+    ).resolves.toMatchObject({
       hasEverSourcedJob: true,
       job: null,
     });
@@ -202,7 +212,9 @@ describe('getQuote', () => {
     const [replacement] = await context.db.insert(jobs).values({ quoteId: quote.id }).returning();
     if (!replacement) throw new Error('Replacement Job insert did not return a row');
 
-    await expect(getQuote({ db: context.db, id: quote.id })).resolves.toMatchObject({
+    await expect(
+      getQuote({ actor: testQuoteActor('quote-reader'), db: context.db, id: quote.id }),
+    ).resolves.toMatchObject({
       hasEverSourcedJob: true,
       job: { jobCode: formatJobCode(replacement.code), jobId: replacement.id },
     });
@@ -214,7 +226,7 @@ describe('inline quote customer', () => {
     context,
   }) => {
     const created = await createQuoteService({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: {
@@ -248,7 +260,7 @@ describe('inline quote customer', () => {
 
   test('defaults inline Customer contact details to null when omitted', async ({ context }) => {
     const created = await createQuoteService({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'inline', companyName: 'Sparse Farm' },
@@ -288,7 +300,7 @@ describe('quote collections', () => {
     }
 
     const quote = await createQuoteService({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
@@ -299,7 +311,7 @@ describe('quote collections', () => {
     });
 
     await updateQuote({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: buildQuoteUpdateInput(quote, {
         selectedAssemblies: [{ type: 'catalog', productAssemblyId: optionalAssembly.id }],
@@ -334,7 +346,7 @@ describe('allocation quotes', () => {
     const unitId = await createUnit(context.db, context.product.id, 40);
     const createAllocationQuote = (customerId: string) =>
       createQuoteService({
-        actorUserId: context.salesPerson.id,
+        actor: testQuoteActor(context.salesPerson.id),
         db: context.db,
         input: QuoteCreateInput.parse({
           customer: { type: 'existing', customerId },
@@ -347,14 +359,14 @@ describe('allocation quotes', () => {
     const loser = await createAllocationQuote(otherCustomer.id);
 
     const accepted = await updateQuote({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: buildQuoteUpdateInput(winner, { status: 'accepted' }),
     });
 
     await expect(
       createQuoteService({
-        actorUserId: context.salesPerson.id,
+        actor: testQuoteActor(context.salesPerson.id),
         db: context.db,
         input: QuoteCreateInput.parse({
           customer: { type: 'existing', customerId: otherCustomer.id },
@@ -367,7 +379,7 @@ describe('allocation quotes', () => {
 
     await expect(
       updateQuote({
-        actorUserId: context.salesPerson.id,
+        actor: testQuoteActor(context.salesPerson.id),
         db: context.db,
         input: buildQuoteUpdateInput(loser, { status: 'accepted' }),
       }),
@@ -375,7 +387,7 @@ describe('allocation quotes', () => {
 
     await expect(
       updateQuote({
-        actorUserId: context.salesPerson.id,
+        actor: testQuoteActor(context.salesPerson.id),
         db: context.db,
         input: buildQuoteUpdateInput(loser, { status: 'rejected' }),
       }),
@@ -415,7 +427,7 @@ describe('allocation quotes', () => {
   test('accepts a later Allocation Quote after the Unit returns to Stock', async ({ context }) => {
     const unitId = await createUnit(context.db, context.product.id, 39);
     const firstSale = await createQuoteService({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
@@ -433,7 +445,7 @@ describe('allocation quotes', () => {
     });
 
     const secondSale = await createQuoteService({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
@@ -453,31 +465,6 @@ describe('allocation quotes', () => {
     expect(transfers[0]).toMatchObject({ sourceQuoteId: firstSale.id, toCustomerId: context.customer.id });
     expect(transfers[1]).toMatchObject({ fromCustomerId: context.customer.id, toCustomerId: null });
     expect(transfers[2]).toMatchObject({ sourceQuoteId: secondSale.id, toCustomerId: context.customer.id });
-  });
-
-  test('keeps Invoice Number editable after an Allocation Quote locks on acceptance', async ({ context }) => {
-    const unitId = await createUnit(context.db, context.product.id, 38);
-    const accepted = await createQuoteService({
-      actorUserId: context.salesPerson.id,
-      db: context.db,
-      input: QuoteCreateInput.parse({
-        customer: { type: 'existing', customerId: context.customer.id },
-        offering: { kind: 'product', productId: context.product.id, productUnitId: unitId },
-        salesPersonId: context.salesPerson.id,
-        status: 'accepted',
-      }),
-    });
-
-    const invoiced = await updateQuote({
-      actorUserId: context.salesPerson.id,
-      db: context.db,
-      input: QuoteUpdateInput.parse({
-        ...buildQuoteUpdateInput(accepted),
-        invoiceNumber: '  INV-ALLOCATION-38  ',
-      }),
-    });
-
-    expect(invoiced.invoiceNumber).toBe('INV-ALLOCATION-38');
   });
 
   test('quotes a held Product Unit, seeds its As-Built Spec at catalog prices, and shows live competitors', async ({
@@ -538,7 +525,7 @@ describe('allocation quotes', () => {
     ]);
 
     const allocated = await createQuoteService({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
@@ -548,7 +535,7 @@ describe('allocation quotes', () => {
       }),
     });
     const competitor = await createQuoteService({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
@@ -558,7 +545,7 @@ describe('allocation quotes', () => {
       }),
     });
     await createQuoteService({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
@@ -568,7 +555,7 @@ describe('allocation quotes', () => {
       }),
     });
 
-    const readBack = await getQuote({ db: context.db, id: allocated.id });
+    const readBack = await getQuote({ actor: testQuoteActor('quote-reader'), db: context.db, id: allocated.id });
     if (readBack.kind !== 'product') throw new Error('Expected a Product Quote');
 
     expect(readBack).toMatchObject({
@@ -595,7 +582,7 @@ describe('allocation quotes', () => {
     expect(priceQuote(readBack)).toMatchObject({ selectedAssemblyTotal: 500, subtotal: 1_500 });
 
     const withFurtherAssembly = await updateQuote({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: buildQuoteUpdateInput(readBack, {
         selectedAssemblies: [
@@ -613,7 +600,7 @@ describe('allocation quotes', () => {
     if (!furtherSelection) throw new Error('Further Assembly selection was not persisted');
 
     const withoutSeededAssembly = await updateQuote({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: buildQuoteUpdateInput(withFurtherAssembly, {
         selectedAssemblies: [{ type: 'existing', id: furtherSelection.id }],
@@ -652,7 +639,7 @@ describe('allocation quotes', () => {
 
     const createForUnit = (productUnitId: string) =>
       createQuoteService({
-        actorUserId: context.salesPerson.id,
+        actor: testQuoteActor(context.salesPerson.id),
         db: context.db,
         input: QuoteCreateInput.parse({
           customer: { type: 'existing', customerId: context.customer.id },
@@ -720,7 +707,7 @@ describe('allocation quotes', () => {
     await unitLocked;
 
     const quoteResultPromise = createQuoteService({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
@@ -756,7 +743,7 @@ describe('custom quotes', () => {
     context,
   }) => {
     const created = await createQuoteService({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
@@ -788,7 +775,7 @@ describe('custom quotes', () => {
   test('rejects selected assemblies on custom quote create and update', async ({ context }) => {
     await expect(
       createQuoteService({
-        actorUserId: context.salesPerson.id,
+        actor: testQuoteActor(context.salesPerson.id),
         db: context.db,
         input: QuoteCreateInput.parse({
           customer: { type: 'existing', customerId: context.customer.id },
@@ -801,7 +788,7 @@ describe('custom quotes', () => {
     ).rejects.toThrow('Custom Quotes cannot have Selected Assemblies.');
 
     const customQuote = await createQuoteService({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
@@ -813,7 +800,7 @@ describe('custom quotes', () => {
 
     await expect(
       updateQuote({
-        actorUserId: context.salesPerson.id,
+        actor: testQuoteActor(context.salesPerson.id),
         db: context.db,
         input: buildQuoteUpdateInput(customQuote, {
           selectedAssemblies: [{ type: 'catalog', productAssemblyId: '00000000-0000-4000-8000-000000000901' }],
@@ -824,7 +811,7 @@ describe('custom quotes', () => {
 
   test('keeps custom commercial fields editable before acceptance even when a job exists', async ({ context }) => {
     const customQuote = await createQuoteService({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
@@ -836,7 +823,7 @@ describe('custom quotes', () => {
     await context.db.insert(jobs).values({ quoteId: customQuote.id });
 
     const updated = await updateQuote({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: buildQuoteUpdateInput(customQuote, {
         discountPercent: 5,
@@ -863,7 +850,7 @@ describe('custom quotes', () => {
 
   test('rejects clearing a custom quote work title at the update input boundary', async ({ context }) => {
     const customQuote = await createQuoteService({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
@@ -882,7 +869,7 @@ describe('custom quotes', () => {
 
   test('rejects update offering kind changes', async ({ context }) => {
     const productQuote = await createQuoteService({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
@@ -894,7 +881,7 @@ describe('custom quotes', () => {
 
     await expect(
       updateQuote({
-        actorUserId: context.salesPerson.id,
+        actor: testQuoteActor(context.salesPerson.id),
         db: context.db,
         input: buildQuoteUpdateInput(productQuote, {
           offering: { kind: 'custom', workTitle: 'Repair work' },
@@ -905,7 +892,7 @@ describe('custom quotes', () => {
 
   test('keeps accepted custom Work Items editable, each priced at its own rate', async ({ context }) => {
     const customQuote = await createQuoteService({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
@@ -920,7 +907,7 @@ describe('custom quotes', () => {
     });
 
     const updated = await updateQuote({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: buildQuoteUpdateInput(customQuote, {
         notes: 'Accepted custom follow-up',
@@ -956,7 +943,7 @@ describe('custom quotes', () => {
 
   test('rejects product bay availability for custom quotes', async ({ context }) => {
     const customQuote = await createQuoteService({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
@@ -976,7 +963,7 @@ describe('custom quotes', () => {
 
   test('includes accepted custom quotes in the priority quote alert list', async ({ context }) => {
     const customQuote = await createQuoteService({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
@@ -997,7 +984,7 @@ describe('custom quotes', () => {
 
   test('lists custom quotes by kind, work-title search, and product-name sort', async ({ context }) => {
     const customQuote = await createQuoteService({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
@@ -1007,7 +994,7 @@ describe('custom quotes', () => {
       }),
     });
     await createQuoteService({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
@@ -1021,7 +1008,7 @@ describe('custom quotes', () => {
       listQuotes({
         db: context.db,
         input: {
-          filters: { offeringType: 'custom', statuses: [] },
+          filters: { offeringType: 'custom', stages: [] },
           cursor: 0,
           limit: 10,
           search: 'Axle',
@@ -1037,7 +1024,7 @@ describe('custom quotes', () => {
 
   test('records custom quote commercial facts in audit events', async ({ context }) => {
     const customQuote = await createQuoteService({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
@@ -1048,7 +1035,7 @@ describe('custom quotes', () => {
     });
 
     await updateQuote({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: buildQuoteUpdateInput(customQuote, {
         offering: { kind: 'custom', workTitle: 'Audit repair revised' },
@@ -1078,7 +1065,7 @@ describe('parts sales', () => {
     overrides: { plannedDeliveryDate?: string; status?: QuoteStatus } = {},
   ) =>
     createQuoteService({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
@@ -1095,7 +1082,7 @@ describe('parts sales', () => {
     expect(partsSale).toMatchObject({ isPartsSale: true, kind: 'custom' });
 
     const updated = await updateQuote({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: {
         ...buildQuoteUpdateInput(partsSale, { offering: { kind: 'custom', workTitle: 'Machined bushes' } }),
@@ -1108,7 +1095,7 @@ describe('parts sales', () => {
 
   test('keeps an accepted Parts Sale out of both Job work queues', async ({ context }) => {
     const serviceWork = await createQuoteService({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
@@ -1134,7 +1121,7 @@ describe('parts sales', () => {
       status: 'draft',
     });
     const serviceWork = await createQuoteService({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
@@ -1149,7 +1136,7 @@ describe('parts sales', () => {
         db: context.db,
         input: {
           cursor: 0,
-          filters: { offeringType, statuses: [] },
+          filters: { offeringType, stages: [] },
           limit: 10,
           search: '',
           sortBy: 'createdAt',
@@ -1182,7 +1169,7 @@ describe('parts sales', () => {
 describe('cancelled quotes', () => {
   test('updateQuote refuses to be what cancels a quote, however unlocked it is', async ({ context }) => {
     const quote = await createQuoteService({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
@@ -1194,7 +1181,7 @@ describe('cancelled quotes', () => {
 
     await expect(
       updateQuote({
-        actorUserId: context.salesPerson.id,
+        actor: testQuoteActor(context.salesPerson.id),
         db: context.db,
         input: buildQuoteUpdateInput(quote, {
           cancellationReason: 'Customer withdrew the project',
@@ -1203,14 +1190,16 @@ describe('cancelled quotes', () => {
       }),
     ).rejects.toMatchObject({ code: 'quote.cancel_not_an_update' });
 
-    await expect(getQuote({ db: context.db, id: quote.id })).resolves.toMatchObject({ status: 'draft' });
+    await expect(
+      getQuote({ actor: testQuoteActor('quote-reader'), db: context.db, id: quote.id }),
+    ).resolves.toMatchObject({ status: 'draft' });
   });
 
   test('updateQuote keeps lock-editable fields writable on a cancelled quote, and cannot leave cancelled', async ({
     context,
   }) => {
     const quote = await createQuoteService({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
@@ -1226,10 +1215,10 @@ describe('cancelled quotes', () => {
       id: quote.id,
       mayCancelLockedQuote: false,
     });
-    const cancelled = await getQuote({ db: context.db, id: quote.id });
+    const cancelled = await getQuote({ actor: testQuoteActor('quote-reader'), db: context.db, id: quote.id });
 
     const annotated = await updateQuote({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: buildQuoteUpdateInput(cancelled, {
         documentNotes: 'Cancelled document note',
@@ -1248,13 +1237,15 @@ describe('cancelled quotes', () => {
       status: 'cancelled',
       validUntil: '2026-08-15',
     });
-    await expect(getQuote({ db: context.db, id: quote.id })).resolves.toMatchObject({
+    await expect(
+      getQuote({ actor: testQuoteActor('quote-reader'), db: context.db, id: quote.id }),
+    ).resolves.toMatchObject({
       id: quote.id,
       status: 'cancelled',
     });
     await expect(
       updateQuote({
-        actorUserId: context.salesPerson.id,
+        actor: testQuoteActor(context.salesPerson.id),
         db: context.db,
         input: buildQuoteUpdateInput(annotated, { cancellationReason: null, status: 'draft' }),
       }),
@@ -1263,7 +1254,7 @@ describe('cancelled quotes', () => {
 
   test('patchQuote refuses to be what cancels a quote, however unlocked it is', async ({ context }) => {
     const quote = await createQuoteService({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
@@ -1275,7 +1266,7 @@ describe('cancelled quotes', () => {
 
     await expect(
       patchQuote({
-        actorUserId: context.salesPerson.id,
+        actor: testQuoteActor(context.salesPerson.id),
         db: context.db,
         input: { cancellationReason: 'Customer withdrew the repair', id: quote.id, status: 'cancelled' },
       }),
@@ -1286,7 +1277,7 @@ describe('cancelled quotes', () => {
     context,
   }) => {
     const quote = await createQuoteService({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
@@ -1302,10 +1293,10 @@ describe('cancelled quotes', () => {
       id: quote.id,
       mayCancelLockedQuote: false,
     });
-    const cancelled = await getQuote({ db: context.db, id: quote.id });
+    const cancelled = await getQuote({ actor: testQuoteActor('quote-reader'), db: context.db, id: quote.id });
 
     const annotated = await patchQuote({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: {
         documentNotes: 'Cancelled document note',
@@ -1328,7 +1319,7 @@ describe('cancelled quotes', () => {
     });
     await expect(
       patchQuote({
-        actorUserId: context.salesPerson.id,
+        actor: testQuoteActor(context.salesPerson.id),
         db: context.db,
         input: { id: quote.id, status: 'sent' },
       }),
@@ -1344,7 +1335,7 @@ describe('quote status vocabulary', () => {
     salesPerson: { id: string };
   }) =>
     createQuoteService({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
@@ -1359,7 +1350,7 @@ describe('quote status vocabulary', () => {
   test('transfers the Unit when a rejected Allocation Quote is accepted', async ({ context }) => {
     const unitId = await createUnit(context.db, context.product.id, 37);
     const rejected = await createQuoteService({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
@@ -1370,7 +1361,7 @@ describe('quote status vocabulary', () => {
     });
 
     await updateQuote({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: buildQuoteUpdateInput(rejected, { status: 'accepted' }),
     });
@@ -1390,28 +1381,28 @@ describe('quote status vocabulary', () => {
     expect(quote.acceptedAt).toBeNull();
 
     const accepted = await updateQuote({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: buildQuoteUpdateInput(quote, { status: 'accepted' }),
     });
     expect(accepted.acceptedAt).toEqual(accepted.statusChangedAt);
 
     const annotated = await patchQuote({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: { id: quote.id, notes: 'Deposit received' },
     });
     expect(annotated.acceptedAt).toBe(accepted.acceptedAt);
 
     const rejected = await patchQuote({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: { id: quote.id, status: 'rejected' },
     });
     expect(rejected.acceptedAt).toBeNull();
 
     const createdAccepted = await createQuoteService({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
@@ -1439,18 +1430,18 @@ describe('quote status vocabulary', () => {
       salesPersonId: context.salesPerson.id,
       status: 'awaiting-invoice',
     });
-    const quote = await getQuote({ db: context.db, id: row.id });
+    const quote = await getQuote({ actor: testQuoteActor('quote-reader'), db: context.db, id: row.id });
 
     await expect(
       updateQuote({
-        actorUserId: context.salesPerson.id,
+        actor: testQuoteActor(context.salesPerson.id),
         db: context.db,
         input: buildQuoteUpdateInput(quote, { notes: 'Delivered' }),
       }),
     ).resolves.toMatchObject({ notes: 'Delivered', status: 'awaiting-invoice' });
     await expect(
       patchQuote({
-        actorUserId: context.salesPerson.id,
+        actor: testQuoteActor(context.salesPerson.id),
         db: context.db,
         input: { id: quote.id, notes: 'Delivered twice', status: 'awaiting-invoice' },
       }),
@@ -1465,16 +1456,102 @@ describe('quote status vocabulary', () => {
 
       await expect(
         updateQuote({
-          actorUserId: context.salesPerson.id,
+          actor: testQuoteActor(context.salesPerson.id),
           db: context.db,
           input: buildQuoteUpdateInput(quote, { status }),
         }),
       ).rejects.toMatchObject({ code: 'quote.status_not_pickable' });
       await expect(
-        patchQuote({ actorUserId: context.salesPerson.id, db: context.db, input: { id: quote.id, status } }),
+        patchQuote({ actor: testQuoteActor(context.salesPerson.id), db: context.db, input: { id: quote.id, status } }),
       ).rejects.toMatchObject({ code: 'quote.status_not_pickable' });
     },
   );
+
+  test('refuses a status change out of a post-sale status as a Locked Quote edit', async ({ context }) => {
+    const row = await createQuote(context.db, {
+      customerId: context.customer.id,
+      productId: context.product.id,
+      salesPersonId: context.salesPerson.id,
+      status: 'awaiting-approval',
+    });
+
+    await expect(
+      patchQuote({ actor: testQuoteActor('super-user'), db: context.db, input: { id: row.id, status: 'accepted' } }),
+    ).rejects.toMatchObject({ code: 'quote.locked' });
+  });
+
+  test('ignores an unchanged Invoice Number on update and patch and refuses a changed one', async ({ context }) => {
+    const row = await createQuote(context.db, {
+      customerId: context.customer.id,
+      productId: context.product.id,
+      salesPersonId: context.salesPerson.id,
+      status: 'accepted',
+    });
+    const quote = await getQuote({ actor: testQuoteActor('quote-reader'), db: context.db, id: row.id });
+    const actor = testQuoteActor(context.salesPerson.id);
+
+    await expect(
+      updateQuote({ actor, db: context.db, input: buildQuoteUpdateInput(quote, { invoiceNumber: null, notes: 'A' }) }),
+    ).resolves.toMatchObject({ invoiceNumber: null, notes: 'A' });
+    await expect(
+      patchQuote({ actor, db: context.db, input: { id: quote.id, invoiceNumber: 'INV-1' } }),
+    ).rejects.toMatchObject({ code: 'quote.wrong_stage' });
+    await expect(
+      updateQuote({ actor, db: context.db, input: buildQuoteUpdateInput(quote, { invoiceNumber: 'INV-1' }) }),
+    ).rejects.toMatchObject({ code: 'quote.wrong_stage' });
+
+    await context.db
+      .update(quotes)
+      .set({ invoiceNumber: 'INV-1', invoicedAt: new Date(), status: 'invoiced' })
+      .where(eq(quotes.id, quote.id));
+    await expect(
+      patchQuote({ actor, db: context.db, input: { id: quote.id, invoiceNumber: 'INV-1', notes: 'B' } }),
+    ).resolves.toMatchObject({ invoiceNumber: 'INV-1', notes: 'B' });
+  });
+
+  test('opens the completing fields to each Stage owner and freezes them from Awaiting invoice', async ({
+    context,
+  }) => {
+    const quote = await createQuoteService({
+      actor: testQuoteActor(context.salesPerson.id),
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        offering: { kind: 'custom', workTitle: 'Pump rebuild' },
+        salesPersonId: context.salesPerson.id,
+        status: 'accepted',
+      }),
+    });
+    const setDeposit = async (role: 'admin' | 'sales' | 'super-admin', depositPercent: number) =>
+      updateQuote({
+        actor: testQuoteActor(context.salesPerson.id, role),
+        db: context.db,
+        input: buildQuoteUpdateInput(
+          await getQuote({ actor: testQuoteActor('quote-reader'), db: context.db, id: quote.id }),
+          { depositPercent },
+        ),
+      });
+    const moveTo = (status: QuoteStatus) => context.db.update(quotes).set({ status }).where(eq(quotes.id, quote.id));
+
+    await expect(setDeposit('sales', 10)).rejects.toMatchObject({ code: 'quote.locked' });
+    await expect(setDeposit('admin', 10)).resolves.toMatchObject({ depositPercent: 10 });
+
+    await moveTo('awaiting-approval');
+    await expect(setDeposit('admin', 20)).rejects.toMatchObject({ code: 'quote.locked' });
+    await expect(setDeposit('super-admin', 20)).resolves.toMatchObject({ depositPercent: 20 });
+
+    await moveTo('awaiting-invoice');
+    await expect(setDeposit('super-admin', 30)).rejects.toThrow(
+      'Quote is locked because it is Awaiting invoice; depositPercent cannot be changed.',
+    );
+    await expect(
+      patchQuote({
+        actor: testQuoteActor(context.salesPerson.id, 'sales'),
+        db: context.db,
+        input: { id: quote.id, notes: 'Delivered Friday', plannedDeliveryDate: DateOnlyIso.parse('2026-11-20') },
+      }),
+    ).resolves.toMatchObject({ notes: 'Delivered Friday', plannedDeliveryDate: '2026-11-20' });
+  });
 
   test('lists only presale Quotes as competing for an Allocation Quote', async ({ context }) => {
     const unitId = await createUnit(context.db, context.product.id, 36);
@@ -1490,7 +1567,9 @@ describe('quote status vocabulary', () => {
     const sent = await quoteFor('sent');
     await quoteFor('awaiting-invoice');
 
-    await expect(getQuote({ db: context.db, id: viewed.id })).resolves.toMatchObject({
+    await expect(
+      getQuote({ actor: testQuoteActor('quote-reader'), db: context.db, id: viewed.id }),
+    ).resolves.toMatchObject({
       competingAllocationQuotes: [{ id: sent.id, status: 'sent' }],
     });
   });
@@ -1514,7 +1593,7 @@ describe('listQuotes', () => {
       listQuotes({
         db: context.db,
         input: {
-          filters: { statuses: [] },
+          filters: { stages: [] },
           cursor: 0,
           limit: 10,
           search: formatJobCode(jobCode),
@@ -1529,7 +1608,7 @@ describe('listQuotes', () => {
 
   test('excludes cancelled quotes when no status filter is applied', async ({ context }) => {
     const visible = await createQuoteService({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
@@ -1549,7 +1628,7 @@ describe('listQuotes', () => {
       listQuotes({
         db: context.db,
         input: {
-          filters: { statuses: [] },
+          filters: { stages: [] },
           cursor: 0,
           limit: 10,
           search: '',
@@ -1568,7 +1647,7 @@ describe('listQuotes', () => {
       status: 'cancelled',
     });
     await createQuoteService({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
@@ -1582,7 +1661,7 @@ describe('listQuotes', () => {
       listQuotes({
         db: context.db,
         input: {
-          filters: { statuses: ['cancelled'] },
+          filters: { stages: ['cancelled'] },
           cursor: 0,
           limit: 10,
           search: '',
@@ -1591,6 +1670,37 @@ describe('listQuotes', () => {
         },
       }),
     ).resolves.toMatchObject({ items: [{ id: cancelled.id, status: 'cancelled' }], total: 1 });
+  });
+
+  test('filters and sorts by Quote Stage, reading the legacy status filter as Stages', async ({ context }) => {
+    const quoteIn = (status: QuoteStatus) =>
+      createQuote(context.db, {
+        customerId: context.customer.id,
+        productId: context.product.id,
+        salesPersonId: context.salesPerson.id,
+        status,
+      });
+    const finished = await quoteIn('accepted');
+    await context.db.insert(jobs).values({ completedOn: '2026-11-01', quoteId: finished.id });
+    const open = await quoteIn('accepted');
+    const draft = await quoteIn('draft');
+    const list = (filters: { stages: QuoteStage[]; statuses?: QuoteStatus[] }) =>
+      listQuotes({
+        db: context.db,
+        input: { filters, cursor: 0, limit: 10, search: '', sortBy: 'stage', sortDirection: 'asc' },
+      });
+
+    await expect(list({ stages: ['awaiting-pricing'] })).resolves.toMatchObject({
+      items: [{ id: finished.id, stage: 'awaiting-pricing', status: 'accepted' }],
+    });
+    await expect(list({ stages: [], statuses: ['accepted'] })).resolves.toMatchObject({
+      items: [{ id: open.id, stage: 'accepted' }],
+    });
+    await expect(list({ stages: [] }).then(({ items }) => items.map((item) => item.id))).resolves.toEqual([
+      draft.id,
+      open.id,
+      finished.id,
+    ]);
   });
 });
 
@@ -1606,7 +1716,7 @@ describe('delivery terms', () => {
 
     await expect(
       createQuoteService({
-        actorUserId: context.salesPerson.id,
+        actor: testQuoteActor(context.salesPerson.id),
         db: context.db,
         input: { ...draft, status: 'accepted' },
       }),
@@ -1615,7 +1725,7 @@ describe('delivery terms', () => {
 
   test('lets a to-be-confirmed Quote go out as sent but not come back accepted', async ({ context }) => {
     const quote = await createQuoteService({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
@@ -1627,25 +1737,29 @@ describe('delivery terms', () => {
     });
 
     const sent = await patchQuote({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: { id: quote.id, status: 'sent' },
     });
     expect(sent).toMatchObject({ deliveryPrice: 0, deliveryTerms: 'tbc', status: 'sent' });
 
     await expect(
-      patchQuote({ actorUserId: context.salesPerson.id, db: context.db, input: { id: quote.id, status: 'accepted' } }),
+      patchQuote({
+        actor: testQuoteActor(context.salesPerson.id),
+        db: context.db,
+        input: { id: quote.id, status: 'accepted' },
+      }),
     ).rejects.toThrow('Confirm delivery before accepting this quote.');
     await expect(
       updateQuote({
-        actorUserId: context.salesPerson.id,
+        actor: testQuoteActor(context.salesPerson.id),
         db: context.db,
         input: { ...buildQuoteUpdateInput(sent), status: 'accepted' },
       }),
     ).rejects.toThrow('Confirm delivery before accepting this quote.');
 
     const accepted = await updateQuote({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: buildQuoteUpdateInput(sent, { deliveryTerms: 'ex_factory', status: 'accepted' }),
     });
@@ -1671,7 +1785,7 @@ describe('patchQuote', () => {
     }
 
     const quote = await createQuoteService({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
@@ -1682,7 +1796,7 @@ describe('patchQuote', () => {
     });
 
     const updated = await patchQuote({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: {
         id: quote.id,
@@ -1718,7 +1832,7 @@ describe('patchQuote', () => {
     }
 
     const quote = await createQuoteService({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
@@ -1728,7 +1842,7 @@ describe('patchQuote', () => {
       }),
     });
     await updateQuote({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: buildQuoteUpdateInput(quote, {
         deliveryPrice: 350,
@@ -1738,7 +1852,7 @@ describe('patchQuote', () => {
       }),
     });
 
-    const readBack = await getQuote({ db: context.db, id: quote.id });
+    const readBack = await getQuote({ actor: testQuoteActor('quote-reader'), db: context.db, id: quote.id });
     if (readBack.kind !== 'product') throw new Error('Expected Product Quote');
 
     // base 1000 + assembly 500 = 1500; 10% discount = 150; + delivery 350 = 1700 ex-VAT.
@@ -1753,7 +1867,7 @@ describe('patchQuote', () => {
 
   test('changes only the named field and leaves commercial fields untouched', async ({ context }) => {
     const quote = await createQuoteService({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
@@ -1767,7 +1881,7 @@ describe('patchQuote', () => {
     });
 
     const updated = await patchQuote({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: { id: quote.id, status: 'sent' },
     });
@@ -1781,7 +1895,7 @@ describe('patchQuote', () => {
 
   test('clears a nullable field on an explicit null and no-ops when nothing changes', async ({ context }) => {
     const quote = await createQuoteService({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
@@ -1793,14 +1907,14 @@ describe('patchQuote', () => {
     });
 
     const cleared = await patchQuote({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: { id: quote.id, documentNotes: null },
     });
     expect(cleared.documentNotes).toBeNull();
 
     const unchanged = await patchQuote({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: { id: quote.id },
     });
@@ -1810,7 +1924,7 @@ describe('patchQuote', () => {
 
   test('enforces the Quote lock rules for the changed fields', async ({ context }) => {
     const acceptedCustom = await createQuoteService({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
@@ -1822,7 +1936,7 @@ describe('patchQuote', () => {
 
     // Notes stay editable after acceptance even though commercial fields are locked.
     const noted = await patchQuote({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: { id: acceptedCustom.id, notes: 'Post-acceptance note' },
     });
@@ -1831,7 +1945,7 @@ describe('patchQuote', () => {
     // Status is not a lock-editable field, so patching it on a locked Quote is rejected.
     await expect(
       patchQuote({
-        actorUserId: context.salesPerson.id,
+        actor: testQuoteActor(context.salesPerson.id),
         db: context.db,
         input: { id: acceptedCustom.id, status: 'sent' },
       }),
@@ -1901,7 +2015,7 @@ describe('cancelQuote', () => {
   test('returns a sold Allocation Quote Unit to Stock without erasing either transfer', async ({ context }) => {
     const unitId = await createUnit(context.db, context.product.id, 911);
     const quote = await createQuoteService({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
@@ -1963,7 +2077,7 @@ describe('cancelQuote', () => {
     context,
   }) => {
     const quote = await createQuoteService({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
@@ -1981,7 +2095,9 @@ describe('cancelQuote', () => {
       id: quote.id,
     });
 
-    await expect(getQuote({ db: context.db, id: quote.id })).resolves.toMatchObject({
+    await expect(
+      getQuote({ actor: testQuoteActor('quote-reader'), db: context.db, id: quote.id }),
+    ).resolves.toMatchObject({
       job: null,
       cancellationReason: 'Customer withdrew the project',
       status: 'cancelled',
@@ -2372,7 +2488,7 @@ describe('listPriorityQuotes', () => {
     });
     const unitId = await createUnit(context.db, context.product.id, 914);
     const allocation = await createQuoteService({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
@@ -2799,7 +2915,7 @@ describe('Quote salesperson eligibility', () => {
     ]);
     const createFor = (salesPersonId: string) =>
       createQuoteService({
-        actorUserId: context.salesPerson.id,
+        actor: testQuoteActor(context.salesPerson.id),
         db: context.db,
         input: QuoteCreateInput.parse({
           customer: { type: 'existing', customerId: context.customer.id },
@@ -2815,7 +2931,7 @@ describe('Quote salesperson eligibility', () => {
 
   test('allows other edits after unticking, but rejects assigning another unticked user', async ({ context }) => {
     const quote = await createQuoteService({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: QuoteCreateInput.parse({
         customer: { type: 'existing', customerId: context.customer.id },
@@ -2837,28 +2953,28 @@ describe('Quote salesperson eligibility', () => {
     });
 
     const patched = await patchQuote({
-      actorUserId: context.salesPerson.id,
+      actor: testQuoteActor(context.salesPerson.id),
       db: context.db,
       input: { id: quote.id, notes: 'Still editable' },
     });
     expect(patched).toMatchObject({ notes: 'Still editable', salesPersonId: context.salesPerson.id });
     await expect(
       updateQuote({
-        actorUserId: context.salesPerson.id,
+        actor: testQuoteActor(context.salesPerson.id),
         db: context.db,
         input: buildQuoteUpdateInput(patched, { notes: 'Full edit still works' }),
       }),
     ).resolves.toMatchObject({ notes: 'Full edit still works', salesPersonId: context.salesPerson.id });
     await expect(
       patchQuote({
-        actorUserId: context.salesPerson.id,
+        actor: testQuoteActor(context.salesPerson.id),
         db: context.db,
         input: { id: quote.id, salesPersonId: 'another-unticked-id' },
       }),
     ).rejects.toMatchObject({ code: 'quote.invalid_reference' });
     await expect(
       updateQuote({
-        actorUserId: context.salesPerson.id,
+        actor: testQuoteActor(context.salesPerson.id),
         db: context.db,
         input: buildQuoteUpdateInput(patched, { salesPersonId: 'another-unticked-id' }),
       }),

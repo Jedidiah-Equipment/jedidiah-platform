@@ -36,7 +36,6 @@ describe('mobile quote creation', () => {
       depositPercent: 0,
       discountPercent: 0,
       documentNotes: null,
-      invoiceNumber: null,
       notes: null,
       offering: {
         kind: 'product',

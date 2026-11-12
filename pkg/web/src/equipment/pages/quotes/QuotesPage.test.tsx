@@ -63,7 +63,7 @@ describe('Quote table priority rows', () => {
     expect(html.match(/>QUO-00001</g)).toHaveLength(2);
   });
 
-  it('renders quote code start-pinned and status/job end-pinned', () => {
+  it('renders quote code start-pinned and stage/job end-pinned', () => {
     const html = renderQuoteTableRows([
       createPriorityQuoteTableRow(buildPriorityQuote({ job: null })),
       createQuoteTableRow(buildPriorityQuote({ job: null })),
@@ -123,6 +123,7 @@ function TestQuoteTable({ rows }: { rows: QuoteTableRow[] }) {
       productOptions: [],
       salespersonOptions: [],
       showCustomerColumn: true,
+      stageOptions: [],
     }),
     data: rows,
     initialState: {
@@ -180,7 +181,11 @@ function buildPriorityQuote(overrides: Partial<Record<keyof PriorityQuoteType, u
     salesPersonThumbnailDataUrl: null,
     selectedAssemblies: [],
     status: 'accepted',
-    acceptedAt: null,
+    acceptedAt: '2026-06-01T10:00:00.000Z',
+    invoicedAt: null,
+    sentBackAt: null,
+    sentBackNote: null,
+    stage: 'accepted',
     statusChangedAt: '2026-06-01T10:00:00.000Z',
     updatedAt: '2026-06-01T10:00:00.000Z',
     validUntil: '2026-08-01T00:00:00.000Z',

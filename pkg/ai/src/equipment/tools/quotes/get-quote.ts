@@ -4,6 +4,7 @@ import { type UserAccessSummary, UUID } from '@pkg/schema';
 import type { QuoteDetail } from '@pkg/schema/equipment';
 import { z } from 'zod';
 
+import { requireAiActor } from '@/equipment/actor.js';
 import type { AiContext } from '@/equipment/context.js';
 import {
   QuoteDetailResponse as SharedQuoteDetailResponse,
@@ -26,14 +27,14 @@ export const getQuoteDefinition = {
   description: [
     `Get the full details for one Product, ${quoteKindLabels.custom}, or Parts Sale Quote by UUID.`,
     'Use after findQuotes identifies the Quote the user means.',
-    'Returns pricing, status, dates, Customer and offering details, selected assemblies, Work Items, and relationship links without thumbnail data.',
+    'Returns pricing, status, Quote Stage, dates, Customer and offering details, selected assemblies, Work Items, and relationship links without thumbnail data.',
   ].join('\n'),
   inputSchema: GetQuoteInput,
   outputSchema: GetQuoteResponse,
   anyOfPermissions: ['equipment_quote:read'],
   async handler(args: unknown, ctx: AiContext): Promise<GetQuoteResponse> {
     const input = GetQuoteInput.parse(args);
-    const quote = await quotesCore.getQuote({ db: ctx.db, id: input.id });
+    const quote = await quotesCore.getQuote({ actor: requireAiActor(ctx), db: ctx.db, id: input.id });
     return toGetQuoteResponse(quote, ctx.access);
   },
 } as const;

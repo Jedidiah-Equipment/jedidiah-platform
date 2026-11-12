@@ -83,6 +83,7 @@ export * from './quotes/quote-inventory-part-read.js';
 export * from './quotes/quote-read-service.js';
 export * from './quotes/quote-report-service.js';
 export * from './quotes/quote-service.js';
+export * from './quotes/quote-stage-service.js';
 export * from './suppliers/supplier-errors.js';
 export * from './suppliers/supplier-service.js';
 export * from './transcriptions/transcription-profile.js';

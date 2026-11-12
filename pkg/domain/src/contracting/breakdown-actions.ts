@@ -8,6 +8,7 @@ import {
   breakdownActionNames,
 } from '@pkg/schema/contracting';
 import { hasPermission } from '../auth/authorization.js';
+import { joinOr } from '../formatting/text.js';
 import { breakdownStatusLabels, isBreakdownMine } from './breakdowns.js';
 
 /** Who is asking: the session's access summary, built once at the API edge. */
@@ -46,9 +47,6 @@ const rules: Record<BreakdownActionName, Rule> = {
   start: { statuses: ['open'], ...managing, verb: 'start work' },
   solve: { statuses: unsolved, ...managing, verb: 'mark it Fixed' },
 };
-
-const joinOr = (items: readonly string[]) =>
-  items.length < 2 ? (items[0] ?? '') : `${items.slice(0, -1).join(', ')} or ${items.at(-1)}`;
 
 function refusalMessage(rule: Rule, reason: BreakdownActionBlockedReason): string {
   switch (reason) {

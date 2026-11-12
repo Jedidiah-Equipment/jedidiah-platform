@@ -1,5 +1,5 @@
 import { accessForRole } from '@pkg/domain/testing';
-import { type QuoteListResult, QuoteStatus } from '@pkg/schema/equipment';
+import { type QuoteListResult, QuoteStage } from '@pkg/schema/equipment';
 import { describe, expect, test } from 'vitest';
 
 import {
@@ -29,7 +29,7 @@ describe('findQuotes contract', () => {
     const input = FindQuotesInput.parse({ by: 'code', quoteCode: '8' });
 
     expect(toCoreQuoteListInput(input)).toEqual({
-      filters: { quoteCode: 'QUO-00008', statuses: QuoteStatus.options },
+      filters: { quoteCode: 'QUO-00008', stages: QuoteStage.options },
       cursor: 0,
       limit: 0,
       search: '',
@@ -47,14 +47,14 @@ describe('findQuotes contract', () => {
     {
       expectedFilters: {
         customerId: CUSTOMER_ID,
-        statuses: QuoteStatus.options,
+        stages: QuoteStage.options,
       },
       input: { by: 'customer', customerId: CUSTOMER_ID } as const,
     },
     {
       expectedFilters: {
         productId: PRODUCT_ID,
-        statuses: QuoteStatus.options,
+        stages: QuoteStage.options,
       },
       input: { by: 'product', productId: PRODUCT_ID } as const,
     },
@@ -91,6 +91,7 @@ describe('findQuotes contract', () => {
           productId: PRODUCT_ID,
           quotedBasePrice: 1000,
           quotedCurrencyCode: 'ZAR',
+          stage: 'draft',
           status: 'draft',
           workTitle: null,
         },
@@ -108,6 +109,7 @@ describe('findQuotes contract', () => {
           productId: null,
           quotedBasePrice: 2500,
           quotedCurrencyCode: 'ZAR',
+          stage: 'sent',
           status: 'sent',
           workTitle: 'Hydraulic repair',
         },

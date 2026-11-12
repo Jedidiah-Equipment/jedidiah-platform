@@ -2,6 +2,7 @@ import {
   computeAdditionalDeliveryPrice,
   editableQuoteStatuses,
   quoteOfferingTypeLabel,
+  quoteStageLabels,
   quoteStatusLabels,
   toQuoteWorkItemFormState,
 } from '@pkg/domain/equipment';
@@ -16,10 +17,10 @@ import {
   type QuoteDetail,
   QuoteDiscountPercent,
   QuoteDocumentNotes,
-  QuoteInvoiceNumber,
   type QuoteKind,
   QuoteNotes,
   QuoteSelectedAssemblyInput,
+  QuoteStage,
   QuoteStatus,
   type QuoteSummary,
   QuoteUpdateInput,
@@ -33,12 +34,12 @@ import {
 } from '@pkg/schema/equipment';
 import { z } from 'zod';
 
-export type QuoteStatusFilter = 'all' | QuoteSummary['status'];
+export type QuoteStageFilter = 'all' | QuoteStage;
 export type QuoteSort = 'newest' | 'oldest';
 
-export const QUOTE_STATUS_FILTER_OPTIONS = QuoteStatus.options.map((status) => ({
-  label: quoteStatusLabels[status],
-  value: status,
+export const QUOTE_STAGE_FILTER_OPTIONS = QuoteStage.options.map((stage) => ({
+  label: quoteStageLabels[stage],
+  value: stage,
 }));
 
 export function quoteStatusEditOptions(currentStatus: QuoteStatus) {
@@ -50,8 +51,8 @@ export function parseQuoteCancellationReason(value: string): string | null {
   return result.success ? result.data : null;
 }
 
-export function isQuoteStatusFilter(value: unknown): value is QuoteStatusFilter {
-  return value === 'all' || QuoteStatus.safeParse(value).success;
+export function isQuoteStageFilter(value: unknown): value is QuoteStageFilter {
+  return value === 'all' || QuoteStage.safeParse(value).success;
 }
 
 export function isQuoteSort(value: unknown): value is QuoteSort {
@@ -66,13 +67,13 @@ export function quoteSortDirection(sort: QuoteSort): 'asc' | 'desc' {
 export function shouldPinPriorityQuotes({
   search,
   sort,
-  status,
+  stage,
 }: {
   search: string;
   sort: QuoteSort;
-  status: QuoteStatusFilter;
+  stage: QuoteStageFilter;
 }): boolean {
-  return search.trim().length === 0 && status === 'all' && sort === 'newest';
+  return search.trim().length === 0 && stage === 'all' && sort === 'newest';
 }
 
 type QuoteMetaFacts =
@@ -145,7 +146,6 @@ export const QuoteEditFormValues = z
     depositPercent: QuoteDepositPercent,
     discountPercent: QuoteDiscountPercent,
     documentNotes: z.string(),
-    invoiceNumber: z.string(),
     notes: z.string(),
     plannedDeliveryDate: z.union([z.literal(''), DateOnlyIsoString]),
     preferredDeliveryDate: z.union([z.literal(''), DateOnlyIsoString]),
@@ -188,7 +188,6 @@ export function getQuoteEditFormValuesValidator(kind: QuoteKind) {
     for (const [field, schema] of [
       ['notes', QuoteNotes],
       ['documentNotes', QuoteDocumentNotes],
-      ['invoiceNumber', QuoteInvoiceNumber],
     ] as const) {
       if (values[field] === '') continue;
 
@@ -237,7 +236,6 @@ export function toQuoteEditFormValues(quote: QuoteDetail): QuoteEditFormValues {
     depositPercent: quote.depositPercent,
     discountPercent: quote.discountPercent,
     documentNotes: quote.documentNotes ?? '',
-    invoiceNumber: quote.invoiceNumber ?? '',
     notes: quote.notes ?? '',
     plannedDeliveryDate: quote.plannedDeliveryDate ?? '',
     preferredDeliveryDate: quote.preferredDeliveryDate ?? '',
@@ -309,7 +307,6 @@ export function toQuoteUpdateInput({
     depositPercent: values.depositPercent,
     discountPercent: values.discountPercent,
     documentNotes: values.documentNotes,
-    invoiceNumber: values.invoiceNumber,
     notes: values.notes,
     plannedDeliveryDate: values.plannedDeliveryDate || null,
     preferredDeliveryDate: values.preferredDeliveryDate || null,

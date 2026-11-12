@@ -1,31 +1,59 @@
+import type { UserAccessSummary } from '@pkg/schema';
 import { hasQuoteStatus, type QuoteKind, type QuoteStatus, soldQuoteStatuses } from '@pkg/schema/equipment';
 
-const EDITABLE_LOCKED_QUOTE_FIELDS: ReadonlySet<string> = new Set([
-  'invoiceNumber',
-  'notes',
-  'documentNotes',
-  'plannedDeliveryDate',
-  'preferredDeliveryDate',
-  'validUntil',
-  'workItems',
-]);
+import { hasPermission } from '../../auth/authorization.js';
+import { quoteStatusLabels } from './quote-display.js';
 
-const EDITABLE_SOLD_LOCKED_QUOTE_FIELDS: ReadonlySet<string> = new Set([
-  ...EDITABLE_LOCKED_QUOTE_FIELDS,
+const NEVER_LOCKED_FIELDS = ['notes', 'plannedDeliveryDate', 'preferredDeliveryDate'] as const;
+const DOCUMENT_FIELDS = ['documentNotes', 'validUntil'] as const;
+const COMPLETING_FIELDS = [
+  'workItems',
   // The Settling Terms.
   'depositPercent',
   'deliveryTerms',
   'deliveryPrice',
   'discountPercent',
-]);
+] as const;
+
+type LockActor = Pick<UserAccessSummary, 'permissions'> | null | undefined;
 
 /**
- * Which fields a Locked Quote still accepts. The price and specification freeze, but the Settling Terms
- * — discount, deposit, and Delivery Terms — stay open while the Quote is accepted, for anyone who can
- * update Quotes at all (`equipment_quote:update`). A cancelled Quote moves none of them.
+ * Which fields a Locked Quote still accepts from this actor. Notes and delivery dates never lock: a machine can be
+ * invoiced before it is delivered. While a sold Quote is completed, an Administrator (`equipment_quote:price`)
+ * changes its Settling Terms and Work Items; once sent for approval only a Super Administrator
+ * (`equipment_quote:approve`) changes anything else, and once approved nobody does. The price and specification
+ * of a Product Quote never reopen.
  */
-export function editableLockedQuoteFields({ status }: { status: QuoteStatus }): ReadonlySet<string> {
-  return hasQuoteStatus(soldQuoteStatuses, status) ? EDITABLE_SOLD_LOCKED_QUOTE_FIELDS : EDITABLE_LOCKED_QUOTE_FIELDS;
+export function editableLockedQuoteFields({
+  actor,
+  status,
+}: {
+  actor: LockActor;
+  status: QuoteStatus;
+}): ReadonlySet<string> {
+  if (!hasPermission(actor, 'equipment_quote:update')) return new Set();
+
+  const fields = new Set<string>(NEVER_LOCKED_FIELDS);
+  const add = (more: readonly string[]) => {
+    for (const field of more) fields.add(field);
+  };
+
+  switch (status) {
+    case 'accepted':
+      add(DOCUMENT_FIELDS);
+      if (hasPermission(actor, 'equipment_quote:price')) add(COMPLETING_FIELDS);
+      break;
+    case 'awaiting-approval':
+      if (hasPermission(actor, 'equipment_quote:approve')) add([...DOCUMENT_FIELDS, ...COMPLETING_FIELDS]);
+      break;
+    case 'awaiting-invoice':
+    case 'invoiced':
+      break;
+    default:
+      add(DOCUMENT_FIELDS);
+  }
+
+  return fields;
 }
 
 export type QuoteEditableResult =
@@ -38,12 +66,14 @@ export type QuoteEditableResult =
     };
 
 export function assertQuoteEditable({
+  actor,
   changedFields,
   hasEverSourcedJob,
   hasProductUnit,
   kind,
   status,
 }: {
+  actor: LockActor;
   changedFields: Iterable<string>;
   hasEverSourcedJob: boolean;
   hasProductUnit: boolean;
@@ -59,8 +89,10 @@ export function assertQuoteEditable({
       ? 'it has been cancelled'
       : kind === 'product' && !hasProductUnit && !isPastAcceptance(status)
         ? 'it has already sourced a Job'
-        : 'it has been accepted';
-  const editableFields = editableLockedQuoteFields({ status });
+        : status === 'accepted'
+          ? 'it has been accepted'
+          : `it is ${quoteStatusLabels[status]}`;
+  const editableFields = editableLockedQuoteFields({ actor, status });
 
   for (const field of changedFields) {
     if (!editableFields.has(field)) {
@@ -90,6 +122,8 @@ export function shouldOfferQuoteCancellation({
   return (
     canCancel &&
     quote.status !== 'cancelled' &&
+    // An Invoiced Quote is cancelled only after its Invoice Number is removed.
+    quote.status !== 'invoiced' &&
     isQuoteLocked({
       hasEverSourcedJob: quote.hasEverSourcedJob,
       hasProductUnit: quote.productUnitId !== null,

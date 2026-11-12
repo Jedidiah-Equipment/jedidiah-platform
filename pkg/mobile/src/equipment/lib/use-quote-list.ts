@@ -5,7 +5,7 @@ import { useCallback } from 'react';
 import {
   presentQuotePages,
   type QuoteSort,
-  type QuoteStatusFilter,
+  type QuoteStageFilter,
   quoteSortDirection,
   shouldPinPriorityQuotes,
 } from '@/equipment/lib/quote-presentation';
@@ -17,12 +17,12 @@ export function useQuoteList({
   enabled,
   search,
   sort,
-  status,
+  stage,
 }: {
   enabled: boolean;
   search: string;
   sort: QuoteSort;
-  status: QuoteStatusFilter;
+  stage: QuoteStageFilter;
 }): {
   failed: boolean;
   hasNextPage: boolean;
@@ -34,11 +34,11 @@ export function useQuoteList({
   total: number | null;
 } {
   const trpc = useTRPC();
-  const pinPriorityQuotes = shouldPinPriorityQuotes({ search, sort, status });
+  const pinPriorityQuotes = shouldPinPriorityQuotes({ search, sort, stage });
   const listQuery = useInfiniteQuery(
     trpc.quotes.list.infiniteQueryOptions(
       {
-        filters: status === 'all' ? undefined : { statuses: [status] },
+        filters: stage === 'all' ? undefined : { stages: [stage] },
         limit: PAGE_SIZE,
         search: search || undefined,
         sortBy: 'createdAt',

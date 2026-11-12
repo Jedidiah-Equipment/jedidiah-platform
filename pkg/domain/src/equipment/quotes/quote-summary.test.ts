@@ -1,4 +1,4 @@
-import { type Assembly, QuoteDetail, type QuoteSelectedAssembly } from '@pkg/schema/equipment';
+import { type Assembly, QuoteDetail, type QuoteSelectedAssembly, quoteActionNames } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
 import { computeQuoteSummary, type QuoteSummaryFormValues, resolveSelectedAssemblySnapshots } from './quote-summary.js';
@@ -30,6 +30,10 @@ function buildQuoteDetail(overrides: Record<string, unknown> = {}): QuoteDetail 
     salesPersonId: 'auth-user-1',
     status: 'sent',
     acceptedAt: null,
+    invoicedAt: null,
+    sentBackAt: null,
+    sentBackNote: null,
+    stage: 'sent',
     statusChangedAt: '2026-01-01T00:00:00.000Z',
     depositPercent: 30,
     discountPercent: 10,
@@ -53,6 +57,11 @@ function buildQuoteDetail(overrides: Record<string, unknown> = {}): QuoteDetail 
     customerThumbnailDataUrl: null,
     customerVatNumber: 'VAT-123',
     hasEverSourcedJob: false,
+    actions: Object.fromEntries(
+      quoteActionNames.map((name) => [name, { allowed: false, reason: 'wrong-status', message: 'No.' }]),
+    ),
+    invoicedByName: null,
+    sentBackByName: null,
     job: null,
     product: {
       assemblies: [],

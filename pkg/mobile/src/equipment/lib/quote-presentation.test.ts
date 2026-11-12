@@ -1,11 +1,12 @@
-import { quoteWorkItemSummaryRows } from '@pkg/domain/equipment';
+import { deriveQuoteActions, quoteWorkItemSummaryRows } from '@pkg/domain/equipment';
+import { accessForRole } from '@pkg/domain/testing';
 import { QuoteDetail, type QuoteSummary } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 
 import {
   getQuoteEditFormValuesValidator,
   isQuoteSort,
-  isQuoteStatusFilter,
+  isQuoteStageFilter,
   parseQuoteCancellationReason,
   presentQuotePages,
   quoteMetaLine,
@@ -35,6 +36,13 @@ function buildQuoteDetail() {
     salesPersonId: 'auth-user-1',
     status: 'sent',
     acceptedAt: null,
+    actions: deriveQuoteActions({ deliveryTerms: 'included', stage: 'sent' }, accessForRole('admin', 'auth-user-1')),
+    invoicedAt: null,
+    invoicedByName: null,
+    sentBackAt: null,
+    sentBackByName: null,
+    sentBackNote: null,
+    stage: 'sent',
     statusChangedAt: '2026-01-01T00:00:00.000Z',
     depositPercent: 30,
     discountPercent: 10,
@@ -45,7 +53,7 @@ function buildQuoteDetail() {
     plannedDeliveryDate: null,
     notes: 'Internal note',
     documentNotes: null,
-    invoiceNumber: 'INV-0042',
+    invoiceNumber: null,
     quotedBasePrice: 1000,
     quotedCurrencyCode: 'ZAR',
     createdAt: '2026-01-01T00:00:00.000Z',
@@ -104,13 +112,13 @@ describe('Quote status presentation', () => {
     expect(parseQuoteCancellationReason('  Customer withdrew  ')).toBe('Customer withdrew');
   });
 
-  it('accepts only All and the five real statuses as persisted filters', () => {
-    for (const value of ['all', 'draft', 'sent', 'accepted', 'rejected', 'cancelled']) {
-      expect(isQuoteStatusFilter(value)).toBe(true);
+  it('accepts All and every Quote Stage as a persisted filter, so a filter saved as a status still reads', () => {
+    for (const value of ['all', 'draft', 'sent', 'accepted', 'awaiting-pricing', 'invoiced', 'cancelled']) {
+      expect(isQuoteStageFilter(value)).toBe(true);
     }
 
-    expect(isQuoteStatusFilter('locked')).toBe(false);
-    expect(isQuoteStatusFilter(null)).toBe(false);
+    expect(isQuoteStageFilter('locked')).toBe(false);
+    expect(isQuoteStageFilter(null)).toBe(false);
   });
 });
 
@@ -146,11 +154,11 @@ describe('paged Quote presentation', () => {
   const quote = (id: string) => ({ id }) as QuoteSummary;
 
   it('pins priority Quotes only on the unfiltered, default-sorted list', () => {
-    expect(shouldPinPriorityQuotes({ search: '', sort: 'newest', status: 'all' })).toBe(true);
-    expect(shouldPinPriorityQuotes({ search: '  ', sort: 'newest', status: 'all' })).toBe(true);
-    expect(shouldPinPriorityQuotes({ search: 'QUO-00001', sort: 'newest', status: 'all' })).toBe(false);
-    expect(shouldPinPriorityQuotes({ search: '', sort: 'newest', status: 'accepted' })).toBe(false);
-    expect(shouldPinPriorityQuotes({ search: '', sort: 'oldest', status: 'all' })).toBe(false);
+    expect(shouldPinPriorityQuotes({ search: '', sort: 'newest', stage: 'all' })).toBe(true);
+    expect(shouldPinPriorityQuotes({ search: '  ', sort: 'newest', stage: 'all' })).toBe(true);
+    expect(shouldPinPriorityQuotes({ search: 'QUO-00001', sort: 'newest', stage: 'all' })).toBe(false);
+    expect(shouldPinPriorityQuotes({ search: '', sort: 'newest', stage: 'accepted' })).toBe(false);
+    expect(shouldPinPriorityQuotes({ search: '', sort: 'oldest', stage: 'all' })).toBe(false);
   });
 
   it('keeps priority Quotes pinned and removes their duplicates from loaded pages', () => {
@@ -191,27 +199,8 @@ describe('Quote edit presentation', () => {
       plannedDeliveryDate: '2026-03-01',
       notes: 'Internal note',
       documentNotes: null,
-      invoiceNumber: 'INV-0042',
       selectedAssemblies: [{ type: 'existing', id: SELECTION_ID }],
     });
-  });
-
-  it('reports a whitespace-only invoice number as a field error and clears a blank one', () => {
-    const quote = buildQuoteDetail();
-    const result = getQuoteEditFormValuesValidator('product').safeParse({
-      ...toQuoteEditFormValues(quote),
-      invoiceNumber: '   ',
-    });
-
-    expect(result.success).toBe(false);
-    expect(result.error?.issues).toEqual([expect.objectContaining({ code: 'custom', path: ['invoiceNumber'] })]);
-    expect(
-      toQuoteUpdateInput({
-        id: quote.id,
-        kind: quote.kind,
-        values: { ...toQuoteEditFormValues(quote), invoiceNumber: '' },
-      }).invoiceNumber,
-    ).toBeNull();
   });
 
   it('requires, maps, and preserves a cancellation reason', () => {

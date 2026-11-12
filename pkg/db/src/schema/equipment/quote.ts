@@ -54,6 +54,11 @@ export const quotes = equipmentSchema.table(
     notes: text('notes'),
     documentNotes: text('document_notes'),
     invoiceNumber: text('invoice_number'),
+    invoicedAt: timestamp('invoiced_at', { mode: 'date', withTimezone: true }),
+    invoicedByUserId: text('invoiced_by_user_id').references(() => user.id, { onDelete: 'set null' }),
+    sentBackAt: timestamp('sent_back_at', { mode: 'date', withTimezone: true }),
+    sentBackByUserId: text('sent_back_by_user_id').references(() => user.id, { onDelete: 'set null' }),
+    sentBackNote: text('sent_back_note'),
     quotedBasePrice: numeric('quoted_base_price', { mode: 'number', precision: 12, scale: 2 }).notNull(),
     quotedCurrencyCode: text('quoted_currency_code').notNull(),
     createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
@@ -100,6 +105,16 @@ export const quotes = equipmentSchema.table(
     check(
       'quote_accepted_shape',
       sql`(${table.status} in ('accepted', 'awaiting-approval', 'awaiting-invoice', 'invoiced')) = (${table.acceptedAt} is not null)`,
+    ),
+    // The Invoice Number is written only by the invoice Quote Actions, so it exists exactly while the Quote is Invoiced.
+    check(
+      'quote_invoiced_shape',
+      sql`(${table.status} = 'invoiced') = (${table.invoiceNumber} is not null) and (${table.status} = 'invoiced') = (${table.invoicedAt} is not null)`,
+    ),
+    // A send-back lasts only while the Quote is accepted again, and always says why.
+    check(
+      'quote_sent_back_shape',
+      sql`(${table.sentBackAt} is null or ${table.status} = 'accepted') and (${table.sentBackAt} is null) = (${table.sentBackNote} is null) and (${table.sentBackNote} is null or length(trim(${table.sentBackNote})) > 0) and (${table.sentBackAt} is not null or ${table.sentBackByUserId} is null)`,
     ),
     check('quote_parts_sale_is_custom', sql`${table.isPartsSale} = false or ${table.kind} = 'custom'`),
     foreignKey({

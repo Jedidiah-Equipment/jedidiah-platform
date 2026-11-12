@@ -53,6 +53,7 @@ import { deleteProductDocument } from '../products/product-service.js';
 import { updateQuote } from '../quotes/quote-service.js';
 import { seedPartCategory } from '../test/part-fixtures.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
+import { testQuoteActor } from '../test/quote-actor.js';
 import { getProductUnit } from '../units/product-unit-read-service.js';
 import { removeProductUnit, transferProductUnitOwnership } from '../units/product-unit-service.js';
 import {
@@ -198,7 +199,7 @@ describe('createJob', () => {
     ]);
 
     await updateQuote({
-      actorUserId,
+      actor: testQuoteActor(actorUserId),
       db: context.db,
       input: QuoteUpdateInput.parse({
         ...draftUpdateInput,
@@ -219,7 +220,7 @@ describe('createJob', () => {
     ).toBe(true);
 
     await updateQuote({
-      actorUserId,
+      actor: testQuoteActor(actorUserId),
       db: context.db,
       input: QuoteUpdateInput.parse({
         ...draftUpdateInput,
@@ -234,7 +235,7 @@ describe('createJob', () => {
       }),
     });
     await updateQuote({
-      actorUserId,
+      actor: testQuoteActor(actorUserId),
       db: context.db,
       input: QuoteUpdateInput.parse({
         ...draftUpdateInput,
@@ -369,7 +370,7 @@ describe('createJob', () => {
     });
     await expect(
       updateQuote({
-        actorUserId,
+        actor: testQuoteActor(actorUserId),
         db: context.db,
         input: QuoteUpdateInput.parse({
           ...quoteUpdateInput(quote),
@@ -838,7 +839,7 @@ describe('createJob', () => {
 
     await expect(
       updateQuote({
-        actorUserId,
+        actor: testQuoteActor(actorUserId),
         db: context.db,
         input: QuoteUpdateInput.parse({
           ...quoteUpdateInput(quote),

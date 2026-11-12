@@ -38,6 +38,7 @@ import {
   type InvoicingQuoteStage,
   invoicingListFilters,
   JOB_COMPLETED_COLUMN_ID,
+  pickWithoutStaleRange,
   STAGE_COLUMN_ID,
   TYPE_COLUMN_ID,
 } from './types.js';
@@ -195,7 +196,9 @@ export function InvoicingPage() {
         colours={quoteStageColorClassNames}
         counts={counts}
         columnFilters={tableController.columnFilters}
-        onColumnFiltersChange={tableController.setColumnFilters}
+        onColumnFiltersChange={(updater) =>
+          tableController.setColumnFilters((current) => pickWithoutStaleRange(current, updater))
+        }
       />
       <DataTable
         emptyMessage="No Quotes found."

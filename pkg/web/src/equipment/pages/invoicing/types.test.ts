@@ -1,6 +1,6 @@
 import { QuoteStage, type QuoteStageCounts } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
-import { focusOnInvoicingStage, invoicingListFilters, listedInvoicingStages } from './types.js';
+import { focusOnInvoicingStage, invoicingListFilters, listedInvoicingStages, pickWithoutStaleRange } from './types.js';
 
 const counts = (open: number): QuoteStageCounts['counts'] => ({
   ...(Object.fromEntries(QuoteStage.options.map((stage) => [stage, 0])) as QuoteStageCounts['counts']),
@@ -67,5 +67,29 @@ describe('focusOnInvoicingStage', () => {
       { id: 'offeringType', value: 'product' },
       { id: 'stage', value: ['awaiting-pricing'] },
     ]);
+  });
+});
+
+describe('pickWithoutStaleRange', () => {
+  const range = invoiced({ start: '2026-11-01', end: '2026-11-30' });
+  const pick = (stages: string[]) => (current: { id: string; value: unknown }[]) => [
+    ...current.filter((filter) => filter.id !== 'stage'),
+    ...stage(stages),
+  ];
+
+  it('drops the invoiced range when the pick holds only open stages', () => {
+    expect(pickWithoutStaleRange(range, pick(['awaiting-invoice']))).toEqual(stage(['awaiting-invoice']));
+  });
+
+  it('keeps the range when the pick includes Invoiced or nothing is picked', () => {
+    expect(pickWithoutStaleRange(range, pick(['awaiting-invoice', 'invoiced']))).toEqual([
+      ...range,
+      ...stage(['awaiting-invoice', 'invoiced']),
+    ]);
+    expect(
+      pickWithoutStaleRange([...range, ...stage(['awaiting-pricing'])], (current) =>
+        current.filter((f) => f.id !== 'stage'),
+      ),
+    ).toEqual(range);
   });
 });

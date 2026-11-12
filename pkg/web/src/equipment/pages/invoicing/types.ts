@@ -5,7 +5,7 @@ import {
   QuoteOfferingType,
   type QuoteStageCounts,
 } from '@pkg/schema/equipment';
-import type { ColumnFiltersState } from '@tanstack/react-table';
+import { type ColumnFiltersState, functionalUpdate, type Updater } from '@tanstack/react-table';
 import { readDateOnlyRangeFilter, readMultiSelectFilter } from '@/components/data-table/column-filter-values.js';
 
 export const STAGE_COLUMN_ID = 'stage';
@@ -59,3 +59,15 @@ export const focusOnInvoicingStage = (columnFilters: ColumnFiltersState, stage: 
   ...columnFilters.filter((filter) => filter.id !== STAGE_COLUMN_ID && filter.id !== INVOICED_COLUMN_ID),
   { id: STAGE_COLUMN_ID, value: [stage] },
 ];
+
+/** A quick filter's pick; an open stage carries no invoice date, so picking only open stages drops the invoiced range. */
+export function pickWithoutStaleRange(
+  current: ColumnFiltersState,
+  updater: Updater<ColumnFiltersState>,
+): ColumnFiltersState {
+  const next = functionalUpdate(updater, current);
+  const picked = readMultiSelectFilter(next, STAGE_COLUMN_ID);
+  return picked.length && !picked.includes('invoiced')
+    ? next.filter((filter) => filter.id !== INVOICED_COLUMN_ID)
+    : next;
+}

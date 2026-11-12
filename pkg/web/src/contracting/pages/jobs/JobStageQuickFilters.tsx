@@ -1,7 +1,7 @@
 import { jobQueueColorClassNames, jobQueueLabels, stagesCount } from '@pkg/domain/contracting';
 import type { JobQueue, JobQueueSummary } from '@pkg/schema/contracting';
 import type { ColumnFiltersState, Updater } from '@tanstack/react-table';
-import { QuickFilterButton } from '@/contracting/components/QuickFilterButton.js';
+import { QuickFilterButton } from '@/components/data-table/QuickFilterButton.js';
 import { cn } from '@/lib/utils.js';
 import { isPickedStages, quickFilterStages, toggleStages } from './job-stage-filter.js';
 

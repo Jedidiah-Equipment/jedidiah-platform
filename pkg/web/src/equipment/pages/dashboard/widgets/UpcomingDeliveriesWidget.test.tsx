@@ -54,6 +54,7 @@ function buildUpcomingDelivery(kind: 'custom' | 'product'): UpcomingDeliveryQuot
       jobDescription: 'Idler damper build',
       jobId: '30000000-0000-4000-8000-000000000000',
     },
+    jobCompletedOn: null,
     notes: null,
     plannedDeliveryDate: '2026-08-20',
     preferredDeliveryDate: null,

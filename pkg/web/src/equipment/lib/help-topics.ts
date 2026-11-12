@@ -10,6 +10,7 @@ export const helpTopicForPath = createHelpTopicResolver(
     ['/equipment/inventory/job-variance', 'inventoryJobVariance'],
     ['/equipment/inventory/price-variance', 'inventoryPriceVariance'],
     ['/equipment/inventory/stocktake', 'inventoryStocktake'],
+    ['/equipment/invoicing', 'equipmentInvoicing'],
     ['/equipment/jobs', 'jobs'],
     ['/equipment/jobs/activity', 'jobActivity'],
     ['/equipment/labor-rates', 'laborRates'],

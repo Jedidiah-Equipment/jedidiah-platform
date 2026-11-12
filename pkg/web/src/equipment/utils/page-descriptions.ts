@@ -32,6 +32,8 @@ export const productRangesPageDescription = 'Admin-managed catalog groupings for
 export const catalogTranslationsPageDescription =
   'Afrikaans catalog translation health, with on-demand recovery of missing or stale text';
 
+export const invoicingPageDescription = 'Sold Quotes on their way from final pricing to the Invoice Number';
+
 export const quotesPageDescription = 'Sales offers to customers for product builds and optional assemblies';
 
 export const suppliersPageDescription = 'Procurement directory records for supplier-sourced Parts';

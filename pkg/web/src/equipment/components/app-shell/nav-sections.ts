@@ -15,6 +15,7 @@ import {
   IconMessageReport,
   IconMicrophone,
   IconPackages,
+  IconReceipt,
   IconReceipt2,
   IconShoppingCart,
   IconShoppingCartPlus,
@@ -57,6 +58,12 @@ export const equipmentNavSections = [
         link: linkOptions({ to: '/equipment/quotes' }),
         icon: IconFileText,
         indicator: QuotesPriorityNavIndicator,
+      },
+      {
+        title: 'Invoicing',
+        permission: 'equipment_quote:read',
+        link: linkOptions({ to: '/equipment/invoicing' }),
+        icon: IconReceipt,
       },
       {
         title: 'Jobs',

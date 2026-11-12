@@ -21,7 +21,14 @@ describe('equipmentNavSections', () => {
     const operations = sections.find((section) => section.label === 'Operations');
     const inventory = sections.find((section) => section.label === 'Inventory');
 
-    expect(operations?.items.map((item) => item.title)).toEqual(['Quotes', 'Jobs', 'Units', 'Customers', 'Products']);
+    expect(operations?.items.map((item) => item.title)).toEqual([
+      'Quotes',
+      'Invoicing',
+      'Jobs',
+      'Units',
+      'Customers',
+      'Products',
+    ]);
     expect(inventory?.items.map((item) => item.title)).toEqual([
       'Suppliers',
       'Parts',

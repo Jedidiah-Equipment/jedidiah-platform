@@ -2,7 +2,7 @@ import { formatCurrency, formatDate, hasPermission } from '@pkg/domain';
 import { formatPurchaseOrderLineLabel } from '@pkg/domain/equipment';
 import type { UUID } from '@pkg/schema';
 import type { PurchaseOrderView } from '@pkg/schema/equipment';
-import { purchaseOrderHasUnpricedLines } from '@pkg/schema/equipment';
+import { isPurchaseOrderLineUnpriced, purchaseOrderHasUnpricedLines } from '@pkg/schema/equipment';
 import { IconPlus } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
@@ -315,12 +315,17 @@ const PurchaseOrderReadOnlyLinesTable: React.FC<{
         ? [
             {
               accessorKey: 'unitPrice',
-              cell: ({ row }) => (row.original.unitPrice === null ? '—' : formatCurrency(row.original.unitPrice)),
+              cell: ({ row }) => {
+                const { unitPrice } = row.original;
+                if (unitPrice === null) return '—';
+                return isPurchaseOrderLineUnpriced(row.original) ? 'Not priced' : formatCurrency(unitPrice);
+              },
               header: 'Unit price',
               meta: { cellClassName: 'text-right tabular-nums', headerClassName: 'text-right' },
             } satisfies DataTableColumnDef<PurchaseOrderView['lines'][number]>,
             {
-              accessorFn: (line) => (line.unitPrice === null ? null : line.quantity * line.unitPrice),
+              accessorFn: (line) =>
+                line.unitPrice === null || isPurchaseOrderLineUnpriced(line) ? null : line.quantity * line.unitPrice,
               cell: ({ getValue }) => {
                 const value = getValue<number | null>();
                 return value === null ? '—' : formatCurrency(value);

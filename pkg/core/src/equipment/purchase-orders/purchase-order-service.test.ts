@@ -147,7 +147,7 @@ describe('Purchase Order draft lifecycle', () => {
     expect(Object.keys(eventsAfter.at(-1)?.changes ?? {})).toEqual(['line:Blue packing tape']);
   });
 
-  test('names an unpriced Custom Line and reports a reused id as a conflict', async ({ context }) => {
+  test('sends an unpriced Custom Line and reports a reused id as a conflict', async ({ context }) => {
     await context.db.insert(supplier).values({ companyName: 'Custom Supplies', id: CUSTOM_SUPPLIER_ID });
     const first = await createPurchaseOrder({
       actorUserId: ACTOR_ID,
@@ -166,6 +166,7 @@ describe('Purchase Order draft lifecycle', () => {
       input: { expectedDeliveryDate: null, id: first.id, jobIds: [], lines, supplierId: CUSTOM_SUPPLIER_ID },
     });
     await approvePurchaseOrder({ actorUserId: ACTOR_ID, db: context.db, id: first.id });
+    // A Custom Line never reaches the stock ledger, so it can go out before the Supplier has priced it.
     await expect(
       markPurchaseOrderSent({
         actorUserId: ACTOR_ID,
@@ -174,10 +175,7 @@ describe('Purchase Order draft lifecycle', () => {
         pdfRenderer: async () => pdfBytes(),
         storage: context.storage,
       }),
-    ).rejects.toMatchObject({
-      code: 'purchase_order.line_not_priced',
-      message: expect.stringContaining('Packing tape'),
-    });
+    ).resolves.toMatchObject({ lines: [{ description: 'Packing tape', unitPrice: 0 }], status: 'sent' });
     await expect(
       savePurchaseOrderDraft({
         actorUserId: ACTOR_ID,

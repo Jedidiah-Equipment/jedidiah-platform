@@ -197,7 +197,6 @@ export async function amendPurchaseOrderAddCustomLine({
   storage: StorageAdapter;
 }): Promise<PurchaseOrder> {
   return applyAmendment({ actorUserId, db, id: input.id, pdfRenderer, storage }, async (tx, order) => {
-    if (input.unitPrice === 0) throw purchaseOrderLineNotPriced(input.description);
     const id = randomUUID();
     const [last] = await tx
       .select({ position: sql<number>`coalesce(max(${purchaseOrderLines.position}), -1)` })

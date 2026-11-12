@@ -33,9 +33,9 @@ makes an order with outstanding lines appear under **Late Purchase Orders**.
 4. Record the **Note** and click **Add line**.
 
 To add a Custom Line, choose **Add line** → **Add custom line** instead. Enter its description,
-unit, optional Supplier code, quantity, agreed unit price, and the mandatory note; click
-**Add custom line**. A Supplier needs no catalogue Parts for this option. An unpriced line cannot
-be added to a Sent order.
+unit, optional Supplier code, quantity, unit price if known, and the mandatory note; click
+**Add custom line**. A Supplier needs no catalogue Parts for this option. A Part Line must carry a
+price; a Custom Line may be added unpriced.
 
 ## Remove a Custom Line
 

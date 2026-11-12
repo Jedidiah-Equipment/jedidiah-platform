@@ -48,16 +48,9 @@ describe('Purchase Order contracts', () => {
     expect(PurchaseOrderStatus.options).toEqual(['draft', 'approved', 'sent', 'cancelled']);
   });
 
-  test('calls a total a lie only while a line can still be unpriced', () => {
-    const unpriced = [{ unitPrice: 0 }, { unitPrice: 125.5 }];
-    const priced = [{ unitPrice: 125.5 }];
-
-    expect(purchaseOrderHasUnpricedLines({ lines: unpriced, status: 'draft' })).toBe(true);
-    // Approval judges the order, not its prices, so the blank survives it and the total still lies.
-    expect(purchaseOrderHasUnpricedLines({ lines: unpriced, status: 'approved' })).toBe(true);
-    // Sending asserted every line is priced, so a zero past this point is an agreed zero.
-    expect(purchaseOrderHasUnpricedLines({ lines: unpriced, status: 'sent' })).toBe(false);
-    expect(purchaseOrderHasUnpricedLines({ lines: priced, status: 'draft' })).toBe(false);
+  test('calls a total a lie while any line is unpriced', () => {
+    expect(purchaseOrderHasUnpricedLines({ lines: [{ unitPrice: 0 }, { unitPrice: 125.5 }] })).toBe(true);
+    expect(purchaseOrderHasUnpricedLines({ lines: [{ unitPrice: 125.5 }] })).toBe(false);
   });
 
   test('keeps the stored line price, and nulls it only on the gated view', () => {

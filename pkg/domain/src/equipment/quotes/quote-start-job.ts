@@ -1,5 +1,5 @@
 import type { UUID } from '@pkg/schema';
-import type { QuoteKind, QuoteStatus } from '@pkg/schema/equipment';
+import { presaleQuoteStatuses, type QuoteKind, type QuoteStatus, soldQuoteStatuses } from '@pkg/schema/equipment';
 
 import type { QuoteOfferingFacts } from './quote-offering.js';
 
@@ -16,8 +16,8 @@ export type QuoteStartJobEligibility =
 export const ALLOCATION_QUOTE_NO_REWORK_REASON = 'Allocation Quote has no new Assemblies to fit.';
 
 const startableStatuses = {
-  custom: new Set<QuoteStatus>(['accepted', 'draft', 'sent']),
-  product: new Set<QuoteStatus>(['accepted']),
+  custom: new Set<QuoteStatus>([...soldQuoteStatuses, ...presaleQuoteStatuses]),
+  product: new Set<QuoteStatus>(soldQuoteStatuses),
 } satisfies Record<QuoteKind, ReadonlySet<QuoteStatus>>;
 
 const statusDenialReasons = {

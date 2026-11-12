@@ -1,11 +1,13 @@
 import { type DatabaseTransaction, type Db, notRemoved, user } from '@pkg/db';
 import { customers, jobs, products, quotes } from '@pkg/db/equipment';
 import { getPlantDateNow } from '@pkg/domain';
-import { assertQuoteEditable, isQuoteLocked, validateDiscount } from '@pkg/domain/equipment';
+import { assertQuoteEditable, isQuoteLocked, quoteStatusLabels, validateDiscount } from '@pkg/domain/equipment';
 import type { AuditChanges, AuthId, UUID } from '@pkg/schema';
 import {
   DEFAULT_PRODUCT_CURRENCY_CODE,
   getQuoteDeliveryAcceptanceError,
+  hasQuoteStatus,
+  pickableQuoteStatuses,
   type QuoteCreateInput,
   type QuoteDeliveryTerms,
   type QuoteDetail,
@@ -15,6 +17,7 @@ import {
   type QuoteStatus,
   type QuoteUpdateInput,
   type QuoteWorkItemInput,
+  soldQuoteStatuses,
 } from '@pkg/schema/equipment';
 import { and, eq, isNull } from 'drizzle-orm';
 import { diffAuditUpdate, recordAuditCreate, recordAuditUpdate } from '../../audit/audit-writer.js';
@@ -34,6 +37,7 @@ import {
   quoteCancelDenied,
   quoteCancelNotAnUpdate,
   quoteNotFound,
+  quoteStatusNotPickable,
 } from './quote-errors.js';
 import { narrowQuoteOffering } from './quote-offering.js';
 import { getQuote } from './quote-read-service.js';
@@ -170,7 +174,7 @@ export async function cancelQuote({
 
     const [row] = await tx
       .update(quotes)
-      .set({ cancellationReason, status: 'cancelled', statusChangedAt: now, updatedAt: now })
+      .set({ acceptedAt: null, cancellationReason, status: 'cancelled', statusChangedAt: now, updatedAt: now })
       .where(eq(quotes.id, before.id))
       .returning();
 
@@ -217,6 +221,7 @@ export async function createQuote({
     const [row] = await tx
       .insert(quotes)
       .values({
+        acceptedAt: acceptedAtAfter({ before: null, next: input.status, now: new Date() }),
         cancellationReason: input.cancellationReason,
         customerId,
         depositPercent: input.depositPercent,
@@ -310,7 +315,7 @@ export async function updateQuote({
       assertNoCustomSelectedAssemblies(input);
     }
 
-    assertNotCancellingByUpdate({ before: before.status, next: input.status });
+    assertStatusChangePickable({ before: before.status, next: input.status });
     assertDeliveryConfirmedForAcceptance({ deliveryTerms: input.deliveryTerms, status: input.status });
 
     const collectionInput: QuoteCollectionPatchInput = {
@@ -395,7 +400,7 @@ export async function updateQuote({
       .set({
         ...patch,
         updatedAt: new Date(),
-        ...(input.status === before.status ? {} : { statusChangedAt: new Date() }),
+        ...statusChangeStamps({ before, next: input.status, now: new Date() }),
       })
       .where(eq(quotes.id, input.id))
       .returning();
@@ -458,7 +463,7 @@ export async function patchQuote({
       await assertQuoteSalesPerson({ salesPersonId: input.salesPersonId, tx });
     }
 
-    assertNotCancellingByUpdate({ before: before.status, next: input.status });
+    assertStatusChangePickable({ before: before.status, next: input.status });
     assertDeliveryConfirmedForAcceptance({
       deliveryTerms: before.deliveryTerms,
       status: input.status ?? before.status,
@@ -528,7 +533,7 @@ export async function patchQuote({
       .set({
         ...patch,
         updatedAt: new Date(),
-        ...(patch.status === before.status ? {} : { statusChangedAt: new Date() }),
+        ...statusChangeStamps({ before, next: patch.status, now: new Date() }),
       })
       .where(eq(quotes.id, input.id))
       .returning();
@@ -765,7 +770,7 @@ async function resolveQuoteOffering({
 
   const allocationSeed = input.offering.productUnitId
     ? await resolveAllocationQuoteSeed({
-        accepting: input.status === 'accepted',
+        accepting: hasQuoteStatus(soldQuoteStatuses, input.status),
         productId: product.id,
         productUnitId: input.offering.productUnitId,
         tx,
@@ -847,14 +852,44 @@ function assertValidDiscount({ discountPercent }: { discountPercent: number }): 
 }
 
 /**
- * An edit may carry `cancelled` because the Quote was already cancelled — its notes stay editable
- * afterwards — but it may never be what does the cancelling. That decision settles the Job and the
- * machine too, and only {@link cancelQuote} knows how.
+ * An edit always carries the Quote's status, so an unchanged one passes whatever it is — a cancelled
+ * Quote's notes stay editable afterwards. A change may only land on a pickable status. Cancelling
+ * settles the Job and the machine too, and only {@link cancelQuote} knows how.
  */
-function assertNotCancellingByUpdate({ before, next }: { before: QuoteStatus; next: QuoteStatus | undefined }): void {
-  if (next === 'cancelled' && before !== 'cancelled') {
-    throw quoteCancelNotAnUpdate();
+function assertStatusChangePickable({ before, next }: { before: QuoteStatus; next: QuoteStatus | undefined }): void {
+  if (next === undefined || next === before || hasQuoteStatus(pickableQuoteStatuses, next)) {
+    return;
   }
+
+  throw next === 'cancelled' ? quoteCancelNotAnUpdate() : quoteStatusNotPickable(quoteStatusLabels[next]);
+}
+
+function acceptedAtAfter({
+  before,
+  next,
+  now,
+}: {
+  before: { acceptedAt: Date | null; status: QuoteStatus } | null;
+  next: QuoteStatus;
+  now: Date;
+}): Date | null {
+  if (!hasQuoteStatus(soldQuoteStatuses, next)) {
+    return null;
+  }
+
+  return before && hasQuoteStatus(soldQuoteStatuses, before.status) ? before.acceptedAt : now;
+}
+
+function statusChangeStamps({
+  before,
+  next,
+  now,
+}: {
+  before: { acceptedAt: Date | null; status: QuoteStatus };
+  next: QuoteStatus;
+  now: Date;
+}): { acceptedAt?: Date | null; statusChangedAt?: Date } {
+  return next === before.status ? {} : { acceptedAt: acceptedAtAfter({ before, next, now }), statusChangedAt: now };
 }
 
 async function quoteHasLiveJob({ quoteId, tx }: { quoteId: UUID; tx: DatabaseTransaction }): Promise<boolean> {

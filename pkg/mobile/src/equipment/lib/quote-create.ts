@@ -3,10 +3,10 @@ import { AuthId, UUID } from '@pkg/schema';
 import {
   Customer,
   CustomerCompanyName,
+  PickableQuoteStatus,
   QuoteCreateInput,
   type QuoteCreateInput as QuoteCreateInputValue,
   QuoteOfferingType,
-  QuoteStatus,
 } from '@pkg/schema/equipment';
 import { z } from 'zod';
 
@@ -20,15 +20,13 @@ const CustomerSelection = z.discriminatedUnion('type', [
   z.object({ companyName: z.string(), type: z.literal('inline') }),
 ]);
 
-export const QuoteCreateStatus = QuoteStatus.exclude(['cancelled']);
-
 const QuoteCreateFormValuesShape = z.object({
   customer: CustomerSelection.nullable(),
   offeringType: QuoteOfferingType,
   productId: z.string(),
   rangeId: z.string(),
   salesPersonId: z.string(),
-  status: QuoteCreateStatus,
+  status: PickableQuoteStatus,
   workTitle: z.string(),
 });
 

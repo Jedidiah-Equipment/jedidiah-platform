@@ -193,6 +193,7 @@ async function seedLegacyShape(db: Db) {
         quotedBasePrice: 1_000,
         quotedCurrencyCode: 'ZAR',
         salesPersonId: ACTOR_USER_ID,
+        acceptedAt: new Date(),
         status: 'accepted',
       },
       {
@@ -201,6 +202,7 @@ async function seedLegacyShape(db: Db) {
         quotedBasePrice: 1_000,
         quotedCurrencyCode: 'ZAR',
         salesPersonId: ACTOR_USER_ID,
+        acceptedAt: new Date(),
         status: 'accepted',
       },
     ])

@@ -11,7 +11,7 @@ import { foldJobScheduleStates } from '@pkg/domain/equipment';
 import type { DateOnlyIso, UUID } from '@pkg/schema';
 import {
   QuotePipelineSummary,
-  QuoteStatus,
+  type QuoteStatus,
   QuoteStatusSummary,
   QuoteWeeklyFlowSummary,
   StaleSentQuoteList,
@@ -35,6 +35,15 @@ const STALE_SENT_QUOTE_LIMIT = 8;
 
 type ReportQuoteRow = ReportQuotePricingRow & { id: UUID };
 
+// The statuses Quotes by status has always shown; the widget is rebuilt on Quote Stages.
+const SUMMARIZED_QUOTE_STATUSES = [
+  'draft',
+  'sent',
+  'accepted',
+  'rejected',
+  'cancelled',
+] as const satisfies readonly QuoteStatus[];
+
 export async function summarizeQuotesByStatus({ db }: { db: Db }): Promise<QuoteStatusSummary> {
   const rows = await db
     .select({
@@ -46,7 +55,7 @@ export async function summarizeQuotesByStatus({ db }: { db: Db }): Promise<Quote
   const countsByStatus = new Map(rows.map((row) => [row.status, Number(row.count)]));
 
   return QuoteStatusSummary.parse({
-    items: QuoteStatus.options.map((status) => ({
+    items: SUMMARIZED_QUOTE_STATUSES.map((status) => ({
       count: countsByStatus.get(status) ?? 0,
       status,
     })),
@@ -65,7 +74,7 @@ export async function summarizeQuoteWeeklyFlow({
   const range = getPlantWeekRange({ now: clock(), weekCount });
   // Keep the bucket calendar server-side: Johannesburg weeks are part of the reporting contract.
   const createdWeekStartExpression = sql<string>`to_char(date_trunc('week', ${quotes.createdAt} AT TIME ZONE ${JOHANNESBURG_TIME_ZONE})::date, 'YYYY-MM-DD')`;
-  const acceptedWeekStartExpression = sql<string>`to_char(date_trunc('week', ${quotes.statusChangedAt} AT TIME ZONE ${JOHANNESBURG_TIME_ZONE})::date, 'YYYY-MM-DD')`;
+  const acceptedWeekStartExpression = sql<string>`to_char(date_trunc('week', ${quotes.acceptedAt} AT TIME ZONE ${JOHANNESBURG_TIME_ZONE})::date, 'YYYY-MM-DD')`;
   const [createdRows, acceptedRows] = await Promise.all([
     db
       .select({
@@ -82,13 +91,8 @@ export async function summarizeQuoteWeeklyFlow({
         weekStartDate: acceptedWeekStartExpression,
       })
       .from(quotes)
-      .where(
-        and(
-          eq(quotes.status, 'accepted'),
-          gte(quotes.statusChangedAt, range.startInstant),
-          lt(quotes.statusChangedAt, range.endInstant),
-        ),
-      )
+      // `accepted_at` is set exactly while a Quote is sold, so the window alone selects sold Quotes.
+      .where(and(gte(quotes.acceptedAt, range.startInstant), lt(quotes.acceptedAt, range.endInstant)))
       .groupBy(sql`2`),
   ]);
   const createdCountsByWeekStart = new Map(createdRows.map((row) => [row.weekStartDate, Number(row.count)]));

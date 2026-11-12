@@ -1418,6 +1418,7 @@ async function createJobOwner(db: Parameters<typeof readJobDocument>[0]['db'], p
       quotedBasePrice: 1_000,
       quotedCurrencyCode: 'ZAR',
       salesPersonId: ACTOR_USER_ID,
+      acceptedAt: new Date(),
       status: 'accepted',
     })
     .returning();

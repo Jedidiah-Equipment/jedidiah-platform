@@ -52,6 +52,7 @@ const quote = QuoteDetail.parse({
   salesPersonThumbnailDataUrl: 'data:image/webp;base64,YQ==',
   selectedAssemblies: [],
   status: 'draft',
+  acceptedAt: null,
   statusChangedAt: '2026-07-10T08:00:00.000Z',
   updatedAt: '2026-07-10T09:00:00.000Z',
   validUntil: null,

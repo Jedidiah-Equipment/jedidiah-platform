@@ -19,10 +19,12 @@ import { addJobSlotDuration, pricePersistedQuote, priceQuote } from '@pkg/domain
 import { DateIso, DateOnlyIso } from '@pkg/schema';
 import {
   formatJobCode,
+  hasQuoteStatus,
   QuoteCreateInput,
   type QuoteDetail,
   type QuoteStatus,
   QuoteUpdateInput,
+  soldQuoteStatuses,
 } from '@pkg/schema/equipment';
 import { and, asc, eq } from 'drizzle-orm';
 import { describe, expect } from 'vitest';
@@ -104,6 +106,7 @@ describe('getQuote', () => {
         quotedBasePrice: 1000,
         quotedCurrencyCode: 'ZAR',
         salesPersonId: context.salesPerson.id,
+        acceptedAt: new Date(),
         status: 'accepted',
       })
       .returning();
@@ -139,6 +142,7 @@ describe('getQuote', () => {
         quotedBasePrice: 1000,
         quotedCurrencyCode: 'ZAR',
         salesPersonId: context.salesPerson.id,
+        acceptedAt: new Date(),
         status: 'accepted',
       })
       .returning();
@@ -1332,6 +1336,166 @@ describe('cancelled quotes', () => {
   });
 });
 
+describe('quote status vocabulary', () => {
+  const createSentQuote = (context: {
+    customer: { id: string };
+    db: Db;
+    product: { id: string };
+    salesPerson: { id: string };
+  }) =>
+    createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        offering: { kind: 'product', productId: context.product.id },
+        salesPersonId: context.salesPerson.id,
+        status: 'sent',
+      }),
+    });
+  const readAcceptedAt = async (db: Db, id: string) =>
+    (await db.select({ acceptedAt: quotes.acceptedAt }).from(quotes).where(eq(quotes.id, id)))[0]?.acceptedAt;
+
+  test('transfers the Unit when a rejected Allocation Quote is accepted', async ({ context }) => {
+    const unitId = await createUnit(context.db, context.product.id, 37);
+    const rejected = await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        offering: { kind: 'product', productId: context.product.id, productUnitId: unitId },
+        salesPersonId: context.salesPerson.id,
+        status: 'rejected',
+      }),
+    });
+
+    await updateQuote({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: buildQuoteUpdateInput(rejected, { status: 'accepted' }),
+    });
+
+    await expect(
+      context.db
+        .select()
+        .from(productUnitOwnershipTransfers)
+        .where(eq(productUnitOwnershipTransfers.productUnitId, unitId)),
+    ).resolves.toMatchObject([{ sourceQuoteId: rejected.id, toCustomerId: context.customer.id }]);
+  });
+
+  test('dates the sale on acceptance, keeps the date across edits, and clears it when the sale is undone', async ({
+    context,
+  }) => {
+    const quote = await createSentQuote(context);
+    expect(quote.acceptedAt).toBeNull();
+
+    const accepted = await updateQuote({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: buildQuoteUpdateInput(quote, { status: 'accepted' }),
+    });
+    expect(accepted.acceptedAt).toEqual(accepted.statusChangedAt);
+
+    const annotated = await patchQuote({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: { id: quote.id, notes: 'Deposit received' },
+    });
+    expect(annotated.acceptedAt).toBe(accepted.acceptedAt);
+
+    const rejected = await patchQuote({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: { id: quote.id, status: 'rejected' },
+    });
+    expect(rejected.acceptedAt).toBeNull();
+
+    const createdAccepted = await createQuoteService({
+      actorUserId: context.salesPerson.id,
+      db: context.db,
+      input: QuoteCreateInput.parse({
+        customer: { type: 'existing', customerId: context.customer.id },
+        offering: { kind: 'product', productId: context.product.id },
+        salesPersonId: context.salesPerson.id,
+        status: 'accepted',
+      }),
+    });
+    expect(createdAccepted.acceptedAt).not.toBeNull();
+
+    await cancelQuote({
+      actorUserId: context.salesPerson.id,
+      cancellationReason: 'Customer withdrew',
+      db: context.db,
+      id: createdAccepted.id,
+      mayCancelLockedQuote: true,
+    });
+    expect(await readAcceptedAt(context.db, createdAccepted.id)).toBeNull();
+  });
+
+  test('accepts an unchanged post-sale status on update and patch', async ({ context }) => {
+    const row = await createQuote(context.db, {
+      customerId: context.customer.id,
+      productId: context.product.id,
+      salesPersonId: context.salesPerson.id,
+      status: 'awaiting-invoice',
+    });
+    const quote = await getQuote({ db: context.db, id: row.id });
+
+    await expect(
+      updateQuote({
+        actorUserId: context.salesPerson.id,
+        db: context.db,
+        input: buildQuoteUpdateInput(quote, { notes: 'Delivered' }),
+      }),
+    ).resolves.toMatchObject({ notes: 'Delivered', status: 'awaiting-invoice' });
+    await expect(
+      patchQuote({
+        actorUserId: context.salesPerson.id,
+        db: context.db,
+        input: { id: quote.id, notes: 'Delivered twice', status: 'awaiting-invoice' },
+      }),
+    ).resolves.toMatchObject({ notes: 'Delivered twice', status: 'awaiting-invoice' });
+    expect(await readAcceptedAt(context.db, quote.id)).toEqual(row.acceptedAt);
+  });
+
+  test.for(['awaiting-approval', 'awaiting-invoice', 'invoiced'] as const)(
+    'refuses a status change into %s',
+    async (status, { context }) => {
+      const quote = await createSentQuote(context);
+
+      await expect(
+        updateQuote({
+          actorUserId: context.salesPerson.id,
+          db: context.db,
+          input: buildQuoteUpdateInput(quote, { status }),
+        }),
+      ).rejects.toMatchObject({ code: 'quote.status_not_pickable' });
+      await expect(
+        patchQuote({ actorUserId: context.salesPerson.id, db: context.db, input: { id: quote.id, status } }),
+      ).rejects.toMatchObject({ code: 'quote.status_not_pickable' });
+    },
+  );
+
+  test('lists only presale Quotes as competing for an Allocation Quote', async ({ context }) => {
+    const unitId = await createUnit(context.db, context.product.id, 36);
+    const quoteFor = (status: QuoteStatus) =>
+      createQuote(context.db, {
+        customerId: context.customer.id,
+        productId: context.product.id,
+        productUnitId: unitId,
+        salesPersonId: context.salesPerson.id,
+        status,
+      });
+    const viewed = await quoteFor('draft');
+    const sent = await quoteFor('sent');
+    await quoteFor('awaiting-invoice');
+
+    await expect(getQuote({ db: context.db, id: viewed.id })).resolves.toMatchObject({
+      competingAllocationQuotes: [{ id: sent.id, status: 'sent' }],
+    });
+  });
+});
+
 describe('listQuotes', () => {
   test('searches by the live replacement Job code but not a cancelled Job code', async ({ context }) => {
     const quote = await createQuote(context.db, {
@@ -1374,16 +1538,11 @@ describe('listQuotes', () => {
         status: 'draft',
       }),
     });
-    await createQuoteService({
-      actorUserId: context.salesPerson.id,
-      db: context.db,
-      input: QuoteCreateInput.parse({
-        cancellationReason: 'Customer withdrew the project',
-        customer: { type: 'existing', customerId: context.customer.id },
-        offering: { kind: 'product', productId: context.product.id },
-        salesPersonId: context.salesPerson.id,
-        status: 'cancelled',
-      }),
+    await createQuote(context.db, {
+      customerId: context.customer.id,
+      productId: context.product.id,
+      salesPersonId: context.salesPerson.id,
+      status: 'cancelled',
     });
 
     await expect(
@@ -1402,16 +1561,11 @@ describe('listQuotes', () => {
   });
 
   test('includes cancelled quotes when the cancelled status filter is applied', async ({ context }) => {
-    const cancelled = await createQuoteService({
-      actorUserId: context.salesPerson.id,
-      db: context.db,
-      input: QuoteCreateInput.parse({
-        cancellationReason: 'Customer withdrew the project',
-        customer: { type: 'existing', customerId: context.customer.id },
-        offering: { kind: 'product', productId: context.product.id },
-        salesPersonId: context.salesPerson.id,
-        status: 'cancelled',
-      }),
+    const cancelled = await createQuote(context.db, {
+      customerId: context.customer.id,
+      productId: context.product.id,
+      salesPersonId: context.salesPerson.id,
+      status: 'cancelled',
     });
     await createQuoteService({
       actorUserId: context.salesPerson.id,
@@ -2448,6 +2602,7 @@ async function createQuote(
       quotedBasePrice: 1000,
       quotedCurrencyCode: 'ZAR',
       salesPersonId,
+      acceptedAt: hasQuoteStatus(soldQuoteStatuses, status) ? new Date() : null,
       status,
     })
     .returning();

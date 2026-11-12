@@ -394,6 +394,7 @@ async function createAcceptedJob(db: Db, productId: string): Promise<JobDetail> 
       quotedBasePrice: 1_000,
       quotedCurrencyCode: 'ZAR',
       salesPersonId: actorUserId,
+      acceptedAt: new Date(),
       status: 'accepted',
     })
     .returning();

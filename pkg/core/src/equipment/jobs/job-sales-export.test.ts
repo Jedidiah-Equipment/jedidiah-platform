@@ -226,6 +226,7 @@ async function seedSalesShape(db: Db) {
         quotedBasePrice: 100_000,
         quotedCurrencyCode: 'ZAR',
         salesPersonId: ACTOR_USER_ID,
+        acceptedAt: new Date(),
         status: 'accepted',
       },
       {
@@ -234,6 +235,7 @@ async function seedSalesShape(db: Db) {
         quotedBasePrice: 0,
         quotedCurrencyCode: 'ZAR',
         salesPersonId: ACTOR_USER_ID,
+        acceptedAt: new Date(),
         status: 'accepted',
         workTitle: 'Chassis repair',
       },

@@ -4,9 +4,12 @@ import { getPlantDateNow } from '@pkg/domain';
 import type { AuthId, UUID } from '@pkg/schema';
 import {
   formatJobCode,
+  hasQuoteStatus,
   ProductSerialNumber,
   type ProductUnitReassignInput,
   type ProductUnitReassignResult,
+  type QuoteStatus,
+  uninvoicedSoldQuoteStatuses,
 } from '@pkg/schema/equipment';
 import { aliasedTable, and, asc, eq, inArray, isNull, or } from 'drizzle-orm';
 
@@ -208,7 +211,7 @@ export type ReceiverCandidateQuote = {
   kind: string;
   productId: string | null;
   productUnitId: string | null;
-  status: string;
+  status: QuoteStatus;
 };
 
 /**
@@ -223,7 +226,7 @@ export function assertQuoteCanReceive<TQuote extends ReceiverCandidateQuote>(
   if (quote.kind !== 'product' || quote.productId === null) {
     throw productUnitReassignQuoteIneligible('not-product');
   }
-  if (quote.status !== 'accepted') {
+  if (!hasQuoteStatus(uninvoicedSoldQuoteStatuses, quote.status)) {
     throw productUnitReassignQuoteIneligible('not-accepted');
   }
   if (quote.invoiceNumber !== null) {

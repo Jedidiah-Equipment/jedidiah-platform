@@ -59,6 +59,7 @@ const quote = QuoteDetail.parse({
   salesPersonThumbnailDataUrl: null,
   selectedAssemblies: [],
   status: 'draft',
+  acceptedAt: null,
   statusChangedAt: '2026-07-10T08:00:00.000Z',
   updatedAt: '2026-07-10T09:00:00.000Z',
   validUntil: null,
@@ -93,34 +94,14 @@ describe('createQuote contract', () => {
     });
   });
 
-  test('requires and forwards a reason when creating a cancelled Quote', () => {
-    expect(() =>
-      CreateQuoteInput.parse({
+  test.each(['cancelled', 'invoiced'])('refuses to create a Quote as %s', (status) => {
+    expect(
+      CreateQuoteInput.safeParse({
         customer: { customerId: CUSTOMER_ID, type: 'existing' },
         offering: { kind: 'product', productId: PRODUCT_ID },
-        status: 'cancelled',
-      }),
-    ).toThrow('Cancellation reason is required');
-    expect(() =>
-      CreateQuoteInput.parse({
-        cancellationReason: '   ',
-        customer: { customerId: CUSTOMER_ID, type: 'existing' },
-        offering: { kind: 'product', productId: PRODUCT_ID },
-        status: 'cancelled',
-      }),
-    ).toThrow('Cancellation reason is required');
-
-    const input = CreateQuoteInput.parse({
-      cancellationReason: '  Customer withdrew the project  ',
-      customer: { customerId: CUSTOMER_ID, type: 'existing' },
-      offering: { kind: 'product', productId: PRODUCT_ID },
-      status: 'cancelled',
-    });
-
-    expect(toCoreQuoteCreateInput(input, 'test-user-id')).toMatchObject({
-      cancellationReason: 'Customer withdrew the project',
-      status: 'cancelled',
-    });
+        status,
+      }).success,
+    ).toBe(false);
   });
 
   test('creates a Custom Quote from a Work Title alone, with pricing left to its Work Items', () => {

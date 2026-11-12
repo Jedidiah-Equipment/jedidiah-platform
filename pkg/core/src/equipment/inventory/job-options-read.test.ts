@@ -38,6 +38,7 @@ describe('listInventoryJobOptions', () => {
         quotedBasePrice: 0,
         quotedCurrencyCode: 'ZAR',
         salesPersonId: actorUserId,
+        acceptedAt: new Date(),
         status: 'accepted',
         workTitle: 'Trailer deck',
       })

@@ -11,6 +11,7 @@ import {
   Department,
   getQuoteDeliveryAcceptanceError,
   getQuoteDeliveryPricingError,
+  PickableQuoteStatus,
   QuoteCancellationReason,
   QuoteCreateInput,
   QuoteDeliveryTerms,
@@ -69,8 +70,6 @@ const QuoteWorkItemFormInput = z
     }
   });
 
-export const QuoteCreateStatus = QuoteStatus.exclude(['cancelled']);
-
 const QuoteCreateFormValuesShape = z.object({
   customerId: z.string(),
   customerMode: CustomerMode,
@@ -80,7 +79,7 @@ const QuoteCreateFormValuesShape = z.object({
   productUnitId: emptyStringOr(UUID),
   rangeId: emptyStringOr(UUID),
   salesPersonId: requiredSelection(AuthId, 'Select a salesperson'),
-  status: QuoteCreateStatus,
+  status: PickableQuoteStatus,
   workTitle: z.string(),
 });
 type QuoteCreateFormSelectionValues = z.infer<typeof QuoteCreateFormValuesShape>;

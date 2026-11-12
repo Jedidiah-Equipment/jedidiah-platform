@@ -64,6 +64,7 @@ const test = createTester(async ({ db }) => {
       quotedBasePrice: 0,
       quotedCurrencyCode: 'ZAR',
       salesPersonId: 'test-user-id',
+      acceptedAt: new Date(),
       status: 'accepted',
       workTitle: 'Inventory repair',
     })
@@ -80,6 +81,7 @@ const test = createTester(async ({ db }) => {
       quotedBasePrice: 0,
       quotedCurrencyCode: 'ZAR',
       salesPersonId: 'test-user-id',
+      acceptedAt: new Date(),
       status: 'accepted',
       workTitle: 'Spare bearings',
     })
@@ -246,6 +248,7 @@ describe('inventory procedure permissions', () => {
           quotedBasePrice: 0,
           quotedCurrencyCode: 'ZAR',
           salesPersonId: 'test-user-id',
+          acceptedAt: new Date(),
           status: 'accepted' as const,
           workTitle,
         })),

@@ -1409,6 +1409,7 @@ describe('createJob', () => {
         quotedBasePrice: 1_000,
         quotedCurrencyCode: 'ZAR',
         salesPersonId: actorUserId,
+        acceptedAt: new Date(),
         status: 'accepted',
       })
       .returning();
@@ -4136,6 +4137,7 @@ async function createQuote(
       quotedBasePrice: 1_000,
       quotedCurrencyCode: 'ZAR',
       salesPersonId: actorUserId,
+      acceptedAt: status === 'accepted' ? new Date() : null,
       status,
     })
     .returning();
@@ -4185,6 +4187,7 @@ async function createCustomQuote(
       quotedBasePrice: 0,
       quotedCurrencyCode: 'ZAR',
       salesPersonId: actorUserId,
+      acceptedAt: status === 'accepted' ? new Date() : null,
       status,
       workTitle,
     })

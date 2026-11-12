@@ -208,6 +208,7 @@ async function seedStockShape(db: Db) {
         quotedBasePrice: 100_000,
         quotedCurrencyCode: 'ZAR',
         salesPersonId: ACTOR_USER_ID,
+        acceptedAt: new Date(),
         status: 'accepted',
       },
       {
@@ -218,6 +219,7 @@ async function seedStockShape(db: Db) {
         quotedBasePrice: 100_000,
         quotedCurrencyCode: 'ZAR',
         salesPersonId: ACTOR_USER_ID,
+        acceptedAt: new Date(),
         status: 'accepted',
       },
     ])

@@ -2776,6 +2776,7 @@ async function createAcceptedQuote(db: Db, productId: Product['id'], options: { 
       quotedBasePrice: 1_000,
       quotedCurrencyCode: 'ZAR',
       salesPersonId: 'test-user-id',
+      acceptedAt: new Date(),
       status: 'accepted',
     })
     .returning({ customerId: quotes.customerId, id: quotes.id });

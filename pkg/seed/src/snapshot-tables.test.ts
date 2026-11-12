@@ -192,6 +192,7 @@ describe('snapshot table registry', () => {
 
   it('backfills rollout quote fields when loading snapshots captured before they existed', () => {
     expect(configFor('quote').seedRowDefaults?.({ deliveryPrice: 0, kind: 'custom', status: 'draft' }, 0)).toEqual({
+      acceptedAt: null,
       cancellationReason: null,
       deliveryTerms: 'included',
       isPartsSale: false,
@@ -199,11 +200,28 @@ describe('snapshot table registry', () => {
     expect(
       configFor('quote').seedRowDefaults?.({ deliveryPrice: 350, kind: 'product', status: 'cancelled' }, 0),
     ).toEqual({
+      acceptedAt: null,
       cancellationReason: 'Reason not recorded (cancelled before cancellation reasons were required).',
       deliveryTerms: 'additional_charge',
       isPartsSale: false,
     });
-    expect(configFor('quote').optionalReadColumns).toEqual(['isPartsSale', 'deliveryTerms', 'cancellationReason']);
+    expect(configFor('quote').optionalReadColumns).toEqual([
+      'acceptedAt',
+      'isPartsSale',
+      'deliveryTerms',
+      'cancellationReason',
+    ]);
+  });
+
+  it('dates a sold snapshot Quote from its last status change until the source carries acceptedAt', () => {
+    const statusChangedAt = new Date('2026-09-01T08:00:00.000Z');
+
+    expect(
+      configFor('quote').seedRowDefaults?.(
+        { deliveryPrice: 0, kind: 'custom', status: 'accepted', statusChangedAt },
+        0,
+      ),
+    ).toMatchObject({ acceptedAt: statusChangedAt });
   });
 
   it('keeps captured rollout values ahead of seed fallbacks', () => {

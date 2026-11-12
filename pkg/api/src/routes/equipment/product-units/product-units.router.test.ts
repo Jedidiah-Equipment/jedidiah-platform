@@ -366,6 +366,7 @@ async function seedUnit(db: Db) {
       quotedBasePrice: 1_000,
       quotedCurrencyCode: 'ZAR',
       salesPersonId: ACTOR_USER_ID,
+      acceptedAt: new Date(),
       status: 'accepted',
     })
     .returning();
@@ -418,6 +419,7 @@ async function seedReceivingQuote(db: Db, seed: Awaited<ReturnType<typeof seedUn
       quotedBasePrice: 1_000,
       quotedCurrencyCode: 'ZAR',
       salesPersonId: ACTOR_USER_ID,
+      acceptedAt: new Date(),
       status: 'accepted',
     })
     .returning();

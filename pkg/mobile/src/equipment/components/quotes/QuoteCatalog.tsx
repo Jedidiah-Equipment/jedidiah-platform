@@ -16,12 +16,16 @@ import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { offeringAvatarProps } from '@/equipment/components/OfferingAvatar';
 import { QuoteStatusChip } from '@/equipment/components/quotes/QuoteStatusChip';
-import { QUOTE_STATUS_OPTIONS, type QuoteSort, type QuoteStatusFilter } from '@/equipment/lib/quote-presentation';
+import {
+  QUOTE_STATUS_FILTER_OPTIONS,
+  type QuoteSort,
+  type QuoteStatusFilter,
+} from '@/equipment/lib/quote-presentation';
 import { useColorMode } from '@/theme/use-color-mode';
 
 const STATUS_OPTIONS: readonly ListControlOption<QuoteStatusFilter>[] = [
   { label: 'All statuses', value: 'all' },
-  ...QUOTE_STATUS_OPTIONS,
+  ...QUOTE_STATUS_FILTER_OPTIONS,
 ];
 const QUOTE_SORT_OPTIONS: readonly ListControlOption<QuoteSort>[] = [
   { label: 'Newest', value: 'newest' },

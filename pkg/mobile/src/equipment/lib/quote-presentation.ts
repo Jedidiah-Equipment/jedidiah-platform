@@ -1,5 +1,6 @@
 import {
   computeAdditionalDeliveryPrice,
+  editableQuoteStatuses,
   quoteOfferingTypeLabel,
   quoteStatusLabels,
   toQuoteWorkItemFormState,
@@ -35,10 +36,14 @@ import { z } from 'zod';
 export type QuoteStatusFilter = 'all' | QuoteSummary['status'];
 export type QuoteSort = 'newest' | 'oldest';
 
-export const QUOTE_STATUS_OPTIONS = QuoteStatus.options.map((status) => ({
+export const QUOTE_STATUS_FILTER_OPTIONS = QuoteStatus.options.map((status) => ({
   label: quoteStatusLabels[status],
   value: status,
 }));
+
+export function quoteStatusEditOptions(currentStatus: QuoteStatus) {
+  return editableQuoteStatuses(currentStatus).map((status) => ({ label: quoteStatusLabels[status], value: status }));
+}
 
 export function parseQuoteCancellationReason(value: string): string | null {
   const result = QuoteCancellationReason.safeParse(value);

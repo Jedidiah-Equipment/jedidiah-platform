@@ -1,7 +1,12 @@
 import { contractingJobCodeSequence } from '@pkg/db/contracting';
 import { jobCodeSequence, quoteCodeSequence } from '@pkg/db/equipment';
 import { CONTRACTING_SETTINGS_DEFAULTS, computeDieselAmount } from '@pkg/domain/contracting';
-import { LEGACY_QUOTE_CANCELLATION_REASON } from '@pkg/schema/equipment';
+import {
+  hasQuoteStatus,
+  LEGACY_QUOTE_CANCELLATION_REASON,
+  QuoteStatus,
+  soldQuoteStatuses,
+} from '@pkg/schema/equipment';
 import type { PgSequence, PgTable } from 'drizzle-orm/pg-core';
 
 export type SnapshotRow = Record<string, unknown>;
@@ -262,9 +267,11 @@ export const snapshotTableDefinitions = [
     // so they stay strings rather than revived Dates.
     fileName: 'quote.json',
     tableName: 'quote',
-    timestampColumns: ['createdAt', 'statusChangedAt', 'updatedAt'],
-    optionalReadColumns: ['isPartsSale', 'deliveryTerms', 'cancellationReason'],
+    timestampColumns: ['acceptedAt', 'createdAt', 'statusChangedAt', 'updatedAt'],
+    optionalReadColumns: ['acceptedAt', 'isPartsSale', 'deliveryTerms', 'cancellationReason'],
     seedRowDefaults: (row) => ({
+      // A sold Quote's status has not changed since it was sold, as the migration's backfill assumes.
+      acceptedAt: hasQuoteStatus(soldQuoteStatuses, QuoteStatus.parse(row.status)) ? row.statusChangedAt : null,
       cancellationReason: row.status === 'cancelled' ? LEGACY_QUOTE_CANCELLATION_REASON : null,
       // Before Delivery Terms the price alone told included from charged, so the backfill reads it.
       deliveryTerms: Number(row.deliveryPrice) > 0 ? 'additional_charge' : 'included',

@@ -2,6 +2,7 @@ import { formatDate } from '@pkg/domain';
 import {
   computeQuoteSummary,
   editableLockedQuoteFields,
+  editableQuoteStatuses,
   getQuoteDeliveryTermsOptions,
   isQuoteLocked,
   quoteOfferingType,
@@ -167,7 +168,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                               setCancellationDialogOpen(true);
                               return false;
                             }}
-                            options={QuoteStatus.options.map((status) => ({
+                            options={editableQuoteStatuses(quote.status).map((status) => ({
                               label: quoteStatusLabels[status],
                               value: status,
                             }))}

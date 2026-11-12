@@ -36,7 +36,44 @@ import {
 import { QuoteOfferingType, QuoteWorkTitle } from './quote-shared.js';
 
 export type QuoteStatus = z.infer<typeof QuoteStatus>;
-export const QuoteStatus = z.enum(['draft', 'sent', 'accepted', 'rejected', 'cancelled']);
+export const QuoteStatus = z.enum([
+  'draft',
+  'sent',
+  'accepted',
+  'awaiting-approval',
+  'awaiting-invoice',
+  'invoiced',
+  'rejected',
+  'cancelled',
+]);
+
+/** What the Status field offers. Cancelled is reached through Quote Cancellation, the rest through Quote Actions. */
+export const pickableQuoteStatuses = [
+  'draft',
+  'sent',
+  'accepted',
+  'rejected',
+] as const satisfies readonly QuoteStatus[];
+export const presaleQuoteStatuses = ['draft', 'sent'] as const satisfies readonly QuoteStatus[];
+/** A sale the Customer agreed to, at any stage on the way to its invoice. */
+export const soldQuoteStatuses = [
+  'accepted',
+  'awaiting-approval',
+  'awaiting-invoice',
+  'invoiced',
+] as const satisfies readonly QuoteStatus[];
+export const uninvoicedSoldQuoteStatuses = [
+  'accepted',
+  'awaiting-approval',
+  'awaiting-invoice',
+] as const satisfies readonly QuoteStatus[];
+export const hasQuoteStatus = <TStatus extends QuoteStatus>(
+  statuses: readonly TStatus[],
+  status: QuoteStatus,
+): status is TStatus => (statuses as readonly QuoteStatus[]).includes(status);
+
+export type PickableQuoteStatus = z.infer<typeof PickableQuoteStatus>;
+export const PickableQuoteStatus = z.enum(pickableQuoteStatuses);
 
 /** Delivery Terms (see GLOSSARY-EQUIPMENT.md): only `additional_charge` carries a delivery price. */
 export type QuoteDeliveryTerms = z.infer<typeof QuoteDeliveryTerms>;
@@ -93,6 +130,7 @@ const quoteBaseShape = {
   salesPersonId: AuthId,
   status: QuoteStatus,
   statusChangedAt: DateIso,
+  acceptedAt: DateIso.nullable(),
   discountPercent: QuoteDiscountPercent,
   depositPercent: QuoteDepositPercent,
   deliveryTerms: QuoteDeliveryTerms,
@@ -309,7 +347,7 @@ export const CompetingAllocationQuote = z.object({
   customerCompanyName: z.string().trim().min(1),
   id: UUID,
   salesPersonName: z.string().trim().min(1).nullable(),
-  status: z.enum(['draft', 'sent']),
+  status: z.enum(presaleQuoteStatuses),
 });
 
 const quoteSummaryShape = {
@@ -451,7 +489,7 @@ export function getQuoteDeliveryAcceptanceError(input: {
   deliveryTerms: QuoteDeliveryTerms;
   status: QuoteStatus;
 }): string | null {
-  return input.status === 'accepted' && input.deliveryTerms === 'tbc'
+  return hasQuoteStatus(soldQuoteStatuses, input.status) && input.deliveryTerms === 'tbc'
     ? 'Confirm delivery before accepting this quote.'
     : null;
 }
@@ -512,7 +550,7 @@ export const QuoteCreateInput = z
     customer: QuoteCustomerInput,
     offering: QuoteOfferingInput,
     salesPersonId: AuthId,
-    status: QuoteStatus,
+    status: PickableQuoteStatus,
     discountPercent: z.coerce.number().pipe(QuoteDiscountPercent).default(0),
     depositPercent: z.coerce.number().pipe(QuoteDepositPercent).default(0),
     deliveryTerms: QuoteDeliveryTerms.default('ex_factory'),

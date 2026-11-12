@@ -31,6 +31,7 @@ function buildQuoteDetail(overrides: Record<string, unknown> = {}): QuoteDetail 
     productUnitId: null,
     salesPersonId: 'auth-user-1',
     status: 'sent',
+    acceptedAt: null,
     statusChangedAt: '2026-01-01T00:00:00.000Z',
     depositPercent: 30,
     discountPercent: 10,

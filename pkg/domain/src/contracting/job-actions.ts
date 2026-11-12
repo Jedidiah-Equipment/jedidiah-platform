@@ -16,6 +16,7 @@ import {
   workedJobStatuses,
 } from '@pkg/schema/contracting';
 import { hasPermission } from '../auth/authorization.js';
+import { joinOr } from '../formatting/text.js';
 import { jobStatusLabels } from './jobs.js';
 
 /**
@@ -132,9 +133,6 @@ const rules: Record<JobActionName, Rule> = {
     verb: 'add a note',
   },
 };
-
-const joinOr = (items: readonly string[]) =>
-  items.length < 2 ? (items[0] ?? '') : `${items.slice(0, -1).join(', ')} or ${items.at(-1)}`;
 
 const holdsAny = (actor: JobActor, permissions: readonly AppPermission[]) =>
   permissions.some((permission) => hasPermission(actor, permission));

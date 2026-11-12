@@ -56,6 +56,7 @@ export const HELP_TOPICS = {
   customerCreate: '/sales/choose-a-customer',
   customerMerge: '/sales/merge-duplicate-customers',
   customers: '/sales/remove-a-customer',
+  equipmentInvoicing: '/sales/take-a-finished-sale-to-its-invoice',
   equipmentTranscriptions: '/admin/review-voice-note-transcriptions',
   equipmentVoiceNote: '/production/record-feedback-by-voice',
   home: '/',

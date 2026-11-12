@@ -27,7 +27,7 @@ import { QuoteCancellationAction } from '@/equipment/components/quotes/QuoteCanc
 import { QuoteCancellationConfirmation } from '@/equipment/components/quotes/QuoteCancellationConfirmation';
 import { QuoteDocumentsTab } from '@/equipment/components/quotes/QuoteDocumentsTab';
 import { QuotePriorityAlert } from '@/equipment/components/quotes/QuotePriorityAlert';
-import { QuoteStatusChip } from '@/equipment/components/quotes/QuoteStatusChip';
+import { QuoteStageChip } from '@/equipment/components/quotes/QuoteStageChip';
 import { QuoteSummaryDrawer } from '@/equipment/components/quotes/QuoteSummaryDrawer';
 import { QuoteWorkItemsEditor } from '@/equipment/components/quotes/QuoteWorkItemsEditor';
 import { SalespersonSelectField } from '@/equipment/components/quotes/SalespersonSelectField';
@@ -40,7 +40,7 @@ import {
   toQuoteWorkItemInput,
 } from '@/equipment/lib/quote-presentation';
 import { useTRPC } from '@/lib/trpc';
-import { useCan } from '@/lib/use-access';
+import { useAccess, useCan } from '@/lib/use-access';
 
 type QuoteDetailTab = 'details' | 'documents';
 
@@ -133,6 +133,7 @@ function QuoteEditor({
   quote: QuoteDetail;
 }) {
   const showToast = useAppToast();
+  const access = useAccess().data;
   const [activeTab, setActiveTab] = useState<QuoteDetailTab>('details');
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [cancelConfirmationOpen, setCancelConfirmationOpen] = useState(false);
@@ -171,14 +172,14 @@ function QuoteEditor({
     [quote, values],
   );
   const quoteCurrencyCode = quote.product?.currencyCode ?? quote.quotedCurrencyCode;
-  const lockEditableFields = editableLockedQuoteFields({ status: quote.status });
+  const lockEditableFields = editableLockedQuoteFields({ actor: access, status: quote.status });
   const canEdit = (field: string) => canUpdate && (!isLocked || lockEditableFields.has(field));
   const setupReadOnly = !canUpdate || isLocked;
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right']}>
       <SecondaryPageToolbar
-        badge={<QuoteStatusChip status={values.status} />}
+        badge={<QuoteStageChip stage={quote.stage} />}
         fallback="/equipment/quotes"
         subtitle={getQuoteOfferingName(quote)}
         title={quote.code}
@@ -313,15 +314,7 @@ function QuoteEditor({
                       </form.AppField>
                     </View>
                     <View className="md:min-w-[220px] md:flex-1">
-                      <form.AppField name="invoiceNumber">
-                        {(field) => (
-                          <field.TextField
-                            disabled={!canEdit('invoiceNumber')}
-                            label="Invoice number"
-                            onValueCommit={autosave.commit}
-                          />
-                        )}
-                      </form.AppField>
+                      <ReadOnlyFact label="Invoice number" value={quote.invoiceNumber} />
                     </View>
                   </View>
                   <form.AppField name="deliveryTerms">
@@ -538,16 +531,13 @@ function AutosaveStatus({
   );
 }
 
-/**
- * Work Items are always in the locked-editable set, so only a Custom Quote actually renders an
- * editor for them — the field alone cannot tell the two Quote kinds apart here.
- */
+/** Names what this person may still change on a Locked Quote, which depends on its status and their role. */
 function describeLockedQuote({ canEdit, kind }: { canEdit: (field: string) => boolean; kind: QuoteDetail['kind'] }) {
   const editable = [
-    ...(kind === 'custom' ? ['work items', 'hourly rate'] : []),
-    'invoice number',
+    ...(kind === 'custom' && canEdit('workItems') ? ['work items'] : []),
     'notes',
     'delivery dates',
+    ...(canEdit('validUntil') ? ['quote document fields'] : []),
     ...(canEdit('deliveryTerms') ? ['delivery terms'] : []),
     ...(canEdit('discountPercent') ? ['discount'] : []),
     ...(canEdit('depositPercent') ? ['deposit'] : []),

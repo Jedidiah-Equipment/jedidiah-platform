@@ -32,6 +32,7 @@ import {
   summarizeInvoicedByMonth,
   summarizeJobQueues,
 } from '@pkg/core/contracting';
+import { InvoiceNumberLookupInput } from '@pkg/schema';
 import {
   AssignmentPatchInput,
   AssignmentPlanInput,
@@ -45,7 +46,6 @@ import {
   FieldDriver,
   FieldImplement,
   InvoicedByMonth,
-  InvoiceNumberLookupInput,
   JobCancelInput,
   JobCompleteInput,
   JobCreateInput,

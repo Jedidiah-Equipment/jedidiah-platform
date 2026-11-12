@@ -15,6 +15,8 @@ import { type AuditDescriptor, diffAuditUpdate, recordAuditUpdate } from './audi
  * {@link diffAuditUpdate} + {@link recordAuditUpdate} pair exists for exactly these):
  * - Quote update/patch/cancel — the collections diff and the Locked Quote gate read the changed-field
  *   set between the diff and the write, and acceptance transfers an allocation in the same gap.
+ * - Quote Stage moves (`quote-stage-service.ts`) — the Quote's audit record carries its collections beside
+ *   the row, which `mutateEntity`'s row-only snapshot cannot.
  * - Product update — the audit event is recorded after the post-update assembly/bay syncs so it
  *   captures the child collections.
  * - Part bulk import — one transaction over many rows, its own per-row lock, skip is `continue`.

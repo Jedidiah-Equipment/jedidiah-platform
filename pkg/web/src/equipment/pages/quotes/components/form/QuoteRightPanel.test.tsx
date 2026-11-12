@@ -10,6 +10,7 @@ vi.mock('../StartJobLink.js', () => ({
   StartJobLink: ({ className }: { className?: string }) => <span className={className} data-start-job-link />,
 }));
 vi.mock('../ReassignUnitDialog.js', () => ({ ReassignUnitDialog: () => null }));
+vi.mock('../QuoteStageCard.js', () => ({ QuoteStageCard: () => null }));
 
 test('shows labour and Parts beneath each Work Item so the aside breakdown adds up', () => {
   const workItem = {
@@ -63,6 +64,7 @@ test('shows labour and Parts beneath each Work Item so the aside breakdown adds 
   const html = renderToStaticMarkup(
     <QuoteRightPanel
       canOpenJobs
+      flushAutosave={async () => true}
       jobScheduleError={null}
       jobScheduleState={null}
       quote={quote}
@@ -135,6 +137,7 @@ test('opens a linked Job from the quote aside or locates it on the planner', asy
   const html = await renderWithRouter(
     <QuoteRightPanel
       canOpenJobs
+      flushAutosave={async () => true}
       jobScheduleError={null}
       jobScheduleState={{
         active: 1,

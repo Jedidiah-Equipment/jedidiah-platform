@@ -1,11 +1,10 @@
-import { useDebouncedValue } from '@mantine/hooks';
 import { formatCurrency, formatDate } from '@pkg/domain';
-import { InvoiceNumber, type JobSummary } from '@pkg/schema/contracting';
+import type { InvoiceNumber } from '@pkg/schema';
+import type { JobSummary } from '@pkg/schema/contracting';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { z } from 'zod';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
-import { CreateEntityDialog } from '@/components/form/index.js';
+import { StampInvoiceNumberDialog } from '@/components/form/StampInvoiceNumberDialog.js';
 import { getApiErrorAppCode } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { useJobWrite } from '../jobs/use-job-write.js';
@@ -13,8 +12,6 @@ import { useJobWrite } from '../jobs/use-job-write.js';
 export type StampableJob = Pick<JobSummary, 'id' | 'jobNumber' | 'customerName' | 'farmName' | 'pricedAt'> & {
   pricedTotal: number;
 };
-
-const StampInvoiceValues = z.object({ invoiceNumber: InvoiceNumber });
 
 export function StampInvoiceDialog({
   job,
@@ -47,50 +44,31 @@ export function StampInvoiceDialog({
     .filter(Boolean)
     .join(' · ');
   return (
-    <CreateEntityDialog
+    <StampInvoiceNumberDialog
       open={open}
       onOpenChange={onOpenChange}
       title={`Stamp invoice number · ${job.jobNumber}`}
       description={description}
       submitLabel="Stamp"
-      defaultValues={{ invoiceNumber: '' }}
-      validator={StampInvoiceValues}
-      onCreate={(values) =>
-        stamp.mutateAsync({ id: job.id, invoiceNumber: values.invoiceNumber, expectedTotal: job.pricedTotal })
-      }
-      onCreated={async () => {
-        onOpenChange(false);
+      submit={(invoiceNumber) => stamp.mutateAsync({ id: job.id, invoiceNumber, expectedTotal: job.pricedTotal })}
+      onStamped={async () => {
         toast.success('Invoiced');
         await write.invalidate();
       }}
+      renderAlsoOn={(invoiceNumber) => <JobsAlsoOn invoiceNumber={invoiceNumber} />}
     >
-      {(form) => (
-        <>
-          <form.AppField name="invoiceNumber">
-            {(field) => <field.TextField label="Invoice number" autoFocus className="font-mono" />}
-          </form.AppField>
-          <form.Subscribe selector={(state) => state.values.invoiceNumber}>
-            {(invoiceNumber) => <SharedInvoiceNumberNotice invoiceNumber={invoiceNumber} />}
-          </form.Subscribe>
-          <p className="text-muted-foreground text-sm">After stamping, nothing on this Job can change.</p>
-          {getApiErrorAppCode(stamp.error) === 'contracting_job.total_changed' ? null : (
-            <ErrorMessage error={stamp.error} fallbackMessage="Unable to stamp the invoice number." />
-          )}
-        </>
+      <p className="text-muted-foreground text-sm">After stamping, nothing on this Job can change.</p>
+      {getApiErrorAppCode(stamp.error) === 'contracting_job.total_changed' ? null : (
+        <ErrorMessage error={stamp.error} fallbackMessage="Unable to stamp the invoice number." />
       )}
-    </CreateEntityDialog>
+    </StampInvoiceNumberDialog>
   );
 }
 
-/** One accounting invoice may cover several Jobs, so a reused number is shown, never refused. */
-function SharedInvoiceNumberNotice({ invoiceNumber }: { invoiceNumber: string }) {
+function JobsAlsoOn({ invoiceNumber }: { invoiceNumber: InvoiceNumber }) {
   const trpc = useTRPC();
-  const [debounced] = useDebouncedValue(invoiceNumber.trim(), 300);
-  const valid = InvoiceNumber.safeParse(debounced).success;
-  const matches = useQuery(
-    trpc.contractingJobs.invoicing.byNumber.queryOptions({ invoiceNumber: debounced }, { enabled: valid }),
-  );
-  if (!valid || !matches.data?.length) return null;
+  const matches = useQuery(trpc.contractingJobs.invoicing.byNumber.queryOptions({ invoiceNumber }));
+  if (!matches.data?.length) return null;
   return (
     <p className="text-sm">Also on {matches.data.map((job) => `${job.jobNumber} (${job.customerName})`).join(', ')}.</p>
   );

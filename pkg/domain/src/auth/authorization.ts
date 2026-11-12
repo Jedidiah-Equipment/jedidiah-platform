@@ -100,6 +100,9 @@ export const permissionLabels = {
   'equipment_quote:cancel': 'Cancel quotes',
   'equipment_quote:read': 'View quotes',
   'equipment_quote:update': 'Update quotes',
+  'equipment_quote:price': 'Complete sold quotes and send them for approval',
+  'equipment_quote:approve': 'Approve sold quotes for invoicing',
+  'equipment_invoice:update': 'Enter quote invoice numbers',
   'equipment_supplier:read': 'View suppliers',
   'equipment_supplier:update': 'Manage suppliers',
   'equipment_supplier:remove': 'Remove suppliers',
@@ -205,6 +208,11 @@ export const permissionDescriptions = {
   'equipment_quote:cancel': 'Cancel locked quotes and cascade-cancel their job and future slots.',
   'equipment_quote:read': 'View sales quotes.',
   'equipment_quote:update': 'Update sales quote details and decisions.',
+  'equipment_quote:price':
+    "Change a sold quote's Work Items and Settling Terms, and send it for approval on its way to the invoice.",
+  'equipment_quote:approve':
+    'Change a quote awaiting approval, approve it or send it back, and remove an Invoice Number.',
+  'equipment_invoice:update': 'Enter and correct the Invoice Number on an approved quote.',
   'equipment_supplier:read': 'View supplier records.',
   'equipment_supplier:update': 'Create and edit supplier records.',
   'equipment_supplier:remove': 'Soft-delete supplier records.',
@@ -276,7 +284,8 @@ export const authorizationStatement = {
   // and it only ever reaches a machine that never came to exist.
   equipment_product_unit: ['read', 'update', 'transfer', 'reassign', 'remove'],
   equipment_purchase_order: ['read', 'create', 'approve', 'send', 'amend', 'receive', 'close'],
-  equipment_quote: ['read', 'create', 'update', 'cancel'],
+  equipment_quote: ['read', 'create', 'update', 'cancel', 'price', 'approve'],
+  equipment_invoice: ['update'],
   equipment_supplier: ['read', 'update', 'remove', 'merge'],
   equipment_transcription: ['read', 'use'],
   contracting_audit: ['read'],
@@ -330,7 +339,8 @@ const adminAccess = {
   equipment_product_range: ['read', 'create', 'update'],
   equipment_product_unit: ['read', 'update', 'transfer', 'reassign', 'remove'],
   equipment_purchase_order: ['read', 'create', 'approve', 'send', 'amend', 'receive', 'close'],
-  equipment_quote: ['read', 'create', 'update', 'cancel'],
+  equipment_quote: ['read', 'create', 'update', 'cancel', 'price'],
+  equipment_invoice: ['update'],
   equipment_supplier: ['read', 'update', 'remove', 'merge'],
   equipment_transcription: ['use'],
   user: ['list', 'create', 'update', 'set-email', 'set-role', 'set-password'],
@@ -380,6 +390,8 @@ export const appRoleAccess = {
     ...adminAccess,
     ...contractingAdminAccess,
     equipment_feedback: ['read', 'update'],
+    // Approving a sold Quote for invoicing is the Super Administrator's alone.
+    equipment_quote: ['read', 'create', 'update', 'cancel', 'price', 'approve'],
     // Reading every Voice Note's text includes dictated Corrective Feedback, so it stays where that feedback does.
     equipment_transcription: ['read', 'use'],
   },

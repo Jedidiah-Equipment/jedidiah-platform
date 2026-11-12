@@ -1,3 +1,4 @@
+import { deriveQuoteActions } from '@pkg/domain/equipment';
 import { accessForRole } from '@pkg/domain/testing';
 import { QuoteDetail } from '@pkg/schema/equipment';
 import { describe, expect, test } from 'vitest';
@@ -54,6 +55,13 @@ const quote = QuoteDetail.parse({
   status: 'draft',
   acceptedAt: null,
   statusChangedAt: '2026-07-10T08:00:00.000Z',
+  actions: deriveQuoteActions({ deliveryTerms: 'included', stage: 'draft' }, accessForRole('admin', 'test-user-id')),
+  invoicedAt: null,
+  invoicedByName: null,
+  sentBackAt: null,
+  sentBackByName: null,
+  sentBackNote: null,
+  stage: 'draft',
   updatedAt: '2026-07-10T09:00:00.000Z',
   validUntil: null,
   workTitle: null,

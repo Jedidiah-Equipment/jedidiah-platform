@@ -30,6 +30,7 @@ import {
   createQuoteTableRow,
   getQuoteTableRowClassName,
   type QuoteTableRow,
+  quoteStageFilterOptions,
   quoteTablePinnedEndColumns,
   quoteTablePinnedStartColumns,
 } from './components/QuoteTableColumns.js';
@@ -51,8 +52,8 @@ function createQuoteTableStore(persistName: string) {
       ],
     },
     persistName,
-    // 5: the Type column id moved from 'kind' to 'offeringType'.
-    persistVersion: 5,
+    // 6: the Status column became the Stage column and the invoice filter went.
+    persistVersion: 6,
   });
 }
 
@@ -120,6 +121,8 @@ export const QuoteTable: React.FC<{ customerId?: UUID }> = ({ customerId }) => {
     }),
   );
   const priorityQuotesQuery = useQuery(trpc.quotes.priorityList.queryOptions(customerId ? { customerId } : {}));
+  const stageCountsQuery = useQuery({ ...trpc.quotes.stageCounts.queryOptions(), enabled: !customerId });
+  const stageCounts = stageCountsQuery.data?.counts;
   const { items: quotes, total } = useCombinedCursorQueryPages(quotesQuery.data?.pages);
   const priorityQuotes = priorityQuotesQuery.data ?? [];
   const normalQuoteRows = useMemo(() => quotes.map(createQuoteTableRow), [quotes]);
@@ -134,6 +137,7 @@ export const QuoteTable: React.FC<{ customerId?: UUID }> = ({ customerId }) => {
         productOptions: productOptions.selectOptions,
         salespersonOptions: salespersonOptions.selectOptions,
         showCustomerColumn: !customerId,
+        stageOptions: quoteStageFilterOptions(stageCounts),
       }),
     [
       canOpenJobs,
@@ -141,6 +145,7 @@ export const QuoteTable: React.FC<{ customerId?: UUID }> = ({ customerId }) => {
       customerOptions.selectOptions,
       productOptions.selectOptions,
       salespersonOptions.selectOptions,
+      stageCounts,
     ],
   );
 

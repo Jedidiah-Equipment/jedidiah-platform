@@ -14,13 +14,27 @@ prices and specification the Customer agreed to, so changing those means a new Q
   and the re-quote steps then apply. If the sale is off, [cancel the Quote](/sales/cancel-a-quote) instead.
 - **A From Stock Product Quote** locks the moment it is accepted. To change its price or specification,
   follow [Re-quote a From Stock Quote](#re-quote-a-from-stock-quote).
-- **A Custom Quote** locks on acceptance, but its Work Items stay editable. Change the charge in place.
+- **A Custom Quote** locks on acceptance, but its Work Items stay open to an Administrator. Change the
+  charge in place.
 
-Every Locked Quote still accepts its **Invoice number**, internal and document notes, delivery dates, and
-**Valid until**. An accepted one can also be edited in place for:
+## Who can change what
 
-- **Delivery terms** and **Delivery price**. Delivery terms cannot go back to **To be confirmed**.
-- **Discount percent** and **Deposit percent**.
+A Locked Quote keeps its notes and delivery dates open to anyone who edits Quotes, at every Stage: a
+machine can be invoiced before it is delivered. Everything else depends on the Quote's
+[Stage](/sales/quote-stages):
+
+| Stage | Document notes, Valid until | Work Items, discount, deposit, Delivery Terms and Delivery Price |
+| --- | --- | --- |
+| **Accepted** or **Awaiting pricing** | Anyone who edits Quotes | An Administrator or Super Administrator |
+| **Awaiting approval** | A Super Administrator | A Super Administrator |
+| **Awaiting invoice** or **Invoiced** | Nobody | Nobody |
+| **Cancelled** | Anyone who edits Quotes | Nobody |
+
+Delivery Terms cannot go back to **To be confirmed**. Work Items exist only on a Custom Quote. To change a
+Quote Awaiting invoice, a Super Administrator sends it back first.
+
+The **Invoice number** is not a field on the Quote: it is entered from the Quote's **Stage** card. See
+[Take a finished sale to its invoice](/sales/take-a-finished-sale-to-its-invoice).
 
 A Quote Document generated earlier keeps the old figures, so generate a new revision before sending the
 Customer the change.
@@ -44,9 +58,9 @@ and send its machine back to Stock.
 5. Open the old Quote and click **Cancel Quote**. The confirmation should ask only for a reason. If it offers
    to cancel a Job or remove a Unit, step 4 did not go through: click **Keep quote** and go back to it.
 6. Type a reason that names the new Quote, and click **Cancel Quote**.
-7. On the new Quote, fill in the **Invoice number** and carry over any notes.
+7. On the new Quote, carry over any notes and, once it is complete, send it for approval.
 
-Once the old Quote has an **Invoice number**, its machine can no longer move, and this procedure is refused.
+Once the old Quote is **Invoiced**, its machine can no longer move, and this procedure is refused.
 See [Reassign a Unit](/sales/reassign-a-unit) for the other rules.
 
 When both Quotes are for the same Customer, the machine's ownership history still names the old Quote

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { getFirstName, toSentenceCase } from './text.js';
+import { getFirstName, joinOr, toSentenceCase } from './text.js';
 
 describe('getFirstName', () => {
   it('returns the first name from a display name', () => {
@@ -16,5 +16,13 @@ describe('toSentenceCase', () => {
 
   it('handles empty strings', () => {
     expect(toSentenceCase('')).toBe('');
+  });
+});
+
+describe('joinOr', () => {
+  it('joins phrases as prose', () => {
+    expect(joinOr([])).toBe('');
+    expect(joinOr(['Draft'])).toBe('Draft');
+    expect(joinOr(['Draft', 'Sent', 'Accepted'])).toBe('Draft, Sent or Accepted');
   });
 });

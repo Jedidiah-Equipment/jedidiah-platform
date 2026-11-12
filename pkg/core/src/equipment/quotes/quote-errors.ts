@@ -1,3 +1,6 @@
+import { judgeQuoteAction, type QuoteActionSubject, type QuoteActor } from '@pkg/domain/equipment';
+import type { QuoteActionBlockedReason, QuoteActionName } from '@pkg/schema/equipment';
+
 export type QuoteErrorCode =
   | 'quote.allocation_conflict'
   | 'quote.already_cancelled'
@@ -7,14 +10,17 @@ export type QuoteErrorCode =
   | 'quote.delivery_unconfirmed'
   | 'quote.discount_invalid'
   | 'quote.document_generation_not_allowed'
+  | 'quote.forbidden'
   | 'quote.invalid_reference'
+  | 'quote.invoiced'
   | 'quote.locked'
   | 'quote.not_found'
   // A persisted Quote row violating the product/custom offering shape the DB constraint guarantees
   // (e.g. a custom Quote missing its Work Title). A true invariant, not user-facing input.
   | 'quote.offering_invariant'
   | 'quote.product_bay_availability_not_applicable'
-  | 'quote.status_not_pickable';
+  | 'quote.status_not_pickable'
+  | 'quote.wrong_stage';
 
 export class QuoteError extends Error {
   constructor(
@@ -54,3 +60,23 @@ export const quoteCancelNotAnUpdate = () =>
 
 export const quoteStatusNotPickable = (status: string) =>
   new QuoteError('quote.status_not_pickable', `A quote cannot be moved to ${status} by changing its status.`);
+
+/** Cancelling an Invoiced Quote would orphan an invoice the accounting system already holds. */
+export const quoteInvoiced = () =>
+  new QuoteError('quote.invoiced', 'This quote has been invoiced. Remove its Invoice Number before cancelling it.');
+
+/** The Invoice Number is written only by the invoice Quote Actions; an edit may carry the stored one unchanged. */
+export const quoteInvoiceNumberNotAnEdit = () =>
+  new QuoteError('quote.wrong_stage', 'The Invoice Number is entered from the Quote Stage, not by editing the quote.');
+
+const refusalCodes = {
+  'no-permission': 'quote.forbidden',
+  'wrong-status': 'quote.wrong_stage',
+  'delivery-unconfirmed': 'quote.delivery_unconfirmed',
+} as const satisfies Record<QuoteActionBlockedReason, QuoteErrorCode>;
+
+/** Refuses unless this actor may take this Quote Action on this Quote now, with the verdict's own sentence. */
+export function assertQuoteAction(action: QuoteActionName, quote: QuoteActionSubject, actor: QuoteActor) {
+  const verdict = judgeQuoteAction(action, quote, actor);
+  if (!verdict.allowed) throw new QuoteError(refusalCodes[verdict.reason], verdict.message);
+}

@@ -1,5 +1,5 @@
 import type { UUID } from '@pkg/schema';
-import { QuoteInvoicedFilter, type QuoteListInput, QuoteOfferingType, QuoteStatus } from '@pkg/schema/equipment';
+import { type QuoteListInput, QuoteOfferingType, QuoteStage } from '@pkg/schema/equipment';
 import type { ColumnFiltersState } from '@tanstack/react-table';
 import type { z } from 'zod';
 import { readMultiSelectFilter } from '@/components/data-table/column-filter-values.js';
@@ -8,11 +8,10 @@ export function getQuoteListInputExtras(columnFilters: ColumnFiltersState, custo
   return {
     filters: {
       customerId: customerId ?? getQuoteIdFilterValue(columnFilters, 'customerCompanyName'),
-      invoiced: getEnumFilterValue(columnFilters, 'invoiceNumber', QuoteInvoicedFilter),
       offeringType: getEnumFilterValue(columnFilters, 'offeringType', QuoteOfferingType),
       productId: getQuoteIdFilterValue(columnFilters, 'productName'),
       salesPersonId: getQuoteIdFilterValue(columnFilters, 'salesPersonName'),
-      statuses: getStatusFilterValues(columnFilters),
+      stages: getStageFilterValues(columnFilters),
     },
   } satisfies Pick<QuoteListInput, 'filters'>;
 }
@@ -26,15 +25,15 @@ export function getQuoteIdFilterValue(
   return typeof value === 'string' && value ? value : undefined;
 }
 
-function getStatusFilterValues(columnFilters: ColumnFiltersState) {
-  return readMultiSelectFilter(columnFilters, 'status').filter(
-    (item): item is QuoteStatus => QuoteStatus.safeParse(item).success,
+function getStageFilterValues(columnFilters: ColumnFiltersState) {
+  return readMultiSelectFilter(columnFilters, 'stage').filter(
+    (item): item is QuoteStage => QuoteStage.safeParse(item).success,
   );
 }
 
 function getEnumFilterValue<TValue extends string>(
   columnFilters: ColumnFiltersState,
-  id: 'invoiceNumber' | 'offeringType',
+  id: 'offeringType',
   schema: z.ZodEnum<Record<string, TValue>>,
 ): TValue | undefined {
   const value = columnFilters.find((filter) => filter.id === id)?.value;

@@ -15,6 +15,7 @@ import { describe, expect } from 'vitest';
 import { createTester } from '../../test/create-tester.js';
 import { cancelQuote, patchQuote } from '../quotes/quote-service.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
+import { testQuoteActor } from '../test/quote-actor.js';
 import { reassignProductUnitToQuote } from './product-unit-reassignment.js';
 import { listReassignCandidates, previewReassignment } from './product-unit-reassignment-read.js';
 import { createProductUnit, lockUnitForOwnership } from './product-unit-service.js';
@@ -222,7 +223,10 @@ describe('reassignProductUnitToQuote refusals', () => {
   test('refuses a Stock Unit whose build Job still hangs off an invoiced deal', async ({ context }) => {
     const { db, seed } = context;
     const greg = await createBuildToOrderDeal(db, seed, seed.gregId);
-    await db.update(quotes).set({ invoiceNumber: 'INV-8' }).where(eq(quotes.id, greg.quoteId));
+    await db
+      .update(quotes)
+      .set({ invoiceNumber: 'INV-8', invoicedAt: new Date(), status: 'invoiced' })
+      .where(eq(quotes.id, greg.quoteId));
     await sellUnit(db, { customerId: null, productUnitId: greg.unitId, sourceQuoteId: null });
     const quoteId = await createQuote(db, { customerId: seed.palmietId, productId: seed.productId });
 
@@ -242,7 +246,10 @@ describe('reassignProductUnitToQuote refusals', () => {
   test('refuses a Unit whose selling Quote has been invoiced', async ({ context }) => {
     const { db, seed } = context;
     const greg = await createBuildToOrderDeal(db, seed, seed.gregId);
-    await db.update(quotes).set({ invoiceNumber: 'INV-7' }).where(eq(quotes.id, greg.quoteId));
+    await db
+      .update(quotes)
+      .set({ invoiceNumber: 'INV-7', invoicedAt: new Date(), status: 'invoiced' })
+      .where(eq(quotes.id, greg.quoteId));
     const quoteId = await createQuote(db, { customerId: seed.palmietId, productId: seed.productId });
 
     await expect(
@@ -486,7 +493,7 @@ describe('the vacated deal', () => {
 
     // Dropping a sold Assembly is a commercial edit, which a Quote that has sourced production refuses.
     await expect(
-      patchQuote({ actorUserId: ACTOR_USER_ID, db, input: { id: greg.quoteId, selectedAssemblies: [] } }),
+      patchQuote({ actor: testQuoteActor(ACTOR_USER_ID), db, input: { id: greg.quoteId, selectedAssemblies: [] } }),
     ).rejects.toMatchObject({ code: 'quote.locked' });
   });
 
@@ -549,7 +556,10 @@ describe('listReassignCandidates', () => {
     const greg = await createBuildToOrderDeal(db, seed, seed.gregId);
     const stock = await createStockBuild(db, seed, { completedOn: '2026-06-02' });
     const invoiced = await createBuildToOrderDeal(db, seed, seed.thirdPartyId);
-    await db.update(quotes).set({ invoiceNumber: 'INV-9' }).where(eq(quotes.id, invoiced.quoteId));
+    await db
+      .update(quotes)
+      .set({ invoiceNumber: 'INV-9', invoicedAt: new Date(), status: 'invoiced' })
+      .where(eq(quotes.id, invoiced.quoteId));
     await createStockBuild(db, seed, { productId: seed.otherProductId });
 
     const candidates = await listReassignCandidates({ db, quoteId: palmiet.quoteId });
@@ -681,7 +691,8 @@ async function createQuote(
       quotedCurrencyCode: 'ZAR',
       salesPersonId: ACTOR_USER_ID,
       acceptedAt: (options.status ?? 'accepted') === 'accepted' ? new Date() : null,
-      status: options.status ?? 'accepted',
+      invoicedAt: options.invoiceNumber ? new Date() : null,
+      status: options.invoiceNumber ? 'invoiced' : (options.status ?? 'accepted'),
     })
     .returning({ id: quotes.id });
 

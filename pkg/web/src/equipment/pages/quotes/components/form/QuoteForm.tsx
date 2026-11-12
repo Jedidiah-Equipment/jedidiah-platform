@@ -37,7 +37,7 @@ import { EquipmentAuditTable, useQuoteAuditTableStore } from '@/equipment/compon
 import { GiveFeedbackButton } from '@/equipment/components/feedback/GiveFeedbackButton.js';
 import { useSalesPersonOptions } from '@/equipment/hooks/options/index.js';
 import { JobSheet } from '@/equipment/pages/jobs/components/JobSheet.js';
-import { useCan } from '@/hooks/use-access.js';
+import { useAccess, useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { QuoteCancellationDialog } from '../QuoteCancellationAction.js';
 import { getQuoteFormValuesValidator, toQuoteFormValues, toQuoteUpdateInput, toQuoteWorkItemInput } from '../types.js';
@@ -62,7 +62,8 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
     kind: quote.kind,
     status: quote.status,
   });
-  const lockEditableFields = editableLockedQuoteFields({ status: quote.status });
+  const access = useAccess().data;
+  const lockEditableFields = editableLockedQuoteFields({ actor: access, status: quote.status });
   const canEdit = (field: string) => !isLocked || lockEditableFields.has(field);
   const quoteCurrencyCode = quote.product?.currencyCode ?? quote.quotedCurrencyCode;
   const catalogAssemblies = quote.product?.assemblies ?? [];
@@ -192,15 +193,6 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                       </form.AppField>
                       <form.AppField name="validUntil">
                         {(field) => <field.DatePickerField label="Valid until" onValueCommit={autosave.commit} />}
-                      </form.AppField>
-                      <form.AppField name="invoiceNumber">
-                        {(field) => (
-                          <field.TextField
-                            autoComplete="off"
-                            disabled={!canEdit('invoiceNumber')}
-                            label="Invoice number"
-                          />
-                        )}
                       </form.AppField>
                       <form.AppField name="deliveryTerms">
                         {(field) => (
@@ -363,6 +355,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
               {(summary) => (
                 <QuoteRightPanel
                   canOpenJobs={canOpenJobs}
+                  flushAutosave={autosave.flush}
                   jobScheduleError={linkedJobQuery.error}
                   jobScheduleState={linkedJobQuery.data?.items[0]?.scheduleState ?? null}
                   onOpenJob={() => setJobSheetOpen(true)}

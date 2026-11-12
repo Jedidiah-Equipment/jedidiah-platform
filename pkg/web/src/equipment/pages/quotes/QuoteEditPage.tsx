@@ -12,7 +12,7 @@ import { useCan } from '@/hooks/use-access.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { QuoteForm } from './components/form/QuoteForm.js';
 import { QuoteCancellationAction } from './components/QuoteCancellationAction.js';
-import { QuoteStatusBadge } from './components/QuoteStatusBadge.js';
+import { QuoteStageBadge } from './components/QuoteStageBadge.js';
 
 type QuoteEditPageProps = {
   quoteId: UUID;
@@ -41,7 +41,7 @@ export const QuoteEditPage: React.FC<QuoteEditPageProps> = ({ quoteId }) => {
         quote ? (
           <div className="flex items-center gap-2">
             <QuoteCancellationAction canCancel={canCancelQuote} quote={quote} />
-            <QuoteStatusBadge size="lg" status={quote.status} />
+            <QuoteStageBadge size="lg" stage={quote.stage} />
           </div>
         ) : undefined
       }
@@ -53,7 +53,8 @@ export const QuoteEditPage: React.FC<QuoteEditPageProps> = ({ quoteId }) => {
       {quoteQuery.isPending ? <QuoteFormSkeleton /> : null}
       {quote ? (
         <QuoteForm
-          key={quote.id}
+          // A Quote Action moves the status outside the form, so the form restarts from the new status.
+          key={`${quote.id}:${quote.status}`}
           onSave={(value) => updateMutation.mutateAsync(value)}
           priorityQuote={priorityQuote}
           quote={quote}

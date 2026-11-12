@@ -20,7 +20,9 @@ or Department timing. A Parts Sale cannot be turned into Service Work later; rai
 An accepted Parts Sale stays out of **Awaiting Job Creation** and the Job Start Alert, and it has no
 **Start Job**. Its labour is only a charge: nothing is scheduled, timed, or counted in build metrics.
 
-Once it is billed, enter the **Invoice Number** on the Quote. That is the record that the sale was invoiced.
+Once accepted, a Parts Sale is **Awaiting pricing**: an Administrator completes it and sends it for approval,
+and it goes on to its invoice like any sold Quote. See
+[Take a finished sale to its invoice](/sales/take-a-finished-sale-to-its-invoice).
 
 ## Checking the parts out
 

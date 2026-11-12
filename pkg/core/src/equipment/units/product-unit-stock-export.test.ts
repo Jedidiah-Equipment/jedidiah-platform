@@ -209,7 +209,8 @@ async function seedStockShape(db: Db) {
         quotedCurrencyCode: 'ZAR',
         salesPersonId: ACTOR_USER_ID,
         acceptedAt: new Date(),
-        status: 'accepted',
+        invoicedAt: new Date(),
+        status: 'invoiced',
       },
       {
         customerId: riverside.id,
@@ -220,7 +221,8 @@ async function seedStockShape(db: Db) {
         quotedCurrencyCode: 'ZAR',
         salesPersonId: ACTOR_USER_ID,
         acceptedAt: new Date(),
-        status: 'accepted',
+        invoicedAt: new Date(),
+        status: 'invoiced',
       },
     ])
     .returning();

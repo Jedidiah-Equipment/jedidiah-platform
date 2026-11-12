@@ -7,7 +7,7 @@ import {
   type QuoteListResult,
   QuoteOfferingType,
   QuoteProductSummaryFacts,
-  QuoteStatus,
+  QuoteStage,
   QuoteSummary,
 } from '@pkg/schema/equipment';
 import { z } from 'zod';
@@ -38,6 +38,7 @@ const FindProductQuote = QuoteSummary.options[0]
     productId: true,
     quotedBasePrice: true,
     quotedCurrencyCode: true,
+    stage: true,
     status: true,
     workTitle: true,
   })
@@ -56,6 +57,7 @@ const FindCustomQuote = QuoteSummary.options[1]
     productId: true,
     quotedBasePrice: true,
     quotedCurrencyCode: true,
+    stage: true,
     status: true,
     workTitle: true,
   })
@@ -66,8 +68,8 @@ export const FindQuotesResponse = z.array(z.discriminatedUnion('kind', [FindProd
 
 export function toCoreQuoteListInput(input: FindQuotesInput): QuoteListInput {
   const filters: QuoteListInput['filters'] = {
-    // Assistant lookups are find-before-get queries, so they must remain exhaustive across terminal statuses.
-    statuses: [...QuoteStatus.options],
+    // Assistant lookups are find-before-get queries, so they must remain exhaustive across terminal Stages.
+    stages: [...QuoteStage.options],
     ...(input.by === 'code' ? { quoteCode: input.quoteCode } : {}),
     ...(input.by === 'customer' ? { customerId: input.customerId } : {}),
     ...(input.by === 'product' ? { productId: input.productId } : {}),
@@ -100,6 +102,7 @@ export function toFindQuotesResponse(result: QuoteListResult, access: UserAccess
       productId: quote.productId,
       quotedBasePrice: quote.quotedBasePrice,
       quotedCurrencyCode: quote.quotedCurrencyCode,
+      stage: quote.stage,
       status: quote.status,
       workTitle: quote.workTitle,
     })),
@@ -111,7 +114,7 @@ export const findQuotesDefinition = {
   description: [
     'Find Quotes using exactly one selector: an exact Quote Code, Customer ID, or Product ID.',
     'To find Quotes by customer or product name, call findCustomers or findProducts first, then pass the selected id here.',
-    'Returns lightweight commercial and identity matches with app and relationship links; offeringType tells a Product, Service Work (custom), or Parts Sale Quote apart.',
+    'Returns lightweight commercial and identity matches, each with its Quote Stage (where a sold Quote stands on the way to its invoice), with app and relationship links; offeringType tells a Product, Service Work (custom), or Parts Sale Quote apart.',
     'Call getQuote with the selected id when full Quote details are needed.',
   ].join('\n'),
   inputSchema: FindQuotesInput,

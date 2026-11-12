@@ -1,4 +1,5 @@
 import * as quotesCore from '@pkg/core/equipment';
+import { deriveQuoteActions } from '@pkg/domain/equipment';
 import { accessForRole } from '@pkg/domain/testing';
 import { QuoteDetail } from '@pkg/schema/equipment';
 import { describe, expect, test, vi } from 'vitest';
@@ -54,6 +55,13 @@ const quote = QuoteDetail.parse({
   status: 'sent',
   acceptedAt: null,
   statusChangedAt: '2026-07-10T08:00:00.000Z',
+  actions: deriveQuoteActions({ deliveryTerms: 'included', stage: 'sent' }, accessForRole('admin', 'test-user-id')),
+  invoicedAt: null,
+  invoicedByName: null,
+  sentBackAt: null,
+  sentBackByName: null,
+  sentBackNote: null,
+  stage: 'sent',
   updatedAt: '2026-07-10T09:00:00.000Z',
   validUntil: null,
   workItems: [],
@@ -101,7 +109,6 @@ describe('patchQuote contract', () => {
   test('passes named Quote changes and assemblies to core and returns linked details', async () => {
     const input = PatchQuoteInput.parse({
       id: QUOTE_ID,
-      invoiceNumber: ' INV-0042 ',
       notes: ' Updated note ',
       plannedDeliveryDate: null,
       selectedAssemblies: [{ type: 'catalog', productAssemblyId: PRODUCT_ASSEMBLY_ID }],
@@ -115,15 +122,15 @@ describe('patchQuote contract', () => {
 
     expect(coreInput).toEqual({
       id: QUOTE_ID,
-      invoiceNumber: 'INV-0042',
       notes: 'Updated note',
       plannedDeliveryDate: null,
       selectedAssemblies: [{ type: 'catalog', productAssemblyId: PRODUCT_ASSEMBLY_ID }],
     });
     expect(coreInput).not.toHaveProperty('status');
+    expect(() => PatchQuoteInput.parse({ id: QUOTE_ID, invoiceNumber: 'INV-0042' })).toThrow();
     expect(coreInput).not.toHaveProperty('discountPercent');
     expect(patchSpy).toHaveBeenCalledWith({
-      actorUserId: 'test-user-id',
+      actor: createContext().access,
       db: expect.any(Object),
       input: coreInput,
     });

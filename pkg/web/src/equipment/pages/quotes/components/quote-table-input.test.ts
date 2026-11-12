@@ -11,55 +11,43 @@ describe('getQuoteListInputExtras', () => {
   it('reads every visible quote filter from the table columns', () => {
     const filters = [
       { id: 'customerCompanyName', value: CUSTOMER_ID },
-      { id: 'invoiceNumber', value: 'invoiced' },
       { id: 'offeringType', value: 'parts-sale' },
       { id: 'productName', value: PRODUCT_ID },
       { id: 'salesPersonName', value: 'sales-user-id' },
-      { id: 'status', value: ['draft', 'not-a-status'] },
+      { id: 'stage', value: ['awaiting-pricing', 'not-a-stage'] },
     ] satisfies ColumnFiltersState;
 
     expect(getQuoteListInputExtras(filters)).toEqual({
       filters: {
         customerId: CUSTOMER_ID,
-        invoiced: 'invoiced',
         offeringType: 'parts-sale',
         productId: PRODUCT_ID,
         salesPersonId: 'sales-user-id',
-        statuses: ['draft'],
+        stages: ['awaiting-pricing'],
       },
     });
   });
 
   it('drops filter values the API does not accept', () => {
     const filters = [
-      { id: 'invoiceNumber', value: 'partially-invoiced' },
       { id: 'offeringType', value: 'not-a-type' },
-      { id: 'status', value: 'draft' },
+      { id: 'stage', value: 'draft' },
     ] satisfies ColumnFiltersState;
 
     expect(getQuoteListInputExtras(filters)).toEqual({
       filters: {
         customerId: undefined,
-        invoiced: undefined,
         offeringType: undefined,
         productId: undefined,
         salesPersonId: undefined,
-        statuses: [],
+        stages: [],
       },
     });
   });
 
   it('pins the customer of a customer-scoped table over the customer column filter', () => {
-    const filters = [
-      { id: 'customerCompanyName', value: OTHER_CUSTOMER_ID },
-      { id: 'invoiceNumber', value: 'not-invoiced' },
-    ] satisfies ColumnFiltersState;
+    const filters = [{ id: 'customerCompanyName', value: OTHER_CUSTOMER_ID }] satisfies ColumnFiltersState;
 
-    expect(getQuoteListInputExtras(filters, CUSTOMER_ID)).toMatchObject({
-      filters: {
-        customerId: CUSTOMER_ID,
-        invoiced: 'not-invoiced',
-      },
-    });
+    expect(getQuoteListInputExtras(filters, CUSTOMER_ID)).toMatchObject({ filters: { customerId: CUSTOMER_ID } });
   });
 });

@@ -13,9 +13,9 @@ import {
 import { MainTabToolbar } from '@/equipment/components/TopToolbar';
 import {
   isQuoteSort,
-  isQuoteStatusFilter,
+  isQuoteStageFilter,
   type QuoteSort,
-  type QuoteStatusFilter,
+  type QuoteStageFilter,
 } from '@/equipment/lib/quote-presentation';
 import { MAIN_TAB_PARENTS } from '@/equipment/lib/toolbar-navigation';
 import { useQuoteList } from '@/equipment/lib/use-quote-list';
@@ -30,17 +30,18 @@ export default function QuotesRoute() {
   const [search, setSearch] = useState('');
   const [newQuoteOpen, setNewQuoteOpen] = useState(false);
   const debouncedSearch = useDebouncedSearch(search);
-  const [status, setStatus] = usePersistedState<QuoteStatusFilter>('jedidiah-quote-status', 'all', isQuoteStatusFilter);
+  // The key predates Quote Stages; every saved status is still a Stage.
+  const [stage, setStage] = usePersistedState<QuoteStageFilter>('jedidiah-quote-status', 'all', isQuoteStageFilter);
   const [sort, setSort] = usePersistedState<QuoteSort>('jedidiah-quote-sort', 'newest', isQuoteSort);
-  const list = useQuoteList({ enabled: readAccess.can, search: debouncedSearch, sort, status });
+  const list = useQuoteList({ enabled: readAccess.can, search: debouncedSearch, sort, stage });
   const displayedQuoteCount = list.priorityQuotes.length + list.mainQuotes.length;
-  const hasCriteria = search.trim().length > 0 || status !== 'all';
+  const hasCriteria = search.trim().length > 0 || stage !== 'all';
   const initialLoading = list.pending && displayedQuoteCount === 0;
   const emptyContent = list.failed ? (
     <CatalogMessage detail="Pull to retry, or check your connection." title="Couldn’t load quotes." />
   ) : (
     <CatalogMessage
-      detail={hasCriteria ? 'Try a different search or status.' : 'Create a Quote to see it here.'}
+      detail={hasCriteria ? 'Try a different search or stage.' : 'Create a Quote to see it here.'}
       title={hasCriteria ? 'No quotes match' : 'No quotes yet'}
     />
   );
@@ -65,10 +66,10 @@ export default function QuotesRoute() {
             onCreate={() => setNewQuoteOpen(true)}
             onSearchChange={setSearch}
             onSortChange={setSort}
-            onStatusChange={setStatus}
+            onStageChange={setStage}
             search={search}
             sort={sort}
-            status={status}
+            stage={stage}
           />
         }
         initialLoading={initialLoading}

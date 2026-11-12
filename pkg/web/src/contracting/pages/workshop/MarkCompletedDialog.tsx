@@ -1,7 +1,7 @@
 import { CloseOutNote } from '@pkg/schema/contracting';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { ReasonDialog } from '@/contracting/components/ReasonDialog.js';
+import { ReasonDialog } from '@/components/form/ReasonDialog.js';
 import { useContractingWrite, useResetOnOpen } from '@/contracting/hooks/use-contracting-write.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useTRPC } from '@/lib/trpc.js';

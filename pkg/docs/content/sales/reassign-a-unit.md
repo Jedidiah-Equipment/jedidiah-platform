@@ -7,7 +7,7 @@ Administrators and Super Administrators can move a Product Unit — and the Job 
 3. Search for and select the Unit, then click **Continue**.
 4. Read what the move will do, add a reason if it helps, then click **Reassign Unit**.
 
-Both deals must be un-invoiced: the Quote receiving the machine, and the Quote that sold the one being moved. Completion is not a barrier — a finished machine standing in the yard is exactly the one a Customer wants sooner.
+Neither deal may be **Invoiced**: not the Quote receiving the machine, nor the Quote that sold the one being moved. A deal Awaiting approval or Awaiting invoice can still take part. Completion is not a barrier — a finished machine standing in the yard is exactly the one a Customer wants sooner.
 
 ## What happens to the other deal
 

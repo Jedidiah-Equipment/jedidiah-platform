@@ -10,3 +10,8 @@ export function getFirstName(fullName: string): string {
 
   return trimmed.split(/\s+/, 1)[0] ?? trimmed;
 }
+
+/** Joins phrases as prose: "a", "a or b", "a, b or c". */
+export function joinOr(items: readonly string[]): string {
+  return items.length < 2 ? (items[0] ?? '') : `${items.slice(0, -1).join(', ')} or ${items.at(-1)}`;
+}

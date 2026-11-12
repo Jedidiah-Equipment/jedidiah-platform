@@ -1,7 +1,14 @@
 import { type DatabaseTransaction, type Db, notRemoved, user } from '@pkg/db';
 import { customers, jobs, products, quotes } from '@pkg/db/equipment';
 import { getPlantDateNow } from '@pkg/domain';
-import { assertQuoteEditable, isQuoteLocked, quoteStatusLabels, validateDiscount } from '@pkg/domain/equipment';
+import {
+  assertQuoteEditable,
+  clearedSentBack,
+  isQuoteLocked,
+  type QuoteActor,
+  quoteStatusLabels,
+  validateDiscount,
+} from '@pkg/domain/equipment';
 import type { AuditChanges, AuthId, UUID } from '@pkg/schema';
 import {
   DEFAULT_PRODUCT_CURRENCY_CODE,
@@ -36,6 +43,8 @@ import {
   quoteAlreadyCancelled,
   quoteCancelDenied,
   quoteCancelNotAnUpdate,
+  quoteInvoiced,
+  quoteInvoiceNumberNotAnEdit,
   quoteNotFound,
   quoteStatusNotPickable,
 } from './quote-errors.js';
@@ -114,6 +123,10 @@ export async function cancelQuote({
       throw quoteAlreadyCancelled();
     }
 
+    if (before.status === 'invoiced') {
+      throw quoteInvoiced();
+    }
+
     if (
       !mayCancelLockedQuote &&
       isQuoteLocked({
@@ -174,7 +187,14 @@ export async function cancelQuote({
 
     const [row] = await tx
       .update(quotes)
-      .set({ acceptedAt: null, cancellationReason, status: 'cancelled', statusChangedAt: now, updatedAt: now })
+      .set({
+        acceptedAt: null,
+        cancellationReason,
+        ...clearedSentBack,
+        status: 'cancelled',
+        statusChangedAt: now,
+        updatedAt: now,
+      })
       .where(eq(quotes.id, before.id))
       .returning();
 
@@ -202,14 +222,17 @@ export async function cancelQuote({
 }
 
 export async function createQuote({
-  actorUserId,
+  actor,
   db,
   input,
 }: {
-  actorUserId: AuthId;
+  actor: QuoteActor;
   db: Db;
   input: QuoteCreateInput;
 }): Promise<QuoteDetail> {
+  const actorUserId = actor.userId;
+  assertInvoiceNumberUnchanged({ given: input.invoiceNumber, stored: null });
+
   return db.transaction(async (tx) => {
     const customerId = await resolveQuoteCustomer({ actorUserId, input, tx });
     const offering = await resolveQuoteOffering({ input, tx });
@@ -230,7 +253,6 @@ export async function createQuote({
         discountPercent: input.discountPercent,
         isPartsSale: offering.isPartsSale,
         kind: offering.kind,
-        invoiceNumber: input.invoiceNumber,
         notes: input.notes,
         documentNotes: input.documentNotes,
         plannedDeliveryDate: input.plannedDeliveryDate,
@@ -285,19 +307,21 @@ export async function createQuote({
       input: { row, selectedAssemblies, workItems: persistedWorkItems },
     });
 
-    return getQuote({ db: tx, id: row.id });
+    return getQuote({ actor, db: tx, id: row.id });
   });
 }
 
 export async function updateQuote({
-  actorUserId,
+  actor,
   db,
   input,
 }: {
-  actorUserId: AuthId;
+  actor: QuoteActor;
   db: Db;
   input: QuoteUpdateInput;
 }): Promise<QuoteDetail> {
+  const actorUserId = actor.userId;
+
   return db.transaction(async (tx) => {
     const [before] = await tx.select().from(quotes).where(eq(quotes.id, input.id)).for('update');
 
@@ -316,6 +340,7 @@ export async function updateQuote({
     }
 
     assertStatusChangePickable({ before: before.status, next: input.status });
+    assertInvoiceNumberUnchanged({ given: input.invoiceNumber, stored: before.invoiceNumber });
     assertDeliveryConfirmedForAcceptance({ deliveryTerms: input.deliveryTerms, status: input.status });
 
     const collectionInput: QuoteCollectionPatchInput = {
@@ -337,7 +362,6 @@ export async function updateQuote({
       discountPercent: input.discountPercent,
       isPartsSale: before.isPartsSale,
       kind: before.kind,
-      invoiceNumber: input.invoiceNumber,
       notes: input.notes,
       documentNotes: input.documentNotes,
       plannedDeliveryDate: input.plannedDeliveryDate,
@@ -373,10 +397,11 @@ export async function updateQuote({
     const changedFields = toQuoteChangedFields({ changes, collections });
 
     if (changedFields.size === 0) {
-      return getQuote({ db: tx, id: before.id });
+      return getQuote({ actor, db: tx, id: before.id });
     }
 
     const editable = assertQuoteEditable({
+      actor,
       changedFields,
       hasEverSourcedJob: await quoteHasEverSourcedJob({ quoteId: before.id, tx }),
       hasProductUnit: before.productUnitId !== null,
@@ -427,7 +452,7 @@ export async function updateQuote({
       });
     }
 
-    return getQuote({ db: tx, id: row.id });
+    return getQuote({ actor, db: tx, id: row.id });
   });
 }
 
@@ -439,14 +464,16 @@ export async function updateQuote({
  * assistant's partial Quote update tool.
  */
 export async function patchQuote({
-  actorUserId,
+  actor,
   db,
   input,
 }: {
-  actorUserId: AuthId;
+  actor: QuoteActor;
   db: Db;
   input: QuotePatchInput;
 }): Promise<QuoteDetail> {
+  const actorUserId = actor.userId;
+
   return db.transaction(async (tx) => {
     const [before] = await tx.select().from(quotes).where(eq(quotes.id, input.id)).for('update');
 
@@ -464,6 +491,7 @@ export async function patchQuote({
     }
 
     assertStatusChangePickable({ before: before.status, next: input.status });
+    assertInvoiceNumberUnchanged({ given: input.invoiceNumber, stored: before.invoiceNumber });
     assertDeliveryConfirmedForAcceptance({
       deliveryTerms: before.deliveryTerms,
       status: input.status ?? before.status,
@@ -473,7 +501,6 @@ export async function patchQuote({
     const patch = {
       cancellationReason: input.cancellationReason !== undefined ? input.cancellationReason : before.cancellationReason,
       documentNotes: input.documentNotes !== undefined ? input.documentNotes : before.documentNotes,
-      invoiceNumber: input.invoiceNumber !== undefined ? input.invoiceNumber : before.invoiceNumber,
       notes: input.notes !== undefined ? input.notes : before.notes,
       plannedDeliveryDate:
         input.plannedDeliveryDate !== undefined ? input.plannedDeliveryDate : before.plannedDeliveryDate,
@@ -506,10 +533,11 @@ export async function patchQuote({
     const changedFields = toQuoteChangedFields({ changes, collections });
 
     if (changedFields.size === 0) {
-      return getQuote({ db: tx, id: before.id });
+      return getQuote({ actor, db: tx, id: before.id });
     }
 
     const editable = assertQuoteEditable({
+      actor,
       changedFields,
       hasEverSourcedJob: await quoteHasEverSourcedJob({ quoteId: before.id, tx }),
       hasProductUnit: before.productUnitId !== null,
@@ -560,7 +588,7 @@ export async function patchQuote({
       });
     }
 
-    return getQuote({ db: tx, id: row.id });
+    return getQuote({ actor, db: tx, id: row.id });
   });
 }
 
@@ -864,6 +892,19 @@ function assertStatusChangePickable({ before, next }: { before: QuoteStatus; nex
   throw next === 'cancelled' ? quoteCancelNotAnUpdate() : quoteStatusNotPickable(quoteStatusLabels[next]);
 }
 
+/** Phones on the build before Quote Stages send the Invoice Number on every save; only the stored one passes. */
+function assertInvoiceNumberUnchanged({
+  given,
+  stored,
+}: {
+  given: string | null | undefined;
+  stored: string | null;
+}): void {
+  if (given != null && given !== stored) {
+    throw quoteInvoiceNumberNotAnEdit();
+  }
+}
+
 function acceptedAtAfter({
   before,
   next,
@@ -888,8 +929,17 @@ function statusChangeStamps({
   before: { acceptedAt: Date | null; status: QuoteStatus };
   next: QuoteStatus;
   now: Date;
-}): { acceptedAt?: Date | null; statusChangedAt?: Date } {
-  return next === before.status ? {} : { acceptedAt: acceptedAtAfter({ before, next, now }), statusChangedAt: now };
+}): {
+  acceptedAt?: Date | null;
+  statusChangedAt?: Date;
+  sentBackAt?: null;
+  sentBackByUserId?: null;
+  sentBackNote?: null;
+} {
+  // A send-back lasts only while the Quote stays accepted.
+  return next === before.status
+    ? {}
+    : { acceptedAt: acceptedAtAfter({ before, next, now }), statusChangedAt: now, ...clearedSentBack };
 }
 
 async function quoteHasLiveJob({ quoteId, tx }: { quoteId: UUID; tx: DatabaseTransaction }): Promise<boolean> {

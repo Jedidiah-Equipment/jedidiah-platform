@@ -5,9 +5,9 @@ import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { EntityActionsFooter } from '@/components/common/EntityActionsFooter.js';
 import { RemoveEntityButton } from '@/components/common/RemoveEntityButton.js';
+import { ReasonDialog } from '@/components/form/ReasonDialog.js';
 import { Button } from '@/components/ui/button.js';
 import { type MachineDialogSubject, MachineDialogTitle } from '@/contracting/components/MachineDialogTitle.js';
-import { ReasonDialog } from '@/contracting/components/ReasonDialog.js';
 import { useQueryInvalidation } from '@/contracting/hooks/use-query-invalidation.js';
 import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.js';
 

@@ -1,7 +1,7 @@
 import type React from 'react';
 import { z } from 'zod';
 import { ErrorMessage } from '@/components/common/ErrorMessage.js';
-import { CreateEntityDialog } from '@/components/form/index.js';
+import { CreateEntityDialog } from './CreateEntityDialog.js';
 
 /** A dialog that asks for one required text before a write: the reason, the note, the sentence the action needs. */
 export function ReasonDialog({

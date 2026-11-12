@@ -26,7 +26,7 @@ import {
   QuoteWorkTitle,
 } from '@pkg/schema/equipment';
 import { z } from 'zod';
-import { requireAiActorId } from '@/equipment/actor.js';
+import { requireAiActor } from '@/equipment/actor.js';
 import type { AiContext } from '@/equipment/context.js';
 import { CustomerMatchResponse, toCustomerMatchResponse } from '@/equipment/tools/customers/customer-match-response.js';
 import {
@@ -129,10 +129,11 @@ export const createQuoteDefinition = {
   outputSchema: CreateQuoteResponse,
   anyOfPermissions: ['equipment_quote:create'],
   async handler(args: unknown, ctx: AiContext): Promise<CreateQuoteResponse> {
-    const actorUserId = requireAiActorId(ctx);
+    const actor = requireAiActor(ctx);
+    const actorUserId = actor.userId;
     const input = toCoreQuoteCreateInput(CreateQuoteInput.parse(args), actorUserId);
     try {
-      const quote = await quotesCore.createQuote({ actorUserId, db: ctx.db, input });
+      const quote = await quotesCore.createQuote({ actor, db: ctx.db, input });
       return toCreateQuoteResponse(quote, ctx.access);
     } catch (error) {
       if (quotesCore.isCustomerError(error) && error.code === 'customer.possible_match')

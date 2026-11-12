@@ -1,17 +1,18 @@
+import type { EquipmentRole } from '@pkg/schema';
 import { describe, expect, it } from 'vitest';
+import { getRolePermissions } from '../../auth/authorization.js';
+import {
+  assertQuoteEditable,
+  editableLockedQuoteFields,
+  isQuoteLocked,
+  shouldOfferQuoteCancellation,
+} from './quote-lock.js';
 
-import { assertQuoteEditable, isQuoteLocked, shouldOfferQuoteCancellation } from './quote-lock.js';
+const actorFor = (role: EquipmentRole) => ({ permissions: getRolePermissions(role) });
+const superAdmin = actorFor('super-admin');
 
-const alwaysEditableFields = [
-  'invoiceNumber',
-  'notes',
-  'documentNotes',
-  'plannedDeliveryDate',
-  'preferredDeliveryDate',
-  'validUntil',
-  'workItems',
-];
-const settlingTermsFields = ['depositPercent', 'deliveryTerms', 'deliveryPrice', 'discountPercent'];
+const alwaysEditableFields = ['notes', 'documentNotes', 'plannedDeliveryDate', 'preferredDeliveryDate', 'validUntil'];
+const settlingTermsFields = ['depositPercent', 'deliveryTerms', 'deliveryPrice', 'discountPercent', 'workItems'];
 const frozenFields = [
   'customerId',
   'productId',
@@ -26,6 +27,7 @@ describe('assertQuoteEditable', () => {
   it.each(['product', 'custom'] as const)('rejects status changes on cancelled %s quotes', (kind) => {
     expect(
       assertQuoteEditable({
+        actor: superAdmin,
         changedFields: ['status'],
         hasEverSourcedJob: false,
         hasProductUnit: false,
@@ -43,6 +45,7 @@ describe('assertQuoteEditable', () => {
     (field) => {
       expect(
         assertQuoteEditable({
+          actor: superAdmin,
           changedFields: [field],
           hasEverSourcedJob: false,
           hasProductUnit: false,
@@ -56,6 +59,7 @@ describe('assertQuoteEditable', () => {
   it.each(frozenFields)('rejects %s after a product quote has a job', (field) => {
     expect(
       assertQuoteEditable({
+        actor: superAdmin,
         changedFields: [field],
         hasEverSourcedJob: true,
         hasProductUnit: false,
@@ -71,6 +75,7 @@ describe('assertQuoteEditable', () => {
   it('rejects unknown changed fields after a quote has a job', () => {
     expect(
       assertQuoteEditable({
+        actor: superAdmin,
         changedFields: ['futureCommercialField'],
         hasEverSourcedJob: true,
         hasProductUnit: false,
@@ -88,6 +93,7 @@ describe('assertQuoteEditable', () => {
     (field) => {
       expect(
         assertQuoteEditable({
+          actor: superAdmin,
           changedFields: [field],
           hasEverSourcedJob: true,
           hasProductUnit: false,
@@ -101,6 +107,7 @@ describe('assertQuoteEditable', () => {
   it.each(frozenFields)('rejects custom quote %s changes after acceptance', (field) => {
     expect(
       assertQuoteEditable({
+        actor: superAdmin,
         changedFields: [field],
         hasEverSourcedJob: false,
         hasProductUnit: false,
@@ -116,6 +123,7 @@ describe('assertQuoteEditable', () => {
   it.each(frozenFields)('rejects %s on an accepted stock sale', (field) => {
     expect(
       assertQuoteEditable({
+        actor: superAdmin,
         changedFields: [field],
         hasEverSourcedJob: false,
         hasProductUnit: true,
@@ -144,6 +152,7 @@ describe('assertQuoteEditable', () => {
   it.each(acceptedLockedQuotes)('allows the Settling Terms and every always-editable field on %s', (_label, quote) => {
     expect(
       assertQuoteEditable({
+        actor: superAdmin,
         ...quote,
         changedFields: [...settlingTermsFields, ...alwaysEditableFields],
         status: 'accepted',
@@ -154,6 +163,7 @@ describe('assertQuoteEditable', () => {
   it.each(settlingTermsFields)('rejects %s once a quote is cancelled', (field) => {
     expect(
       assertQuoteEditable({
+        actor: superAdmin,
         changedFields: [field],
         hasEverSourcedJob: true,
         hasProductUnit: false,
@@ -169,6 +179,7 @@ describe('assertQuoteEditable', () => {
   it.each(alwaysEditableFields)('allows %s changes after a custom quote is cancelled', (field) => {
     expect(
       assertQuoteEditable({
+        actor: superAdmin,
         changedFields: [field],
         hasEverSourcedJob: true,
         hasProductUnit: false,
@@ -176,6 +187,29 @@ describe('assertQuoteEditable', () => {
         status: 'cancelled',
       }),
     ).toEqual({ allowed: true });
+  });
+});
+
+describe('editableLockedQuoteFields', () => {
+  const neverLocked = ['notes', 'plannedDeliveryDate', 'preferredDeliveryDate'];
+  const documentFields = ['documentNotes', 'validUntil'];
+  const fields = (role: EquipmentRole, status: Parameters<typeof editableLockedQuoteFields>[0]['status']) =>
+    [...editableLockedQuoteFields({ actor: actorFor(role), status })].toSorted();
+
+  it.each([
+    ['accepted', 'sales', [...neverLocked, ...documentFields]],
+    ['accepted', 'admin', [...neverLocked, ...documentFields, ...settlingTermsFields]],
+    ['awaiting-approval', 'admin', neverLocked],
+    ['awaiting-approval', 'super-admin', [...neverLocked, ...documentFields, ...settlingTermsFields]],
+    ['awaiting-invoice', 'super-admin', neverLocked],
+    ['invoiced', 'super-admin', neverLocked],
+    ['cancelled', 'super-admin', [...neverLocked, ...documentFields]],
+  ] as const)('opens %s to %s for only its row of the table', (status, role, expected) => {
+    expect(fields(role, status)).toEqual([...expected].toSorted());
+  });
+
+  it('opens nothing to someone who cannot update Quotes', () => {
+    expect(fields('job-viewer', 'accepted')).toEqual([]);
   });
 });
 
@@ -230,8 +264,11 @@ describe('shouldOfferQuoteCancellation', () => {
     expect(shouldOfferQuoteCancellation({ canCancel: true, quote: lockedQuote })).toBe(true);
   });
 
-  it('withholds it without the permission, once cancelled, and while the Quote is still unlocked', () => {
+  it('withholds it without the permission, once cancelled or invoiced, and while the Quote is still unlocked', () => {
     expect(shouldOfferQuoteCancellation({ canCancel: false, quote: lockedQuote })).toBe(false);
+    expect(shouldOfferQuoteCancellation({ canCancel: true, quote: { ...lockedQuote, status: 'invoiced' } })).toBe(
+      false,
+    );
     expect(shouldOfferQuoteCancellation({ canCancel: true, quote: { ...lockedQuote, status: 'cancelled' } })).toBe(
       false,
     );

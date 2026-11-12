@@ -93,7 +93,6 @@ async function loadReceivingQuote(db: Db, quoteId: UUID): Promise<ReceivingQuote
   const [quote] = await db
     .select({
       id: quotes.id,
-      invoiceNumber: quotes.invoiceNumber,
       kind: quotes.kind,
       productId: quotes.productId,
       productUnitId: quotes.productUnitId,

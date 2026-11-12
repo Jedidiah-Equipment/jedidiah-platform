@@ -24,9 +24,8 @@ import {
   sendQuoteBack,
   sendQuoteForApproval,
   stampQuoteInvoice,
-  summarizeQuotePipeline,
+  summarizeInvoicedByMonth,
   summarizeQuoteStages,
-  summarizeQuotesByStatus,
   summarizeQuoteWeeklyFlow,
   updateQuote,
 } from '@pkg/core/equipment';
@@ -97,14 +96,6 @@ export const quotesRouter = router({
     .query(({ ctx, input }) => listQuoteInventoryParts({ db: ctx.db, input })),
 
   salespeople: authorizedProcedure('equipment_quote:read').query(({ ctx }) => listQuoteSalespeople({ db: ctx.db })),
-
-  summaryByStatus: authorizedProcedure('equipment_quote:read').query(({ ctx }) =>
-    summarizeQuotesByStatus({ db: ctx.db }),
-  ),
-
-  pipelineSummary: authorizedProcedure('equipment_quote:read').query(({ ctx }) =>
-    summarizeQuotePipeline({ db: ctx.db }),
-  ),
 
   weeklyFlow: authorizedProcedure('equipment_quote:read').query(({ ctx }) => summarizeQuoteWeeklyFlow({ db: ctx.db })),
 
@@ -190,6 +181,10 @@ export const quotesRouter = router({
     ),
 
   stageCounts: authorizedProcedure('equipment_quote:read').query(({ ctx }) => summarizeQuoteStages({ db: ctx.db })),
+
+  invoicedByMonth: authorizedProcedure('equipment_quote:price').query(({ ctx }) =>
+    summarizeInvoicedByMonth({ db: ctx.db }),
+  ),
 
   findByInvoiceNumber: authorizedProcedure('equipment_invoice:update')
     .input(InvoiceNumberLookupInput)

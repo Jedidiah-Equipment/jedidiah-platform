@@ -8,8 +8,8 @@ import {
   dashboardRowClassName,
   dashboardRowLinkClassName,
 } from '@/components/common/dashboard/DashboardListBlock.js';
+import { DASHBOARD_REFETCH_INTERVAL_MS } from '@/components/common/dashboard/dashboard-refresh.js';
 import { PrimaryLink } from '@/components/common/PrimaryLink.js';
-import { DASHBOARD_REFETCH_INTERVAL_MS } from '@/contracting/lib/dashboard-refresh.js';
 import { JobAttentionBadge } from '@/contracting/pages/jobs/JobAttentionBadge.js';
 import { useTRPC } from '@/lib/trpc.js';
 

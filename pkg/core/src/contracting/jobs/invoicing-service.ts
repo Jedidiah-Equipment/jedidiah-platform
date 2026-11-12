@@ -8,8 +8,8 @@ import {
   zonedDateStartToUtcInstant,
 } from '@pkg/domain';
 import { formatJobNumber, type JobActor, jobTransitions, readsJobMoney } from '@pkg/domain/contracting';
-import type { DateOnlyIso } from '@pkg/schema';
-import { INVOICED_MONTHS_SHOWN, InvoicedByMonth, type JobStampInvoiceInput } from '@pkg/schema/contracting';
+import { type DateOnlyIso, INVOICED_MONTHS_SHOWN } from '@pkg/schema';
+import { InvoicedByMonth, type JobStampInvoiceInput } from '@pkg/schema/contracting';
 import { and, asc, eq, gte, sql } from 'drizzle-orm';
 import { JobError, totalChanged } from './job-errors.js';
 import { lockJobFor } from './job-lock.js';

@@ -1,25 +1,14 @@
 import { type Db, user } from '@pkg/db';
-import {
-  customers,
-  jobBays,
-  jobSlots,
-  jobs,
-  products,
-  quotes,
-  quoteWorkItemParts,
-  quoteWorkItems,
-} from '@pkg/db/equipment';
+import { customers, jobs, products, quotes, quoteWorkItemParts, quoteWorkItems } from '@pkg/db/equipment';
+import { DateOnlyIso } from '@pkg/schema';
 import { hasQuoteStatus, type QuoteDeliveryTerms, type QuoteStatus, soldQuoteStatuses } from '@pkg/schema/equipment';
 import { describe, expect } from 'vitest';
 
 import { createTester } from '../../test/create-tester.js';
 import { createProductRangeFixture } from '../test/product-range-fixtures.js';
-import {
-  listStaleSentQuotes,
-  summarizeQuotePipeline,
-  summarizeQuotesByStatus,
-  summarizeQuoteWeeklyFlow,
-} from './quote-report-service.js';
+import { testQuoteActor } from '../test/quote-actor.js';
+import { listStaleSentQuotes, summarizeInvoicedByMonth, summarizeQuoteWeeklyFlow } from './quote-report-service.js';
+import { removeQuoteInvoiceNumber } from './quote-stage-service.js';
 
 const test = createTester(async ({ db }) => {
   const now = new Date();
@@ -62,36 +51,48 @@ const test = createTester(async ({ db }) => {
   };
 });
 
-describe('summarizeQuotesByStatus', () => {
-  test('returns every quote status with zero-filled missing statuses', async ({ context }) => {
-    await createQuoteRows(context.db, {
+describe('summarizeInvoicedByMonth', () => {
+  test('buckets Invoiced Quotes by plant-time month at their ex-VAT totals after discount', async ({ context }) => {
+    const quote = {
       customerId: context.customer.id,
       productId: context.product.id,
       salesPersonId: context.salesPerson.id,
-      statuses: ['draft', 'draft', 'accepted', 'cancelled'],
+      statuses: ['invoiced'] as QuoteStatus[],
+    };
+    // 2000 base + 100 delivery - 10% discount on the base = 1900, on the last evening of October.
+    await createQuoteRows(context.db, {
+      ...quote,
+      deliveryPrice: 100,
+      deliveryTerms: 'additional_charge',
+      discountPercent: 10,
+      invoicedAt: zonedInstant('2026-10-31T23:30:00'),
+      quotedBasePrice: 2000,
+    });
+    await createQuoteRows(context.db, { ...quote, invoicedAt: zonedInstant('2026-11-01T00:30:00') });
+    await createQuoteRows(context.db, { ...quote, invoicedAt: zonedInstant('2026-08-01T00:30:00') });
+    // The day before the window opens.
+    await createQuoteRows(context.db, { ...quote, invoicedAt: zonedInstant('2026-07-31T23:30:00') });
+    const [unstamped] = await createQuoteRows(context.db, {
+      ...quote,
+      invoicedAt: zonedInstant('2026-11-05T09:00:00'),
+    });
+    if (!unstamped) throw new Error('Expected an invoiced quote row');
+    await removeQuoteInvoiceNumber({
+      actor: testQuoteActor(context.salesPerson.id, 'super-admin'),
+      db: context.db,
+      input: { id: unstamped.id },
     });
 
-    await expect(summarizeQuotesByStatus({ db: context.db })).resolves.toEqual({
-      items: [
-        { count: 2, status: 'draft' },
-        { count: 0, status: 'sent' },
-        { count: 1, status: 'accepted' },
-        { count: 0, status: 'rejected' },
-        { count: 1, status: 'cancelled' },
-      ],
-    });
-  });
-
-  test('returns all statuses as zero when there are no quotes', async ({ context }) => {
-    await expect(summarizeQuotesByStatus({ db: context.db })).resolves.toEqual({
-      items: [
-        { count: 0, status: 'draft' },
-        { count: 0, status: 'sent' },
-        { count: 0, status: 'accepted' },
-        { count: 0, status: 'rejected' },
-        { count: 0, status: 'cancelled' },
-      ],
-    });
+    await expect(summarizeInvoicedByMonth({ db: context.db, today: DateOnlyIso.parse('2026-11-12') })).resolves.toEqual(
+      {
+        months: [
+          { month: '2026-11-01', quotes: 1, total: 1000 },
+          { month: '2026-10-01', quotes: 1, total: 1900 },
+          { month: '2026-09-01', quotes: 0, total: 0 },
+          { month: '2026-08-01', quotes: 1, total: 1000 },
+        ],
+      },
+    );
   });
 });
 
@@ -181,172 +182,6 @@ describe('summarizeQuoteWeeklyFlow', () => {
 
     await expect(summarizeQuoteWeeklyFlow({ clock: rolloverClock, db: context.db, weekCount: 1 })).resolves.toEqual({
       items: [{ acceptedCount: 0, createdCount: 0, weekStartDate: '2026-01-05' }],
-    });
-  });
-});
-
-describe('summarizeQuotePipeline', () => {
-  const fixedClock = () => new Date('2026-06-04T10:00:00.000Z');
-
-  test('sums sent quote totals and splits out the newly-sent 30-day window on plant day boundaries', async ({
-    context,
-  }) => {
-    // 30-day window covering plant today starts at 2026-05-06; sent on the boundary day is included.
-    const [boundaryQuote] = await createQuoteRows(context.db, {
-      customerId: context.customer.id,
-      deliveryTerms: 'additional_charge',
-      deliveryPrice: 100,
-      discountPercent: 10,
-      productId: context.product.id,
-      quotedBasePrice: 2000,
-      salesPersonId: context.salesPerson.id,
-      statuses: ['sent'],
-      statusChangedAt: zonedInstant('2026-05-06T00:00:00'),
-    });
-    if (!boundaryQuote) throw new Error('Expected sent quote row');
-    // Sent just before the window start stays in the open pipeline but not in the newly-sent value.
-    await createQuoteRows(context.db, {
-      customerId: context.customer.id,
-      productId: context.product.id,
-      quotedBasePrice: 500,
-      salesPersonId: context.salesPerson.id,
-      statuses: ['sent'],
-      statusChangedAt: zonedInstant('2026-05-05T23:59:59'),
-    });
-    // Non-sent statuses never contribute to pipeline value.
-    await createQuoteRows(context.db, {
-      customerId: context.customer.id,
-      productId: context.product.id,
-      quotedBasePrice: 9000,
-      salesPersonId: context.salesPerson.id,
-      statuses: ['draft', 'accepted', 'cancelled'],
-      statusChangedAt: zonedInstant('2026-06-01T08:00:00'),
-    });
-
-    const summary = await summarizeQuotePipeline({ clock: fixedClock, db: context.db });
-
-    // 2000 base + 100 delivery - 10% discount on the base = 1900, plus the 500 quote outside the 30d window.
-    expect(summary).toMatchObject({
-      newlySent30dValue: 1900,
-      openPipelineCount: 2,
-      openPipelineValue: 2400,
-    });
-  });
-
-  test('includes custom sent quote value in the pipeline totals', async ({ context }) => {
-    const [customQuote] = await createQuoteRows(context.db, {
-      customerId: context.customer.id,
-      deliveryTerms: 'additional_charge',
-      deliveryPrice: 50,
-      discountPercent: 10,
-      kind: 'custom',
-      productId: null,
-      quotedBasePrice: 0,
-      salesPersonId: context.salesPerson.id,
-      statuses: ['sent'],
-      statusChangedAt: zonedInstant('2026-05-20T09:00:00'),
-      workTitle: 'Pipeline repair',
-    });
-    if (!customQuote) throw new Error('Expected custom sent quote row');
-    const [workItem] = await context.db
-      .insert(quoteWorkItems)
-      .values({ department: 'fabrication', hourlyRate: 550, hours: 2, quoteId: customQuote.id })
-      .returning();
-    if (!workItem) throw new Error('Expected custom work item row');
-    await context.db
-      .insert(quoteWorkItemParts)
-      .values({ name: 'Fuel', quantity: 1, unitPrice: 100, workItemId: workItem.id });
-
-    // 2 x R550 labour + R100 parts, less 10% discount, plus R50 delivery.
-    await expect(summarizeQuotePipeline({ clock: fixedClock, db: context.db })).resolves.toMatchObject({
-      newlySent30dValue: 1130,
-      openPipelineCount: 1,
-      openPipelineValue: 1130,
-    });
-  });
-
-  test('adds active and scheduled Jobs at retail and drops Jobs whose Slots are all done', async ({ context }) => {
-    // Bay origin is the Monday of plant today's week, so sequenced Slots straddle plant today.
-    const currentBay = await createBayRow(context.db, { name: 'Pipeline Current Bay', scheduleOrigin: '2026-06-01' });
-    const futureBay = await createBayRow(context.db, { name: 'Pipeline Future Bay', scheduleOrigin: '2026-07-06' });
-    const [doneQuote, activeQuote, scheduledQuote, cancelledQuote, unscheduledQuote] = await createQuoteRows(
-      context.db,
-      {
-        customerId: context.customer.id,
-        productId: context.product.id,
-        quotedBasePrice: 1000,
-        salesPersonId: context.salesPerson.id,
-        statuses: ['accepted', 'accepted', 'accepted', 'cancelled', 'accepted'],
-        statusChangedAt: zonedInstant('2026-05-20T09:00:00'),
-      },
-    );
-    if (!doneQuote || !activeQuote || !scheduledQuote || !cancelledQuote || !unscheduledQuote) {
-      throw new Error('Expected five job-backed quote rows');
-    }
-    // Sequence 1 finishes on 2026-06-01, sequence 2 then runs 10 working days across plant today.
-    await createJobRow(context.db, { bayId: currentBay.id, durationDays: 1, quoteId: doneQuote.id, sequence: 1 });
-    await createJobRow(context.db, { bayId: currentBay.id, durationDays: 10, quoteId: activeQuote.id, sequence: 2 });
-    await createJobRow(context.db, { bayId: futureBay.id, durationDays: 2, quoteId: scheduledQuote.id, sequence: 1 });
-    await createJobRow(context.db, {
-      bayId: futureBay.id,
-      cancelled: true,
-      durationDays: 2,
-      quoteId: cancelledQuote.id,
-      sequence: 2,
-    });
-    // A Job with no Slot is neither active nor scheduled, so it carries no pipeline value.
-    await createJobRow(context.db, { quoteId: unscheduledQuote.id });
-
-    await expect(summarizeQuotePipeline({ clock: fixedClock, db: context.db })).resolves.toMatchObject({
-      openPipelineCount: 2,
-      openPipelineValue: 2000,
-    });
-  });
-
-  test('counts a sent Quote that already carries an active Job only once', async ({ context }) => {
-    const bay = await createBayRow(context.db, { name: 'Pipeline Sent Job Bay', scheduleOrigin: '2026-06-01' });
-    const [sentQuote] = await createQuoteRows(context.db, {
-      customerId: context.customer.id,
-      productId: context.product.id,
-      quotedBasePrice: 1000,
-      salesPersonId: context.salesPerson.id,
-      statuses: ['sent'],
-      statusChangedAt: zonedInstant('2026-05-20T09:00:00'),
-    });
-    if (!sentQuote) throw new Error('Expected sent quote row');
-    await createJobRow(context.db, { bayId: bay.id, durationDays: 10, quoteId: sentQuote.id, sequence: 1 });
-
-    await expect(summarizeQuotePipeline({ clock: fixedClock, db: context.db })).resolves.toMatchObject({
-      openPipelineCount: 1,
-      openPipelineValue: 1000,
-    });
-  });
-
-  test('counts accepted and rejected decisions inside the 90-day window and excludes cancelled', async ({
-    context,
-  }) => {
-    // 90-day window covering plant today starts at 2026-03-07.
-    await createQuoteRows(context.db, {
-      customerId: context.customer.id,
-      productId: context.product.id,
-      salesPersonId: context.salesPerson.id,
-      statuses: ['accepted', 'accepted', 'rejected', 'cancelled'],
-      statusChangedAt: zonedInstant('2026-03-07T00:00:00'),
-    });
-    await createQuoteRows(context.db, {
-      customerId: context.customer.id,
-      productId: context.product.id,
-      salesPersonId: context.salesPerson.id,
-      statuses: ['accepted', 'rejected'],
-      statusChangedAt: zonedInstant('2026-03-06T23:59:59'),
-    });
-
-    await expect(summarizeQuotePipeline({ clock: fixedClock, db: context.db })).resolves.toEqual({
-      accepted90dCount: 2,
-      newlySent30dValue: 0,
-      openPipelineCount: 0,
-      openPipelineValue: 0,
-      rejected90dCount: 1,
     });
   });
 });
@@ -454,34 +289,10 @@ function zonedInstant(johannesburgLocalTime: string): Date {
   return new Date(`${johannesburgLocalTime}+02:00`);
 }
 
-async function createBayRow(db: Db, { name, scheduleOrigin }: { name: string; scheduleOrigin: string }) {
-  const [bay] = await db.insert(jobBays).values({ department: 'assembly', name, scheduleOrigin }).returning();
-
-  if (!bay) throw new Error('Expected bay row');
-
-  return bay;
-}
-
-async function createJobRow(
-  db: Db,
-  {
-    bayId,
-    cancelled = false,
-    durationDays,
-    quoteId,
-    sequence,
-  }: { bayId?: string; cancelled?: boolean; durationDays?: number; quoteId: string; sequence?: number },
-) {
-  const [job] = await db
-    .insert(jobs)
-    .values({ cancelledAt: cancelled ? new Date() : null, quoteId })
-    .returning();
+async function createJobRow(db: Db, { quoteId }: { quoteId: string }) {
+  const [job] = await db.insert(jobs).values({ quoteId }).returning();
 
   if (!job) throw new Error('Expected job row');
-
-  if (bayId !== undefined && durationDays !== undefined && sequence !== undefined) {
-    await db.insert(jobSlots).values({ bayId, durationDays, jobId: job.id, kind: 'work', sequence });
-  }
 
   return job;
 }
@@ -495,6 +306,7 @@ async function createQuoteRows(
     deliveryTerms = 'included' as QuoteDeliveryTerms,
     deliveryPrice = 0,
     discountPercent = 0,
+    invoicedAt,
     kind = 'product',
     productId,
     quotedBasePrice = 1000,
@@ -509,6 +321,7 @@ async function createQuoteRows(
     deliveryTerms?: QuoteDeliveryTerms;
     deliveryPrice?: number;
     discountPercent?: number;
+    invoicedAt?: Date;
     kind?: 'product' | 'custom';
     productId: string | null;
     quotedBasePrice?: number;
@@ -536,6 +349,7 @@ async function createQuoteRows(
         salesPersonId,
         acceptedAt: hasQuoteStatus(soldQuoteStatuses, status) ? (acceptedAt ?? statusChangedAt ?? new Date()) : null,
         status,
+        ...(status === 'invoiced' ? { invoiceNumber: 'INV-TEST', invoicedAt: invoicedAt ?? new Date() } : {}),
         workTitle,
       })),
     )

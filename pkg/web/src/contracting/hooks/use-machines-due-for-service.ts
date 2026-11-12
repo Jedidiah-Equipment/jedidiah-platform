@@ -1,6 +1,6 @@
 import { machinesDueForService } from '@pkg/domain/contracting';
 import { useQuery } from '@tanstack/react-query';
-import { DASHBOARD_REFETCH_INTERVAL_MS } from '@/contracting/lib/dashboard-refresh.js';
+import { DASHBOARD_REFETCH_INTERVAL_MS } from '@/components/common/dashboard/dashboard-refresh.js';
 import { useTRPC } from '@/lib/trpc.js';
 
 /**

@@ -1,4 +1,5 @@
-import type { DashboardWidget } from '@/components/common/dashboard/dashboard-widget-types.js';
+import { quoteStageLabels } from '@pkg/domain/equipment';
+import type { DashboardRows } from '@/components/common/dashboard/dashboard-rows.js';
 import { ActiveJobsWidget } from './widgets/ActiveJobsWidget.js';
 import { AwaitingJobCreationWidget } from './widgets/AwaitingJobCreationWidget.js';
 import { BayLoadTodayWidget } from './widgets/BayLoadTodayWidget.js';
@@ -9,118 +10,154 @@ import {
   TopInventoryAdjustmentsWidget,
   TopScrapItemsWidget,
 } from './widgets/InventoryKpiWidgets.js';
-import { OpenPipelineWidget } from './widgets/OpenPipelineWidget.js';
+import { InvoicedByMonthWidget } from './widgets/InvoicedByMonthWidget.js';
 import { QuoteFlowWidget } from './widgets/QuoteFlowWidget.js';
+import { AwaitingApprovalTile, AwaitingInvoiceTile, AwaitingPricingTile } from './widgets/QuoteStageTiles.js';
 import { QuotesByStatusWidget } from './widgets/QuotesByStatusWidget.js';
 import { ScheduledJobsWidget } from './widgets/ScheduledJobsWidget.js';
 import { ShopFloorTodayWidget } from './widgets/ShopFloorTodayWidget.js';
 import { StaleSentQuotesWidget } from './widgets/StaleSentQuotesWidget.js';
 import { UpcomingDeliveriesWidget } from './widgets/UpcomingDeliveriesWidget.js';
 
-export const dashboardWidgets = [
-  {
-    Component: OpenPipelineWidget,
-    id: 'open-pipeline',
-    requires: 'equipment_quote:read',
-    size: 'xs',
-    title: 'Open pipeline (retail, excl. VAT)',
-  },
-  {
-    Component: ScheduledJobsWidget,
-    id: 'scheduled-jobs',
-    requires: 'equipment_job:read',
-    size: 'xs',
-    title: 'Scheduled jobs',
-  },
-  {
-    Component: ActiveJobsWidget,
-    id: 'active-jobs',
-    requires: 'equipment_job:read',
-    size: 'xs',
-    title: 'Active jobs',
-  },
-  {
-    Component: BayLoadTodayWidget,
-    id: 'bay-load-today',
-    requires: 'equipment_job:read',
-    size: 'xs',
-    title: 'Bay load today',
-  },
-  {
-    Component: QuotesByStatusWidget,
-    id: 'quotes-by-status',
-    requires: 'equipment_quote:read',
-    size: 'md',
-    title: 'Quotes by status',
-  },
-  {
-    Component: QuoteFlowWidget,
-    id: 'quote-flow',
-    requires: 'equipment_quote:read',
-    size: 'md',
-    title: 'Quote flow',
-  },
-  {
-    Component: ShopFloorTodayWidget,
-    id: 'shop-floor-today',
-    requires: 'equipment_job:read',
-    size: 'md',
-    title: 'Shop floor today',
-  },
-  {
-    Component: BayRunwayWidget,
-    id: 'bay-runway',
-    requires: 'equipment_job:read',
-    size: 'md',
-    title: 'Bay runway',
-  },
-  {
-    Component: StaleSentQuotesWidget,
-    id: 'stale-sent-quotes',
-    requires: 'equipment_quote:read',
-    size: 'sm',
-    title: 'Stale sent quotes',
-  },
-  {
-    Component: AwaitingJobCreationWidget,
-    id: 'awaiting-job-creation',
-    requires: 'equipment_quote:read',
-    size: 'sm',
-    title: 'Awaiting Job creation',
-  },
-  {
-    Component: UpcomingDeliveriesWidget,
-    id: 'upcoming-deliveries',
-    requires: 'equipment_quote:read',
-    size: 'sm',
-    title: 'Upcoming deliveries',
-  },
-  {
-    Component: InventoryValueWidget,
-    id: 'inventory-value',
-    requires: 'equipment_inventory_cost:read',
-    size: 'xs',
-    title: 'Inventory value',
-  },
-  {
-    Component: InventoryTurnsWidget,
-    id: 'inventory-turns',
-    requires: 'equipment_inventory_cost:read',
-    size: 'xs',
-    title: 'Inventory turns',
-  },
-  {
-    Component: TopInventoryAdjustmentsWidget,
-    id: 'top-inventory-adjustments',
-    requires: 'equipment_inventory_cost:read',
-    size: 'xs',
-    title: 'Top adjustments this month',
-  },
-  {
-    Component: TopScrapItemsWidget,
-    id: 'top-scrap-items',
-    requires: 'equipment_inventory_cost:read',
-    size: 'xs',
-    title: 'Top scrap this month',
-  },
-] as const satisfies readonly DashboardWidget[];
+export const equipmentDashboardRows = [
+  [
+    {
+      Component: AwaitingPricingTile,
+      id: 'awaiting-pricing',
+      requires: 'equipment_quote:read',
+      size: 'xs',
+      title: quoteStageLabels['awaiting-pricing'],
+    },
+    {
+      Component: AwaitingApprovalTile,
+      id: 'awaiting-approval',
+      requires: 'equipment_quote:read',
+      size: 'xs',
+      title: quoteStageLabels['awaiting-approval'],
+    },
+    {
+      Component: AwaitingInvoiceTile,
+      id: 'awaiting-invoice',
+      requires: 'equipment_quote:read',
+      size: 'xs',
+      title: quoteStageLabels['awaiting-invoice'],
+    },
+  ],
+  [
+    {
+      Component: InvoicedByMonthWidget,
+      id: 'invoiced-by-month',
+      requires: 'equipment_quote:price',
+      size: 'xl',
+      title: 'Invoiced by month (ex VAT)',
+    },
+  ],
+  [
+    {
+      Component: ScheduledJobsWidget,
+      id: 'scheduled-jobs',
+      requires: 'equipment_job:read',
+      size: 'xs',
+      title: 'Scheduled jobs',
+    },
+    {
+      Component: ActiveJobsWidget,
+      id: 'active-jobs',
+      requires: 'equipment_job:read',
+      size: 'xs',
+      title: 'Active jobs',
+    },
+    {
+      Component: BayLoadTodayWidget,
+      id: 'bay-load-today',
+      requires: 'equipment_job:read',
+      size: 'xs',
+      title: 'Bay load today',
+    },
+  ],
+  [
+    {
+      Component: QuotesByStatusWidget,
+      id: 'quotes-by-status',
+      requires: 'equipment_quote:read',
+      size: 'md',
+      title: 'Quotes by status',
+    },
+    {
+      Component: QuoteFlowWidget,
+      id: 'quote-flow',
+      requires: 'equipment_quote:read',
+      size: 'md',
+      title: 'Quote flow',
+    },
+  ],
+  [
+    {
+      Component: ShopFloorTodayWidget,
+      id: 'shop-floor-today',
+      requires: 'equipment_job:read',
+      size: 'md',
+      title: 'Shop floor today',
+    },
+    {
+      Component: BayRunwayWidget,
+      id: 'bay-runway',
+      requires: 'equipment_job:read',
+      size: 'md',
+      title: 'Bay runway',
+    },
+  ],
+  [
+    {
+      Component: StaleSentQuotesWidget,
+      id: 'stale-sent-quotes',
+      requires: 'equipment_quote:read',
+      size: 'sm',
+      title: 'Stale sent quotes',
+    },
+    {
+      Component: AwaitingJobCreationWidget,
+      id: 'awaiting-job-creation',
+      requires: 'equipment_quote:read',
+      size: 'sm',
+      title: 'Awaiting Job creation',
+    },
+    {
+      Component: UpcomingDeliveriesWidget,
+      id: 'upcoming-deliveries',
+      requires: 'equipment_quote:read',
+      size: 'sm',
+      title: 'Upcoming deliveries',
+    },
+  ],
+  [
+    {
+      Component: InventoryValueWidget,
+      id: 'inventory-value',
+      requires: 'equipment_inventory_cost:read',
+      size: 'xs',
+      title: 'Inventory value',
+    },
+    {
+      Component: InventoryTurnsWidget,
+      id: 'inventory-turns',
+      requires: 'equipment_inventory_cost:read',
+      size: 'xs',
+      title: 'Inventory turns',
+    },
+    {
+      Component: TopInventoryAdjustmentsWidget,
+      id: 'top-inventory-adjustments',
+      requires: 'equipment_inventory_cost:read',
+      size: 'xs',
+      title: 'Top adjustments this month',
+    },
+    {
+      Component: TopScrapItemsWidget,
+      id: 'top-scrap-items',
+      requires: 'equipment_inventory_cost:read',
+      size: 'xs',
+      title: 'Top scrap this month',
+    },
+  ],
+] as const satisfies DashboardRows;

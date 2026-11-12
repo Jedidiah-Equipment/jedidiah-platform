@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { AuthId } from '../../auth/auth-id.js';
 import { DateIso, DateOnlyIso } from '../../common/date.js';
+import { INVOICED_MONTHS_SHOWN } from '../../common/invoice-number.js';
 import { createCursorQueryResult, createSearchedSortedCursorQueryInput } from '../../common/pagination.js';
 import { nullableTrimmedTextInput, nullableTrimmedTextInputOptional, requiredTrimmedText } from '../../common/text.js';
 import { UUID } from '../../common/uuid.js';
@@ -104,8 +105,6 @@ export const InvoicedMonth = z.object({
   jobs: z.number().int().nonnegative(),
 });
 export type InvoicedMonth = z.infer<typeof InvoicedMonth>;
-/** This month to date and the full months before it. */
-export const INVOICED_MONTHS_SHOWN = 4;
 /** This month to date, then the three full months before it; a month with nothing invoiced is zero, not missing. */
 export const InvoicedByMonth = z.object({ months: InvoicedMonth.array().length(INVOICED_MONTHS_SHOWN) });
 export type InvoicedByMonth = z.infer<typeof InvoicedByMonth>;

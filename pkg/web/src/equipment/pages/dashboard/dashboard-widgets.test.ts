@@ -1,231 +1,62 @@
 import { accessForRole } from '@pkg/domain/testing';
-import { describe, expect, it, vi } from 'vitest';
+import type { AppRole } from '@pkg/schema';
+import { expect, it, vi } from 'vitest';
 
-import type { DashboardWidget } from '@/components/common/dashboard/dashboard-widget-types.js';
-import { filterDashboardWidgets } from '@/components/common/dashboard/dashboard-widget-types.js';
-import { dashboardWidgets } from './dashboard-widgets.js';
+import { visibleDashboardRows } from '@/components/common/dashboard/dashboard-rows.js';
+import { equipmentDashboardRows } from './dashboard-widgets.js';
 
 vi.mock('./widgets/ActiveJobsWidget.js', () => ({ ActiveJobsWidget: () => null }));
 vi.mock('./widgets/AwaitingJobCreationWidget.js', () => ({ AwaitingJobCreationWidget: () => null }));
 vi.mock('./widgets/BayLoadTodayWidget.js', () => ({ BayLoadTodayWidget: () => null }));
 vi.mock('./widgets/BayRunwayWidget.js', () => ({ BayRunwayWidget: () => null }));
+vi.mock('./widgets/InvoicedByMonthWidget.js', () => ({ InvoicedByMonthWidget: () => null }));
 vi.mock('./widgets/InventoryKpiWidgets.js', () => ({
   InventoryTurnsWidget: () => null,
   InventoryValueWidget: () => null,
   TopInventoryAdjustmentsWidget: () => null,
   TopScrapItemsWidget: () => null,
 }));
-vi.mock('./widgets/ShopFloorTodayWidget.js', () => ({ ShopFloorTodayWidget: () => null }));
-vi.mock('./widgets/QuotesByStatusWidget.js', () => ({ QuotesByStatusWidget: () => null }));
-vi.mock('./widgets/OpenPipelineWidget.js', () => ({ OpenPipelineWidget: () => null }));
-vi.mock('./widgets/ScheduledJobsWidget.js', () => ({ ScheduledJobsWidget: () => null }));
 vi.mock('./widgets/QuoteFlowWidget.js', () => ({ QuoteFlowWidget: () => null }));
+vi.mock('./widgets/QuoteStageTiles.js', () => ({
+  AwaitingApprovalTile: () => null,
+  AwaitingInvoiceTile: () => null,
+  AwaitingPricingTile: () => null,
+}));
+vi.mock('./widgets/QuotesByStatusWidget.js', () => ({ QuotesByStatusWidget: () => null }));
+vi.mock('./widgets/ScheduledJobsWidget.js', () => ({ ScheduledJobsWidget: () => null }));
+vi.mock('./widgets/ShopFloorTodayWidget.js', () => ({ ShopFloorTodayWidget: () => null }));
 vi.mock('./widgets/StaleSentQuotesWidget.js', () => ({ StaleSentQuotesWidget: () => null }));
+vi.mock('./widgets/UpcomingDeliveriesWidget.js', () => ({ UpcomingDeliveriesWidget: () => null }));
 
-const WidgetComponent = () => null;
+const visibleTo = (role: AppRole) =>
+  visibleDashboardRows(accessForRole(role, 'someone'), equipmentDashboardRows).map((row) =>
+    row.map((widget) => widget.id),
+  );
 
-const fixtureWidgets: DashboardWidget[] = [
-  {
-    Component: WidgetComponent,
-    id: 'welcome',
-    size: 'lg',
-    title: 'Welcome',
-  },
-  {
-    Component: WidgetComponent,
-    id: 'quotes',
-    requires: 'equipment_quote:read',
-    size: 'md',
-    title: 'Quotes',
-  },
-  {
-    Component: WidgetComponent,
-    id: 'products',
-    requires: 'equipment_product:read',
-    size: 'md',
-    title: 'Products',
-  },
-  {
-    Component: WidgetComponent,
-    id: 'audit',
-    requires: 'equipment_audit:read',
-    size: 'sm',
-    title: 'Audit',
-  },
+const stageTiles = ['awaiting-pricing', 'awaiting-approval', 'awaiting-invoice'];
+const quoteRows = [
+  ['quotes-by-status', 'quote-flow'],
+  ['stale-sent-quotes', 'awaiting-job-creation', 'upcoming-deliveries'],
 ];
+const jobRows = [
+  ['scheduled-jobs', 'active-jobs', 'bay-load-today'],
+  ['shop-floor-today', 'bay-runway'],
+];
+const inventoryRow = ['inventory-value', 'inventory-turns', 'top-inventory-adjustments', 'top-scrap-items'];
 
-function widgetIds(widgets: readonly Pick<DashboardWidget, 'id'>[]) {
-  return widgets.map((widget) => widget.id);
-}
-
-describe('filterDashboardWidgets', () => {
-  it('keeps unconditional widgets while access is unavailable', () => {
-    expect(widgetIds(filterDashboardWidgets(undefined, fixtureWidgets))).toEqual(['welcome']);
-  });
-
-  it('keeps role-visible widgets in registry order for sales', () => {
-    const access = accessForRole('sales', 'user-1');
-
-    expect(widgetIds(filterDashboardWidgets(access, fixtureWidgets))).toEqual(['welcome', 'quotes']);
-  });
-
-  it('keeps role-visible widgets in registry order for procurement managers', () => {
-    const access = accessForRole('procurement-manager', 'user-1');
-
-    expect(widgetIds(filterDashboardWidgets(access, fixtureWidgets))).toEqual(['welcome', 'quotes', 'products']);
-  });
-
-  it('keeps all registered widgets for admins without reordering them', () => {
-    const access = accessForRole('admin', 'user-1');
-
-    expect(widgetIds(filterDashboardWidgets(access, fixtureWidgets))).toEqual([
-      'welcome',
-      'quotes',
-      'products',
-      'audit',
+it('shows each role only the blocks whose data it may read, each row on its own line', () => {
+  // Sales reads Quotes but prices none, so Invoiced by month leaves its row rather than pulling the next one up.
+  expect(visibleTo('sales')).toEqual([stageTiles, ...quoteRows]);
+  for (const role of ['admin', 'super-admin'] as const) {
+    expect(visibleTo(role)).toEqual([
+      stageTiles,
+      ['invoiced-by-month'],
+      jobRows[0],
+      quoteRows[0],
+      jobRows[1],
+      quoteRows[1],
+      inventoryRow,
     ]);
-  });
-});
-
-describe('dashboardWidgets', () => {
-  it('registers Quotes by status behind quote read access', () => {
-    const quotesByStatusWidget = dashboardWidgets.find((widget) => widget.id === 'quotes-by-status');
-
-    expect(quotesByStatusWidget).toMatchObject({
-      requires: 'equipment_quote:read',
-      size: 'md',
-      title: 'Quotes by status',
-    });
-  });
-
-  it('registers the sales metrics widgets behind quote read access', () => {
-    const openPipelineWidget = dashboardWidgets.find((widget) => widget.id === 'open-pipeline');
-    const quoteFlowWidget = dashboardWidgets.find((widget) => widget.id === 'quote-flow');
-    const staleSentWidget = dashboardWidgets.find((widget) => widget.id === 'stale-sent-quotes');
-    const awaitingJobCreationWidget = dashboardWidgets.find((widget) => widget.id === 'awaiting-job-creation');
-
-    expect(openPipelineWidget).toMatchObject({
-      requires: 'equipment_quote:read',
-      size: 'xs',
-      title: 'Open pipeline (retail, excl. VAT)',
-    });
-    expect(quoteFlowWidget).toMatchObject({ requires: 'equipment_quote:read', size: 'md', title: 'Quote flow' });
-    expect(staleSentWidget).toMatchObject({ requires: 'equipment_quote:read', size: 'sm', title: 'Stale sent quotes' });
-    expect(awaitingJobCreationWidget).toMatchObject({
-      requires: 'equipment_quote:read',
-      size: 'sm',
-      title: 'Awaiting Job creation',
-    });
-  });
-
-  it('removes the retired widgets from the registry', () => {
-    expect(widgetIds(dashboardWidgets)).not.toContain('quotes-created-over-time');
-    expect(widgetIds(dashboardWidgets)).not.toContain('win-rate');
-    expect(widgetIds(dashboardWidgets)).not.toContain('recent-quotes');
-    expect(widgetIds(dashboardWidgets)).not.toContain('products');
-  });
-
-  /** The stock and purchasing band is off the dashboard; the Buy list and Close-out pages own it. */
-  it('leaves the inventory band off the registry', () => {
-    for (const widgetId of [
-      'close-out-queue',
-      'out-of-stock',
-      'below-minimum-stock',
-      'short-for-jobs',
-      'late-purchase-orders',
-      'stocktake-overdue',
-    ]) {
-      expect(widgetIds(dashboardWidgets)).not.toContain(widgetId);
-    }
-  });
-
-  it('registers the management inventory KPI tiles behind inventory cost access', () => {
-    expect(
-      dashboardWidgets
-        .filter((widget) =>
-          ['inventory-value', 'inventory-turns', 'top-inventory-adjustments', 'top-scrap-items'].includes(widget.id),
-        )
-        .map(({ id, requires, size, title }) => ({ id, requires, size, title })),
-    ).toEqual([
-      { id: 'inventory-value', requires: 'equipment_inventory_cost:read', size: 'xs', title: 'Inventory value' },
-      { id: 'inventory-turns', requires: 'equipment_inventory_cost:read', size: 'xs', title: 'Inventory turns' },
-      {
-        id: 'top-inventory-adjustments',
-        requires: 'equipment_inventory_cost:read',
-        size: 'xs',
-        title: 'Top adjustments this month',
-      },
-      { id: 'top-scrap-items', requires: 'equipment_inventory_cost:read', size: 'xs', title: 'Top scrap this month' },
-    ]);
-
-    const managementIds = widgetIds(
-      filterDashboardWidgets(accessForRole('procurement-manager', 'user-1'), dashboardWidgets),
-    );
-    const storesIds = widgetIds(filterDashboardWidgets(accessForRole('stores', 'user-1'), dashboardWidgets));
-
-    expect(managementIds).toEqual(expect.arrayContaining(['inventory-value', 'inventory-turns']));
-    expect(storesIds).not.toEqual(expect.arrayContaining(['inventory-value', 'inventory-turns']));
-  });
-
-  it('does not register Recent activity', () => {
-    expect(widgetIds(dashboardWidgets)).not.toContain('recent-activity');
-  });
-
-  it('shows Quotes by status to quote readers and hides it from job viewers', () => {
-    const salesAccess = accessForRole('sales', 'user-1');
-    const procurementAccess = accessForRole('procurement-manager', 'user-1');
-    const jobViewerAccess = accessForRole('job-viewer', 'user-1');
-
-    expect(widgetIds(filterDashboardWidgets(salesAccess, dashboardWidgets))).toContain('quotes-by-status');
-    expect(widgetIds(filterDashboardWidgets(procurementAccess, dashboardWidgets))).toContain('quotes-by-status');
-    expect(widgetIds(filterDashboardWidgets(jobViewerAccess, dashboardWidgets))).not.toContain('quotes-by-status');
-  });
-
-  it('shows the sales metrics widgets to quote readers and hides them from job viewers', () => {
-    const salesMetricsWidgetIds = ['open-pipeline', 'quote-flow', 'stale-sent-quotes', 'awaiting-job-creation'];
-    const salesAccess = accessForRole('sales', 'user-1');
-    const procurementAccess = accessForRole('procurement-manager', 'user-1');
-    const jobViewerAccess = accessForRole('job-viewer', 'user-1');
-
-    const salesIds = widgetIds(filterDashboardWidgets(salesAccess, dashboardWidgets));
-    const procurementIds = widgetIds(filterDashboardWidgets(procurementAccess, dashboardWidgets));
-    const jobViewerIds = widgetIds(filterDashboardWidgets(jobViewerAccess, dashboardWidgets));
-
-    for (const widgetId of salesMetricsWidgetIds) {
-      expect(salesIds).toContain(widgetId);
-      expect(procurementIds).toContain(widgetId);
-      expect(jobViewerIds).not.toContain(widgetId);
-    }
-  });
-
-  it('registers the shop-floor band behind job read access', () => {
-    const shopFloorWidget = dashboardWidgets.find((widget) => widget.id === 'shop-floor-today');
-    const bayRunwayWidget = dashboardWidgets.find((widget) => widget.id === 'bay-runway');
-    const activeJobsWidget = dashboardWidgets.find((widget) => widget.id === 'active-jobs');
-    const bayLoadWidget = dashboardWidgets.find((widget) => widget.id === 'bay-load-today');
-    const scheduledJobsWidget = dashboardWidgets.find((widget) => widget.id === 'scheduled-jobs');
-
-    expect(shopFloorWidget).toMatchObject({ requires: 'equipment_job:read', size: 'md', title: 'Shop floor today' });
-    expect(bayRunwayWidget).toMatchObject({ requires: 'equipment_job:read', size: 'md', title: 'Bay runway' });
-    expect(activeJobsWidget).toMatchObject({ requires: 'equipment_job:read', size: 'xs', title: 'Active jobs' });
-    expect(bayLoadWidget).toMatchObject({ requires: 'equipment_job:read', size: 'xs', title: 'Bay load today' });
-    expect(scheduledJobsWidget).toMatchObject({ requires: 'equipment_job:read', size: 'xs', title: 'Scheduled jobs' });
-  });
-
-  it('shows the shop-floor band to job viewers and procurement managers and hides it from sales', () => {
-    const shopFloorWidgetIds = ['active-jobs', 'bay-load-today', 'shop-floor-today', 'bay-runway', 'scheduled-jobs'];
-    const jobViewerAccess = accessForRole('job-viewer', 'user-1');
-    const procurementAccess = accessForRole('procurement-manager', 'user-1');
-    const salesAccess = accessForRole('sales', 'user-1');
-
-    const jobViewerIds = widgetIds(filterDashboardWidgets(jobViewerAccess, dashboardWidgets));
-    const procurementIds = widgetIds(filterDashboardWidgets(procurementAccess, dashboardWidgets));
-    const salesIds = widgetIds(filterDashboardWidgets(salesAccess, dashboardWidgets));
-
-    for (const widgetId of shopFloorWidgetIds) {
-      expect(jobViewerIds).toContain(widgetId);
-      expect(procurementIds).toContain(widgetId);
-      expect(salesIds).not.toContain(widgetId);
-    }
-  });
+  }
+  expect(visibleTo('job-viewer')).toEqual(jobRows);
 });

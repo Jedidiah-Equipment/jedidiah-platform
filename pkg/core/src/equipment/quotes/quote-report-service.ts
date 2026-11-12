@@ -1,66 +1,30 @@
 import type { Db } from '@pkg/db';
-import { customers, jobs, products, quotes } from '@pkg/db/equipment';
+import { customers, products, quotes } from '@pkg/db/equipment';
 import {
   addDateOnlyDays,
+  addDateOnlyMonths,
+  getPlantDateNow,
   JOHANNESBURG_TIME_ZONE,
+  roundToCents,
+  startOfDateOnlyMonth,
   startOfDateOnlyWeek,
   toPlantDateOnly,
   zonedDateStartToUtcInstant,
 } from '@pkg/domain';
-import { foldJobScheduleStates } from '@pkg/domain/equipment';
-import type { DateOnlyIso, UUID } from '@pkg/schema';
-import {
-  QuotePipelineSummary,
-  type QuoteStatus,
-  QuoteStatusSummary,
-  QuoteWeeklyFlowSummary,
-  StaleSentQuoteList,
-} from '@pkg/schema/equipment';
-import { and, asc, eq, gte, inArray, isNull, lt, sql } from 'drizzle-orm';
+import { type DateOnlyIso, INVOICED_MONTHS_SHOWN } from '@pkg/schema';
+import { QuoteInvoicedByMonth, QuoteWeeklyFlowSummary, StaleSentQuoteList } from '@pkg/schema/equipment';
+import { and, asc, eq, gte, lt, sql } from 'drizzle-orm';
 
-import { findBoardBayRows, toProjectedBoard } from '../jobs/board-read.js';
-import { listWorkingCalendarOffDays } from '../jobs/working-calendar-service.js';
 import { mapQuoteLinkedJob } from './quote-mappers.js';
 import { loadQuoteAssociations } from './quote-read-service.js';
-import { priceReportQuote, type ReportQuotePricingRow } from './quote-report-pricing.js';
+import { priceReportQuote } from './quote-report-pricing.js';
 
 // Aggregate Quote reads for the dashboard: counts, sums, and week buckets that project to their own
 // summary shapes. QuoteSummary-shaped list reads (including upcoming deliveries) stay in
 // quote-service alongside the shared mapQuoteSummary / getJobByQuoteId machinery they reuse.
 
 const QUOTE_WEEKLY_FLOW_WEEK_COUNT = 12;
-const QUOTE_NEWLY_SENT_WINDOW_DAYS = 30;
-const QUOTE_DECISION_WINDOW_DAYS = 90;
 const STALE_SENT_QUOTE_LIMIT = 8;
-
-type ReportQuoteRow = ReportQuotePricingRow & { id: UUID };
-
-// Quotes by status shows only the statuses a Quote could hold before the post-sale ones existed.
-const SUMMARIZED_QUOTE_STATUSES = [
-  'draft',
-  'sent',
-  'accepted',
-  'rejected',
-  'cancelled',
-] as const satisfies readonly QuoteStatus[];
-
-export async function summarizeQuotesByStatus({ db }: { db: Db }): Promise<QuoteStatusSummary> {
-  const rows = await db
-    .select({
-      count: sql<number>`count(*)`,
-      status: quotes.status,
-    })
-    .from(quotes)
-    .groupBy(quotes.status);
-  const countsByStatus = new Map(rows.map((row) => [row.status, Number(row.count)]));
-
-  return QuoteStatusSummary.parse({
-    items: SUMMARIZED_QUOTE_STATUSES.map((status) => ({
-      count: countsByStatus.get(status) ?? 0,
-      status,
-    })),
-  });
-}
 
 export async function summarizeQuoteWeeklyFlow({
   clock = () => new Date(),
@@ -107,112 +71,54 @@ export async function summarizeQuoteWeeklyFlow({
   });
 }
 
-export async function summarizeQuotePipeline({
-  clock = () => new Date(),
+/**
+ * The Quote totals ex VAT, after discount, of the Quotes stamped Invoiced in each plant-time month: this month to date
+ * first, then the three full months before it. A Quote whose number was removed has no `invoiced_at` and drops out.
+ */
+export async function summarizeInvoicedByMonth({
   db,
+  today = getPlantDateNow(),
 }: {
-  clock?: () => Date;
   db: Db;
-}): Promise<QuotePipelineSummary> {
-  const now = clock();
-  const newlySentWindowStart = getPlantWindowStartInstant({ days: QUOTE_NEWLY_SENT_WINDOW_DAYS, now });
-  const decisionWindowStart = getPlantWindowStartInstant({ days: QUOTE_DECISION_WINDOW_DAYS, now });
-
-  const [sentRows, decisionRows, unfinishedJobQuoteRows] = await Promise.all([
-    db
-      .select({
-        deliveryPrice: quotes.deliveryPrice,
-        deliveryTerms: quotes.deliveryTerms,
-        discountPercent: quotes.discountPercent,
-        id: quotes.id,
-        kind: quotes.kind,
-        quotedBasePrice: quotes.quotedBasePrice,
-        statusChangedAt: quotes.statusChangedAt,
-      })
-      .from(quotes)
-      .where(eq(quotes.status, 'sent')),
-    db
-      .select({
-        count: sql<number>`count(*)`,
-        status: quotes.status,
-      })
-      .from(quotes)
-      .where(and(inArray(quotes.status, ['accepted', 'rejected']), gte(quotes.statusChangedAt, decisionWindowStart)))
-      .groupBy(quotes.status),
-    listUnfinishedJobQuoteRows({ db, today: toPlantDateOnly(now) }),
-  ]);
-  // A sent Custom Quote can already carry a Job, so the Quote behind one is only ever counted once.
-  const sentQuoteIds = new Set(sentRows.map((row) => row.id));
-  const openJobRows = unfinishedJobQuoteRows.filter((row) => !sentQuoteIds.has(row.id));
-  const openRows: readonly ReportQuoteRow[] = [...sentRows, ...openJobRows];
+  today?: DateOnlyIso;
+}): Promise<QuoteInvoicedByMonth> {
+  const thisMonth = startOfDateOnlyMonth(today);
+  const months = Array.from({ length: INVOICED_MONTHS_SHOWN }, (_, back) => addDateOnlyMonths(thisMonth, -back));
+  const from = zonedDateStartToUtcInstant(
+    addDateOnlyMonths(thisMonth, 1 - INVOICED_MONTHS_SHOWN),
+    JOHANNESBURG_TIME_ZONE,
+  );
+  const rows = await db
+    .select({
+      deliveryPrice: quotes.deliveryPrice,
+      deliveryTerms: quotes.deliveryTerms,
+      discountPercent: quotes.discountPercent,
+      id: quotes.id,
+      kind: quotes.kind,
+      month: sql<DateOnlyIso>`to_char(${quotes.invoicedAt} at time zone ${JOHANNESBURG_TIME_ZONE}, 'YYYY-MM-01')`,
+      quotedBasePrice: quotes.quotedBasePrice,
+    })
+    .from(quotes)
+    .where(and(eq(quotes.status, 'invoiced'), gte(quotes.invoicedAt, from)));
   const { selectedAssembliesByQuoteId, workItemsByQuoteId } = await loadQuoteAssociations({
     db,
-    quoteIds: openRows.map((row) => row.id),
+    quoteIds: rows.map((row) => row.id),
   });
-  const totalsByQuoteId = new Map(
-    openRows.map((row) => [
-      row.id,
-      priceReportQuote({
-        row,
-        selectedAssemblies: selectedAssembliesByQuoteId.get(row.id) ?? [],
-        workItems: workItemsByQuoteId.get(row.id) ?? [],
-      }).subtotal,
-    ]),
-  );
-  const decisionCountsByStatus = new Map(decisionRows.map((row) => [row.status, Number(row.count)]));
-
-  return QuotePipelineSummary.parse({
-    accepted90dCount: decisionCountsByStatus.get('accepted') ?? 0,
-    newlySent30dValue: sumQuoteTotals(
-      sentRows.filter((row) => row.statusChangedAt >= newlySentWindowStart),
-      totalsByQuoteId,
-    ),
-    openPipelineCount: openRows.length,
-    openPipelineValue: sumQuoteTotals(openRows, totalsByQuoteId),
-    rejected90dCount: decisionCountsByStatus.get('rejected') ?? 0,
-  });
-}
-
-/**
- * Quote pricing rows for every live Job still carrying work: at least one Work Slot projected `active`
- * or `scheduled` against plant today. Reads schedule completeness off the Board rather than the Job's
- * latched `completedOn`, so the pipeline drops a Job the moment its last Slot finishes. Cancelled Jobs
- * keep their retained Slots on the Board but never carry pipeline value.
- */
-async function listUnfinishedJobQuoteRows({ db, today }: { db: Db; today: DateOnlyIso }): Promise<ReportQuoteRow[]> {
-  const [jobRows, offDays, bayRows] = await Promise.all([
-    db
-      .select({
-        deliveryPrice: quotes.deliveryPrice,
-        deliveryTerms: quotes.deliveryTerms,
-        discountPercent: quotes.discountPercent,
-        id: quotes.id,
-        jobId: jobs.id,
-        kind: quotes.kind,
-        quotedBasePrice: quotes.quotedBasePrice,
-      })
-      .from(jobs)
-      .innerJoin(quotes, eq(jobs.quoteId, quotes.id))
-      .where(isNull(jobs.cancelledAt)),
-    listWorkingCalendarOffDays(db),
-    findBoardBayRows(db),
-  ]);
-
-  if (jobRows.length === 0) {
-    return [];
+  const byMonth = new Map(months.map((month) => [month, { month, total: 0, quotes: 0 }]));
+  for (const row of rows) {
+    const bucket = byMonth.get(row.month);
+    if (!bucket) continue;
+    bucket.total = roundToCents(
+      bucket.total +
+        priceReportQuote({
+          row,
+          selectedAssemblies: selectedAssembliesByQuoteId.get(row.id) ?? [],
+          workItems: workItemsByQuoteId.get(row.id) ?? [],
+        }).subtotal,
+    );
+    bucket.quotes += 1;
   }
-
-  const { queues } = toProjectedBoard(bayRows, { offDays, today });
-  const states = foldJobScheduleStates(
-    queues,
-    jobRows.map((row) => row.jobId),
-  );
-
-  return jobRows.filter((row) => {
-    const state = states.get(row.jobId);
-
-    return state !== undefined && state.active + state.scheduled > 0;
-  });
+  return QuoteInvoicedByMonth.parse({ months: [...byMonth.values()] });
 }
 
 export async function listStaleSentQuotes({
@@ -305,15 +211,4 @@ function getPlantWeekRange({ now, weekCount }: { now: Date; weekCount: number })
     startInstant: zonedDateStartToUtcInstant(rangeStartDate, JOHANNESBURG_TIME_ZONE),
     weekStartDates,
   };
-}
-
-// Windows cover exactly `days` plant days including plant today, anchored to Johannesburg day starts.
-function getPlantWindowStartInstant({ days, now }: { days: number; now: Date }): Date {
-  const windowStartDate = addDateOnlyDays(toPlantDateOnly(now), -(days - 1));
-
-  return zonedDateStartToUtcInstant(windowStartDate, JOHANNESBURG_TIME_ZONE);
-}
-
-function sumQuoteTotals(rows: readonly { id: UUID }[], totalsByQuoteId: ReadonlyMap<UUID, number>): number {
-  return rows.reduce((total, row) => total + (totalsByQuoteId.get(row.id) ?? 0), 0);
 }

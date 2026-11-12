@@ -106,6 +106,54 @@ export function assertQuoteEditable({
   return { allowed: true };
 }
 
+export const QUOTE_FORM_FIELDS = [
+  'depositPercent',
+  'deliveryPrice',
+  'deliveryTerms',
+  'discountPercent',
+  'documentNotes',
+  'notes',
+  'plannedDeliveryDate',
+  'preferredDeliveryDate',
+  'salesPersonId',
+  'selectedAssemblies',
+  'status',
+  'validUntil',
+  'workItems',
+  'workTitle',
+] as const;
+
+export type QuoteFormField = (typeof QUOTE_FORM_FIELDS)[number];
+
+/**
+ * Which Quote form fields this actor may change, asked of `assertQuoteEditable` one field at a time so a form never
+ * offers a change the server refuses.
+ */
+export function quoteFormFieldAccess({
+  actor,
+  quote,
+}: {
+  actor: LockActor;
+  quote: { hasEverSourcedJob: boolean; kind: QuoteKind; productUnitId: string | null; status: QuoteStatus };
+}): Readonly<Record<QuoteFormField, boolean>> {
+  const canUpdate = hasPermission(actor, 'equipment_quote:update');
+
+  return Object.fromEntries(
+    QUOTE_FORM_FIELDS.map((field) => [
+      field,
+      canUpdate &&
+        assertQuoteEditable({
+          actor,
+          changedFields: [field],
+          hasEverSourcedJob: quote.hasEverSourcedJob,
+          hasProductUnit: quote.productUnitId !== null,
+          kind: quote.kind,
+          status: quote.status,
+        }).allowed,
+    ]),
+  ) as Record<QuoteFormField, boolean>;
+}
+
 /**
  * Whether a surface should offer a Quote its own destructive cancel action. A Locked Quote's Status
  * field is closed, so without this there is no way to reach cancellation at all; an unlocked one is

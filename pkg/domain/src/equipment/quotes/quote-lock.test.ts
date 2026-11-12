@@ -1,10 +1,13 @@
-import type { EquipmentRole } from '@pkg/schema';
+import { EQUIPMENT_ROLES, type EquipmentRole } from '@pkg/schema';
+import { QuoteStatus } from '@pkg/schema/equipment';
 import { describe, expect, it } from 'vitest';
 import { getRolePermissions } from '../../auth/authorization.js';
 import {
   assertQuoteEditable,
   editableLockedQuoteFields,
   isQuoteLocked,
+  QUOTE_FORM_FIELDS,
+  quoteFormFieldAccess,
   shouldOfferQuoteCancellation,
 } from './quote-lock.js';
 
@@ -211,6 +214,59 @@ describe('editableLockedQuoteFields', () => {
   it('opens nothing to someone who cannot update Quotes', () => {
     expect(fields('job-viewer', 'accepted')).toEqual([]);
   });
+});
+
+describe('quoteFormFieldAccess', () => {
+  const statusRoles = QuoteStatus.options.flatMap((status) => EQUIPMENT_ROLES.map((role) => [status, role] as const));
+  const quoteIn = (status: QuoteStatus) => ({
+    hasEverSourcedJob: true,
+    kind: 'custom' as const,
+    productUnitId: null,
+    status,
+  });
+
+  it.each(statusRoles)('offers on a %s Quote to %s exactly the fields the server accepts', (status, role) => {
+    const actor = actorFor(role);
+    const access = quoteFormFieldAccess({ actor, quote: quoteIn(status) });
+    const canUpdate = getRolePermissions(role).includes('equipment_quote:update');
+
+    for (const field of QUOTE_FORM_FIELDS) {
+      const server = assertQuoteEditable({
+        actor,
+        changedFields: [field],
+        hasEverSourcedJob: true,
+        hasProductUnit: false,
+        kind: 'custom',
+        status,
+      });
+      expect({ field, editable: access[field] }).toEqual({ field, editable: canUpdate && server.allowed });
+    }
+  });
+
+  // Spec #1944 decision 10: Document notes and Valid until close to all but a Super Administrator once sent for approval.
+  it.each([
+    ['accepted', 'sales', true],
+    ['accepted', 'admin', true],
+    ['awaiting-approval', 'admin', false],
+    ['awaiting-approval', 'super-admin', true],
+    ['awaiting-invoice', 'admin', false],
+    ['awaiting-invoice', 'super-admin', false],
+    ['invoiced', 'admin', false],
+    ['invoiced', 'super-admin', false],
+  ] as const)('on a %s Quote %s may change Document notes and Valid until: %s', (status, role, editable) => {
+    const access = quoteFormFieldAccess({ actor: actorFor(role), quote: quoteIn(status) });
+
+    expect([access.documentNotes, access.validUntil]).toEqual([editable, editable]);
+  });
+
+  it.each(['accepted', 'awaiting-approval', 'awaiting-invoice', 'invoiced'] as const)(
+    'keeps Notes and the delivery dates open on a %s Quote',
+    (status) => {
+      const access = quoteFormFieldAccess({ actor: actorFor('sales'), quote: quoteIn(status) });
+
+      expect([access.notes, access.plannedDeliveryDate, access.preferredDeliveryDate]).toEqual([true, true, true]);
+    },
+  );
 });
 
 describe('isQuoteLocked', () => {

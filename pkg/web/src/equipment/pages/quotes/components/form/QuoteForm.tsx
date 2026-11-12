@@ -1,10 +1,9 @@
 import { formatDate } from '@pkg/domain';
 import {
   computeQuoteSummary,
-  editableLockedQuoteFields,
   editableQuoteStatuses,
   getQuoteDeliveryTermsOptions,
-  isQuoteLocked,
+  quoteFormFieldAccess,
   quoteOfferingType,
   quoteOfferingTypeLabel,
   quoteStatusLabels,
@@ -56,15 +55,8 @@ type QuoteFormProps = {
 
 export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quote }) => {
   const isCustom = quote.kind === 'custom';
-  const isLocked = isQuoteLocked({
-    hasEverSourcedJob: quote.hasEverSourcedJob,
-    hasProductUnit: quote.productUnitId !== null,
-    kind: quote.kind,
-    status: quote.status,
-  });
   const access = useAccess().data;
-  const lockEditableFields = editableLockedQuoteFields({ actor: access, status: quote.status });
-  const canEdit = (field: string) => !isLocked || lockEditableFields.has(field);
+  const editable = quoteFormFieldAccess({ actor: access, quote });
   const quoteCurrencyCode = quote.product?.currencyCode ?? quote.quotedCurrencyCode;
   const catalogAssemblies = quote.product?.assemblies ?? [];
   const salespeopleOptions = useSalesPersonOptions({
@@ -142,14 +134,16 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                     <div className="grid gap-3 md:grid-cols-2">
                       {isCustom ? (
                         <form.AppField name="workTitle">
-                          {(field) => <field.TextField autoComplete="off" disabled={isLocked} label="Work title" />}
+                          {(field) => (
+                            <field.TextField autoComplete="off" disabled={!editable.workTitle} label="Work title" />
+                          )}
                         </form.AppField>
                       ) : null}
                       <form.AppField name="salesPersonId">
                         {(field) => (
                           <field.SelectField
                             label="Salesperson"
-                            disabled={isLocked}
+                            disabled={!editable.salesPersonId}
                             onValueCommit={autosave.commit}
                             options={salespeopleOptions.selectOptions}
                             placeholder="Select salesperson"
@@ -160,7 +154,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                         {(field) => (
                           <field.SelectField
                             label="Status"
-                            disabled={isLocked}
+                            disabled={!editable.status}
                             onValueCommit={autosave.commit}
                             onValueSelect={(value) => {
                               const status = QuoteStatus.parse(value);
@@ -183,21 +177,35 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                       <form.AppField name="preferredDeliveryDate">
                         {(field) => (
-                          <field.DatePickerField label="Preferred delivery date" onValueCommit={autosave.commit} />
+                          <field.DatePickerField
+                            disabled={!editable.preferredDeliveryDate}
+                            label="Preferred delivery date"
+                            onValueCommit={autosave.commit}
+                          />
                         )}
                       </form.AppField>
                       <form.AppField name="plannedDeliveryDate">
                         {(field) => (
-                          <field.DatePickerField label="Planned delivery date" onValueCommit={autosave.commit} />
+                          <field.DatePickerField
+                            disabled={!editable.plannedDeliveryDate}
+                            label="Planned delivery date"
+                            onValueCommit={autosave.commit}
+                          />
                         )}
                       </form.AppField>
                       <form.AppField name="validUntil">
-                        {(field) => <field.DatePickerField label="Valid until" onValueCommit={autosave.commit} />}
+                        {(field) => (
+                          <field.DatePickerField
+                            disabled={!editable.validUntil}
+                            label="Valid until"
+                            onValueCommit={autosave.commit}
+                          />
+                        )}
                       </form.AppField>
                       <form.AppField name="deliveryTerms">
                         {(field) => (
                           <field.SelectField
-                            disabled={!canEdit('deliveryTerms')}
+                            disabled={!editable.deliveryTerms}
                             label="Delivery terms"
                             onValueCommit={autosave.commit}
                             onValueSelect={(value) => {
@@ -217,7 +225,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                               {(field) => (
                                 <field.CurrencyField
                                   currencyCode={quoteCurrencyCode}
-                                  disabled={!canEdit('deliveryPrice')}
+                                  disabled={!editable.deliveryPrice}
                                   label="Delivery price"
                                 />
                               )}
@@ -234,7 +242,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                         {(field) => (
                           <field.NumberField
                             decimals={2}
-                            disabled={!canEdit('discountPercent')}
+                            disabled={!editable.discountPercent}
                             emptyValue={0}
                             label="Discount percent"
                             max={100}
@@ -247,7 +255,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                         {(field) => (
                           <field.NumberField
                             decimals={2}
-                            disabled={!canEdit('depositPercent')}
+                            disabled={!editable.depositPercent}
                             emptyValue={0}
                             label="Deposit percent"
                             max={100}
@@ -264,7 +272,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                       {(workItemsField) => (
                         <QuoteFormSection
                           action={
-                            <QuoteAddWorkItemButton readOnly={!canEdit('workItems')} workItemsField={workItemsField} />
+                            <QuoteAddWorkItemButton readOnly={!editable.workItems} workItemsField={workItemsField} />
                           }
                           icon={IconListDetails}
                           title="Work items"
@@ -272,7 +280,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                           <QuoteWorkItemsEditor
                             currencyCode={quoteCurrencyCode}
                             onCommit={autosave.commit}
-                            readOnly={!canEdit('workItems')}
+                            readOnly={!editable.workItems}
                             workItemsField={workItemsField}
                           />
                         </QuoteFormSection>
@@ -281,7 +289,9 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                   ) : null}
 
                   <QuoteFormSection icon={IconNotes} title="Internal notes">
-                    <form.AppField name="notes">{(field) => <field.TextareaField rows={4} />}</form.AppField>
+                    <form.AppField name="notes">
+                      {(field) => <field.TextareaField disabled={!editable.notes} rows={4} />}
+                    </form.AppField>
                   </QuoteFormSection>
 
                   {quoteOfferingType(quote) === 'parts-sale' && inventoryReadAccess.can ? (
@@ -304,7 +314,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                               field.handleChange(value);
                               autosave.commit();
                             }}
-                            readOnly={isLocked}
+                            readOnly={!editable.selectedAssemblies}
                             value={field.state.value}
                           />
                         )}
@@ -318,6 +328,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onSave, priorityQuote, quo
                   <form.AppField name="documentNotes">
                     {(field) => (
                       <field.TextareaField
+                        disabled={!editable.documentNotes}
                         rows={4}
                         placeholder="Notes entered here will be included in the quote document."
                       />

@@ -1,4 +1,5 @@
-import { canSeeActivity, type presentAction } from '@pkg/domain/contracting';
+import type { presentAction } from '@pkg/domain';
+import { canSeeActivity } from '@pkg/domain/contracting';
 import { NoteText } from '@pkg/schema/contracting';
 import { IconActivity, IconMessagePlus } from '@tabler/icons-react';
 import { useState } from 'react';

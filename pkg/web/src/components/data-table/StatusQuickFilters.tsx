@@ -32,7 +32,7 @@ export function StatusQuickFilters<TStatus extends string>({
   const pick = (picked: readonly TStatus[]) =>
     onColumnFiltersChange((current) => togglePick(current, columnId, picked));
   return (
-    <fieldset className="scrollbar-none flex gap-1.5 overflow-x-auto" aria-label={label}>
+    <fieldset className="scrollbar-none flex min-w-0 gap-1.5 overflow-x-auto" aria-label={label}>
       {shown.map((status) => (
         <QuickFilterButton
           key={status}

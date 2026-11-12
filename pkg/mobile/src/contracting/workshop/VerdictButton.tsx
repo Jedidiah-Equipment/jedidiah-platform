@@ -1,4 +1,4 @@
-import { type ActionVerdict, presentAction } from '@pkg/domain/contracting';
+import { type ActionVerdict, presentAction } from '@pkg/domain';
 import type { Icon as TablerIcon } from '@tabler/icons-react-native';
 import type { ReactNode } from 'react';
 import { View } from 'react-native';

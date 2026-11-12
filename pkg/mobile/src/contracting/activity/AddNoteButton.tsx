@@ -1,4 +1,4 @@
-import type { ActionVerdict } from '@pkg/domain/contracting';
+import type { ActionVerdict } from '@pkg/domain';
 import { NoteText } from '@pkg/schema/contracting';
 import { IconMessagePlus } from '@tabler/icons-react-native';
 import { useState } from 'react';

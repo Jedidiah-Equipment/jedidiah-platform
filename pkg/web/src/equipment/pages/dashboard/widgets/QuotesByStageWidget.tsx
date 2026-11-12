@@ -19,7 +19,7 @@ const quoteStageColors = {
   cancelled: { color: 'var(--chart-5)' },
 } as const satisfies Record<QuoteStage, { color: string }>;
 
-export const QuotesByStatusWidget: React.FC = () => {
+export const QuotesByStageWidget: React.FC = () => {
   const trpc = useTRPC();
   const countsQuery = useQuery(trpc.quotes.stageCounts.queryOptions());
   const counts = countsQuery.data?.counts;
@@ -29,7 +29,7 @@ export const QuotesByStatusWidget: React.FC = () => {
   }
 
   if (!counts) {
-    return <QuotesByStatusWidgetSkeleton />;
+    return <QuotesByStageWidgetSkeleton />;
   }
 
   if (Object.values(counts).every((count) => count === 0)) {
@@ -81,7 +81,7 @@ export const QuotesByStatusWidget: React.FC = () => {
   );
 };
 
-function QuotesByStatusWidgetSkeleton() {
+function QuotesByStageWidgetSkeleton() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-3">

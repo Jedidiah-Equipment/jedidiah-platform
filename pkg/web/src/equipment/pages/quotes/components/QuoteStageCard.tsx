@@ -1,8 +1,9 @@
-import { formatDate, getFirstName } from '@pkg/domain';
+import { actionSheet, formatDate, getFirstName } from '@pkg/domain';
 import { pricePersistedQuote } from '@pkg/domain/equipment';
 import { type QuoteDetail, QuoteSentBackNote, type QuoteStage } from '@pkg/schema/equipment';
 import { IconArrowBackUp } from '@tabler/icons-react';
 import { useMutation } from '@tanstack/react-query';
+import type React from 'react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { RemoveEntityDialog } from '@/components/common/RemoveEntityButton.js';
@@ -66,18 +67,29 @@ export function QuoteStageCard({
   const sentence = stageSentences[quote.stage];
   if (!sentence) return null;
 
-  const { actions } = quote;
-  const sendBlocked = actions.sendForApproval.allowed ? null : actions.sendForApproval;
+  const sheet = actionSheet(quote.actions);
+  const sendBlocked = sheet.verdict('sendForApproval');
+  const sendForApprovalAction = sheet.action('sendForApproval');
+  const approveAction = sheet.action('approve');
+  const stampAction = sheet.action('stampInvoice');
+  const correctAction = sheet.action('correctInvoiceNumber');
+  const sendBackAction = sheet.action('sendBack');
+  const removeAction = sheet.action('removeInvoiceNumber');
   const busy = saving || sendForApproval.isPending || approve.isPending || removeInvoiceNumber.isPending;
-  const afterSaving = (run: () => void) => async () => {
-    setSaving(true);
-    try {
-      if (await flushAutosave()) run();
-      else toast.error('Fix the highlighted quote fields before moving the quote.');
-    } finally {
-      setSaving(false);
-    }
-  };
+  const afterSaving = (run: () => void) => ({
+    onClick: async () => {
+      setSaving(true);
+      try {
+        if (await flushAutosave()) run();
+        else toast.error('Fix the highlighted quote fields before moving the quote.');
+      } finally {
+        setSaving(false);
+      }
+    },
+    // A field blurred on mousedown flushes and can raise the autosave banner, which moves this button before the
+    // click lands. The click flushes anyway, so the field keeps focus until then.
+    onMouseDown: (event: React.MouseEvent) => event.preventDefault(),
+  });
 
   return (
     <Card size="sm">
@@ -111,39 +123,67 @@ export function QuoteStageCard({
             </span>
           </div>
         ) : null}
-        {sendBlocked?.reason === 'delivery-unconfirmed' ? (
+        {!sendBlocked.allowed && sendBlocked.reason === 'delivery-unconfirmed' ? (
           <p className="text-sm text-warning-foreground">{sendBlocked.message}</p>
         ) : null}
         <div className="flex flex-wrap gap-2">
-          {actions.sendForApproval.allowed ? (
-            <Button disabled={busy} onClick={afterSaving(() => setConfirming('sendForApproval'))} type="button">
+          {sendForApprovalAction ? (
+            <Button
+              {...sendForApprovalAction}
+              disabled={busy || sendForApprovalAction.disabled}
+              {...afterSaving(() => setConfirming('sendForApproval'))}
+              type="button"
+            >
               Send for approval
             </Button>
           ) : null}
-          {actions.approve.allowed ? (
-            <Button disabled={busy} onClick={afterSaving(() => approve.mutate({ id: quote.id }))} type="button">
+          {approveAction ? (
+            <Button
+              {...approveAction}
+              disabled={busy || approveAction.disabled}
+              {...afterSaving(() => approve.mutate({ id: quote.id }))}
+              type="button"
+            >
               Approve
             </Button>
           ) : null}
-          {actions.stampInvoice.allowed ? (
-            <Button disabled={busy} onClick={afterSaving(() => setStamping(true))} type="button">
+          {stampAction ? (
+            <Button
+              {...stampAction}
+              disabled={busy || stampAction.disabled}
+              {...afterSaving(() => setStamping(true))}
+              type="button"
+            >
               Enter Invoice Number
             </Button>
           ) : null}
-          {actions.correctInvoiceNumber.allowed ? (
-            <Button disabled={busy} onClick={afterSaving(() => setStamping(true))} type="button" variant="outline">
+          {correctAction ? (
+            <Button
+              {...correctAction}
+              disabled={busy || correctAction.disabled}
+              {...afterSaving(() => setStamping(true))}
+              type="button"
+              variant="outline"
+            >
               Correct
             </Button>
           ) : null}
-          {actions.sendBack.allowed ? (
-            <Button disabled={busy} onClick={afterSaving(() => setSendingBack(true))} type="button" variant="outline">
+          {sendBackAction ? (
+            <Button
+              {...sendBackAction}
+              disabled={busy || sendBackAction.disabled}
+              {...afterSaving(() => setSendingBack(true))}
+              type="button"
+              variant="outline"
+            >
               Send back
             </Button>
           ) : null}
-          {actions.removeInvoiceNumber.allowed ? (
+          {removeAction ? (
             <Button
-              disabled={busy}
-              onClick={afterSaving(() => setConfirming('removeInvoiceNumber'))}
+              {...removeAction}
+              disabled={busy || removeAction.disabled}
+              {...afterSaving(() => setConfirming('removeInvoiceNumber'))}
               type="button"
               variant="destructive"
             >

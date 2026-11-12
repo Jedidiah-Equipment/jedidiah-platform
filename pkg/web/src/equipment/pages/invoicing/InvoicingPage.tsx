@@ -19,13 +19,8 @@ import { cursorInfiniteQueryOptions, useCombinedCursorQueryPages } from '@/compo
 import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { useServerSideTableController } from '@/components/data-table/hooks/use-server-side-table-controller.js';
-import { StatusQuickFilters } from '@/components/data-table/StatusQuickFilters.js';
-import {
-  focusOnInvoicingStage,
-  INVOICED_COLUMN_ID,
-  pickWithoutStaleRange,
-  STAGE_COLUMN_ID,
-} from '@/components/data-table/stage-filter.js';
+import { InvoicingStageQuickFilters } from '@/components/data-table/InvoicingStageQuickFilters.js';
+import { focusOnInvoicingStage, INVOICED_COLUMN_ID, STAGE_COLUMN_ID } from '@/components/data-table/stage-filter.js';
 import { createPersistedDataTableStore } from '@/components/data-table/store.js';
 import type { SortOptions } from '@/components/data-table/table-state.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
@@ -184,18 +179,14 @@ export function InvoicingPage() {
   });
   return (
     <PageLayout title="Invoicing" description={invoicingPageDescription} size="full">
-      <StatusQuickFilters
-        label="Invoicing stages"
-        columnId={STAGE_COLUMN_ID}
-        statuses={invoicingQuoteStages}
+      <InvoicingStageQuickFilters
+        stages={invoicingQuoteStages}
         shown={openInvoicingQuoteStages}
         labels={quoteStageLabels}
         colours={quoteStageColorClassNames}
         counts={counts}
         columnFilters={tableController.columnFilters}
-        onColumnFiltersChange={(updater) =>
-          tableController.setColumnFilters((current) => pickWithoutStaleRange(current, updater))
-        }
+        onColumnFiltersChange={tableController.setColumnFilters}
       />
       <DataTable
         emptyMessage="No Quotes found."

@@ -13,7 +13,7 @@ import {
 import { InvoicedByMonthWidget } from './widgets/InvoicedByMonthWidget.js';
 import { QuoteFlowWidget } from './widgets/QuoteFlowWidget.js';
 import { AwaitingApprovalTile, AwaitingInvoiceTile, AwaitingPricingTile } from './widgets/QuoteStageTiles.js';
-import { QuotesByStatusWidget } from './widgets/QuotesByStatusWidget.js';
+import { QuotesByStageWidget } from './widgets/QuotesByStageWidget.js';
 import { ScheduledJobsWidget } from './widgets/ScheduledJobsWidget.js';
 import { ShopFloorTodayWidget } from './widgets/ShopFloorTodayWidget.js';
 import { StaleSentQuotesWidget } from './widgets/StaleSentQuotesWidget.js';
@@ -77,11 +77,11 @@ export const equipmentDashboardRows = [
   ],
   [
     {
-      Component: QuotesByStatusWidget,
-      id: 'quotes-by-status',
+      Component: QuotesByStageWidget,
+      id: 'quotes-by-stage',
       requires: 'equipment_quote:read',
       size: 'md',
-      title: 'Quotes by status',
+      title: 'Quotes by stage',
     },
     {
       Component: QuoteFlowWidget,

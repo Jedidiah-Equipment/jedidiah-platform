@@ -22,7 +22,7 @@ vi.mock('./widgets/QuoteStageTiles.js', () => ({
   AwaitingInvoiceTile: () => null,
   AwaitingPricingTile: () => null,
 }));
-vi.mock('./widgets/QuotesByStatusWidget.js', () => ({ QuotesByStatusWidget: () => null }));
+vi.mock('./widgets/QuotesByStageWidget.js', () => ({ QuotesByStageWidget: () => null }));
 vi.mock('./widgets/ScheduledJobsWidget.js', () => ({ ScheduledJobsWidget: () => null }));
 vi.mock('./widgets/ShopFloorTodayWidget.js', () => ({ ShopFloorTodayWidget: () => null }));
 vi.mock('./widgets/StaleSentQuotesWidget.js', () => ({ StaleSentQuotesWidget: () => null }));
@@ -35,7 +35,7 @@ const visibleTo = (role: AppRole) =>
 
 const stageTiles = ['awaiting-pricing', 'awaiting-approval', 'awaiting-invoice'];
 const quoteRows = [
-  ['quotes-by-status', 'quote-flow'],
+  ['quotes-by-stage', 'quote-flow'],
   ['stale-sent-quotes', 'awaiting-job-creation', 'upcoming-deliveries'],
 ];
 const jobRows = [

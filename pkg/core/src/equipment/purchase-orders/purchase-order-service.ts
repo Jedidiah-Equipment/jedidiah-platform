@@ -792,13 +792,13 @@ const purchaseOrderWith = {
             with: {
               ownershipTransfers: {
                 columns: { createdAt: true, id: true, occurredOn: true, toCustomerId: true },
-                with: { toCustomer: { columns: { companyName: true, id: true, thumbnailDataUrl: true } } },
+                with: { toCustomer: { columns: { companyName: true } } },
               },
             },
           },
           quote: {
             columns: {},
-            with: { customer: { columns: { companyName: true, id: true, thumbnailDataUrl: true } } },
+            with: { customer: { columns: { companyName: true } } },
           },
         },
       },

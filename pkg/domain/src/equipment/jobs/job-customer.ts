@@ -1,17 +1,11 @@
-/** The minimum a surface needs to name whoever a Job belongs to. */
-export type JobCustomerParty = {
-  id: string;
-  companyName: string;
-  thumbnailDataUrl: string | null;
-};
-
-export type JobCustomerSource = {
+/** Generic over the Customer's shape, so each read loads only the columns it shows. */
+export type JobCustomerSource<TCustomer> = {
   /**
    * Present when the Job is bound to a Product Unit; `owner` is that machine's current Owner, or
    * `null` when we hold it. Absent for a Custom Job, which produces no machine.
    */
-  productUnit: { owner: JobCustomerParty | null } | null;
-  quoteCustomer: JobCustomerParty | null;
+  productUnit: { owner: TCustomer | null } | null;
+  quoteCustomer: TCustomer | null;
 };
 
 /**
@@ -19,6 +13,9 @@ export type JobCustomerSource = {
  * Quote that first built it, which is what lets a sold-on machine show its new Customer. A Custom Job
  * produces no machine, so it follows its Quote. `null` means Stock: we hold it.
  */
-export function resolveJobCustomer({ productUnit, quoteCustomer }: JobCustomerSource): JobCustomerParty | null {
+export function resolveJobCustomer<TCustomer>({
+  productUnit,
+  quoteCustomer,
+}: JobCustomerSource<TCustomer>): TCustomer | null {
   return productUnit ? productUnit.owner : quoteCustomer;
 }

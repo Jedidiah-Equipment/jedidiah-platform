@@ -1,6 +1,6 @@
 import type { Db } from '@pkg/db';
 import { jobs } from '@pkg/db/equipment';
-import { computeQuoteVatAmount, resolveJobCustomer, resolveNewestOwnershipTransfer } from '@pkg/domain/equipment';
+import { computeQuoteVatAmount } from '@pkg/domain/equipment';
 import { UUID } from '@pkg/schema';
 import { type JobSalesExportInput, JobSalesExportRow } from '@pkg/schema/equipment';
 import { and, asc, isNotNull } from 'drizzle-orm';
@@ -8,6 +8,7 @@ import { and, asc, isNotNull } from 'drizzle-orm';
 import { readJobDrawnCost, sumJobDrawnCosts } from '../inventory/job-cost-read.js';
 import { loadQuoteAssociations } from '../quotes/quote-read-service.js';
 import { priceReportQuote } from '../quotes/quote-report-pricing.js';
+import { jobOwnershipTransfersWith, resolveJobCustomerForRow } from './job-customer-read.js';
 import { buildJobListWhere } from './job-read-service.js';
 
 /**
@@ -41,10 +42,7 @@ export async function listCompletedJobSales({
       productUnit: {
         columns: { productSerialNumber: true },
         with: {
-          ownershipTransfers: {
-            columns: { createdAt: true, id: true, occurredOn: true, toCustomerId: true },
-            with: { toCustomer: { columns: { companyName: true, id: true, thumbnailDataUrl: true } } },
-          },
+          ownershipTransfers: jobOwnershipTransfersWith({ companyName: true }),
           product: { columns: { modelCode: true, name: true } },
         },
       },
@@ -58,7 +56,7 @@ export async function listCompletedJobSales({
           kind: true,
           quotedBasePrice: true,
         },
-        with: { customer: { columns: { companyName: true, id: true, thumbnailDataUrl: true } } },
+        with: { customer: { columns: { companyName: true } } },
       },
     },
   });
@@ -83,12 +81,7 @@ export async function listCompletedJobSales({
           })
         : null;
     const costExVat = readJobDrawnCost(costByJobId, jobId);
-    const customer = resolveJobCustomer({
-      productUnit: row.productUnit
-        ? { owner: resolveNewestOwnershipTransfer(row.productUnit.ownershipTransfers)?.toCustomer ?? null }
-        : null,
-      quoteCustomer: row.quote?.customer ?? null,
-    });
+    const customer = resolveJobCustomerForRow(row);
 
     return JobSalesExportRow.parse({
       completedOn: row.completedOn,

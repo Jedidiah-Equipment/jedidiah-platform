@@ -29,8 +29,6 @@ import {
   formatPurchaseOrderLineLabel,
   purchaseOrderActionFacts,
   purchaseOrderLineSubjectKey,
-  resolveJobCustomer,
-  resolveNewestOwnershipTransfer,
 } from '@pkg/domain/equipment';
 import { type AuthId, DateIso, getNextCursor, type UUID } from '@pkg/schema';
 import {
@@ -65,6 +63,7 @@ import {
   sanitizeDocumentStorageKeySuffix,
 } from '../documents/document-service.js';
 import { assertPartStockAction } from '../inventory/part-stock-action.js';
+import { jobOwnershipTransfersWith, resolveJobCustomerForRow } from '../jobs/job-customer-read.js';
 import { jobNotFound } from '../jobs/job-errors.js';
 import {
   purchaseOrderInvalidQuantity,
@@ -790,10 +789,7 @@ const purchaseOrderWith = {
           productUnit: {
             columns: {},
             with: {
-              ownershipTransfers: {
-                columns: { createdAt: true, id: true, occurredOn: true, toCustomerId: true },
-                with: { toCustomer: { columns: { companyName: true } } },
-              },
+              ownershipTransfers: jobOwnershipTransfersWith({ companyName: true }),
             },
           },
           quote: {
@@ -864,13 +860,7 @@ function mapPurchaseOrder({
     jobs: row.jobLinks
       .map(({ job }) => ({
         code: job.code,
-        customerCompanyName:
-          resolveJobCustomer({
-            productUnit: job.productUnit
-              ? { owner: resolveNewestOwnershipTransfer(job.productUnit.ownershipTransfers)?.toCustomer ?? null }
-              : null,
-            quoteCustomer: job.quote?.customer ?? null,
-          })?.companyName ?? null,
+        customerCompanyName: resolveJobCustomerForRow(job)?.companyName ?? null,
         id: job.id,
       }))
       .sort((left, right) => left.code - right.code),

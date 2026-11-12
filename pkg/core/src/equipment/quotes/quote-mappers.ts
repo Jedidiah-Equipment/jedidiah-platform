@@ -159,7 +159,7 @@ export function mapQuoteDetail(
   reworkRequired: boolean,
   actor: QuoteActor,
 ): QuoteDetail {
-  const liveJob = row.jobs.find((job) => job.cancelledAt === null);
+  const liveJobRow = row.jobs.find((job) => job.cancelledAt === null);
   const stage = quoteRowStage(row, row.liveJob);
 
   return QuoteDetail.parse({
@@ -175,11 +175,11 @@ export function mapQuoteDetail(
     customerThumbnailDataUrl: row.customer.thumbnailDataUrl,
     customerVatNumber: row.customer.vatNumber,
     hasEverSourcedJob: row.jobs.length > 0 || row.everPlacedAUnit,
-    job: liveJob
+    job: liveJobRow
       ? mapQuoteLinkedJob({
-          jobCode: liveJob.code,
-          jobDescription: liveJob.description,
-          jobId: liveJob.id,
+          jobCode: liveJobRow.code,
+          jobDescription: liveJobRow.description,
+          jobId: liveJobRow.id,
         })
       : null,
     product: mapQuoteDetailProduct(row, productAssembliesForQuote, productBaysForQuote),

@@ -1,3 +1,6 @@
+import { judgeQuoteAction, type QuoteActionSubject, type QuoteActor } from '@pkg/domain/equipment';
+import type { QuoteActionBlockedReason, QuoteActionName } from '@pkg/schema/equipment';
+
 export type QuoteErrorCode =
   | 'quote.allocation_conflict'
   | 'quote.already_cancelled'
@@ -65,3 +68,15 @@ export const quoteInvoiced = () =>
 /** The Invoice Number is written only by the invoice Quote Actions; an edit may carry the stored one unchanged. */
 export const quoteInvoiceNumberNotAnEdit = () =>
   new QuoteError('quote.wrong_stage', 'The Invoice Number is entered from the Quote Stage, not by editing the quote.');
+
+const refusalCodes = {
+  'no-permission': 'quote.forbidden',
+  'wrong-status': 'quote.wrong_stage',
+  'delivery-unconfirmed': 'quote.delivery_unconfirmed',
+} as const satisfies Record<QuoteActionBlockedReason, QuoteErrorCode>;
+
+/** Refuses unless this actor may take this Quote Action on this Quote now, with the verdict's own sentence. */
+export function assertQuoteAction(action: QuoteActionName, quote: QuoteActionSubject, actor: QuoteActor) {
+  const verdict = judgeQuoteAction(action, quote, actor);
+  if (!verdict.allowed) throw new QuoteError(refusalCodes[verdict.reason], verdict.message);
+}

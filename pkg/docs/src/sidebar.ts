@@ -90,6 +90,10 @@ export const EQUIPMENT_SECTIONS: DocsSection[] = [
     ],
   },
   {
+    text: 'Sales concepts',
+    items: [{ text: 'Quote Stages', link: '/sales/quote-stages' }],
+  },
+  {
     text: 'Production tasks',
     items: [
       { text: 'Find a Job', link: '/production/find-a-job' },

@@ -21,7 +21,7 @@ prices and specification the Customer agreed to, so changing those means a new Q
 
 A Locked Quote keeps its notes and delivery dates open to anyone who edits Quotes, at every Stage: a
 machine can be invoiced before it is delivered. Everything else depends on the Quote's
-[Stage](/sales/take-a-finished-sale-to-its-invoice):
+[Stage](/sales/quote-stages):
 
 | Stage | Document notes, Valid until | Work Items, discount, deposit, Delivery Terms and Delivery Price |
 | --- | --- | --- |

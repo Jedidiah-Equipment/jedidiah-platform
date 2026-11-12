@@ -1,10 +1,9 @@
 import type { DatabaseTransaction, Db } from '@pkg/db';
 import { customers, quotes } from '@pkg/db/equipment';
-import { judgeQuoteAction, type QuoteActor, quoteTransitions } from '@pkg/domain/equipment';
+import { type QuoteActor, quoteTransitions } from '@pkg/domain/equipment';
 import type { UUID } from '@pkg/schema';
 import {
   formatQuoteCode,
-  type QuoteActionBlockedReason,
   type QuoteActionName,
   QuoteInvoiceNumberMatch,
   type QuoteSendBackInput,
@@ -17,20 +16,13 @@ import { asc, eq, sql } from 'drizzle-orm';
 
 import { diffAuditUpdate, recordAuditUpdate } from '../../audit/audit-writer.js';
 import { quoteAuditDescriptor } from './quote-audit.js';
-import { QuoteError, type QuoteErrorCode, quoteNotFound } from './quote-errors.js';
-import { quoteRowStage } from './quote-mappers.js';
+import { assertQuoteAction, quoteNotFound } from './quote-errors.js';
+import { type QuoteRow, quoteRowStage } from './quote-mappers.js';
 import { quoteStageExpression, readLiveJob } from './quote-read-service.js';
 import { listQuoteSelectedAssemblies } from './quote-selected-assemblies.js';
 import { listQuoteWorkItems } from './quote-work-items.js';
 
-type QuoteRow = typeof quotes.$inferSelect;
 type ActionArgs<Input> = { db: Db; actor: QuoteActor; input: Input };
-
-const refusalCodes = {
-  'no-permission': 'quote.forbidden',
-  'wrong-status': 'quote.wrong_stage',
-  'delivery-unconfirmed': 'quote.delivery_unconfirmed',
-} as const satisfies Record<QuoteActionBlockedReason, QuoteErrorCode>;
 
 /** Locks the Quote and asserts the Quote Action against its Stage, refusing with the verdict's own sentence. */
 async function lockQuoteFor(
@@ -42,8 +34,7 @@ async function lockQuoteFor(
   const [row] = await tx.select().from(quotes).where(eq(quotes.id, id)).for('update');
   if (!row) throw quoteNotFound(id);
   const stage = quoteRowStage(row, await readLiveJob({ db: tx, quoteId: id }));
-  const verdict = judgeQuoteAction(action, { deliveryTerms: row.deliveryTerms, stage }, actor);
-  if (!verdict.allowed) throw new QuoteError(refusalCodes[verdict.reason], verdict.message);
+  assertQuoteAction(action, { deliveryTerms: row.deliveryTerms, stage }, actor);
   return row;
 }
 

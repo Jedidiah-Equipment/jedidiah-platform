@@ -5,7 +5,7 @@ ALTER TABLE "equipment"."quote" ADD COLUMN "sent_back_by_user_id" text;--> state
 ALTER TABLE "equipment"."quote" ADD COLUMN "sent_back_note" text;--> statement-breakpoint
 ALTER TABLE "equipment"."quote" ADD CONSTRAINT "quote_invoiced_by_user_id_user_id_fk" FOREIGN KEY ("invoiced_by_user_id") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "equipment"."quote" ADD CONSTRAINT "quote_sent_back_by_user_id_user_id_fk" FOREIGN KEY ("sent_back_by_user_id") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
--- 1. Invoiced: every live Quote carrying an Invoice Number, dated from the audit event that first gave it one.
+-- 1. Invoiced: every live Quote carrying an Invoice Number, dated from the latest audit event that set it from empty.
 UPDATE "equipment"."quote" AS q
 SET
   "status" = 'invoiced',

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { AuthId } from '../../auth/auth-id.js';
+import type { ContractingRole } from '../../auth/authorization.js';
 import { DateIso, DateOnlyIso } from '../../common/date.js';
 import {
   CursorQueryInput,
@@ -589,11 +590,30 @@ export type QuickSwitchActorListResult = z.infer<typeof QuickSwitchActorListResu
 export const QuickSwitchActorListResult = z.object({ items: z.array(QuickSwitchActor) });
 
 /**
- * A person offered as a Checkout's Recipient: the same tile the quick-switch names an Operator by,
- * read under the movement permission so the tablet and the browser can both offer it.
+ * A person a web form may name as a movement's Operator: the same tile the quick-switch offers, read
+ * under the movement permissions so every web form that moves stock can offer it.
  */
-export type InventoryRecipientOption = QuickSwitchActor;
-export const InventoryRecipientOption = QuickSwitchActor;
+export type InventoryOperatorOption = QuickSwitchActor;
+export const InventoryOperatorOption = QuickSwitchActor;
+
+export type InventoryOperatorOptionListInput = z.infer<typeof InventoryOperatorOptionListInput>;
+export const InventoryOperatorOptionListInput = CursorQueryInput.extend({ search: SearchText });
+
+export type InventoryOperatorOptionListResult = z.infer<typeof InventoryOperatorOptionListResult>;
+export const InventoryOperatorOptionListResult = createCursorQueryResult(InventoryOperatorOption);
+
+/** The Contracting roles that may receive a Checkout Without a Job without holding an Equipment role. */
+export const CONTRACTING_RECIPIENT_ROLES = ['driver', 'mechanic'] as const satisfies readonly ContractingRole[];
+
+/**
+ * A person offered as a Checkout's Recipient. `contractingRole` names a Contracting-only Driver or
+ * Mechanic, so a picker can tell them from a same-named Equipment person; it is null for anyone with
+ * an Equipment role.
+ */
+export type InventoryRecipientOption = z.infer<typeof InventoryRecipientOption>;
+export const InventoryRecipientOption = QuickSwitchActor.extend({
+  contractingRole: z.enum(CONTRACTING_RECIPIENT_ROLES).nullable(),
+});
 
 export type InventoryRecipientOptionListInput = z.infer<typeof InventoryRecipientOptionListInput>;
 export const InventoryRecipientOptionListInput = CursorQueryInput.extend({ search: SearchText });

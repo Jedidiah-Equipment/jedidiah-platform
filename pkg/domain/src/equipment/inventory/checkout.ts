@@ -1,4 +1,11 @@
-import { presaleQuoteStatuses, type QuoteStatus, soldQuoteStatuses } from '@pkg/schema/equipment';
+import {
+  type InventoryRecipientOption,
+  presaleQuoteStatuses,
+  type QuoteStatus,
+  soldQuoteStatuses,
+} from '@pkg/schema/equipment';
+
+import { roleLabels } from '../../auth/authorization.js';
 
 /**
  * A Checkout Without a Job: stock drawn to a Recipient rather than a Job or a Parts Sale. The ledger's
@@ -22,3 +29,11 @@ export const PARTS_SALE_CHECKOUT_STATUSES: ReadonlySet<QuoteStatus> = new Set([
   ...presaleQuoteStatuses,
   ...soldQuoteStatuses,
 ]);
+
+/**
+ * A Recipient as a picker names them: a Contracting-only Driver or Mechanic carries the role, so they
+ * stay distinct from a same-named Equipment person.
+ */
+export function recipientLabel({ contractingRole, name }: Pick<InventoryRecipientOption, 'contractingRole' | 'name'>) {
+  return contractingRole === null ? name : `${name} · ${roleLabels[contractingRole]}`;
+}

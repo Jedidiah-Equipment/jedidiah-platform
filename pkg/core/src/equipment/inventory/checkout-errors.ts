@@ -21,7 +21,7 @@ export const isCheckoutError = (error: unknown): error is CheckoutError => error
 export const checkoutRecipientIneligible = (recipientUserId: AuthId) =>
   new CheckoutError(
     'inventory.recipient_ineligible',
-    `Recipient is unknown, disabled, a device, or not an Equipment user: ${recipientUserId}`,
+    `Recipient is unknown, disabled, a device, or not an Equipment person, Driver or Mechanic: ${recipientUserId}`,
   );
 export const invalidSourceCheckout = (sourceCheckoutId: UUID) =>
   new CheckoutError(

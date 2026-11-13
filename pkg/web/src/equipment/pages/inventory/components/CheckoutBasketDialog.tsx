@@ -1,5 +1,15 @@
-import { deriveCheckoutBasketWarnings, unplannedCheckoutFacts, warningMessageFor } from '@pkg/domain/equipment';
-import type { CheckoutBasketPostResult, StockMovementWarningCode, StockOnHandRow } from '@pkg/schema/equipment';
+import {
+  deriveCheckoutBasketWarnings,
+  recipientLabel,
+  unplannedCheckoutFacts,
+  warningMessageFor,
+} from '@pkg/domain/equipment';
+import type {
+  CheckoutBasketPostResult,
+  InventoryRecipientOption,
+  StockMovementWarningCode,
+  StockOnHandRow,
+} from '@pkg/schema/equipment';
 import { StockMovementLengthMm, StockMovementQuantity } from '@pkg/schema/equipment';
 import { IconAlertTriangle, IconPlus, IconTrash } from '@tabler/icons-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -19,7 +29,7 @@ import { useApiMutationErrorToast } from '@/hooks/use-api-mutation-error-toast.j
 import { getApiErrorMetadata } from '@/lib/api-errors.js';
 import { useTRPC } from '@/lib/trpc.js';
 
-import { MovementOperatorField, personOptions, useDefaultMovementOperator } from './MovementOperatorField.js';
+import { MovementOperatorField, useDefaultMovementOperator } from './MovementOperatorField.js';
 import { MovementTargetPicker, type SelectedMovementTarget } from './MovementTargetPicker.js';
 import { StockMovementWarningPrompt } from './StockMovementWarningPrompt.js';
 import {
@@ -229,9 +239,9 @@ export function CheckoutBasketDialog({
                     <form.AppField name="recipientUserId">
                       {(field) => (
                         <field.ComboboxField
-                          emptyMessage="No active Equipment users found."
+                          emptyMessage="No active Equipment people, Drivers or Mechanics found."
                           label="Received by"
-                          options={personOptions(recipientQuery.data?.items ?? [])}
+                          options={recipientOptions(recipientQuery.data?.items ?? [])}
                           placeholder="Search people"
                         />
                       )}
@@ -578,4 +588,8 @@ function refusedPartIdFrom(error: unknown): string | null {
   const metadata = getApiErrorMetadata(error);
   if (typeof metadata !== 'object' || metadata === null || !('partId' in metadata)) return null;
   return typeof metadata.partId === 'string' ? metadata.partId : null;
+}
+
+function recipientOptions(people: readonly InventoryRecipientOption[]) {
+  return people.map((person) => ({ label: recipientLabel(person), value: person.id }));
 }

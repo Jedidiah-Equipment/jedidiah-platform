@@ -70,7 +70,7 @@ stores; this does not create a personal stock balance for the Recipient.
 2. Check **Operator**. It starts as you; choose whoever is doing the work if that is someone else.
 3. Choose **Without a Job**.
 4. Choose **Received by**. It starts with the Operator, but you can select any active Equipment
-   user.
+   user, or a Contracting Driver or Mechanic, shown with their role, such as “Ayanda · Driver”.
 5. Enter a short **Purpose**, such as “Repair factory drill”.
 6. Scan or search for a **Part**, confirm the **Quantity**, and set **Length (mm)** for a linear
    Part. Click **Add** and repeat for every Part leaving stores.

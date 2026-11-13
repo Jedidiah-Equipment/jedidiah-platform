@@ -1,6 +1,7 @@
 import { deriveMovementWarnings, drawnBucketQuantity, unplannedCheckoutFacts } from '@pkg/domain/equipment';
 import type {
   InventoryQuoteOption,
+  InventoryRecipientOption,
   JobPickerOption,
   JobStockMovementType,
   JobStockResult,
@@ -27,7 +28,7 @@ import { bucketQuantityOnHand, previewJobMovementWarnings } from '@/equipment/li
 export type StoresMovementTarget =
   | { job: JobPickerOption | null; kind: 'job' }
   | { kind: 'quote'; quote: InventoryQuoteOption | null }
-  | { kind: 'recipient'; purpose: string; recipient: QuickSwitchActor | null }
+  | { kind: 'recipient'; purpose: string; recipient: InventoryRecipientOption | null }
   | { kind: 'source'; sourceCheckout: SourceCheckoutOption | null };
 
 /**
@@ -61,7 +62,7 @@ export function initialStoresMovementTarget({
   if (mode === 'quote') return { kind: 'quote', quote: null };
 
   return movementType === 'checkout'
-    ? { kind: 'recipient', purpose: '', recipient: actor }
+    ? { kind: 'recipient', purpose: '', recipient: operatorAsRecipient(actor) }
     : { kind: 'source', sourceCheckout: null };
 }
 
@@ -78,7 +79,12 @@ export function syncDefaultRecipient({
   if (target.kind !== 'recipient') return target;
   if (target.recipient !== null && target.recipient.id !== previousActorUserId) return target;
 
-  return { ...target, recipient: actor };
+  return { ...target, recipient: operatorAsRecipient(actor) };
+}
+
+/** The Operator as the default Recipient: an Operator always holds an Equipment role, so names no Contracting role. */
+function operatorAsRecipient(actor: QuickSwitchActor | null): InventoryRecipientOption | null {
+  return actor === null ? null : { ...actor, contractingRole: null };
 }
 
 export function hasStoresMovementTarget(target: StoresMovementTarget, fixedJobId: string | undefined): boolean {

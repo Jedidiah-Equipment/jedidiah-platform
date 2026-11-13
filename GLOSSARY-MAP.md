@@ -20,7 +20,10 @@ Customer) for different concepts; never treat a same-named term as shared.
 - There is **no data crossing between the two business contexts**: a Contracting Machine holds no
   reference to an Equipment Product Unit (a machine Jedidiah Equipment built is still just a
   Machine on the contracting side), and Customers are not shared — each business keeps its own
-  directory, and the same real-world farmer may appear in both.
+  directory, and the same real-world farmer may appear in both. A Stock Movement's **Recipient** may
+  be a User holding only a Contracting role (a Driver or Mechanic) — the one Equipment record that
+  names a Contracting-only person. That crosses no data between the contexts, because the User is
+  shared: one account, two role slots (ADR 0017).
 - **Audit Event** is one mechanism serving both businesses, read as one **Audit Log per business**:
   each business's log shows the events for its own entity types and opens only to that business's
   audit read permission. A User event belongs to exactly one log: Contracting's when the User holds a

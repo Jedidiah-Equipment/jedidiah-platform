@@ -74,7 +74,7 @@ import {
 import { resolveMovementActor } from './movement-actor.js';
 import { assertPartStockAction } from './part-stock-action.js';
 import { loadPlantStockPosition } from './plant-stock-position.js';
-import { eligibleMovementPersonCondition } from './recipient-read.js';
+import { eligibleRecipientCondition } from './recipient-read.js';
 import { sumBy, sumNullableBy } from './row-grouping.js';
 import { periodicStockMovement, scannedPartNotFound, stockMovementPartNotFound } from './stock-movement-errors.js';
 import { assertDeltaMatchesUnitClass, assertLengthMatchesUnitClass } from './unit-class-rules.js';
@@ -542,7 +542,7 @@ async function assertEligibleRecipient(db: DatabaseTransaction, recipientUserId:
   const [recipient] = await db
     .select({ id: user.id })
     .from(user)
-    .where(and(eq(user.id, recipientUserId), eligibleMovementPersonCondition()))
+    .where(and(eq(user.id, recipientUserId), eligibleRecipientCondition()))
     .limit(1);
   if (!recipient) throw checkoutRecipientIneligible(recipientUserId);
 }

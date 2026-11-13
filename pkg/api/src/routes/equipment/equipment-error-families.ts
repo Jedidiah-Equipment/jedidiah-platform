@@ -216,11 +216,13 @@ export const documentErrorFamily = defineCoreErrorFamily<DocumentError>({
 
 export const feedbackErrorFamily = defineCoreErrorFamily<FeedbackError>({
   codes: {
+    'feedback.invalid_target': 'BAD_REQUEST',
     'feedback.not_found': 'NOT_FOUND',
     'feedback.subject_not_found': 'NOT_FOUND',
   },
   is: isFeedbackError,
   messages: {
+    'feedback.invalid_target': 'Corrective Feedback can only name active people with an Equipment role.',
     'feedback.not_found': 'The feedback item could not be found.',
     'feedback.subject_not_found': 'The Quote, Job or Purchase Order this feedback is about could not be found.',
   },

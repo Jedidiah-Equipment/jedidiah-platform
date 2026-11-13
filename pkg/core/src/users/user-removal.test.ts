@@ -1,7 +1,7 @@
 import { auditEvents, user } from '@pkg/db';
 import { describe, expect } from 'vitest';
 import { createTester } from '../test/create-tester.js';
-import { getUserRemovalVerdict, listUserForeignKeys } from './user-removal.js';
+import { getUserRemovalVerdict, isRemovalHistory, listUserForeignKeys } from './user-removal.js';
 
 const test = createTester(async ({ db }) => {
   const now = new Date();
@@ -19,9 +19,9 @@ const test = createTester(async ({ db }) => {
 });
 
 describe('User Removal', () => {
-  // Remove deletes every row a cascading key holds. A new one must be reviewed before it lands here: does that row
-  // belong to the account, or is it history that should refuse the removal?
-  test('only account-owned rows cascade with a removed User', async ({ context }) => {
+  // A new cascading key must be reviewed before it lands here: does that row belong to the account (add it to
+  // ACCOUNT_OWNED_TABLES so Remove deletes it), or is it history that should refuse the removal (the default)?
+  test('pins every cascading key to user', async ({ context }) => {
     const cascading = (await listUserForeignKeys(context.db)).filter((key) => key.cascades);
 
     expect(cascading.map((key) => `${key.schema}.${key.table}.${key.column}`)).toEqual([
@@ -32,6 +32,16 @@ describe('User Removal', () => {
       'public.push_token.user_id',
       'public.session.user_id',
     ]);
+  });
+
+  test('only the account’s own cascading rows go with it; a Corrective Feedback target is history', async ({
+    context,
+  }) => {
+    const history = (await listUserForeignKeys(context.db))
+      .filter((key) => key.cascades && isRemovalHistory(key))
+      .map((key) => `${key.schema}.${key.table}.${key.column}`);
+
+    expect(history).toEqual(['equipment.feedback_user.user_id']);
   });
 
   test('anything a non-cascading key names is history, an audit actor included', async ({ context }) => {

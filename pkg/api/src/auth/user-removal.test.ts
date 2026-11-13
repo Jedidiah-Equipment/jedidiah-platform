@@ -75,6 +75,20 @@ describe('Disable and Enable', () => {
     ]);
   });
 
+  test('refuses to disable through update-user, which would skip the leaving gates and the audit', async ({
+    context,
+  }) => {
+    await createUser(context.db, { id: 'admin-a', role: 'admin' });
+
+    await expect(
+      context.auth.api.adminUpdateUser({
+        body: { userId: 'admin-a', data: { banned: true } },
+        headers: context.cookies,
+      }),
+    ).rejects.toMatchObject({ status: 'BAD_REQUEST', body: { code: 'DISABLE_THROUGH_BAN_USER' } });
+    expect(await context.db.query.user.findFirst({ where: eq(user.id, 'admin-a') })).toMatchObject({ banned: false });
+  });
+
   test('counts only enabled admins toward the last admin', async ({ context }) => {
     await createUser(context.db, { id: 'admin-a', role: 'admin' });
     await createUser(context.db, { id: 'admin-b', role: 'admin' });

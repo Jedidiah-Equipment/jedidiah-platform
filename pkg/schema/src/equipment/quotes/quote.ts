@@ -807,3 +807,7 @@ export type StaleSentQuoteList = z.infer<typeof StaleSentQuoteList>;
 export const StaleSentQuoteList = z.object({
   items: z.array(StaleSentQuote),
 });
+
+/** The Quote salesperson roster; pickers leave Disabled Users out, the user admin reads the flag for everyone. */
+export const QuoteSalespeopleInput = z.object({ includeDisabled: z.boolean().optional() }).optional();
+export type QuoteSalespeopleInput = z.infer<typeof QuoteSalespeopleInput>;

@@ -89,7 +89,8 @@ export const equipmentUserAdminExtension: UserAdminExtension = {
     const initialDepartments = (user && memberships.get(user.id)) ?? noDepartments;
     const [draft, setDraft] = useState<readonly Department[] | null>(null);
     const setDepartmentsMutation = useMutation(trpc.userDepartments.set.mutationOptions());
-    const salespeopleQuery = useQuery(trpc.quotes.salespeople.queryOptions());
+    // Disabled people stay flagged, so the dialog reads the whole roster rather than the pickers' one.
+    const salespeopleQuery = useQuery(trpc.quotes.salespeople.queryOptions({ includeDisabled: true }));
     const initialQuoteSalesperson =
       user !== null && (salespeopleQuery.data?.users.some((person) => person.id === user.id) ?? false);
     const [quoteSalespersonDraft, setQuoteSalespersonDraft] = useState<boolean | null>(null);

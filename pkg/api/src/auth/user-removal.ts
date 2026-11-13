@@ -17,6 +17,14 @@ const USER_HAS_HISTORY_ERROR = {
   message: 'This person has history. Disable them instead.',
 } as const;
 
+const DISABLE_THROUGH_BAN_ERROR = {
+  code: 'DISABLE_THROUGH_BAN_USER',
+  message: 'Disable or enable a user with Disable user or Enable user.',
+} as const;
+
+// better-auth's update-user also writes these under `user:ban`, which would skip the leaving gates and the audit.
+const BAN_FIELDS = ['banned', 'banReason', 'banExpires'] as const;
+
 // Disable and Remove both take a User out of every role; Enable only reverses Disable.
 const leavingPermissions = {
   '/admin/ban-user': 'user:ban',
@@ -71,6 +79,14 @@ export function userRemovalPlugin(db: Db): BetterAuthPlugin {
     hooks: {
       before: [
         {
+          matcher: ({ path }) => path === '/admin/update-user',
+          handler: createAuthMiddleware(async (ctx) => {
+            const data = isRecord(ctx.body) && isRecord(ctx.body.data) ? ctx.body.data : {};
+            if (BAN_FIELDS.some((field) => Object.hasOwn(data, field)))
+              throw APIError.from('BAD_REQUEST', DISABLE_THROUGH_BAN_ERROR);
+          }),
+        },
+        {
           matcher: ({ path }) => isAccountPath(path),
           handler: createAuthMiddleware(async (ctx) => {
             const request = await readAccountChangeRequest(ctx);
@@ -106,4 +122,8 @@ export function userRemovalPlugin(db: Db): BetterAuthPlugin {
       ],
     },
   };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
 }

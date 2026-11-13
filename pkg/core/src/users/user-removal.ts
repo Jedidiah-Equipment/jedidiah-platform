@@ -5,8 +5,25 @@ import { sql } from 'drizzle-orm';
 export type UserForeignKey = { schema: string; table: string; column: string; cascades: boolean };
 
 /**
+ * The cascading keys whose rows are the account itself (sign-in, devices, what it has read, its Departments), which
+ * Remove may delete with it. Any other key, cascading or not, names the User in a record and is history: a cascade
+ * such as a Corrective Feedback target would otherwise vanish silently with the account.
+ */
+const ACCOUNT_OWNED_TABLES = new Set([
+  'equipment.user_department',
+  'public.account',
+  'public.changelog_view',
+  'public.push_token',
+  'public.session',
+]);
+
+/** Whether a row behind this key keeps a User from being removed. */
+export const isRemovalHistory = (key: UserForeignKey) =>
+  !(key.cascades && ACCOUNT_OWNED_TABLES.has(`${key.schema}.${key.table}`));
+
+/**
  * Every column whose foreign key points at `public."user"`, read from the catalog so a table added later is covered
- * without anyone remembering it. A cascading key goes with the User on Remove; any other key is history.
+ * without anyone remembering it.
  */
 export async function listUserForeignKeys(db: Db | DatabaseTransaction): Promise<UserForeignKey[]> {
   const rows = await db.execute<UserForeignKey>(sql`
@@ -25,9 +42,9 @@ export async function listUserForeignKeys(db: Db | DatabaseTransaction): Promise
 }
 
 /**
- * Whether anything references this User through a foreign key that does not cascade. RESTRICT keys would block the
- * delete anyway; SET NULL keys (an audit actor, an importer) count too, because deleting would silently turn that
- * person into "System". Audit events *about* the User reference it by text, not by key, and are not history.
+ * Whether anything outside the account's own rows references this User. RESTRICT keys would block the delete anyway;
+ * SET NULL keys (an audit actor, an importer) count too, because deleting would silently turn that person into
+ * "System". Audit events *about* the User reference it by text, not by key, and are not history.
  */
 export async function getUserRemovalVerdict({
   db,
@@ -36,7 +53,7 @@ export async function getUserRemovalVerdict({
   db: Db | DatabaseTransaction;
   userId: AuthId;
 }): Promise<UserRemovalVerdict> {
-  const historyKeys = (await listUserForeignKeys(db)).filter((key) => !key.cascades);
+  const historyKeys = (await listUserForeignKeys(db)).filter(isRemovalHistory);
   if (historyKeys.length === 0) return { hasHistory: false };
 
   const references = historyKeys.map(

@@ -506,9 +506,15 @@ export async function getQuoteProductBayAvailability({
   });
 }
 
-export async function listQuoteSalespeople({ db }: { db: Db }): Promise<{ users: UserAccount[] }> {
+export async function listQuoteSalespeople({
+  db,
+  includeDisabled = false,
+}: {
+  db: Db;
+  includeDisabled?: boolean;
+}): Promise<{ users: UserAccount[] }> {
   const rows = await db.query.user.findMany({
-    where: and(eq(user.quoteSalesperson, true), notDisabledCondition()),
+    where: and(eq(user.quoteSalesperson, true), includeDisabled ? undefined : notDisabledCondition()),
     orderBy: [asc(user.name), asc(user.id)],
   });
 

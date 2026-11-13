@@ -33,6 +33,10 @@ const test = createTester(async ({ db }) => {
 test('Disabled people leave the Equipment pickers and cannot be assigned to a Bay', async ({ context }) => {
   expect((await listBayOperators({ db: context.db })).operators.map((operator) => operator.id)).toEqual(['operator']);
   expect((await listQuoteSalespeople({ db: context.db })).users.map((person) => person.id)).toEqual(['seller']);
+  // The user admin still reads a Disabled User's salesperson flag.
+  expect(
+    (await listQuoteSalespeople({ db: context.db, includeDisabled: true })).users.map((person) => person.id),
+  ).toEqual(['disabled-seller', 'seller']);
   expect((await listFeedbackTargetUsers({ db: context.db })).users.map((person) => person.id)).toEqual([
     'operator',
     'seller',

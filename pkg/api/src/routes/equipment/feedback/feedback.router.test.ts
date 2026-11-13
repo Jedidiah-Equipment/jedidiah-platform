@@ -311,6 +311,43 @@ describe('feedback.submit', () => {
     expect(departmentTargets).toEqual([]);
   });
 
+  test('offers and accepts only active Equipment people as corrective-user targets', async ({ context }) => {
+    const target = await createTargetUser(context.db, 'equipment-target-id');
+    await createTargetUser(context.db, 'contracting-driver-id', { contractingRole: 'driver', role: null });
+    await createTargetUser(context.db, 'disabled-target-id', { banned: true });
+    const caller = context.createCaller(mockSession('sales'));
+
+    const offered = (await caller.feedback.listTargetUsers()).users.map((person) => person.id);
+    expect(offered).toContain(target.id);
+    expect(offered).not.toContain('contracting-driver-id');
+    expect(offered).not.toContain('disabled-target-id');
+
+    for (const userId of ['contracting-driver-id', 'disabled-target-id'])
+      await expect(
+        caller.feedback.submit({
+          kind: 'corrective-feedback-user',
+          subject: { subjectType: 'quote', quoteId: context.quote.id },
+          text: 'Not an Equipment person.',
+          userIds: [target.id, userId],
+        }),
+      ).rejects.toMatchObject({ appCode: 'feedback.invalid_target', code: 'BAD_REQUEST' });
+    expect(await context.db.select().from(feedback)).toEqual([]);
+  });
+
+  test('keeps the name on feedback filed before its target lost the Equipment role', async ({ context }) => {
+    const target = await createTargetUser(context.db, 'former-equipment-id');
+    const submitted = await context.createCaller(mockSession('sales')).feedback.submit({
+      kind: 'corrective-feedback-user',
+      subject: { subjectType: 'quote', quoteId: context.quote.id },
+      text: 'Filed while they were in Equipment.',
+      userIds: [target.id],
+    });
+    await context.db.update(user).set({ contractingRole: 'driver', role: null }).where(eq(user.id, target.id));
+
+    const detail = await context.createCaller(mockSession('super-admin')).feedback.get({ id: submitted.id });
+    expect(detail?.users).toEqual([{ id: target.id, name: target.name, thumbnailDataUrl: TARGET_THUMBNAIL_DATA_URL }]);
+  });
+
   test('rejects a corrective-department submission with no targets', async ({ context }) => {
     const caller = context.createCaller(mockSession('sales'));
 
@@ -750,7 +787,7 @@ async function createActorUser(db: Db) {
   });
 }
 
-async function createTargetUser(db: Db, id: string) {
+async function createTargetUser(db: Db, id: string, overrides: Partial<typeof user.$inferInsert> = {}) {
   const now = new Date();
 
   const [created] = await db
@@ -764,6 +801,7 @@ async function createTargetUser(db: Db, id: string) {
       name: `Target ${id}`,
       role: 'sales',
       updatedAt: now,
+      ...overrides,
     })
     .returning();
 

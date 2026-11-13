@@ -10,6 +10,7 @@ import { useAppToast } from '@/components/ui/toast';
 import { PostButton } from '@/equipment/components/stores/PostButton';
 import { StoresScreen } from '@/equipment/components/stores/StoresScreen';
 import { useMovementActorUserId, useStoresActor } from '@/equipment/lib/stores-actor';
+import { useStoresPostError } from '@/equipment/lib/use-stores-post';
 import { invalidateQueryCache } from '@/lib/query-client';
 import { useTRPC } from '@/lib/trpc';
 
@@ -26,6 +27,7 @@ export default function StoresJobCloseOutRoute() {
   const trpc = useTRPC();
   const router = useRouter();
   const toast = useAppToast();
+  const onPostError = useStoresPostError();
   const queryClient = useQueryClient();
   const actorUserId = useMovementActorUserId();
   const { keepAlive } = useStoresActor();
@@ -34,7 +36,7 @@ export default function StoresJobCloseOutRoute() {
 
   const closeOut = useMutation({
     ...trpc.inventory.closeOutJob.mutationOptions(),
-    onError: (error) => toast('error', error.message),
+    onError: onPostError,
     onSuccess: async () => {
       await invalidateQueryCache(queryClient);
       toast('success', 'Job stock closed out');

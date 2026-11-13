@@ -1,4 +1,4 @@
-import { type Db, user } from '@pkg/db';
+import { type DatabaseTransaction, type Db, user } from '@pkg/db';
 import {
   feedback,
   feedbackDepartment,
@@ -39,10 +39,10 @@ import {
   PurchaseOrderFeedbackItem,
   QuoteCode,
 } from '@pkg/schema/equipment';
-import { and, asc, desc, eq, inArray, ne, or } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNotNull, ne, or } from 'drizzle-orm';
 import { notDisabledCondition } from '../../users/active-person.js';
 
-import { feedbackNotFound, feedbackSubjectNotFound } from './feedback-errors.js';
+import { feedbackNotFound, feedbackSubjectNotFound, feedbackTargetInvalid } from './feedback-errors.js';
 import { feedbackPurchaseOrderRelation, toFeedbackPurchaseOrder } from './feedback-purchase-order.js';
 
 type FeedbackRow = typeof feedback.$inferSelect;
@@ -97,6 +97,8 @@ export async function submitFeedback({
   const userIds = input.kind === 'corrective-feedback-user' ? input.userIds : [];
 
   return db.transaction(async (tx) => {
+    if (userIds.length > 0) await assertFeedbackTargets(tx, userIds);
+
     const [row] = await tx
       .insert(feedback)
       .values({
@@ -272,13 +274,26 @@ export async function updateJobFeedback({
   return { item: mapJobFeedbackItem(row) };
 }
 
+/** Who Corrective Feedback may name: holders of an Equipment Role who are not Disabled. Filed feedback keeps its names. */
+const feedbackTargetCondition = () => and(isNotNull(user.role), notDisabledCondition());
+
+async function assertFeedbackTargets(tx: DatabaseTransaction, userIds: readonly string[]) {
+  const wanted = new Set(userIds);
+  const eligible = await tx
+    .select({ id: user.id })
+    .from(user)
+    .where(and(inArray(user.id, [...wanted]), feedbackTargetCondition()))
+    .for('share');
+  if (eligible.length !== wanted.size) throw feedbackTargetInvalid();
+}
+
 // Any signed-in submitter may read this minimal user list to choose corrective-user targets; it is
 // intentionally lighter than the admin-only `user:list` payload.
 export async function listFeedbackTargetUsers({ db }: { db: Db }): Promise<FeedbackTargetUserList> {
   const rows = await db
     .select({ id: user.id, name: user.name, thumbnailDataUrl: user.image })
     .from(user)
-    .where(notDisabledCondition())
+    .where(feedbackTargetCondition())
     .orderBy(asc(user.name));
 
   return FeedbackTargetUserList.parse({ users: rows });

@@ -205,22 +205,34 @@ test('a patch escalates only when it moves a Breakdown from Code Green to Code R
 
 test('a Mechanic or the workshop manager can be the primary Mechanic, listed by name', async ({ context }) => {
   const { db, excavator } = context;
-  await db.insert(user).values({
-    id: 'bay-tablet',
-    name: 'Bay tablet',
-    email: 'bay-tablet@example.com',
-    emailVerified: true,
-    contractingRole: 'workshop-manager',
-    isDevice: true,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  });
+  await db.insert(user).values([
+    {
+      id: 'bay-tablet',
+      name: 'Bay tablet',
+      email: 'bay-tablet@example.com',
+      emailVerified: true,
+      contractingRole: 'workshop-manager',
+      isDevice: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    {
+      id: 'disabled-mechanic',
+      name: 'Disabled Mechanic',
+      email: 'disabled-mechanic@example.com',
+      emailVerified: true,
+      contractingRole: 'mechanic',
+      banned: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+  ]);
   expect(await listMechanics({ db })).toEqual([
     { id: 'connor', name: 'Connor' },
     { id: 'danie', name: 'Danie' },
   ]);
   const breakdown = await reportNew({ db, actor: foreman, input: report({ kind: 'machine', id: excavator.id }) });
-  for (const mechanicUserId of ['thabo', 'bay-tablet'])
+  for (const mechanicUserId of ['thabo', 'bay-tablet', 'disabled-mechanic'])
     await expect(
       assignMechanic({ db, actor: workshop, input: { id: breakdown.id, mechanicUserId } }),
     ).rejects.toMatchObject({ code: 'breakdown.invalid_mechanic' });

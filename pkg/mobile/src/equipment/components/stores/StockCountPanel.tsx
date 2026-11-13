@@ -7,6 +7,7 @@ import { Text } from '@/components/ui/text';
 import { TextInput } from '@/components/ui/text-input';
 import { useAppToast } from '@/components/ui/toast';
 import { useMovementActorUserId, useStoresActor } from '@/equipment/lib/stores-actor';
+import { useStoresPostError } from '@/equipment/lib/use-stores-post';
 import { invalidateQueryCache } from '@/lib/query-client';
 import { useTRPC } from '@/lib/trpc';
 
@@ -43,6 +44,7 @@ export function StockCountPanel({
 }) {
   const trpc = useTRPC();
   const toast = useAppToast();
+  const onPostError = useStoresPostError();
   const queryClient = useQueryClient();
   const actorUserId = useMovementActorUserId();
   const { keepAlive } = useStoresActor();
@@ -60,7 +62,7 @@ export function StockCountPanel({
     trpc.inventory.postStockCount.mutationOptions({
       onError: async (error) => {
         setIsReviewing(false);
-        toast('error', error.message);
+        onPostError(error);
         // The refusal this screen can actually reach is "a bucket arrived while you were counting",
         // so the useful next step is the fresh stock position — the reload puts the bucket the
         // server complained about on screen with a field to key it into.

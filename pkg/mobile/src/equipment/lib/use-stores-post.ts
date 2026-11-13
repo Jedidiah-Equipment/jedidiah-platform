@@ -8,6 +8,7 @@ import { useAppToast } from '@/components/ui/toast';
 
 import { invalidateQueryCache } from '@/lib/query-client';
 import { useTRPC } from '@/lib/trpc';
+import { isStoresActorRefusal } from './stores-access';
 import { useStoresActor } from './stores-actor';
 
 /** The scanned Part a posting screen is working on, loaded the same way the Part screen loaded it. */
@@ -15,6 +16,20 @@ export function usePartByCode(partCode: string) {
   const trpc = useTRPC();
 
   return useQuery(trpc.inventory.partByCode.queryOptions({ code: partCode }));
+}
+
+/**
+ * What a Stores post does when the server refuses it: show the server's sentence, and when the refusal is about the
+ * person named at the tablet, forget them, so the tablet asks who is there instead of keeping a name that cannot post.
+ */
+export function useStoresPostError() {
+  const toast = useAppToast();
+  const { clearActor } = useStoresActor();
+
+  return (error: { message: string }) => {
+    toast('error', error.message);
+    if (isStoresActorRefusal(error)) clearActor();
+  };
 }
 
 /**
@@ -35,10 +50,9 @@ export function useStoresPostOutcome({ successMessage, returnTo }: { successMess
   const router = useRouter();
   const toast = useAppToast();
   const { keepAlive } = useStoresActor();
+  const onError = useStoresPostError();
   const [warnings, setWarnings] = useState<StockMovementPostResult['warnings']>([]);
   const [acknowledged, setAcknowledged] = useState<readonly StockMovementWarningCode[]>([]);
-
-  const onError = (error: { message: string }) => toast('error', error.message);
 
   const onSuccess = async (result: StockMovementPostResult) => {
     await invalidateQueryCache(queryClient);

@@ -1,7 +1,8 @@
 import { accessForRole } from '@pkg/domain/testing';
+import { TRPCClientError } from '@trpc/client';
 import { describe, expect, it } from 'vitest';
 
-import { counterMayOpen, storesSeat } from './stores-access';
+import { counterMayOpen, isStoresActorRefusal, storesSeat } from './stores-access';
 
 const person = { id: 'manager-1', image: null, isDevice: false, name: 'Lerato Khumalo' };
 
@@ -41,5 +42,22 @@ describe('counterMayOpen', () => {
   it('closes the movement screens a deep link could reach', () => {
     expect(counterMayOpen(['(protected)', 'equipment', '(tabs)', 'stores', 'parts', '[partCode]'])).toBe(false);
     expect(counterMayOpen(['(protected)', 'equipment', '(tabs)', 'stores', 'close-out'])).toBe(false);
+  });
+});
+
+describe('isStoresActorRefusal', () => {
+  const refusal = (appCode: string) =>
+    TRPCClientError.from({ error: { code: -32600, data: { appCode, code: 'BAD_REQUEST' }, message: 'Refused.' } });
+
+  it('recognises the server refusing the person named at the tablet', () => {
+    expect(isStoresActorRefusal(refusal('inventory.actor_disabled'))).toBe(true);
+    expect(isStoresActorRefusal(refusal('inventory.actor_not_found'))).toBe(true);
+    expect(isStoresActorRefusal(refusal('inventory.actor_is_device'))).toBe(true);
+  });
+
+  it('leaves the person in place for a refusal about the movement, or a tablet that named nobody', () => {
+    expect(isStoresActorRefusal(refusal('inventory.actor_required'))).toBe(false);
+    expect(isStoresActorRefusal(refusal('inventory.recipient_ineligible'))).toBe(false);
+    expect(isStoresActorRefusal(TRPCClientError.from(new TypeError('Network request failed')))).toBe(false);
   });
 });

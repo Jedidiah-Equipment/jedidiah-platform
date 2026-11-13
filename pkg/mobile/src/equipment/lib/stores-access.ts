@@ -2,6 +2,8 @@ import { hasPermission } from '@pkg/domain';
 import type { UserAccessSummary } from '@pkg/schema';
 import type { QuickSwitchActor } from '@pkg/schema/equipment';
 
+import { trpcAppCode } from '@/lib/trpc-errors';
+
 /** Whether the Stores tab shows. The layout's `storesSeat` is the finer gate once the session is known. */
 export function canEnterStores(access: UserAccessSummary | null | undefined): boolean {
   return hasPermission(access, 'equipment_inventory:move') || hasPermission(access, 'equipment_inventory:count');
@@ -31,4 +33,16 @@ export function counterMayOpen(segments: readonly string[]): boolean {
   const below = segments[segments.indexOf('stores') + 1];
 
   return below === undefined || below === 'stocktake';
+}
+
+const ACTOR_REFUSALS: ReadonlySet<string> = new Set([
+  'inventory.actor_disabled',
+  'inventory.actor_is_device',
+  'inventory.actor_not_found',
+]);
+
+/** The server refused the person named at the tablet, not the movement; `actor_required` named nobody to forget. */
+export function isStoresActorRefusal(error: unknown): boolean {
+  const appCode = trpcAppCode(error);
+  return appCode !== undefined && ACTOR_REFUSALS.has(appCode);
 }

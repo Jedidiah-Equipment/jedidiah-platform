@@ -9,9 +9,9 @@ import { useRouter } from 'expo-router';
 import { Pressable, View } from 'react-native';
 import { ActivityIndicator } from '@/components/ui/activity-indicator';
 import { Text } from '@/components/ui/text';
-import { useAppToast } from '@/components/ui/toast';
 import { StoresScreen } from '@/equipment/components/stores/StoresScreen';
 import { useMovementActorUserId, useStoresActor } from '@/equipment/lib/stores-actor';
+import { useStoresPostError } from '@/equipment/lib/use-stores-post';
 import { invalidateQueryCache } from '@/lib/query-client';
 import { useTRPC } from '@/lib/trpc';
 
@@ -23,7 +23,7 @@ import { useTRPC } from '@/lib/trpc';
 export default function StoresStocktakeRoute() {
   const trpc = useTRPC();
   const router = useRouter();
-  const toast = useAppToast();
+  const onPostError = useStoresPostError();
   const queryClient = useQueryClient();
   const actorUserId = useMovementActorUserId();
   const { keepAlive } = useStoresActor();
@@ -32,7 +32,7 @@ export default function StoresStocktakeRoute() {
 
   const openSession = useMutation(
     trpc.inventory.openStocktakeSession.mutationOptions({
-      onError: (error) => toast('error', error.message),
+      onError: onPostError,
       onSuccess: async (session) => {
         await invalidateQueryCache(queryClient);
         router.push({ params: { sessionId: session.id }, pathname: '/equipment/stores/stocktake/[sessionId]' });

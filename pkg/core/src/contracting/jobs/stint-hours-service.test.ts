@@ -27,6 +27,7 @@ import { captureStintHours, editStintHours, setTravelHours } from './stint-hours
 
 const driverId = 'stint-driver';
 const deviceDriverId = 'stint-driver-device';
+const disabledDriverId = 'stint-driver-disabled';
 
 const test = createTester(async ({ db }) => {
   const fixtures = await seedJobFixtures(db);
@@ -35,14 +36,16 @@ const test = createTester(async ({ db }) => {
     [
       { id: driverId, name: 'Thabo Driver', isDevice: false },
       { id: deviceDriverId, name: 'Driver tablet', isDevice: true },
+      { id: disabledDriverId, name: 'Sipho Driver', isDevice: false, banned: true },
       { id: 'other-foreman', name: 'Other', isDevice: false, contractingRole: 'foreman' as const },
-    ].map(({ id, name, isDevice, contractingRole }) => ({
+    ].map(({ id, name, isDevice, banned, contractingRole }) => ({
       id,
       name,
       email: `${id}@example.com`,
       emailVerified: true,
       contractingRole: contractingRole ?? ('driver' as const),
       isDevice,
+      banned: banned ?? false,
       createdAt: now,
       updatedAt: now,
     })),
@@ -232,7 +235,7 @@ describe('capturing Job Hours', () => {
     expect((await getJob({ db, id: current.id })).status).toBe('completed');
   });
 
-  test('refuses a retired Machine, a retired Implement, a device Driver, a foreign Job and a departure below arrival', async ({
+  test('refuses a retired Machine, a retired Implement, a device or Disabled Driver, a foreign Job and a departure below arrival', async ({
     context,
   }) => {
     const { db, excavator, tipper, implement } = context;
@@ -253,9 +256,8 @@ describe('capturing Job Hours', () => {
       code: 'contracting_job.invalid_reference',
       message: 'The selected Implement is no longer available.',
     });
-    await expect(arrive({ driverUserId: deviceDriverId })).rejects.toMatchObject({
-      code: 'contracting_job.invalid_driver',
-    });
+    for (const driverUserId of [deviceDriverId, disabledDriverId])
+      await expect(arrive({ driverUserId })).rejects.toMatchObject({ code: 'contracting_job.invalid_driver' });
     await arrive({ driverUserId: driverId });
     expect((await getJob({ db, id: other.id })).assignments.find((stint) => stint.id === planned.id)).toMatchObject({
       driverUserId: driverId,

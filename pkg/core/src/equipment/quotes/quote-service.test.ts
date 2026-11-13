@@ -2963,7 +2963,9 @@ describe('listQuoteSalespeople', () => {
 });
 
 describe('Quote salesperson eligibility', () => {
-  test('permits a ticked procurement manager and rejects an unticked admin on create', async ({ context }) => {
+  test('permits a ticked procurement manager and rejects an unticked admin or a Disabled salesperson on create', async ({
+    context,
+  }) => {
     const now = new Date();
     await context.db.insert(user).values([
       {
@@ -2985,6 +2987,17 @@ describe('Quote salesperson eligibility', () => {
         role: 'admin',
         updatedAt: now,
       },
+      {
+        banned: true,
+        createdAt: now,
+        email: 'disabled-seller@example.com',
+        emailVerified: true,
+        id: 'disabled-seller-id',
+        name: 'Disabled Seller',
+        quoteSalesperson: true,
+        role: 'sales',
+        updatedAt: now,
+      },
     ]);
     const createFor = (salesPersonId: string) =>
       createQuoteService({
@@ -3000,6 +3013,7 @@ describe('Quote salesperson eligibility', () => {
 
     await expect(createFor('quote-procurement-id')).resolves.toMatchObject({ salesPersonId: 'quote-procurement-id' });
     await expect(createFor('unticked-admin-id')).rejects.toMatchObject({ code: 'quote.invalid_reference' });
+    await expect(createFor('disabled-seller-id')).rejects.toMatchObject({ code: 'quote.invalid_reference' });
   });
 
   test('allows other edits after unticking, but rejects assigning another unticked user', async ({ context }) => {

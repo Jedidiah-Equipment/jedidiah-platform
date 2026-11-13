@@ -33,7 +33,9 @@ export const UsersPage: React.FC<UsersPageProps> = ({ business, extension }) => 
     hasPermission(access, 'user:update') ||
     hasPermission(access, 'user:set-email') ||
     hasPermission(access, 'user:set-role') ||
-    hasPermission(access, 'user:set-password');
+    hasPermission(access, 'user:set-password') ||
+    hasPermission(access, 'user:ban') ||
+    hasPermission(access, 'user:delete');
 
   const tableExtension = extension.useTableExtension();
   const [editingUser, setEditingUser] = useState<UserAccount | null>(null);

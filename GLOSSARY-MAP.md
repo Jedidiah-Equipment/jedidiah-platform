@@ -17,6 +17,13 @@ Customer) for different concepts; never treat a same-named term as shared.
   filled see the mode switcher. **super-admin** is the one role above the split: everything in
   both businesses plus user administration, filling both slots by definition, and still the only
   role that mints another super-admin.
+- **User Removal** permanently deletes a User nothing references; it is for accounts created by
+  mistake. A User any record names, even only as the actor of an Audit Event, has history and can be
+  disabled, never removed. Audit Events about a removed User stay and read as a removed User's (the
+  map already routes those to the Equipment log).
+- **Disabled User** is a User who can no longer sign in and is offered by no person picker in either
+  business, but whose name stays on every record they are already on. Disabling is reversible
+  (**Enable**) and is stored as better-auth's `user.banned`; never say "banned" to a user.
 - There is **no data crossing between the two business contexts**: a Contracting Machine holds no
   reference to an Equipment Product Unit (a machine Jedidiah Equipment built is still just a
   Machine on the contracting side), and Customers are not shared — each business keeps its own

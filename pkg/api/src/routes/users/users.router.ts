@@ -1,5 +1,5 @@
-import { getUserById, listUsers, setUserIsDevice, updateUserThumbnail } from '@pkg/core';
-import { AuthId, NullableThumbnailDataUrl, UserListInput } from '@pkg/schema';
+import { getUserById, getUserRemovalVerdict, listUsers, setUserIsDevice, updateUserThumbnail } from '@pkg/core';
+import { AuthId, NullableThumbnailDataUrl, UserListInput, UserRemovalInput, UserRemovalVerdict } from '@pkg/schema';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { getApiConfig } from '@/env.js';
@@ -27,6 +27,11 @@ export const usersRouter = router({
   list: authorizedProcedure('user:list')
     .input(UserListInput)
     .query(({ ctx, input }) => listUsers({ input, db: ctx.db })),
+  /** Whether the user admin offers Remove (no history) or Disable; better-auth's remove-user enforces the same verdict. */
+  removal: authorizedProcedure('user:delete')
+    .input(UserRemovalInput)
+    .output(UserRemovalVerdict)
+    .query(({ ctx, input }) => getUserRemovalVerdict({ db: ctx.db, userId: input.userId })),
   /**
    * Whether the account is a shared device. Gated on `user:set-role`, not `user:update`: it decides
    * whether the account may sign for stock at all, which is the same class of decision as granting

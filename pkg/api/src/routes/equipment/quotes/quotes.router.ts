@@ -43,6 +43,7 @@ import {
   QuoteListInput,
   QuotePriorityListInput,
   QuoteProductBayAvailabilityInput,
+  QuoteSalespeopleInput,
   QuoteSendBackInput,
   QuoteStageActionInput,
   QuoteStampInvoiceInput,
@@ -95,7 +96,9 @@ export const quotesRouter = router({
     .output(QuoteInventoryPartListResult)
     .query(({ ctx, input }) => listQuoteInventoryParts({ db: ctx.db, input })),
 
-  salespeople: authorizedProcedure('equipment_quote:read').query(({ ctx }) => listQuoteSalespeople({ db: ctx.db })),
+  salespeople: authorizedProcedure('equipment_quote:read')
+    .input(QuoteSalespeopleInput)
+    .query(({ ctx, input }) => listQuoteSalespeople({ db: ctx.db, includeDisabled: input?.includeDisabled ?? false })),
 
   weeklyFlow: authorizedProcedure('equipment_quote:read').query(({ ctx }) => summarizeQuoteWeeklyFlow({ db: ctx.db })),
 

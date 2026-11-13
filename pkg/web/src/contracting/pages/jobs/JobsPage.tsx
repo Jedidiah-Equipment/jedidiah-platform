@@ -190,7 +190,7 @@ export function JobsTable({ scope }: { scope?: JobsScope }) {
   );
   const { items: jobs, total } = useCombinedCursorQueryPages(jobsQuery.data?.pages);
   const foremen = useQuery(trpc.contractingJobs.options.foremen.queryOptions(undefined, { enabled: canAssign }));
-  const drivers = useQuery(trpc.contractingJobs.field.drivers.queryOptions(undefined, { enabled: canAssign }));
+  const drivers = useQuery(trpc.contractingJobs.options.driverFilter.queryOptions(undefined, { enabled: canAssign }));
   const pickedDriverUserId = pickedDriver(tableController.columnFilters);
   // Full names: first names collide in the fleet. A saved pick no longer listed stays on show.
   const driverFilterOptions = useMemo(

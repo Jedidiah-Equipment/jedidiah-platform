@@ -22,6 +22,7 @@ import { useUserAdminInvalidation } from '@/hooks/use-user-admin-invalidation.js
 import { authClient } from '@/lib/auth-client.js';
 import { useTRPC } from '@/lib/trpc.js';
 import { buildProfileUpdateData } from './components/types.js';
+import { UserAccountActions } from './components/UserAccountActions.js';
 import { UserEditForm, type UserEditFormValues } from './components/UserEditForm.js';
 import type { UserPasswordFormValues } from './components/UserPasswordForm.js';
 import { AuthAdminError, unwrapAuthResult } from './user-admin-client.js';
@@ -190,14 +191,27 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ business, extens
             </Button>
           ) : null}
         </ScrollArea>
-        {canSaveUser ? (
-          <DialogFooter showCloseButton>
+        <DialogFooter showCloseButton>
+          <div className="flex sm:mr-auto">
+            <UserAccountActions
+              onDisabledChange={async (disabled) => {
+                setBaselineUser((currentUser) => ({ ...currentUser, disabled }));
+                await refreshUser();
+              }}
+              onRemoved={async () => {
+                onClose();
+                await Promise.all([invalidateUsers(), invalidateAdditionalUserQueries()]);
+              }}
+              user={baselineUser}
+            />
+          </div>
+          {canSaveUser ? (
             <Button disabled={saveUserMutation.isPending} form={formId} type="submit">
               {saveUserMutation.isPending ? <IconLoader2 data-icon="inline-start" className="animate-spin" /> : null}
               Save user
             </Button>
-          </DialogFooter>
-        ) : null}
+          ) : null}
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

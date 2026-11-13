@@ -7,6 +7,7 @@ import type { UserEditFormValues } from './UserEditForm.js';
 
 const baselineUser: UserAccount = {
   assistantEnabled: false,
+  disabled: false,
   contractingRole: null,
   email: 'sales@example.com',
   emailVerified: true,

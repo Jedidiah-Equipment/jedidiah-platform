@@ -28,6 +28,7 @@ import {
 } from '@pkg/schema/equipment';
 import { and, eq } from 'drizzle-orm';
 import { diffAuditUpdate, recordAuditCreate, recordAuditUpdate } from '../../audit/audit-writer.js';
+import { notDisabledCondition } from '../../users/active-person.js';
 import { assertCustomerCreationAllowed, customerAuditDescriptor } from '../customers/customer-service.js';
 import { cancelJobForQuote } from '../jobs/job-service.js';
 import { quoteEverPlacedAUnit, removeProductUnitWithin } from '../units/product-unit-service.js';
@@ -850,7 +851,7 @@ async function assertQuoteSalesPerson({
       id: user.id,
     })
     .from(user)
-    .where(and(eq(user.id, salesPersonId), eq(user.quoteSalesperson, true)));
+    .where(and(eq(user.id, salesPersonId), eq(user.quoteSalesperson, true), notDisabledCondition()));
 
   if (!salesPerson) {
     throw new QuoteError('quote.invalid_reference', 'Quote salesperson must be a User marked as a Quote salesperson.');

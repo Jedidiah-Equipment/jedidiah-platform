@@ -90,11 +90,11 @@ async function assertArrivalResources(
   }
   if (driverUserId) {
     const [driver] = await tx
-      .select({ contractingRole: user.contractingRole, isDevice: user.isDevice })
+      .select({ contractingRole: user.contractingRole, isDevice: user.isDevice, banned: user.banned })
       .from(user)
       .where(eq(user.id, driverUserId))
       .for('update');
-    if (driver?.contractingRole !== 'driver' || driver.isDevice)
+    if (driver?.contractingRole !== 'driver' || driver.isDevice || driver.banned)
       throw new JobError('contracting_job.invalid_driver', 'Select a person with the Contracting driver role.');
   }
   return arriving;

@@ -40,6 +40,8 @@ import { type AuditDescriptor, diffAuditUpdate, recordAuditUpdate } from './audi
  *   audited field changes, and its row is created on first use.
  * - Unlinking a John Deere Link (`@pkg/integrations`) — its audit label is its Machine's code, read beside
  *   the locked row.
+ * - Disable / Enable a User (`recordUserDisabledChange`) — better-auth's ban-user and unban-user make the write,
+ *   so the event is diffed from the row read in the auth hook before it.
  */
 export async function mutateEntity<TTable extends PgTable & { id: PgColumn }, TResult, TPrepared = void>({
   actorUserId,

@@ -14,6 +14,7 @@ const SignInCredentials = UserAccount.pick({ email: true }).extend({ password: U
 export type UserCreateFormValues = z.infer<typeof UserCreateFormValues>;
 export const UserCreateFormValues = UserAccount.omit({
   assistantEnabled: true,
+  disabled: true,
   email: true,
   id: true,
   thumbnailDataUrl: true,

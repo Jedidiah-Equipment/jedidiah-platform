@@ -704,6 +704,28 @@ describe('admin user safety policy', () => {
     ).rejects.toThrow('Unassign from Fabrication Bay 5 first');
   });
 
+  test('refuses to disable or remove a bay operator who holds an open assignment', async ({ context }) => {
+    const headers = await createSignedInAdmin(context);
+    await createUser(context.db, {
+      email: 'leaving-operator@example.com',
+      id: 'leaving-operator-user-id',
+      name: 'Leaving Operator',
+      role: 'bay-operator',
+    });
+    await createBay(context.db, { id: '00000000-0000-4000-8000-000000000b97', name: 'Fabrication Bay 7' });
+    await createBayOperatorAssignment(context.db, {
+      bayId: '00000000-0000-4000-8000-000000000b97',
+      id: '00000000-0000-4000-8000-000000000a97',
+      operatorUserId: 'leaving-operator-user-id',
+    });
+
+    for (const leave of [context.auth.api.banUser, context.auth.api.removeUser]) {
+      await expect(leave({ body: { userId: 'leaving-operator-user-id' }, headers })).rejects.toMatchObject({
+        body: { code: 'USER_HAS_OPEN_BAY_OPERATOR_ASSIGNMENTS', message: 'Unassign from Fabrication Bay 7 first' },
+      });
+    }
+  });
+
   test('names multiple open bay assignments deterministically when rejecting role changes', async ({ context }) => {
     const headers = await createSignedInAdmin(context);
     await createUser(context.db, {

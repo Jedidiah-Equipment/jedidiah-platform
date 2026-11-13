@@ -138,6 +138,8 @@ export const APP_PERMISSIONS = [
   'user:set-email',
   'user:set-role',
   'user:set-password',
+  'user:ban',
+  'user:delete',
 ] as const;
 
 export type AppPermission = z.infer<typeof AppPermission>;

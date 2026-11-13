@@ -141,7 +141,9 @@ export const permissionLabels = {
   'contracting_settings:update': 'Maintain Contracting settings',
   'contracting_transcription:read': 'View voice note transcriptions and hints',
   'contracting_transcription:use': 'Use voice notes',
+  'user:ban': 'Disable users',
   'user:create': 'Add users',
+  'user:delete': 'Remove users',
   'user:list': 'View users',
   'user:set-email': 'Change user emails',
   'user:set-password': 'Reset user passwords',
@@ -257,7 +259,9 @@ export const permissionDescriptions = {
   'contracting_transcription:read':
     "Read every user's voice note text, the transcription hints learned from it, and the prompts sent to the models.",
   'contracting_transcription:use': 'Turn a recorded voice note into text in any Contracting text area.',
+  'user:ban': 'Disable and re-enable application users.',
   'user:create': 'Add new application users.',
+  'user:delete': 'Permanently remove application users who have no history.',
   'user:list': 'View application users.',
   'user:set-email': 'Change application user email addresses and verification state.',
   'user:set-password': 'Reset passwords for application users.',
@@ -314,7 +318,7 @@ export const authorizationStatement = {
   contracting_report: ['read'],
   contracting_settings: ['update'],
   contracting_transcription: ['read', 'use'],
-  user: ['list', 'create', 'update', 'set-email', 'set-role', 'set-password'],
+  user: ['list', 'create', 'update', 'set-email', 'set-role', 'set-password', 'ban', 'delete'],
 } as const;
 
 type AuthorizationResource = keyof typeof authorizationStatement;
@@ -343,7 +347,7 @@ const adminAccess = {
   equipment_invoice: ['update'],
   equipment_supplier: ['read', 'update', 'remove', 'merge'],
   equipment_transcription: ['use'],
-  user: ['list', 'create', 'update', 'set-email', 'set-role', 'set-password'],
+  user: ['list', 'create', 'update', 'set-email', 'set-role', 'set-password', 'ban', 'delete'],
 } as const satisfies RoleAccess;
 
 const contractingAdminAccess = {

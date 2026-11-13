@@ -30,6 +30,7 @@ describe('users.list', () => {
     expect(result.items).toEqual([
       {
         assistantEnabled: false,
+        disabled: false,
         contractingRole: null,
         email: 'viewer@example.com',
         emailVerified: true,

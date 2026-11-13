@@ -29,7 +29,6 @@ import {
   JobBayUnassignOperatorResult,
 } from '@pkg/schema/equipment';
 import { and, asc, desc, eq, isNotNull, isNull, type SQL } from 'drizzle-orm';
-
 import {
   defineAuditDescriptor,
   recordAuditCreate,
@@ -37,6 +36,7 @@ import {
   recordAuditEvent,
 } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
+import { notDisabledCondition } from '../../users/active-person.js';
 import {
   JobError,
   jobBayAlreadyAssigned,
@@ -209,7 +209,7 @@ export async function listBayOperators({ db }: { db: Db | DatabaseTransaction })
       name: user.name,
     })
     .from(user)
-    .where(eq(user.role, 'bay-operator'))
+    .where(and(eq(user.role, 'bay-operator'), notDisabledCondition()))
     .orderBy(asc(user.name), asc(user.email), asc(user.id));
 
   return BayOperatorListResult.parse({ operators: rows.map(mapBayOperator) });
@@ -495,6 +495,7 @@ export async function getAssignableBayOperatorForUpdate(
       image: user.image,
       name: user.name,
       role: user.role,
+      banned: user.banned,
     })
     .from(user)
     .where(eq(user.id, operatorUserId))
@@ -504,7 +505,7 @@ export async function getAssignableBayOperatorForUpdate(
     throw jobBayOperatorNotFound(operatorUserId);
   }
 
-  if (operator.role !== 'bay-operator') {
+  if (operator.role !== 'bay-operator' || operator.banned) {
     throw jobBayOperatorRoleDenied();
   }
 

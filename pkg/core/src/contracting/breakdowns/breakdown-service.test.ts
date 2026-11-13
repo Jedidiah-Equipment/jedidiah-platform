@@ -247,7 +247,7 @@ test('a role change leaving the set waits until unfixed Breakdowns and open Serv
   const refusal = {
     code: 'breakdown.invalid_mechanic',
     message:
-      "Reassign this mechanic's Breakdowns that are not yet Fixed and open Service Records before changing their role.",
+      "Reassign this mechanic's Breakdowns that are not yet Fixed and open Service Records before changing their role, disabling or removing them.",
   };
   const breakdown = await reportNew({ db, actor: foreman, input: report({ kind: 'machine', id: excavator.id }) });
   await assignMechanic({ db, actor: workshop, input: { id: breakdown.id, mechanicUserId: 'connor' } });

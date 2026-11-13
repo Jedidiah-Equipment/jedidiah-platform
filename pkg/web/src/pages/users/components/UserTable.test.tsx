@@ -12,7 +12,7 @@ const users: UserAccount[] = [
   makeUser('Ben', null, 'foreman'),
   makeUser('Cara', 'sales', 'contracting-invoicing'),
   makeUser('Grace', 'super-admin', null),
-  makeUser('Hope', null, null),
+  { ...makeUser('Hope', null, null), disabled: true },
 ];
 
 const fetchNextPage = vi.fn(async () => undefined);
@@ -74,6 +74,18 @@ describe('UserTable role column', () => {
     expect(userTableStores.equipment.getState().globalFilter).toBe('');
   });
 
+  it('badges a Disabled User beside their name', async () => {
+    await mountUsers('equipment');
+
+    expect(columnTexts('Full Name').map((name) => name?.includes('Disabled'))).toEqual([
+      false,
+      false,
+      false,
+      false,
+      true,
+    ]);
+  });
+
   it('reads a super-admin as the contracting role it spans into', async () => {
     await mountUsers('contracting');
 
@@ -122,6 +134,7 @@ function makeUser(
 ): UserAccount {
   return {
     assistantEnabled: false,
+    disabled: false,
     emailVerified: true,
     id: AuthId.parse(name),
     isDevice: false,

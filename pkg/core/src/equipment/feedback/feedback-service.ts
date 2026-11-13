@@ -40,6 +40,7 @@ import {
   QuoteCode,
 } from '@pkg/schema/equipment';
 import { and, asc, desc, eq, inArray, ne, or } from 'drizzle-orm';
+import { notDisabledCondition } from '../../users/active-person.js';
 
 import { feedbackNotFound, feedbackSubjectNotFound } from './feedback-errors.js';
 import { feedbackPurchaseOrderRelation, toFeedbackPurchaseOrder } from './feedback-purchase-order.js';
@@ -277,6 +278,7 @@ export async function listFeedbackTargetUsers({ db }: { db: Db }): Promise<Feedb
   const rows = await db
     .select({ id: user.id, name: user.name, thumbnailDataUrl: user.image })
     .from(user)
+    .where(notDisabledCondition())
     .orderBy(asc(user.name));
 
   return FeedbackTargetUserList.parse({ users: rows });

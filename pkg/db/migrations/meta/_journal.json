@@ -1352,6 +1352,13 @@
       "when": 1794494257377,
       "tag": "0192_quote_stages",
       "breakpoints": true
+    },
+    {
+      "idx": 193,
+      "version": "7",
+      "when": 1794556478537,
+      "tag": "0193_disabled_users_leave_job_pickers",
+      "breakpoints": true
     }
   ]
 }

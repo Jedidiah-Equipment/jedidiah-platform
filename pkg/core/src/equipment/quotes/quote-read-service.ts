@@ -42,6 +42,7 @@ import {
   UpcomingDeliveryQuotesResult,
 } from '@pkg/schema/equipment';
 import { and, asc, eq, inArray, isNull, ne, or, type SQL, sql } from 'drizzle-orm';
+import { notDisabledCondition } from '../../users/active-person.js';
 import { mapUserAccount } from '../../users/user-service.js';
 import { listBayQueueAvailability } from '../jobs/job-read-service.js';
 import { listAssemblies } from '../products/product-assembly-service.js';
@@ -507,7 +508,7 @@ export async function getQuoteProductBayAvailability({
 
 export async function listQuoteSalespeople({ db }: { db: Db }): Promise<{ users: UserAccount[] }> {
   const rows = await db.query.user.findMany({
-    where: eq(user.quoteSalesperson, true),
+    where: and(eq(user.quoteSalesperson, true), notDisabledCondition()),
     orderBy: [asc(user.name), asc(user.id)],
   });
 

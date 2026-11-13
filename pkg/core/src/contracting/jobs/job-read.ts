@@ -1,5 +1,5 @@
 import { type Db, user } from '@pkg/db';
-import { contractingJobs } from '@pkg/db/contracting';
+import { contractingJobs, contractingMachineAssignments } from '@pkg/db/contracting';
 import {
   type AttentionThresholds,
   deriveAssignmentActions,
@@ -15,17 +15,20 @@ import {
   type StoredStintPricing,
   stintAttention,
 } from '@pkg/domain/contracting';
+import type { AuthId } from '@pkg/schema';
 import {
   type Assignment,
   type DismissedAttention,
   FieldDriver,
   type JobDetail,
   JobFacts,
+  openJobStatuses,
 } from '@pkg/schema/contracting';
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, inArray } from 'drizzle-orm';
+import { activePersonCondition } from '../../users/active-person.js';
 import { getContractingSettings } from '../settings/settings-service.js';
 import { attentionStint, loadDismissals } from './assignment-attention.js';
-import { assertOwner, jobNotFound } from './job-errors.js';
+import { assertOwner, JobError, jobNotFound } from './job-errors.js';
 import {
   type DbOrTx,
   type LoadedMeasure,
@@ -233,15 +236,56 @@ export async function listForemen({ db }: { db: Db }) {
   return db
     .select({ id: user.id, name: user.name })
     .from(user)
-    .where(eq(user.contractingRole, 'foreman'))
+    .where(and(eq(user.contractingRole, 'foreman'), activePersonCondition()))
     .orderBy(asc(user.name));
+}
+
+/**
+ * Refuses taking someone out of every role (Disable, Remove) while they are the Foreman of an open Job or the Driver
+ * of a Machine Assignment on one. A role change meets the same rule in the database triggers.
+ */
+export async function assertJobHolderLeavingAllowed({ db, userId }: { db: Db; userId: AuthId }) {
+  const openJob = inArray(contractingJobs.status, [...openJobStatuses]);
+  const [[foremanJob], [driverAssignment]] = await Promise.all([
+    db
+      .select({ id: contractingJobs.id })
+      .from(contractingJobs)
+      .where(and(eq(contractingJobs.foremanUserId, userId), openJob))
+      .limit(1),
+    db
+      .select({ id: contractingMachineAssignments.id })
+      .from(contractingMachineAssignments)
+      .innerJoin(contractingJobs, eq(contractingJobs.id, contractingMachineAssignments.jobId))
+      .where(and(eq(contractingMachineAssignments.driverUserId, userId), openJob))
+      .limit(1),
+  ]);
+  if (foremanJob)
+    throw new JobError(
+      'contracting_job.invalid_foreman',
+      "Reassign this foreman's open Jobs before changing their role, disabling or removing them.",
+    );
+  if (driverAssignment)
+    throw new JobError(
+      'contracting_job.invalid_driver',
+      "Reassign this driver's open Machine Assignments before changing their role, disabling or removing them.",
+    );
+}
+
+/** Every Driver a Job's history can name, disabled ones included, so the Jobs driver filter still finds their Jobs. */
+export async function listDriverFilterOptions({ db }: { db: Db }) {
+  return db
+    .select({ id: user.id, name: user.name })
+    .from(user)
+    .where(and(eq(user.contractingRole, 'driver'), eq(user.isDevice, false)))
+    .orderBy(asc(user.name))
+    .then((rows) => rows.map((row) => FieldDriver.parse(row)));
 }
 
 export async function listFieldDrivers({ db }: { db: Db }) {
   return db
     .select({ id: user.id, name: user.name })
     .from(user)
-    .where(and(eq(user.contractingRole, 'driver'), eq(user.isDevice, false)))
+    .where(and(eq(user.contractingRole, 'driver'), activePersonCondition()))
     .orderBy(asc(user.name))
     .then((rows) => rows.map((row) => FieldDriver.parse(row)));
 }

@@ -23,6 +23,7 @@ import {
 import { and, asc, eq, isNull, type SQLWrapper, sql } from 'drizzle-orm';
 import { defineAuditDescriptor, recordAuditCreate } from '../../audit/audit-writer.js';
 import { mutateEntity } from '../../audit/mutate-entity.js';
+import { activePersonCondition } from '../../users/active-person.js';
 import { loadOpenBreakdowns } from '../breakdowns/open-breakdowns.js';
 import { latestArrivalFirst, stintOnSite } from '../jobs/job-sql.js';
 import { getContractingSettings } from '../settings/settings-service.js';
@@ -283,11 +284,11 @@ export async function getMachine({ db, id }: { db: Db | DatabaseTransaction; id:
 async function assertDriver(tx: DatabaseTransaction, id: string | null | undefined) {
   if (!id) return;
   const [driver] = await tx
-    .select({ role: user.contractingRole, isDevice: user.isDevice })
+    .select({ role: user.contractingRole, isDevice: user.isDevice, banned: user.banned })
     .from(user)
     .where(eq(user.id, id))
     .for('share');
-  if (driver?.role !== 'driver' || driver.isDevice)
+  if (driver?.role !== 'driver' || driver.isDevice || driver.banned)
     throw new FleetError('fleet.invalid_driver', 'Select a person with the Contracting driver role.');
 }
 export async function createMachine({
@@ -441,7 +442,7 @@ export async function machineOptions({ db }: { db: Db }) {
     db
       .select({ id: user.id, name: user.name })
       .from(user)
-      .where(and(eq(user.contractingRole, 'driver'), eq(user.isDevice, false)))
+      .where(and(eq(user.contractingRole, 'driver'), activePersonCondition()))
       .orderBy(asc(user.name)),
   ]);
   return { makes: makes.map((row) => row.value), models: models.map((row) => row.value), drivers };
@@ -466,7 +467,7 @@ export async function assertDriverAccountChangeAllowed({
   if (machine)
     throw new FleetError(
       'fleet.driver_assigned',
-      'Unassign this driver from Contracting Machines before changing their role or making them a Device Account.',
+      'Unassign this driver from Contracting Machines before changing their role, making them a Device Account, disabling or removing them.',
     );
 }
 

@@ -7,8 +7,9 @@ import { emailSender } from '../email/index.js';
 import { getApiConfig } from '../env.js';
 import { ac, authRoles } from './access-control.js';
 import { roleSlotsPlugin } from './role-slots.js';
-import { assertUserCanCreateSession } from './sign-in-eligibility.js';
+import { assertUserCanCreateSession, SIGN_IN_DISABLED_MESSAGE } from './sign-in-eligibility.js';
 import { userPhoneValidationPlugin } from './user-phone-validation.js';
+import { userRemovalPlugin } from './user-removal.js';
 
 const config = getApiConfig();
 
@@ -74,10 +75,14 @@ function createAuthOptions(database: Db, businessPlugins: readonly BetterAuthPlu
       adminPlugin({
         ac,
         adminRoles: ['admin'],
+        // A Disabled User is never told they are "banned".
+        bannedUserMessage: SIGN_IN_DISABLED_MESSAGE,
         roles: authRoles,
       }),
       roleSlotsPlugin(),
       ...businessPlugins,
+      // After the business plugins: their leaving gates name the fix, which beats "Disable them instead".
+      userRemovalPlugin(database),
       userPhoneValidationPlugin(),
       expo(),
     ],

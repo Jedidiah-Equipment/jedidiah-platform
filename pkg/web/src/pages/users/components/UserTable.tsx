@@ -85,6 +85,7 @@ export const UserTable: React.FC<UserTableProps> = ({
           <UserNameCell
             isCurrentUser={currentUserId === row.original.id}
             isDevice={row.original.isDevice}
+            isDisabled={row.original.disabled}
             name={row.original.name}
             thumbnailDataUrl={row.original.thumbnailDataUrl}
           />
@@ -154,6 +155,7 @@ export const UserTable: React.FC<UserTableProps> = ({
 type UserNameCellProps = {
   isCurrentUser: boolean;
   isDevice: boolean;
+  isDisabled: boolean;
   name: string;
   thumbnailDataUrl?: string | null;
 };
@@ -162,7 +164,13 @@ type UserNameCellProps = {
  * A device gets an icon where a person gets a face. Nobody is behind the account, so a thumbnail —
  * or the initials one falls back to — would read as a colleague nobody can place.
  */
-export const UserNameCell: React.FC<UserNameCellProps> = ({ isCurrentUser, isDevice, name, thumbnailDataUrl }) => (
+export const UserNameCell: React.FC<UserNameCellProps> = ({
+  isCurrentUser,
+  isDevice,
+  isDisabled,
+  name,
+  thumbnailDataUrl,
+}) => (
   <div className="flex items-center gap-2 font-medium">
     {isDevice ? (
       <span className="flex size-6 shrink-0 items-center justify-center rounded-md border bg-muted text-muted-foreground">
@@ -173,6 +181,7 @@ export const UserNameCell: React.FC<UserNameCellProps> = ({ isCurrentUser, isDev
     )}
     <span>{name}</span>
     {isDevice ? <Badge variant="secondary">Device</Badge> : null}
+    {isDisabled ? <Badge variant="outline">Disabled</Badge> : null}
     {isCurrentUser ? <Badge variant="outline">You</Badge> : null}
   </div>
 );

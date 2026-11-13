@@ -10,6 +10,7 @@ import {
   editStintHours,
   findJobsByInvoiceNumber,
   getReadableJob,
+  listDriverFilterOptions,
   listFieldDrivers,
   listFieldImplements,
   listForemen,
@@ -252,6 +253,9 @@ export const createContractingJobsRouter = (push: ContractingPushScheduler) =>
     }),
     options: router({
       foremen: authorizedProcedure('contracting_job:assign').query(({ ctx }) => listForemen({ db: ctx.db })),
+      driverFilter: authorizedProcedure('contracting_job:assign')
+        .output(FieldDriver.array())
+        .query(({ ctx }) => listDriverFilterOptions({ db: ctx.db })),
       measureTypes: authorizedProcedure(measurePermissions)
         .output(MeasureType.pick({ id: true, name: true }).array())
         .query(async ({ ctx }) => (await listMeasureTypes({ db: ctx.db })).map(({ id, name }) => ({ id, name }))),

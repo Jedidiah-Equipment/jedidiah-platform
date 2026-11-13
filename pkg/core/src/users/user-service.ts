@@ -21,25 +21,26 @@ import {
 } from '@pkg/schema';
 import { and, asc, eq, isNotNull, isNull, or, type SQL, sql } from 'drizzle-orm';
 
-import { defineAuditDescriptor } from '../audit/audit-writer.js';
+import { defineAuditDescriptor, diffAuditUpdate, recordAuditDelete, recordAuditUpdate } from '../audit/audit-writer.js';
 import { mutateEntity } from '../audit/mutate-entity.js';
 import { businessRoleSql } from './business-role.js';
 import { userNotFound } from './user-errors.js';
 
-type UserAuditInput = Pick<
+export type UserAuditRow = Pick<
   typeof user.$inferSelect,
-  'id' | 'email' | 'image' | 'isDevice' | 'lastActivitySeen' | 'mutedPushKinds' | 'phoneNumber'
+  'id' | 'banned' | 'email' | 'image' | 'isDevice' | 'lastActivitySeen' | 'mutedPushKinds' | 'phoneNumber'
 >;
 
 // `email` is the summary label, not an audited field on these paths, so it lives in `label` rather
 // than `toRecord`. Department membership audits its own changes in the equipment user service.
-export const userAuditDescriptor = defineAuditDescriptor<UserAuditInput>({
+export const userAuditDescriptor = defineAuditDescriptor<UserAuditRow>({
   entityType: 'user',
   noun: 'user',
   primaryLabelField: 'email',
   entityId: (row) => row.id,
   label: (row) => row.email,
   toRecord: (row) => ({
+    disabled: row.banned === true,
     isDevice: row.isDevice,
     lastActivitySeen: row.lastActivitySeen,
     mutedPushKinds: row.mutedPushKinds,
@@ -48,9 +49,61 @@ export const userAuditDescriptor = defineAuditDescriptor<UserAuditInput>({
   }),
 });
 
+const userAuditColumns = {
+  banned: user.banned,
+  email: user.email,
+  id: user.id,
+  image: user.image,
+  isDevice: user.isDevice,
+  lastActivitySeen: user.lastActivitySeen,
+  mutedPushKinds: user.mutedPushKinds,
+  phoneNumber: user.phoneNumber,
+};
+
+export async function getUserAuditRow({ db, userId }: { db: Db; userId: AuthId }): Promise<UserAuditRow | undefined> {
+  const [row] = await db.select(userAuditColumns).from(user).where(eq(user.id, userId)).limit(1);
+  return row;
+}
+
+/** better-auth's remove-user deletes the row itself, so the event is written afterwards from the row read before. */
+export async function recordUserRemoval({
+  actorUserId,
+  db,
+  removed,
+}: {
+  actorUserId: AuthId;
+  db: Db;
+  removed: UserAuditRow;
+}): Promise<void> {
+  await db.transaction((tx) =>
+    recordAuditDelete({ actorUserId, db: tx, descriptor: userAuditDescriptor, input: removed }),
+  );
+}
+
+/** better-auth's ban-user and unban-user write the row themselves; this records the Disabled change they made. */
+export async function recordUserDisabledChange({
+  actorUserId,
+  before,
+  db,
+}: {
+  actorUserId: AuthId;
+  before: UserAuditRow;
+  db: Db;
+}): Promise<void> {
+  await db.transaction(async (tx) => {
+    const [row] = await tx.select({ banned: user.banned }).from(user).where(eq(user.id, before.id));
+    if (!row) return;
+    // Only `banned` moved; diffing whole re-read rows would report the jsonb columns as changed too.
+    const after = { ...before, banned: row.banned };
+    const changes = diffAuditUpdate(userAuditDescriptor, before, after);
+    if (changes) await recordAuditUpdate({ actorUserId, after, changes, db: tx, descriptor: userAuditDescriptor });
+  });
+}
+
 export type UserAccountRow = Pick<
   typeof user.$inferSelect,
   | 'assistantEnabled'
+  | 'banned'
   | 'contractingRole'
   | 'email'
   | 'emailVerified'
@@ -65,6 +118,7 @@ export type UserAccountRow = Pick<
 export function mapUserAccount(row: UserAccountRow): UserAccount {
   return {
     assistantEnabled: row.assistantEnabled,
+    disabled: row.banned === true,
     email: row.email,
     emailVerified: row.emailVerified,
     id: AuthId.parse(row.id),
@@ -79,6 +133,7 @@ export function mapUserAccount(row: UserAccountRow): UserAccount {
 
 const userAccountColumns = {
   assistantEnabled: user.assistantEnabled,
+  banned: user.banned,
   email: user.email,
   emailVerified: user.emailVerified,
   id: user.id,

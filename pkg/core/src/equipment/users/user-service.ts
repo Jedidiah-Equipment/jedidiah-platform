@@ -6,6 +6,7 @@ import { Department, type EquipmentUserListInput, type UserDepartmentListResult 
 import { and, asc, eq, exists, sql } from 'drizzle-orm';
 
 import { recordAuditEvent } from '../../audit/audit-writer.js';
+import { notDisabledCondition } from '../../users/active-person.js';
 import { userNotFound } from '../../users/user-errors.js';
 import { listUsers, userAuditDescriptor } from '../../users/user-service.js';
 import { listOpenBayOperatorAssignmentBayNames } from '../jobs/job-bay-service.js';
@@ -236,7 +237,8 @@ export async function canAssignUserRoleSlots({
         id: user.id,
       })
       .from(user)
-      .where(eq(user.role, 'admin'))
+      // A disabled admin cannot sign in, so only enabled admins count toward the last one.
+      .where(and(eq(user.role, 'admin'), notDisabledCondition()))
       .orderBy(asc(user.id))
       .for('update');
 

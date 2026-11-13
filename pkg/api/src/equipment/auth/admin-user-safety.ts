@@ -4,6 +4,7 @@ import { createUserAccessSummaryForUser, hasPermission, parseRoleSlots } from '@
 import type { BetterAuthPlugin } from 'better-auth';
 import { APIError, createAuthMiddleware, getSessionFromCtx } from 'better-auth/api';
 import { changesSlots, getRoleChange } from '../../auth/role-slots.js';
+import { isLeavingPath, readAccountChangeRequest } from '../../auth/user-removal.js';
 
 const SELF_ROLE_CHANGE_ERROR = {
   code: 'YOU_CANNOT_CHANGE_YOUR_OWN_ROLE',
@@ -64,37 +65,59 @@ export function adminUserSafetyPlugin(database: Db): BetterAuthPlugin {
               throw APIError.from('FORBIDDEN', SELF_ROLE_CHANGE_ERROR);
             }
 
-            const policy = await canAssignUserRoleSlots({
-              ...change,
-              actorRole: actor.equipmentRole,
-              db: database,
-            });
+            refuseUnlessAllowed(
+              await canAssignUserRoleSlots({
+                ...change,
+                actorRole: actor.equipmentRole,
+                db: database,
+              }),
+            );
+          }),
+        },
+        {
+          // Disable and Remove take away both role slots, so they meet the gates clearing both would.
+          matcher: ({ path }) => isLeavingPath(path),
+          handler: createAuthMiddleware(async (ctx) => {
+            const request = await readAccountChangeRequest(ctx);
+            if (!request) return;
 
-            if (policy.allowed) {
-              return;
-            }
-
-            if (policy.reason === 'last-admin') {
-              throw APIError.from('FORBIDDEN', LAST_ADMIN_ERROR);
-            }
-
-            if (policy.reason === 'reserved-super-admin') {
-              throw APIError.from('FORBIDDEN', RESERVED_SUPER_ADMIN_ERROR);
-            }
-
-            if (policy.reason === 'super-admin-spans-contracting') {
-              throw APIError.from('BAD_REQUEST', SUPER_ADMIN_SPANS_CONTRACTING_ERROR);
-            }
-
-            throw APIError.from('FORBIDDEN', {
-              code: OPEN_BAY_OPERATOR_ASSIGNMENTS_ERROR_CODE,
-              message: `Unassign from ${formatList(policy.bayNames)} first`,
-            });
+            refuseUnlessAllowed(
+              await canAssignUserRoleSlots({
+                actorRole: request.actorRole,
+                contractingRole: null,
+                db: database,
+                equipmentRole: null,
+                userId: request.userId,
+              }),
+            );
           }),
         },
       ],
     },
   };
+}
+
+function refuseUnlessAllowed(policy: Awaited<ReturnType<typeof canAssignUserRoleSlots>>): void {
+  if (policy.allowed) {
+    return;
+  }
+
+  if (policy.reason === 'last-admin') {
+    throw APIError.from('FORBIDDEN', LAST_ADMIN_ERROR);
+  }
+
+  if (policy.reason === 'reserved-super-admin') {
+    throw APIError.from('FORBIDDEN', RESERVED_SUPER_ADMIN_ERROR);
+  }
+
+  if (policy.reason === 'super-admin-spans-contracting') {
+    throw APIError.from('BAD_REQUEST', SUPER_ADMIN_SPANS_CONTRACTING_ERROR);
+  }
+
+  throw APIError.from('FORBIDDEN', {
+    code: OPEN_BAY_OPERATOR_ASSIGNMENTS_ERROR_CODE,
+    message: `Unassign from ${formatList(policy.bayNames)} first`,
+  });
 }
 
 function formatList(values: readonly string[]): string {

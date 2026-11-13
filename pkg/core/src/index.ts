@@ -24,4 +24,5 @@ export * from './transcriptions/transcription-service.js';
 export * from './users/activity-view-service.js';
 export * from './users/business-role.js';
 export * from './users/user-errors.js';
+export * from './users/user-removal.js';
 export * from './users/user-service.js';

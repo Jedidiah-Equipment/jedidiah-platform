@@ -11,6 +11,8 @@ import { NullableThumbnailDataUrl } from '../common/thumbnail.js';
 export type UserAccount = z.infer<typeof UserAccount>;
 export const UserAccount = z.object({
   assistantEnabled: z.boolean(),
+  /** Disabled by an admin: cannot sign in and is offered by no picker, but keeps their name on every record. */
+  disabled: z.boolean(),
   emailVerified: z.boolean(),
   id: AuthId,
   /**
@@ -53,3 +55,10 @@ export const UserListInput = createSearchedSortedCursorQueryInput({
 
 export type UserListResult = z.infer<typeof UserListResult>;
 export const UserListResult = createCursorQueryResult(UserAccount);
+
+export type UserRemovalInput = z.infer<typeof UserRemovalInput>;
+export const UserRemovalInput = z.object({ userId: AuthId });
+
+/** Whether anything references the User; one with history can only be disabled, never removed. */
+export type UserRemovalVerdict = z.infer<typeof UserRemovalVerdict>;
+export const UserRemovalVerdict = z.object({ hasHistory: z.boolean() });

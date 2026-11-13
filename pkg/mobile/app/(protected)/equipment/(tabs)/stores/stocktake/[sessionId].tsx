@@ -13,7 +13,7 @@ import { StoresLoadMoreButton } from '@/equipment/components/stores/StoresLoadMo
 import { StoresScreen } from '@/equipment/components/stores/StoresScreen';
 import { useMovementActorUserId, useStoresActor } from '@/equipment/lib/stores-actor';
 import { resolveScan } from '@/equipment/lib/stores-scan-resolution';
-import { usePartByCode } from '@/equipment/lib/use-stores-post';
+import { usePartByCode, useStoresPostError } from '@/equipment/lib/use-stores-post';
 import { addBreadcrumb, captureSanitizedException } from '@/lib/observability';
 import { invalidateQueryCache } from '@/lib/query-client';
 import { useTRPC } from '@/lib/trpc';
@@ -41,6 +41,7 @@ export default function StoresStocktakeSessionRoute() {
   const trpc = useTRPC();
   const router = useRouter();
   const toast = useAppToast();
+  const onPostError = useStoresPostError();
   const queryClient = useQueryClient();
   const actorUserId = useMovementActorUserId();
   const { isCounter, keepAlive, selectActor } = useStoresActor();
@@ -64,7 +65,7 @@ export default function StoresStocktakeSessionRoute() {
     trpc.inventory.closeStocktakeSession.mutationOptions({
       onError: (error) => {
         setIsClosing(false);
-        toast('error', error.message);
+        onPostError(error);
       },
       onSuccess: async () => {
         await invalidateQueryCache(queryClient);

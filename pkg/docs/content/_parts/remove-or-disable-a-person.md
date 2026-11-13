@@ -7,7 +7,8 @@ Open the person in **Users**. Their dialog offers one of these:
   on everything they already did. **Users** shows them with a **Disabled** badge.
 - **Enable user** on a disabled person, which reverses Disable.
 
-Click the button and confirm. None of them is offered on your own account.
+Remove and Disable ask you to confirm first; Enable takes effect as soon as you click it. None of them is
+offered on your own account.
 
 Removing or disabling is refused, with a sentence naming the fix, while the person still holds open work:
 

@@ -30,7 +30,9 @@ async function exportFiles(directory, kind) {
 }
 
 if (cli === 'pnpm') {
-  if (args.includes('expo')) {
+  if (args.includes('turbo')) {
+    assert.deepEqual(args.slice(-2), ['--filter=@pkg/schema', '--filter=@pkg/domain']);
+  } else if (args.includes('expo')) {
     await exportFiles(value('--output-dir'), 'ota');
   } else {
     assert.deepEqual(readBundle(value('--directory')), expected, 'Source maps came from another profile');

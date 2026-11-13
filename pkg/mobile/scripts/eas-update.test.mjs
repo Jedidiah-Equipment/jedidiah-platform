@@ -8,6 +8,7 @@ import {
   resolveSourceMapUploadCommand,
   resolveUpdateCommand,
   resolveUpdatePlatforms,
+  resolveWorkspaceBuildCommand,
 } from './eas-update.mjs';
 
 const outputDir = '/release/staging/run-test/bundle';
@@ -326,6 +327,15 @@ describe('assertFirebaseConfig', () => {
 
   it('lets an iOS-only OTA through without the Firebase file', () => {
     expect(() => assertFirebaseConfig(['ios'], () => false)).not.toThrow();
+  });
+});
+
+describe('resolveWorkspaceBuildCommand', () => {
+  it('rebuilds the shared packages Metro bundles from dist, as a store build does', () => {
+    expect(resolveWorkspaceBuildCommand()).toEqual({
+      executable: 'pnpm',
+      args: ['--workspace-root', 'turbo', 'run', 'build', '--filter=@pkg/schema', '--filter=@pkg/domain'],
+    });
   });
 });
 

@@ -5,7 +5,9 @@ import { test } from '../test/inventory-fixtures.js';
 import { listQuickSwitchActors } from './quick-switch-read.js';
 
 describe('listQuickSwitchActors', () => {
-  test('lists every active person with a role — the Received by list — and nobody else', async ({ context }) => {
+  test('lists every active person with an Equipment role — the Operator rule — and nobody else', async ({
+    context,
+  }) => {
     const now = new Date('2026-08-01T08:00:00.000Z');
     await context.db.insert(user).values([
       {
@@ -51,6 +53,16 @@ describe('listQuickSwitchActors', () => {
         emailVerified: true,
         id: 'roleless',
         name: 'Roleless Person',
+        role: null,
+        updatedAt: now,
+      },
+      {
+        contractingRole: 'driver',
+        createdAt: now,
+        email: 'driver@example.com',
+        emailVerified: true,
+        id: 'contracting-driver',
+        name: 'Contracting Driver',
         role: null,
         updatedAt: now,
       },

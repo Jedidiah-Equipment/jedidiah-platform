@@ -562,7 +562,7 @@ describe('inventory cost projection', () => {
     });
     // Receiving and adjusting name an Operator too, so the list follows every movement right, not `move` alone.
     await expect(
-      context.createCaller(mockSession('procurement-manager')).inventory.recipientOptions({ search: 'Connor' }),
+      context.createCaller(mockSession('procurement-manager')).inventory.operatorOptions({ search: 'Connor' }),
     ).resolves.toMatchObject({ total: 1 });
     await expect(stores.inventory.sourceCheckouts({ partId: context.part.id, search: '' })).resolves.toMatchObject({
       items: [{ id: checkout.movement.id, returnedQuantity: 0, unitCost: null }],

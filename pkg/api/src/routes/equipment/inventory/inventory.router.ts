@@ -14,6 +14,7 @@ import {
   listInventoryQuoteOptions,
   listInventoryRecipients,
   listJobStock,
+  listMovementOperators,
   listQuickSwitchActors,
   listQuoteStock,
   listSourceCheckouts,
@@ -42,6 +43,8 @@ import {
   InventoryJobOptionListInput,
   InventoryJobOptionListResult,
   InventoryKpis,
+  InventoryOperatorOptionListInput,
+  InventoryOperatorOptionListResult,
   InventoryQuoteOptionListInput,
   InventoryQuoteOptionListResult,
   InventoryRecipientOptionListInput,
@@ -196,9 +199,27 @@ export const inventoryRouter = router({
     }),
 
   /**
-   * Received by, and the Operator every web form that moves stock names. Every gate on a web form's write may
-   * read it — a receiver or adjuster without `move` still has to say whose hand the stock went through —
-   * and it carries names and thumbnails only.
+   * The Operator every web form that moves stock names, Purchase Order Received by included: the Operator
+   * rule the tablet's Quick-switch shares. Every gate on a web form's write may read it — a receiver or
+   * adjuster without `move` still has to say whose hand the stock went through — and it carries names and
+   * thumbnails only.
+   */
+  operatorOptions: authorizedProcedure([
+    'equipment_inventory:move',
+    'equipment_inventory:adjust',
+    'equipment_inventory:build',
+    'equipment_inventory:close-out',
+    'equipment_purchase_order:amend',
+    'equipment_purchase_order:receive',
+  ])
+    .input(InventoryOperatorOptionListInput)
+    .output(InventoryOperatorOptionListResult)
+    .query(({ ctx, input }) => listMovementOperators({ db: ctx.db, input })),
+
+  /**
+   * A Checkout's Received by, on the web and the tablet: a superset of the Operator rule that adds
+   * Contracting Drivers and Mechanics. It keeps the Operator list's gates so the deployed tablet, which
+   * calls it, keeps working.
    */
   recipientOptions: authorizedProcedure([
     'equipment_inventory:move',

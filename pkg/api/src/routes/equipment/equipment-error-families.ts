@@ -439,7 +439,7 @@ export const checkoutErrorFamily = defineCoreErrorFamily<CheckoutError>({
     'inventory.quote_not_open': 'This Parts Sale was rejected or cancelled and can no longer draw stock.',
     'inventory.quote_not_parts_sale':
       "Stock can only be checked out to a Parts Sale. Check this Quote's parts out to its Job.",
-    'inventory.recipient_ineligible': 'Select an active Equipment user who is not a device.',
+    'inventory.recipient_ineligible': 'Select an active Equipment person, Driver or Mechanic who is not a device.',
   },
 });
 

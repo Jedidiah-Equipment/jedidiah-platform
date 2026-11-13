@@ -35,17 +35,13 @@ export function counterMayOpen(segments: readonly string[]): boolean {
   return below === undefined || below === 'stocktake';
 }
 
-/**
- * The server refused the person named at the tablet rather than the movement: disabled or removed after they were
- * picked, or a device named in their place. Nothing posted under that name can land. `inventory.actor_required` is
- * not one: it means nobody was named, so there is nobody to forget.
- */
 const ACTOR_REFUSALS: ReadonlySet<string> = new Set([
   'inventory.actor_disabled',
   'inventory.actor_is_device',
   'inventory.actor_not_found',
 ]);
 
+/** The server refused the person named at the tablet, not the movement; `actor_required` named nobody to forget. */
 export function isStoresActorRefusal(error: unknown): boolean {
   const appCode = trpcAppCode(error);
   return appCode !== undefined && ACTOR_REFUSALS.has(appCode);

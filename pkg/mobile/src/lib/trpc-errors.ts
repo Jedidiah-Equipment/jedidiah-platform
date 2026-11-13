@@ -1,18 +1,18 @@
 import { TRPCClientError } from '@trpc/client';
 
-function trpcErrorData(error: unknown, key: 'appCode' | 'code'): unknown {
+function trpcErrorData(error: unknown): { appCode?: unknown; code?: unknown } | undefined {
   if (!error || typeof error !== 'object' || !('data' in error)) return undefined;
   const data = error.data;
-  return data && typeof data === 'object' && key in data ? (data as Record<string, unknown>)[key] : undefined;
+  return data && typeof data === 'object' ? data : undefined;
 }
 
 function trpcErrorCode(error: unknown): unknown {
-  return trpcErrorData(error, 'code');
+  return trpcErrorData(error)?.code;
 }
 
 /** The server's stable reason for a refusal (`inventory.actor_disabled`), when it named one. */
 export function trpcAppCode(error: unknown): string | undefined {
-  const appCode = trpcErrorData(error, 'appCode');
+  const appCode = trpcErrorData(error)?.appCode;
   return typeof appCode === 'string' ? appCode : undefined;
 }
 

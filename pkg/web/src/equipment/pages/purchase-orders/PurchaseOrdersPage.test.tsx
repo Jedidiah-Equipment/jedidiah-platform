@@ -49,7 +49,9 @@ describe('PurchaseOrderTable', () => {
 
     const html = renderToStaticMarkup(<PurchaseOrderTable canReadCosts items={[linked]} onOpen={vi.fn()} />);
 
-    expect(html).toContain('JOB-00007 · Karoo Farms, JOB-00009 · Stock');
+    expect(html).toMatch(
+      /<span[^>]*class="block max-w-sm truncate"[^>]*data-slot="tooltip-trigger"[^>]*>JOB-00007 · Karoo Farms, JOB-00009 · Stock</,
+    );
   });
 
   it('labels zero-sentinel draft prices as not priced rather than free', () => {

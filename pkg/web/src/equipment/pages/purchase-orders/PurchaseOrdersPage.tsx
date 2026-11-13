@@ -9,6 +9,7 @@ import { DataTable } from '@/components/data-table/DataTable.js';
 import { type DataTableColumnDef, useDataTable } from '@/components/data-table/features.js';
 import { PageLayout } from '@/components/page-layout/PageLayout.js';
 import { Button } from '@/components/ui/button.js';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
 import { jobCodeWithCustomerText } from '@/equipment/components/common/JobCodeWithCustomer.js';
 import { purchaseOrdersPageDescription } from '@/equipment/utils/page-descriptions.js';
 import { useCan } from '@/hooks/use-access.js';
@@ -106,6 +107,7 @@ function createPurchaseOrderColumns(canReadCosts: boolean): DataTableColumnDef<P
     },
     {
       accessorFn: (purchaseOrder) => purchaseOrder.jobs.map(jobCodeWithCustomerText).join(', ') || 'Restock',
+      cell: ({ getValue, row }) => <LinkedJobsCell jobs={row.original.jobs} text={getValue<string>()} />,
       header: 'Jobs',
       id: 'jobs',
     },
@@ -149,3 +151,20 @@ function createPurchaseOrderColumns(canReadCosts: boolean): DataTableColumnDef<P
 function totalFor(purchaseOrder: PurchaseOrderView): number {
   return purchaseOrder.lines.reduce((total, line) => total + line.quantity * (line.unitPrice ?? 0), 0);
 }
+
+const LinkedJobsCell: React.FC<{ jobs: PurchaseOrderView['jobs']; text: string }> = ({ jobs, text }) => {
+  if (jobs.length === 0) return text;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger render={<span className="block max-w-sm truncate">{text}</span>} />
+      <TooltipContent>
+        <ul>
+          {jobs.map((job) => (
+            <li key={job.id}>{jobCodeWithCustomerText(job)}</li>
+          ))}
+        </ul>
+      </TooltipContent>
+    </Tooltip>
+  );
+};

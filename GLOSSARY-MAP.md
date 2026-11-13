@@ -19,7 +19,8 @@ Customer) for different concepts; never treat a same-named term as shared.
   role that mints another super-admin.
 - **User Removal** permanently deletes a User nothing references; it is for accounts created by
   mistake. A User any record names, even only as the actor of an Audit Event, has history and can be
-  disabled, never removed. Audit Events about a removed User stay and read as a removed User's.
+  disabled, never removed. Audit Events about a removed User stay and read as a removed User's (the
+  map already routes those to the Equipment log).
 - **Disabled User** is a User who can no longer sign in and is offered by no person picker in either
   business, but whose name stays on every record they are already on. Disabling is reversible
   (**Enable**) and is stored as better-auth's `user.banned`; never say "banned" to a user.

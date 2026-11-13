@@ -1,8 +1,15 @@
-import { createAssignment, createCustomer, createFarm, createJob, createWorkType } from '@pkg/core/contracting';
+import {
+  createAssignment,
+  createCustomer,
+  createFarm,
+  createJob,
+  createWorkType,
+  openServiceRecord,
+} from '@pkg/core/contracting';
 import { account, type Db, eq, user } from '@pkg/db';
 import { contractingMachineAssignments } from '@pkg/db/contracting';
 import { accessForRole } from '@pkg/domain/testing';
-import type { ContractingRole, EquipmentRole } from '@pkg/schema';
+import { type ContractingRole, DateOnlyIso, type EquipmentRole } from '@pkg/schema';
 import { hashPassword } from 'better-auth/crypto';
 import { expect } from 'vitest';
 import { createTester, type TesterContext } from '@/test/create-tester.js';
@@ -154,6 +161,34 @@ test("refuses to take out the Foreman of an open Job or the Driver of an open Jo
     body: {
       message:
         "Reassign this driver's open Machine Assignments before changing their role, disabling or removing them.",
+    },
+  });
+});
+
+test('refuses to take out a Mechanic with an open Service Record', async ({ context }) => {
+  await insertUser(context.db, 'mechanic', { contractingRole: 'mechanic' });
+  const fleet = context.createCaller(mockSession('super-admin')).contractingFleet;
+  const category = await fleet.categories.create({ name: 'Tractors', kind: 'machine' });
+  const machine = await fleet.machines.create({ code: 'T-1', make: 'Deere', model: '6140M', categoryId: category.id });
+  await openServiceRecord({
+    db: context.db,
+    actorUserId: 'test-user-id',
+    input: {
+      machineId: machine.id,
+      startDate: DateOnlyIso.parse('2026-11-13'),
+      primaryMechanicUserId: 'mechanic',
+      notes: null,
+    },
+  });
+
+  await expect(
+    context.auth.api.banUser({ body: { userId: 'mechanic' }, headers: context.cookies }),
+  ).rejects.toMatchObject({
+    status: 'FORBIDDEN',
+    body: {
+      code: 'breakdown.invalid_mechanic',
+      message:
+        "Reassign this mechanic's Breakdowns that are not yet Fixed and open Service Records before changing their role, disabling or removing them.",
     },
   });
 });

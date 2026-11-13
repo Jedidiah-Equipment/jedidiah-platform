@@ -48,7 +48,7 @@ export const UserAccountActions: React.FC<UserAccountActionsProps> = ({ user, on
     },
     onError: (error) => showMutationError(error, 'Unable to remove user.'),
   });
-  const disableMutation = useMutation({
+  const setDisabledMutation = useMutation({
     mutationFn: async (disable: boolean) =>
       unwrapAuthResult(
         disable
@@ -81,8 +81,8 @@ export const UserAccountActions: React.FC<UserAccountActionsProps> = ({ user, on
       <RemoveEntityButton
         confirmLabel="Disable"
         description={`${user.name} will no longer be able to sign in or be picked anywhere. Their name stays on everything they have already done, and you can enable them again.`}
-        isPending={disableMutation.isPending}
-        onConfirm={() => disableMutation.mutate(true)}
+        isPending={setDisabledMutation.isPending}
+        onConfirm={() => setDisabledMutation.mutate(true)}
         title={`Disable ${user.name}?`}
         triggerIcon={IconUserOff}
         triggerLabel="Disable user"
@@ -94,12 +94,12 @@ export const UserAccountActions: React.FC<UserAccountActionsProps> = ({ user, on
   if (action === 'enable') {
     return (
       <Button
-        disabled={disableMutation.isPending}
-        onClick={() => disableMutation.mutate(false)}
+        disabled={setDisabledMutation.isPending}
+        onClick={() => setDisabledMutation.mutate(false)}
         type="button"
         variant="outline"
       >
-        {disableMutation.isPending ? (
+        {setDisabledMutation.isPending ? (
           <IconLoader2 className="animate-spin" data-icon="inline-start" />
         ) : (
           <IconUserCheck data-icon="inline-start" />

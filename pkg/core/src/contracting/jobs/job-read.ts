@@ -24,7 +24,7 @@ import {
   JobFacts,
   openJobStatuses,
 } from '@pkg/schema/contracting';
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray, type SQL } from 'drizzle-orm';
 import { activePersonCondition } from '../../users/active-person.js';
 import { getContractingSettings } from '../settings/settings-service.js';
 import { attentionStint, loadDismissals } from './assignment-attention.js';
@@ -271,21 +271,15 @@ export async function assertJobHolderLeavingAllowed({ db, userId }: { db: Db; us
     );
 }
 
-/** Every Driver a Job's history can name, disabled ones included, so the Jobs driver filter still finds their Jobs. */
-export async function listDriverFilterOptions({ db }: { db: Db }) {
-  return db
+const listDrivers = (db: Db, who: SQL) =>
+  db
     .select({ id: user.id, name: user.name })
     .from(user)
-    .where(and(eq(user.contractingRole, 'driver'), eq(user.isDevice, false)))
+    .where(and(eq(user.contractingRole, 'driver'), who))
     .orderBy(asc(user.name))
     .then((rows) => rows.map((row) => FieldDriver.parse(row)));
-}
 
-export async function listFieldDrivers({ db }: { db: Db }) {
-  return db
-    .select({ id: user.id, name: user.name })
-    .from(user)
-    .where(and(eq(user.contractingRole, 'driver'), activePersonCondition()))
-    .orderBy(asc(user.name))
-    .then((rows) => rows.map((row) => FieldDriver.parse(row)));
-}
+/** Every Driver a Job's history can name, disabled ones included, so the Jobs driver filter still finds their Jobs. */
+export const listDriverFilterOptions = ({ db }: { db: Db }) => listDrivers(db, eq(user.isDevice, false));
+
+export const listFieldDrivers = ({ db }: { db: Db }) => listDrivers(db, activePersonCondition());

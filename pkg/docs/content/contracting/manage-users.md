@@ -25,7 +25,7 @@ scripted change, not something the app offers.
 
 ## Remove or disable a person
 
-Open the person in **Users**. The dialog offers one of these at the bottom left:
+Open the person in **Users**. Their dialog offers one of these:
 
 - **Remove user** when nothing in the system names them yet, such as someone added twice by mistake. It deletes
   the account permanently.
@@ -34,7 +34,7 @@ Open the person in **Users**. The dialog offers one of these at the bottom left:
   on everything they already did. **Users** shows them with a **Disabled** badge.
 - **Enable user** on a disabled person, which reverses Disable.
 
-Click the button and confirm. Neither is offered on your own account.
+Click the button and confirm. None of them is offered on your own account.
 
 Removing or disabling is refused, with a sentence naming the fix, while the person still holds open work:
 

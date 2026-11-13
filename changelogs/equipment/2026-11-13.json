@@ -1,0 +1,68 @@
+{
+  "business": "equipment",
+  "releasedAt": "2026-11-13T10:32:41.676Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Move quotes through approval and invoicing",
+          "description": "Send quotes for approval, approve or send them back, and record, correct or remove invoice numbers with the appropriate permissions. Quote fields lock according to their stage and your permissions."
+        },
+        {
+          "title": "Manage invoice queues in one place",
+          "description": "Use the new Invoicing page to find quotes awaiting pricing, approval or an invoice number. Filter by stage, review totals and enter invoice numbers directly from the list."
+        },
+        {
+          "title": "Track quote stages and monthly invoicing",
+          "description": "The dashboard replaces Open pipeline with stage counts and monthly invoiced totals. The quote flow chart keeps sales in the week they were accepted as they move through later stages."
+        },
+        {
+          "title": "Choose drivers and mechanics as recipients",
+          "description": "When checking out parts without a job, you can now select active drivers and mechanics as recipients, with their roles shown beside their names."
+        },
+        {
+          "title": "Read linked jobs on purchase orders",
+          "description": "Long job lists now stay compact in the purchase order table. Hover over the list to see every linked job and customer."
+        },
+        {
+          "title": "Choose eligible people for corrective feedback",
+          "description": "The person picker now lists only active people with access to this business. Previously filed feedback keeps the names already recorded."
+        },
+        {
+          "title": "Remove or disable user accounts",
+          "description": "From Users, administrators can remove accounts with no history or disable accounts while preserving their names on existing records. Disabled people cannot sign in or be selected for new work, and their accounts can be enabled again."
+        },
+        {
+          "title": "Understand why an action is unavailable",
+          "description": "Unavailable action buttons now explain the reason when you hover over them or focus them with the keyboard."
+        }
+      ]
+    },
+    {
+      "surface": "mobile",
+      "entries": [
+        {
+          "title": "Track quotes by stage",
+          "description": "View and filter quotes by stages including Awaiting pricing, Awaiting approval, Awaiting invoice and Invoiced. Invoice numbers are now read-only on your phone."
+        },
+        {
+          "title": "See which quote fields you can edit",
+          "description": "Quote fields, including document notes, now correctly become read-only when the quote's stage or your permissions prevent changes."
+        },
+        {
+          "title": "Choose drivers and mechanics as recipients",
+          "description": "When checking out parts without a job, you can now select active drivers and mechanics as recipients, with their roles shown beside their names."
+        },
+        {
+          "title": "Switch away from unavailable Stores users",
+          "description": "If a Stores action is refused because the selected person is disabled, removed or a device account, their selection clears so you can choose another person. The error message explains the refusal."
+        },
+        {
+          "title": "Choose eligible people for corrective feedback",
+          "description": "The person picker now lists only active people with access to this business. Previously filed feedback keeps the names already recorded."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "business": "contracting",
+  "releasedAt": "2026-11-13T10:32:41.676Z",
+  "sections": [
+    {
+      "surface": "app",
+      "entries": [
+        {
+          "title": "Find open work after filtering invoices",
+          "description": "Selecting an open stage on Invoicing now clears any leftover invoiced-date filter, so matching jobs appear correctly. Stage filters also scroll within their row on smaller screens."
+        },
+        {
+          "title": "Remove or disable user accounts",
+          "description": "From Users, administrators can remove accounts with no history or disable accounts while preserving their names on existing records. Disabled people cannot sign in or be selected for new work, and their accounts can be enabled again."
+        },
+        {
+          "title": "Understand why an action is unavailable",
+          "description": "Unavailable action buttons now explain the reason when you hover over them or focus them with the keyboard."
+        }
+      ]
+    }
+  ]
+}

@@ -284,11 +284,11 @@ export async function getMachine({ db, id }: { db: Db | DatabaseTransaction; id:
 async function assertDriver(tx: DatabaseTransaction, id: string | null | undefined) {
   if (!id) return;
   const [driver] = await tx
-    .select({ role: user.contractingRole, isDevice: user.isDevice, banned: user.banned })
+    .select({ role: user.contractingRole })
     .from(user)
-    .where(eq(user.id, id))
+    .where(and(eq(user.id, id), activePersonCondition()))
     .for('share');
-  if (driver?.role !== 'driver' || driver.isDevice || driver.banned)
+  if (driver?.role !== 'driver')
     throw new FleetError('fleet.invalid_driver', 'Select a person with the Contracting driver role.');
 }
 export async function createMachine({

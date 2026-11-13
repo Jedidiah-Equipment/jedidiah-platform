@@ -45,19 +45,10 @@ export async function listMovementOperators({
   db: Db;
   input: InventoryOperatorOptionListInput;
 }): Promise<InventoryOperatorOptionListResult> {
-  const where = and(eligibleMovementPersonCondition(), createGlobalSearchCondition(input.search, [sql`${user.name}`]));
-  const page = db
-    .select({ id: user.id, name: user.name, thumbnailDataUrl: user.image })
-    .from(user)
-    .where(where)
-    .orderBy(asc(user.name), asc(user.id))
-    .$dynamic();
-  const [rows, total] = await Promise.all([withPagination(page, input), db.$count(user, where)]);
-
+  const { rows, ...page } = await pagePeople(db, input, eligibleMovementPersonCondition());
   return InventoryOperatorOptionListResultSchema.parse({
-    items: rows,
-    nextCursor: getNextCursor({ count: rows.length, cursor: input.cursor, total }),
-    total,
+    ...page,
+    items: rows.map(({ id, name, thumbnailDataUrl }) => ({ id, name, thumbnailDataUrl })),
   });
 }
 
@@ -68,7 +59,19 @@ export async function listInventoryRecipients({
   db: Db;
   input: InventoryRecipientOptionListInput;
 }): Promise<InventoryRecipientOptionListResult> {
-  const where = and(eligibleRecipientCondition(), createGlobalSearchCondition(input.search, [sql`${user.name}`]));
+  const { rows, ...page } = await pagePeople(db, input, eligibleRecipientCondition());
+  return InventoryRecipientOptionListResultSchema.parse({
+    ...page,
+    items: rows.map(({ contractingRole, equipmentRole, ...person }) => ({
+      ...person,
+      contractingRole: equipmentRole === null ? contractingRole : null,
+    })),
+  });
+}
+
+/** One page of the people a rule allows, searched by name. */
+async function pagePeople(db: Db, input: InventoryOperatorOptionListInput, rule: SQL) {
+  const where = and(rule, createGlobalSearchCondition(input.search, [sql`${user.name}`]));
   const page = db
     .select({
       contractingRole: user.contractingRole,
@@ -82,13 +85,5 @@ export async function listInventoryRecipients({
     .orderBy(asc(user.name), asc(user.id))
     .$dynamic();
   const [rows, total] = await Promise.all([withPagination(page, input), db.$count(user, where)]);
-
-  return InventoryRecipientOptionListResultSchema.parse({
-    items: rows.map(({ contractingRole, equipmentRole, ...person }) => ({
-      ...person,
-      contractingRole: equipmentRole === null ? contractingRole : null,
-    })),
-    nextCursor: getNextCursor({ count: rows.length, cursor: input.cursor, total }),
-    total,
-  });
+  return { nextCursor: getNextCursor({ count: rows.length, cursor: input.cursor, total }), rows, total };
 }

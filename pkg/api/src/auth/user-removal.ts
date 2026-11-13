@@ -11,6 +11,7 @@ import { AuthId, type EquipmentRole } from '@pkg/schema';
 import type { BetterAuthPlugin } from 'better-auth';
 import { APIError, createAuthMiddleware, getSessionFromCtx, isAPIError } from 'better-auth/api';
 import { z } from 'zod';
+import { adminRequestData } from './role-slots.js';
 
 const USER_HAS_HISTORY_ERROR = {
   code: 'USER_HAS_HISTORY',
@@ -40,7 +41,8 @@ export const isLeavingPath = (path: string | undefined) =>
 const isAccountPath = (path: string | undefined): path is AccountPath =>
   path !== undefined && Object.hasOwn(accountPermissions, path);
 
-const AdminTarget = z.object({ userId: AuthId });
+/** The User an admin endpoint acts on. */
+export const AdminTarget = z.object({ userId: AuthId });
 
 type AccountChangeRequest = { actorUserId: AuthId; actorRole: EquipmentRole; userId: AuthId };
 
@@ -81,7 +83,7 @@ export function userRemovalPlugin(db: Db): BetterAuthPlugin {
         {
           matcher: ({ path }) => path === '/admin/update-user',
           handler: createAuthMiddleware(async (ctx) => {
-            const data = isRecord(ctx.body) && isRecord(ctx.body.data) ? ctx.body.data : {};
+            const data = adminRequestData(ctx.body);
             if (BAN_FIELDS.some((field) => Object.hasOwn(data, field)))
               throw APIError.from('BAD_REQUEST', DISABLE_THROUGH_BAN_ERROR);
           }),
@@ -122,8 +124,4 @@ export function userRemovalPlugin(db: Db): BetterAuthPlugin {
       ],
     },
   };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
 }

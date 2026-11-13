@@ -20,11 +20,11 @@ export async function listMechanics({ db }: { db: Db }): Promise<Mechanic[]> {
 /** Refuses, with the caller's own error, unless this user is one {@link listMechanics} offers; the row is share-locked. */
 export async function assertContractingMechanic(tx: DatabaseTransaction, userId: AuthId, refuse: () => Error) {
   const [person] = await tx
-    .select({ role: user.contractingRole, isDevice: user.isDevice, banned: user.banned })
+    .select({ role: user.contractingRole })
     .from(user)
-    .where(eq(user.id, userId))
+    .where(and(eq(user.id, userId), activePersonCondition()))
     .for('share');
-  if (!isMechanicRole(person?.role) || person?.isDevice || person?.banned) throw refuse();
+  if (!isMechanicRole(person?.role)) throw refuse();
 }
 
 /** Refuses a role or device change that would take someone out of the set while they hold unsolved Breakdowns or open Service Records. */

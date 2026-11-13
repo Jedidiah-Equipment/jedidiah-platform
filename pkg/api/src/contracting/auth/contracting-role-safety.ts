@@ -1,13 +1,11 @@
 import { assertContractingAccountChangeAllowed, isContractingAccountChangeRefusal } from '@pkg/core/contracting';
 import type { Db } from '@pkg/db';
-import { AuthId } from '@pkg/schema';
 import type { BetterAuthPlugin } from 'better-auth';
 import { APIError, createAuthMiddleware } from 'better-auth/api';
 import { z } from 'zod';
 import { getRoleChange, spansBothBusinesses } from '../../auth/role-slots.js';
-import { isLeavingPath, readAccountChangeRequest } from '../../auth/user-removal.js';
+import { AdminTarget, isLeavingPath, readAccountChangeRequest } from '../../auth/user-removal.js';
 
-const AdminTarget = z.object({ userId: AuthId });
 const DeviceUpdate = z.object({ isDevice: z.boolean().optional() });
 
 // The database trigger remains the final concurrency guard; this is the friendly half.

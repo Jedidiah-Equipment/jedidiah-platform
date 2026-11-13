@@ -20,6 +20,7 @@ import type {
   TravelHoursSetInput,
 } from '@pkg/schema/contracting';
 import { and, desc, eq, lte, ne } from 'drizzle-orm';
+import { activePersonCondition } from '../../users/active-person.js';
 import { serviceDueSoonEdge } from '../fleet/machine-service.js';
 import { onSiteAssignment } from '../fleet/on-site-assignment.js';
 import { latestTelematicsReading } from '../readings/telematics-reading.js';
@@ -90,11 +91,11 @@ async function assertArrivalResources(
   }
   if (driverUserId) {
     const [driver] = await tx
-      .select({ contractingRole: user.contractingRole, isDevice: user.isDevice, banned: user.banned })
+      .select({ contractingRole: user.contractingRole })
       .from(user)
-      .where(eq(user.id, driverUserId))
+      .where(and(eq(user.id, driverUserId), activePersonCondition()))
       .for('update');
-    if (driver?.contractingRole !== 'driver' || driver.isDevice || driver.banned)
+    if (driver?.contractingRole !== 'driver')
       throw new JobError('contracting_job.invalid_driver', 'Select a person with the Contracting driver role.');
   }
   return arriving;

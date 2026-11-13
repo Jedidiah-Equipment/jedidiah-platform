@@ -48,7 +48,7 @@ export function getRoleChange(path: string | undefined, body: unknown): RoleChan
     return null;
   }
 
-  const data = isRecord(body.data) ? body.data : {};
+  const data = adminRequestData(body);
   if (Object.hasOwn(body, 'role') || Object.hasOwn(data, 'role')) {
     throw APIError.from('BAD_REQUEST', ROLE_SPELLING_ERROR);
   }
@@ -74,7 +74,7 @@ function parseSlot<T>(schema: z.ZodType<T>, value: unknown): T | null {
 // written as null rather than left to that default. Set-role writes `role` itself; it is included
 // so super-admin clears the contracting slot on that path too.
 async function applyRoleSlots<T extends Record<string, unknown>>(userData: T, path: string | undefined, body: unknown) {
-  const data = isRecord(body) && isRecord(body.data) ? body.data : {};
+  const data = adminRequestData(body);
   const carriesEquipmentRole =
     path === '/admin/create-user' || (path === '/admin/update-user' && Object.hasOwn(data, 'equipmentRole'));
 
@@ -114,6 +114,10 @@ export function roleSlotsPlugin(): BetterAuthPlugin {
     }),
   };
 }
+
+/** The `data` object create-user and update-user carry their fields in, or an empty one. */
+export const adminRequestData = (body: unknown): Record<string, unknown> =>
+  isRecord(body) && isRecord(body.data) ? body.data : {};
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;

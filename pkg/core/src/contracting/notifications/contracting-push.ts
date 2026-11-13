@@ -18,13 +18,14 @@ import type { NoteThreadKind } from '@pkg/schema/contracting';
 import { and, eq, inArray, ne, sql } from 'drizzle-orm';
 import { deliverPush, type PushDelivery, type PushMessage, type PushSender } from '../../push/push-sender.js';
 import { listPushTokensForUsers } from '../../push/push-token-service.js';
+import { activePersonCondition } from '../../users/active-person.js';
 import { businessRoleSql } from '../../users/business-role.js';
 import { selectBreakdowns, toBreakdownSummary } from '../breakdowns/breakdown-load.js';
 import { getMachine } from '../fleet/machine-service.js';
 import { noteThreadStore } from '../notes/note-thread.js';
 
 /**
- * The people `reaches` keeps who have not muted the kind: never a shared device or a banned account, and never the
+ * The people `reaches` keeps who have not muted the kind: only an active person (never a shared device or a Disabled User), and never the
  * actor. `reaches` always starts from `canReceivePush`; the role prefilter below is its query-side twin, so the rows
  * read are only ever those the registry lets the kind reach.
  */
@@ -40,8 +41,7 @@ async function recipientUserIds(
     .from(user)
     .where(
       and(
-        eq(user.isDevice, false),
-        sql`${user.banned} is not true`,
+        activePersonCondition(),
         // The query-side twin of `canReceivePush(kind, access)`.
         inArray(businessRoleSql(business), [...roles]),
         sql`not (${user.mutedPushKinds} @> ${JSON.stringify([kind])}::jsonb)`,

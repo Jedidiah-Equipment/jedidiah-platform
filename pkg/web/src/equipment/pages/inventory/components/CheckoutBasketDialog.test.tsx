@@ -38,7 +38,7 @@ vi.mock('@/lib/trpc.js', () => ({
       postCheckoutBasket: {
         mutationOptions: (options: Record<string, unknown>) => ({ mutationFn: postBasket, ...options }),
       },
-      recipientOptions: {
+      operatorOptions: {
         queryOptions: (input: unknown, options: Record<string, unknown>) => ({
           queryFn: async () => ({
             items: [
@@ -46,6 +46,20 @@ vi.mock('@/lib/trpc.js', () => ({
               { id: 'recipient', name: 'Connor' },
             ],
             total: 2,
+          }),
+          queryKey: ['operatorOptions', input],
+          ...options,
+        }),
+      },
+      recipientOptions: {
+        queryOptions: (input: unknown, options: Record<string, unknown>) => ({
+          queryFn: async () => ({
+            items: [
+              { contractingRole: null, id: 'abel', name: 'Abel' },
+              { contractingRole: 'driver', id: 'ayanda-driver', name: 'Ayanda' },
+              { contractingRole: null, id: 'recipient', name: 'Connor' },
+            ],
+            total: 3,
           }),
           queryKey: ['recipientOptions', input],
           ...options,
@@ -192,18 +206,20 @@ async function click(element: HTMLElement) {
   });
 }
 
-async function chooseOperator(name: string) {
-  const input = document.querySelector<HTMLInputElement>('#actorUserId');
-  if (!input) throw new Error('Operator input missing');
+async function choosePerson(field: 'actorUserId' | 'recipientUserId', search: string, label = search) {
+  const input = document.querySelector<HTMLInputElement>(`#${field}`);
+  if (!input) throw new Error(`${field} input missing`);
   await act(async () => input.focus());
-  await type(input, name);
+  await type(input, search);
   await press(input, 'ArrowDown');
   const option = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find(
-    (candidate) => candidate.textContent === name,
+    (candidate) => candidate.textContent === label,
   );
-  if (!option) throw new Error(`Operator option ${name} missing`);
+  if (!option) throw new Error(`${field} option ${label} missing`);
   await click(option);
 }
+
+const chooseOperator = (name: string) => choosePerson('actorUserId', name);
 
 function submitButton(label: string) {
   return [...document.querySelectorAll('button')].find((button) => button.textContent?.includes(label));
@@ -423,6 +439,36 @@ describe('CheckoutBasketDialog', () => {
           lines: [{ lengthMm: null, partId: piece.partId, quantity: 1 }],
           note: 'repair factory drill',
           recipientUserId: 'recipient',
+        },
+        expect.anything(),
+      ),
+    );
+  });
+
+  it('offers a Contracting Driver as Received by, named with the role, but never as the Operator', async () => {
+    await mount({ fixedTarget: null });
+    await expect(choosePerson('actorUserId', 'Ayanda')).rejects.toThrow('option Ayanda missing');
+    const tab = [...document.querySelectorAll('button')].find((button) =>
+      button.textContent?.includes('Without a Job'),
+    );
+    await act(async () => tab?.click());
+    await choosePerson('recipientUserId', 'Ayanda', 'Ayanda · Driver');
+    const purpose = document.querySelector<HTMLTextAreaElement>('textarea[name="note"]');
+    if (!purpose) throw new Error('Purpose field missing');
+    await type(purpose, 'service the tipper');
+    await scan('HYD-0052');
+    const quantity = document.querySelector<HTMLInputElement>('#checkout-basket-quantity');
+    if (!quantity) throw new Error('Quantity input missing');
+    await press(quantity, 'Enter');
+    await act(async () => submitButton('Check out 1 line')?.click());
+
+    await vi.waitFor(() =>
+      expect(postBasket).toHaveBeenCalledWith(
+        {
+          actorUserId: 'recipient',
+          lines: [{ lengthMm: null, partId: piece.partId, quantity: 1 }],
+          note: 'service the tipper',
+          recipientUserId: 'ayanda-driver',
         },
         expect.anything(),
       ),

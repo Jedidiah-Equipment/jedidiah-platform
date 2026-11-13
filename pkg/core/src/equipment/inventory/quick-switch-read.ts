@@ -6,10 +6,11 @@ import { asc } from 'drizzle-orm';
 import { eligibleMovementPersonCondition } from './recipient-read.js';
 
 /**
- * The names the stores tablet's Quick-switch offers: the same people the web Operator field and
- * Received by offer, so the tablet and the web agree on who may be named on a movement. The tablet's
- * own account is a device and drops out with the rest — `resolveMovementActor` refuses a device as the
- * actor, so its tile could only ever fail on the post.
+ * The names the stores tablet's Quick-switch offers: the Operator rule, shared with the web Operator
+ * field and Purchase Order Received by, so the tablet and the web agree on who may operate a movement.
+ * A Checkout's Received by offers a superset. The tablet's own account is a device and drops out with
+ * the rest — `resolveMovementActor` refuses a device as the actor, so its tile could only ever fail on
+ * the post.
  */
 export async function listQuickSwitchActors({ db }: { db: Db }): Promise<QuickSwitchActorListResult> {
   const rows = await db

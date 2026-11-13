@@ -607,6 +607,39 @@ describe('Checkout without a Job', () => {
     });
   });
 
+  test('checks out to a Contracting Driver who holds no Equipment role', async ({ context }) => {
+    const now = new Date('2026-08-01T08:00:00.000Z');
+    await context.db.insert(user).values({
+      contractingRole: 'driver',
+      createdAt: now,
+      email: 'ayanda@example.com',
+      emailVerified: true,
+      id: 'ayanda-driver',
+      name: 'Ayanda Driver',
+      role: null,
+      updatedAt: now,
+    });
+    await postAdjustment({
+      actorUserId,
+      db: context.db,
+      input: adjustmentInput(context.parts.piece.id, { delta: 2, unitCost: 10 }),
+    });
+
+    await expect(
+      postCheckout({
+        actorUserId,
+        db: context.db,
+        input: {
+          lengthMm: null,
+          note: 'service the tipper',
+          partId: context.parts.piece.id,
+          quantity: 1,
+          recipientUserId: 'ayanda-driver',
+        },
+      }),
+    ).resolves.toMatchObject({ movement: { actorUserId, recipientUserId: 'ayanda-driver' } });
+  });
+
   test('rejects ineligible recipients and invalid linked-return sources', async ({ context }) => {
     const now = new Date('2026-08-01T08:00:00.000Z');
     await context.db.insert(user).values([
@@ -630,8 +663,18 @@ describe('Checkout without a Job', () => {
         role: 'stores',
         updatedAt: now,
       },
+      {
+        contractingRole: 'foreman',
+        createdAt: now,
+        email: 'foreman-recipient@example.com',
+        emailVerified: true,
+        id: 'foreman-recipient',
+        name: 'Foreman Recipient',
+        role: null,
+        updatedAt: now,
+      },
     ]);
-    for (const recipientUserId of ['disabled-recipient', 'device-recipient']) {
+    for (const recipientUserId of ['disabled-recipient', 'device-recipient', 'foreman-recipient']) {
       await expect(
         postCheckout({
           actorUserId,

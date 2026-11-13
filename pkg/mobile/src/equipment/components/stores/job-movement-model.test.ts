@@ -27,6 +27,7 @@ const quote = {
   workTitle: 'Hitch pins',
 } as InventoryQuoteOption;
 const actor = { id: 'operator', name: 'Operator', thumbnailDataUrl: null };
+const operatorRecipient = { ...actor, contractingRole: null };
 const job = { code: 'JOB-1', id: JOB_ID } as never;
 const sourceCheckout: SourceCheckoutOption = {
   createdAt: DateIso.parse('2026-08-01T08:00:00.000Z'),
@@ -71,7 +72,7 @@ describe('stores movement targets', () => {
     expect(initialStoresMovementTarget({ actor, mode: 'person', movementType: 'checkout' })).toEqual({
       kind: 'recipient',
       purpose: '',
-      recipient: actor,
+      recipient: operatorRecipient,
     });
     expect(initialStoresMovementTarget({ actor, mode: 'person', movementType: 'return-to-store' })).toEqual({
       kind: 'source',
@@ -87,8 +88,8 @@ describe('stores movement targets', () => {
 
   it('follows a changed operator only while the recipient is still the operator default', () => {
     const nextActor = { ...actor, id: 'next-operator', name: 'Next Operator' };
-    const chosen = { ...actor, id: 'chosen-recipient', name: 'Chosen Recipient' };
-    const defaulted = { kind: 'recipient', purpose: '', recipient: actor } as const;
+    const chosen = { ...actor, contractingRole: 'driver', id: 'chosen-recipient', name: 'Chosen Recipient' } as const;
+    const defaulted = { kind: 'recipient', purpose: '', recipient: operatorRecipient } as const;
 
     expect(syncDefaultRecipient({ actor: null, previousActorUserId: actor.id, target: defaulted })).toEqual({
       ...defaulted,
@@ -96,7 +97,7 @@ describe('stores movement targets', () => {
     });
     expect(
       syncDefaultRecipient({ actor: nextActor, previousActorUserId: null, target: { ...defaulted, recipient: null } }),
-    ).toEqual({ ...defaulted, recipient: nextActor });
+    ).toEqual({ ...defaulted, recipient: { ...nextActor, contractingRole: null } });
     expect(
       syncDefaultRecipient({
         actor: nextActor,
@@ -112,8 +113,12 @@ describe('stores movement targets', () => {
   it('is ready to post once the showing target is chosen', () => {
     expect(hasStoresMovementTarget({ job: null, kind: 'job' }, undefined)).toBe(false);
     expect(hasStoresMovementTarget({ job: null, kind: 'job' }, JOB_ID)).toBe(true);
-    expect(hasStoresMovementTarget({ kind: 'recipient', purpose: ' ', recipient: actor }, undefined)).toBe(false);
-    expect(hasStoresMovementTarget({ kind: 'recipient', purpose: 'Repair', recipient: actor }, undefined)).toBe(true);
+    expect(hasStoresMovementTarget({ kind: 'recipient', purpose: ' ', recipient: operatorRecipient }, undefined)).toBe(
+      false,
+    );
+    expect(
+      hasStoresMovementTarget({ kind: 'recipient', purpose: 'Repair', recipient: operatorRecipient }, undefined),
+    ).toBe(true);
     expect(hasStoresMovementTarget({ kind: 'source', sourceCheckout }, undefined)).toBe(true);
     expect(hasStoresMovementTarget({ kind: 'quote', quote: null }, undefined)).toBe(false);
     expect(hasStoresMovementTarget({ kind: 'quote', quote }, undefined)).toBe(true);
@@ -133,7 +138,7 @@ describe('stores movement targets', () => {
       toStoresMovementInput({
         ...facts,
         movementType: 'checkout',
-        target: { kind: 'recipient', purpose: 'Repair drill', recipient: { ...actor, id: 'recipient' } },
+        target: { kind: 'recipient', purpose: 'Repair drill', recipient: { ...operatorRecipient, id: 'recipient' } },
       }),
     ).toEqual({
       actorUserId: actor.id,
@@ -159,7 +164,7 @@ describe('stores movement targets', () => {
       previewStoresMovementWarnings({
         ...base,
         movementType: 'checkout',
-        target: { kind: 'recipient', purpose: 'Repair', recipient: actor },
+        target: { kind: 'recipient', purpose: 'Repair', recipient: operatorRecipient },
       }),
     ).toEqual(['negative-stock-on-hand']);
     expect(

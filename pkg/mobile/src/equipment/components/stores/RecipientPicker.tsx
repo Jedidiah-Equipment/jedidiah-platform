@@ -1,3 +1,4 @@
+import { recipientLabel } from '@pkg/domain/equipment';
 import type { InventoryRecipientOption } from '@pkg/schema/equipment';
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
@@ -10,7 +11,10 @@ import { StoresOptionPicker } from './StoresOptionPicker';
 
 const RECIPIENT_PAGE_SIZE = 20;
 
-/** Who is receiving a Checkout Without a Job: any active Equipment person, not only the quick-switch grid. */
+/**
+ * Who is receiving a Checkout Without a Job: any active Equipment person, not only the quick-switch grid,
+ * or a Contracting Driver or Mechanic, named with the role.
+ */
 export function RecipientPicker({
   onSearchChange,
   onSelect,
@@ -39,9 +43,9 @@ export function RecipientPicker({
 
   return (
     <StoresOptionPicker
-      accessibilityLabel={(person) => person.name}
+      accessibilityLabel={recipientLabel}
       changeHint="Choose a different person"
-      emptyMessage="No active Equipment people match."
+      emptyMessage="No active Equipment person, Driver or Mechanic matches."
       label="RECEIVED BY"
       noun="people"
       onSearchChange={onSearchChange}
@@ -50,7 +54,7 @@ export function RecipientPicker({
       query={{ ...people, items }}
       renderOption={(person) => (
         <Text className="text-base text-surface-foreground" weight="semibold">
-          {person.name}
+          {recipientLabel(person)}
         </Text>
       )}
       search={search}

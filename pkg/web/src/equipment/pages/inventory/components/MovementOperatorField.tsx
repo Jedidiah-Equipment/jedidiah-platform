@@ -1,4 +1,4 @@
-import type { InventoryRecipientOption } from '@pkg/schema/equipment';
+import type { InventoryOperatorOption } from '@pkg/schema/equipment';
 import { useQuery } from '@tanstack/react-query';
 
 import { ComboboxField } from '@/components/form/fields/ComboboxField.js';
@@ -17,11 +17,12 @@ export function useDefaultMovementOperator(): string {
 
 /**
  * Who the movement is attributed to, rendered inside `<form.AppField name="actorUserId">`. Offers the
- * same people Received by does, so nothing picked here is refused on the post.
+ * Operator rule the tablet's Quick-switch and Purchase Order Received by share; a Checkout's Received by
+ * offers a superset that adds Contracting Drivers and Mechanics.
  */
 export function MovementOperatorField({ enabled }: { enabled: boolean }) {
   const trpc = useTRPC();
-  const people = useQuery(trpc.inventory.recipientOptions.queryOptions({ limit: 0, search: '' }, { enabled }));
+  const people = useQuery(trpc.inventory.operatorOptions.queryOptions({ limit: 0, search: '' }, { enabled }));
 
   return (
     <ComboboxField
@@ -33,6 +34,6 @@ export function MovementOperatorField({ enabled }: { enabled: boolean }) {
   );
 }
 
-export function personOptions(people: readonly InventoryRecipientOption[]) {
+function personOptions(people: readonly InventoryOperatorOption[]) {
   return people.map((person) => ({ label: person.name, value: person.id }));
 }

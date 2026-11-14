@@ -195,6 +195,17 @@ function resolveBuildEnvironment(build) {
   return 'preview';
 }
 
+/**
+ * Metro bundles `@pkg/schema` and `@pkg/domain` from their `dist`, so an OTA exported over a stale build ships
+ * old shared code beside new app code. Store builds rebuild them in `eas-build-post-install`; an OTA must too.
+ */
+export function resolveWorkspaceBuildCommand() {
+  return {
+    executable: 'pnpm',
+    args: ['--workspace-root', 'turbo', 'run', 'build', '--filter=@pkg/schema', '--filter=@pkg/domain'],
+  };
+}
+
 export function resolveExportCommand(platforms, outputDir) {
   return {
     executable: 'pnpm',
@@ -262,6 +273,18 @@ function publishUpdate(profile, args, run) {
   const bundle = resolveExportCommand(command.platforms, run.outputDir);
   // Bundle and upload before publishing because this script cannot roll an OTA back.
   const sourceMaps = resolveSourceMapUploadCommand(releaseEnv, run.outputDir);
+
+  const workspaceBuild = resolveWorkspaceBuildCommand();
+  const buildResult = spawnSync(workspaceBuild.executable, workspaceBuild.args, {
+    cwd: MOBILE_DIR,
+    env: updateEnv,
+    stdio: 'inherit',
+  });
+  if (buildResult.error) throw buildResult.error;
+  if (buildResult.status !== 0) {
+    process.exitCode = buildResult.status ?? 1;
+    return;
+  }
 
   const bundleResult = spawnSync(bundle.executable, bundle.args, {
     cwd: MOBILE_DIR,
